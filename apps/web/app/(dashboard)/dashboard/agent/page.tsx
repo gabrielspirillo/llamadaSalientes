@@ -41,6 +41,7 @@ export default function AgentPage() {
       <PageHeader
         title="Configuración del agente"
         description="Voz, prompt y comportamiento de Sofía."
+        demoBadge
         actions={
           <>
             <Button variant="secondary" size="sm">

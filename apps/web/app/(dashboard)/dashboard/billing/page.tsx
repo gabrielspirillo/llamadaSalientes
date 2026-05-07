@@ -14,7 +14,7 @@ const invoices = [
 export default function BillingPage() {
   return (
     <>
-      <PageHeader title="Facturación" description="Plan, consumo y facturas de Clínica Demo." />
+      <PageHeader title="Facturación" description="Plan, consumo y facturas." demoBadge />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* Plan */}

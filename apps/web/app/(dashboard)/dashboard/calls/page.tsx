@@ -29,6 +29,7 @@ export default function CallsPage() {
       <PageHeader
         title="Llamadas"
         description="Todas las llamadas atendidas por el agente."
+        demoBadge
         actions={
           <>
             <Button variant="secondary" size="sm">

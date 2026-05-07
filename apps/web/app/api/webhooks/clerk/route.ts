@@ -1,6 +1,7 @@
 import { db } from '@/lib/db/client';
-import { clinicSettings, tenants, users, webhookLogs } from '@/lib/db/schema';
+import { clinicSettings, faqs, tenants, treatments, users, webhookLogs } from '@/lib/db/schema';
 import { env } from '@/lib/env';
+import { SEED_FAQS, SEED_TREATMENTS } from '@/lib/seed-data';
 import { eq } from 'drizzle-orm';
 import { headers } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -114,6 +115,13 @@ async function handleOrgCreated(evt: ClerkOrgEvent) {
       sunday: null,
     },
   });
+
+  // Auto-seed: 8 tratamientos + 7 FAQs para que el dashboard arranque vivo.
+  // El usuario puede editarlos / borrarlos desde la UI.
+  await db
+    .insert(treatments)
+    .values(SEED_TREATMENTS.map((t) => ({ tenantId: tenant.id, ...t, currency: 'USD' })));
+  await db.insert(faqs).values(SEED_FAQS.map((f) => ({ tenantId: tenant.id, ...f })));
 }
 
 async function handleOrgUpdated(evt: ClerkOrgEvent) {

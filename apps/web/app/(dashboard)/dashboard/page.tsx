@@ -19,8 +19,9 @@ export default function DashboardOverview() {
   return (
     <>
       <PageHeader
-        title="Buenos días, Adrián"
-        description="Esto es lo que pasó en Clínica Demo en las últimas 24 horas."
+        title="Buenos días"
+        description="Esto es lo que pasó en tu clínica en las últimas 24 horas."
+        demoBadge
         actions={
           <Button asChild>
             <Link href="/dashboard/agent">

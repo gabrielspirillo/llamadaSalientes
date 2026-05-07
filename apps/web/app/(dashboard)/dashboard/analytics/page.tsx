@@ -14,6 +14,7 @@ export default function AnalyticsPage() {
       <PageHeader
         title="Analytics"
         description="Métricas en tiempo real de tu agente de voz."
+        demoBadge
         actions={
           <>
             <Button variant="secondary" size="sm">

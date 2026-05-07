@@ -1,6 +1,5 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
 import { UserButton } from '@clerk/nextjs';
 import { Bell, Search } from 'lucide-react';
 
@@ -16,7 +15,6 @@ export function DashboardTopbar() {
       </div>
 
       <div className="flex items-center gap-3">
-        <Badge tone="warn">Demo · sin datos reales</Badge>
         <button
           type="button"
           className="relative h-9 w-9 inline-flex items-center justify-center rounded-full hover:bg-zinc-100 transition-colors"

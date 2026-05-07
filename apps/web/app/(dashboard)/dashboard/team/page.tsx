@@ -18,7 +18,8 @@ export default function TeamPage() {
     <>
       <PageHeader
         title="Equipo"
-        description="Personas con acceso al panel de Clínica Demo."
+        description="Personas con acceso al panel."
+        demoBadge
         actions={
           <Button size="sm">
             <UserPlus className="h-4 w-4" /> Invitar miembro
