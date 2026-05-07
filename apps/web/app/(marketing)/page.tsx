@@ -2,6 +2,7 @@ import { MarketingTopbar } from '@/components/marketing/topbar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { auth } from '@clerk/nextjs/server';
 import {
   ArrowRight,
   BarChart3,
@@ -13,8 +14,17 @@ import {
   Zap,
 } from 'lucide-react';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 
-export default function Home() {
+export default async function Home() {
+  // Si ya estás logueado, vas directo al dashboard. La landing es solo
+  // para visitantes anónimos. Esto también resuelve el caso donde Clerk
+  // afterCreateOrganization rebota a "/" en vez de /dashboard.
+  const { userId, orgId } = await auth();
+  if (userId) {
+    redirect(orgId ? '/dashboard' : '/onboarding');
+  }
+
   return (
     <div className="min-h-screen bg-white text-zinc-900">
       <MarketingTopbar />

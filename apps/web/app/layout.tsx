@@ -27,6 +27,12 @@ export default function RootLayout({
         elements: {
           formButtonPrimary: 'bg-black hover:bg-zinc-800',
           card: 'shadow-none border border-zinc-200/70',
+          // Oculta el badge "Secured by Clerk" y el toggle de "Development mode"
+          // que aparecen en el plan free / con keys de test.
+          footer: 'hidden',
+          footerAction: 'hidden',
+          badge: 'hidden',
+          poweredByClerk: 'hidden',
         },
       }}
     >

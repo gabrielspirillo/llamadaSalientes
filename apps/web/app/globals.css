@@ -42,6 +42,21 @@ body {
   background: rgba(10, 132, 255, 0.18);
 }
 
+/* Oculta branding "Secured by Clerk" + badge "Development mode" en componentes Clerk.
+   Recordá: en plan free de Clerk el "Secured by" técnicamente no debe ocultarse;
+   cuando paguemos Pro lo desactivamos desde el dashboard. */
+.cl-internal-b3fm6y,
+.cl-internal-1dauvpw,
+.cl-poweredByClerkText,
+.cl-footer,
+.cl-footerAction,
+.cl-badge,
+[data-clerk-development-mode],
+[class*="developmentMode"],
+[class*="cl-badge"] {
+  display: none !important;
+}
+
 /* scrollbar discreto, estilo macOS */
 ::-webkit-scrollbar {
   width: 10px;
