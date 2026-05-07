@@ -10,9 +10,21 @@ const cleaned = Object.fromEntries(
   Object.entries(process.env).map(([k, v]) => [k, v === '' ? undefined : v]),
 );
 
+// URL coercer: acepta strings, prepende https:// si falta protocolo,
+// vuelve al default si está vacío o es inválido.
+const appUrlSchema = z
+  .string()
+  .transform((s) => {
+    const trimmed = s.trim();
+    if (!trimmed) return 'http://localhost:3000';
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    return `https://${trimmed}`;
+  })
+  .default('http://localhost:3000');
+
 const envSchema = z.object({
   // App
-  NEXT_PUBLIC_APP_URL: z.string().url().default('http://localhost:3000'),
+  NEXT_PUBLIC_APP_URL: appUrlSchema,
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 
   // DB — required desde Fase 1
