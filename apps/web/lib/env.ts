@@ -4,6 +4,12 @@ import { z } from 'zod';
 // Las claves van pasando de `optional()` a `min(1)` a medida que avanzan
 // las fases del roadmap.
 
+// Vercel/CI a veces inyectan strings vacíos para vars no seteadas; los tratamos
+// como undefined para que los `.default()` y `.optional()` se comporten bien.
+const cleaned = Object.fromEntries(
+  Object.entries(process.env).map(([k, v]) => [k, v === '' ? undefined : v]),
+);
+
 const envSchema = z.object({
   // App
   NEXT_PUBLIC_APP_URL: z.string().url().default('http://localhost:3000'),
@@ -67,7 +73,7 @@ const envSchema = z.object({
 export type Env = z.infer<typeof envSchema>;
 
 function loadEnv(): Env {
-  const parsed = envSchema.safeParse(process.env);
+  const parsed = envSchema.safeParse(cleaned);
   if (!parsed.success) {
     console.error('❌ Invalid environment variables:');
     console.error(parsed.error.flatten().fieldErrors);
