@@ -98,12 +98,8 @@
           "name": "agent_configs_tenant_id_tenants_id_fk",
           "tableFrom": "agent_configs",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -113,9 +109,7 @@
         "agent_configs_tenant_id_unique": {
           "name": "agent_configs_tenant_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "tenant_id"
-          ]
+          "columns": ["tenant_id"]
         }
       },
       "policies": {},
@@ -214,12 +208,8 @@
           "name": "agent_prompt_versions_tenant_id_tenants_id_fk",
           "tableFrom": "agent_prompt_versions",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -227,12 +217,8 @@
           "name": "agent_prompt_versions_agent_config_id_agent_configs_id_fk",
           "tableFrom": "agent_prompt_versions",
           "tableTo": "agent_configs",
-          "columnsFrom": [
-            "agent_config_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_config_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -240,12 +226,8 @@
           "name": "agent_prompt_versions_created_by_users_id_fk",
           "tableFrom": "agent_prompt_versions",
           "tableTo": "users",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -350,12 +332,8 @@
           "name": "appointments_cache_tenant_id_tenants_id_fk",
           "tableFrom": "appointments_cache",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -363,12 +341,8 @@
           "name": "appointments_cache_treatment_id_treatments_id_fk",
           "tableFrom": "appointments_cache",
           "tableTo": "treatments",
-          "columnsFrom": [
-            "treatment_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["treatment_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -376,10 +350,7 @@
       "compositePrimaryKeys": {
         "appointments_cache_tenant_id_ghl_appointment_id_pk": {
           "name": "appointments_cache_tenant_id_ghl_appointment_id_pk",
-          "columns": [
-            "tenant_id",
-            "ghl_appointment_id"
-          ]
+          "columns": ["tenant_id", "ghl_appointment_id"]
         }
       },
       "uniqueConstraints": {},
@@ -545,12 +516,8 @@
           "name": "billing_subscriptions_tenant_id_tenants_id_fk",
           "tableFrom": "billing_subscriptions",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -632,12 +599,8 @@
           "name": "call_events_tenant_id_tenants_id_fk",
           "tableFrom": "call_events",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -647,10 +610,7 @@
         "call_events_call_event_unique": {
           "name": "call_events_call_event_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "call_id",
-            "event"
-          ]
+          "columns": ["call_id", "event"]
         }
       },
       "policies": {},
@@ -817,12 +777,8 @@
           "name": "calls_tenant_id_tenants_id_fk",
           "tableFrom": "calls",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -832,9 +788,7 @@
         "calls_retell_call_id_unique": {
           "name": "calls_retell_call_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "retell_call_id"
-          ]
+          "columns": ["retell_call_id"]
         }
       },
       "policies": {},
@@ -910,12 +864,8 @@
           "name": "clinic_settings_tenant_id_tenants_id_fk",
           "tableFrom": "clinic_settings",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -998,12 +948,8 @@
           "name": "faqs_tenant_id_tenants_id_fk",
           "tableFrom": "faqs",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1080,12 +1026,8 @@
           "name": "ghl_integrations_tenant_id_tenants_id_fk",
           "tableFrom": "ghl_integrations",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1093,12 +1035,8 @@
           "name": "ghl_integrations_connected_by_users_id_fk",
           "tableFrom": "ghl_integrations",
           "tableTo": "users",
-          "columnsFrom": [
-            "connected_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["connected_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1209,12 +1147,8 @@
           "name": "patients_cache_tenant_id_tenants_id_fk",
           "tableFrom": "patients_cache",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1222,10 +1156,7 @@
       "compositePrimaryKeys": {
         "patients_cache_tenant_id_ghl_contact_id_pk": {
           "name": "patients_cache_tenant_id_ghl_contact_id_pk",
-          "columns": [
-            "tenant_id",
-            "ghl_contact_id"
-          ]
+          "columns": ["tenant_id", "ghl_contact_id"]
         }
       },
       "uniqueConstraints": {},
@@ -1311,12 +1242,8 @@
           "name": "phone_numbers_tenant_id_tenants_id_fk",
           "tableFrom": "phone_numbers",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1324,12 +1251,8 @@
           "name": "phone_numbers_agent_id_agent_configs_id_fk",
           "tableFrom": "phone_numbers",
           "tableTo": "agent_configs",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1339,9 +1262,7 @@
         "phone_numbers_e164_unique": {
           "name": "phone_numbers_e164_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "e164"
-          ]
+          "columns": ["e164"]
         }
       },
       "policies": {},
@@ -1400,12 +1321,8 @@
           "name": "tenant_memberships_tenant_id_tenants_id_fk",
           "tableFrom": "tenant_memberships",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1413,12 +1330,8 @@
           "name": "tenant_memberships_user_id_users_id_fk",
           "tableFrom": "tenant_memberships",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1426,10 +1339,7 @@
       "compositePrimaryKeys": {
         "tenant_memberships_tenant_id_user_id_pk": {
           "name": "tenant_memberships_tenant_id_user_id_pk",
-          "columns": [
-            "tenant_id",
-            "user_id"
-          ]
+          "columns": ["tenant_id", "user_id"]
         }
       },
       "uniqueConstraints": {},
@@ -1495,16 +1405,12 @@
         "tenants_slug_unique": {
           "name": "tenants_slug_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "slug"
-          ]
+          "columns": ["slug"]
         },
         "tenants_clerk_organization_id_unique": {
           "name": "tenants_clerk_organization_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "clerk_organization_id"
-          ]
+          "columns": ["clerk_organization_id"]
         }
       },
       "policies": {},
@@ -1615,12 +1521,8 @@
           "name": "treatments_tenant_id_tenants_id_fk",
           "tableFrom": "treatments",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1669,9 +1571,7 @@
         "users_clerk_user_id_unique": {
           "name": "users_clerk_user_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "clerk_user_id"
-          ]
+          "columns": ["clerk_user_id"]
         }
       },
       "policies": {},

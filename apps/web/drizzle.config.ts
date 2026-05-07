@@ -2,8 +2,8 @@ import path from 'node:path';
 import { config } from 'dotenv';
 import type { Config } from 'drizzle-kit';
 
-// Carga .env.local desde el root del repo (no desde apps/web)
-config({ path: path.resolve(__dirname, '../../.env.local') });
+// .env.local vive en apps/web/ (Next.js lo carga automáticamente en runtime).
+config({ path: path.resolve(__dirname, '.env.local') });
 
 export default {
   schema: './lib/db/schema.ts',

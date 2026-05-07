@@ -1,6 +1,7 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
+import { UserButton } from '@clerk/nextjs';
 import { Bell, Search } from 'lucide-react';
 
 export function DashboardTopbar() {
@@ -23,7 +24,13 @@ export function DashboardTopbar() {
           <Bell className="h-4 w-4 text-zinc-600" />
           <span className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-red-500" />
         </button>
-        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 ring-2 ring-white" />
+        <UserButton
+          appearance={{
+            elements: {
+              avatarBox: 'h-8 w-8 ring-2 ring-white',
+            },
+          }}
+        />
       </div>
     </header>
   );

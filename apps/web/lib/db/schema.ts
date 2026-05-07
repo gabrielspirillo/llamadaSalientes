@@ -62,10 +62,8 @@ export const clinicSettings = pgTable('clinic_settings', {
     .references(() => tenants.id, { onDelete: 'cascade' }),
   address: text('address'),
   phones: jsonb('phones').$type<string[]>().default([]),
-  workingHours: jsonb('working_hours').$type<Record<
-    string,
-    { open: string; close: string } | null
-  >>(),
+  workingHours:
+    jsonb('working_hours').$type<Record<string, { open: string; close: string } | null>>(),
   timezone: text('timezone').notNull().default('America/Mexico_City'),
   defaultLanguage: text('default_language').notNull().default('es'),
   afterHoursMessage: text('after_hours_message'),

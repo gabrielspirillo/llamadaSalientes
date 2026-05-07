@@ -37,6 +37,7 @@ export const Label = React.forwardRef<
   HTMLLabelElement,
   React.LabelHTMLAttributes<HTMLLabelElement>
 >(({ className, ...props }, ref) => (
+  // biome-ignore lint/a11y/noLabelWithoutControl: <Label> is a generic primitive; consumers wire htmlFor or wrap input
   <label ref={ref} className={cn('text-sm font-medium text-zinc-800', className)} {...props} />
 ));
 Label.displayName = 'Label';

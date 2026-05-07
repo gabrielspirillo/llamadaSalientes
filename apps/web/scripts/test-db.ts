@@ -2,7 +2,7 @@ import path from 'node:path';
 import { config } from 'dotenv';
 import postgres from 'postgres';
 
-config({ path: path.resolve(__dirname, '../../../.env.local') });
+config({ path: path.resolve(__dirname, '../.env.local') });
 
 async function main() {
   const url = process.env.DATABASE_URL;

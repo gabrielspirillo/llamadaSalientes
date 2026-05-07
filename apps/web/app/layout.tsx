@@ -7,23 +7,32 @@ export const metadata: Metadata = {
   description: 'Agente de voz IA para clínicas dentales',
 };
 
-// DECISION: ClerkProvider se monta solo si hay publishable key configurada.
-// En Fase 0 todavía no se conectó Clerk, y prerender exige la key. A partir
-// de Fase 1 (cuando se cargue NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) envuelve todo.
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const tree = (
-    <html lang="es">
-      <body>{children}</body>
-    </html>
+  return (
+    <ClerkProvider
+      appearance={{
+        variables: {
+          colorPrimary: '#0a0a0a',
+          colorBackground: '#ffffff',
+          colorText: '#0a0a0a',
+          colorTextSecondary: '#6b7280',
+          borderRadius: '12px',
+          fontFamily:
+            '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif',
+        },
+        elements: {
+          formButtonPrimary: 'bg-black hover:bg-zinc-800',
+          card: 'shadow-none border border-zinc-200/70',
+        },
+      }}
+    >
+      <html lang="es">
+        <body>{children}</body>
+      </html>
+    </ClerkProvider>
   );
-
-  if (!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
-    return tree;
-  }
-
-  return <ClerkProvider>{tree}</ClerkProvider>;
 }

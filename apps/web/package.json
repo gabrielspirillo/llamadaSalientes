@@ -29,6 +29,7 @@
     "postgres": "^3.4.5",
     "react": "^19.0.3",
     "react-dom": "^19.0.3",
+    "svix": "^1.45.0",
     "tailwind-merge": "^2.6.0",
     "zod": "^3.24.1"
   },

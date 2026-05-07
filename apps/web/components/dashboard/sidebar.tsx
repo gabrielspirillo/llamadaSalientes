@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/cn';
+import { OrganizationSwitcher } from '@clerk/nextjs';
 import {
   BarChart3,
   Bot,
@@ -40,21 +41,19 @@ export function DashboardSidebar() {
         <span className="text-[15px] font-semibold tracking-tight">DentalVoice</span>
       </div>
 
-      {/* Tenant switcher mock */}
       <div className="px-3 pt-3">
-        <button
-          type="button"
-          className="w-full flex items-center justify-between rounded-xl border border-zinc-200/70 bg-white px-3 py-2 text-sm hover:border-zinc-300 transition-colors"
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="h-6 w-6 shrink-0 rounded-md bg-gradient-to-br from-blue-500 to-violet-600" />
-            <div className="text-left min-w-0">
-              <p className="text-[13px] font-medium leading-tight truncate">Clínica Demo</p>
-              <p className="text-[11px] text-zinc-500 leading-tight truncate">Plan Pro</p>
-            </div>
-          </div>
-          <span className="text-zinc-400">⌄</span>
-        </button>
+        <OrganizationSwitcher
+          hidePersonal
+          afterCreateOrganizationUrl="/dashboard"
+          afterSelectOrganizationUrl="/dashboard"
+          appearance={{
+            elements: {
+              rootBox: 'w-full',
+              organizationSwitcherTrigger:
+                'w-full justify-between rounded-xl border border-zinc-200/70 bg-white px-3 py-2 text-sm hover:border-zinc-300 transition-colors',
+            },
+          }}
+        />
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">

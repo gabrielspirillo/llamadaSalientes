@@ -1,7 +1,20 @@
 import { DashboardSidebar } from '@/components/dashboard/sidebar';
 import { DashboardTopbar } from '@/components/dashboard/topbar';
+import { auth } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { userId, orgId } = await auth();
+
+  if (!userId) {
+    redirect('/sign-in');
+  }
+
+  // Sin organización activa → llevamos a onboarding (crea o elige clínica).
+  if (!orgId) {
+    redirect('/onboarding');
+  }
+
   return (
     <div className="flex min-h-screen bg-white text-zinc-900">
       <DashboardSidebar />
