@@ -1,11 +1,21 @@
 import { PageHeader } from '@/components/dashboard/page-header';
 import { getClinicSettings } from '@/lib/data/clinic';
+import { getGhlIntegration } from '@/lib/data/ghl-integration';
 import { getCurrentTenant } from '@/lib/tenant';
+import { GhlCard } from './ghl-card';
 import { SettingsForm } from './settings-form';
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ghl?: string; ghl_error?: string }>;
+}) {
+  const sp = await searchParams;
   const { tenant } = await getCurrentTenant();
-  const settings = await getClinicSettings(tenant.id);
+  const [settings, ghl] = await Promise.all([
+    getClinicSettings(tenant.id),
+    getGhlIntegration(tenant.id),
+  ]);
 
   if (!settings) {
     return (
@@ -21,13 +31,41 @@ export default async function SettingsPage() {
     );
   }
 
+  const ghlCard = (
+    <GhlCard
+      status={
+        ghl
+          ? {
+              kind: 'connected',
+              locationId: ghl.locationId,
+              scopes: ghl.scopes,
+              connectedAt: ghl.connectedAt,
+              expiresAt: ghl.expiresAt,
+            }
+          : { kind: 'disconnected' }
+      }
+    />
+  );
+
   return (
     <>
       <PageHeader
         title={tenant.name}
         description="Información que el agente usa al hablar con pacientes."
       />
+
+      {sp.ghl === 'connected' && (
+        <Banner kind="success">GoHighLevel conectado correctamente.</Banner>
+      )}
+      {sp.ghl_error && (
+        <Banner kind="error">
+          La conexión con GoHighLevel falló: <code>{sp.ghl_error}</code>. Probá de nuevo o contactá
+          soporte.
+        </Banner>
+      )}
+
       <SettingsForm
+        ghlSlot={ghlCard}
         initial={{
           address: settings.address,
           phones: settings.phones,
@@ -41,5 +79,19 @@ export default async function SettingsPage() {
         }}
       />
     </>
+  );
+}
+
+function Banner({ kind, children }: { kind: 'success' | 'error'; children: React.ReactNode }) {
+  return (
+    <div
+      className={`mb-6 rounded-xl border px-4 py-3 text-sm ${
+        kind === 'success'
+          ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+          : 'bg-red-50 border-red-200 text-red-800'
+      }`}
+    >
+      {children}
+    </div>
   );
 }

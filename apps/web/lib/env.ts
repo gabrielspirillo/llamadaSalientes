@@ -65,8 +65,8 @@ const envSchema = z.object({
   R2_SECRET_ACCESS_KEY: z.string().optional(),
   R2_BUCKET: z.string().optional(),
 
-  // Crypto — Fase 3
-  ENCRYPTION_KEY: z.string().optional(),
+  // Crypto — required desde Fase 3 (AES-256-GCM, 32 bytes base64)
+  ENCRYPTION_KEY: z.string().min(1, 'ENCRYPTION_KEY es requerida (openssl rand -base64 32)'),
 
   // Observabilidad — opcional
   SENTRY_DSN: z.string().optional(),

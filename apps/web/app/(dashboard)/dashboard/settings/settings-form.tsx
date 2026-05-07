@@ -41,7 +41,13 @@ const DEFAULT_HOURS: WorkingHours = {
   sunday: null,
 };
 
-export function SettingsForm({ initial }: { initial: Settings }) {
+export function SettingsForm({
+  initial,
+  ghlSlot,
+}: {
+  initial: Settings;
+  ghlSlot: React.ReactNode;
+}) {
   const [hours, setHours] = useState<WorkingHours>(initial.workingHours ?? DEFAULT_HOURS);
   const [phones, setPhones] = useState<string[]>(initial.phones ?? []);
   const [phoneDraft, setPhoneDraft] = useState('');
@@ -274,22 +280,7 @@ export function SettingsForm({ initial }: { initial: Settings }) {
         </div>
 
         <div className="space-y-6">
-          <Card>
-            <div className="p-6">
-              <h3 className="text-base font-semibold tracking-tight">Integración GHL</h3>
-              <div className="mt-3 flex items-center gap-2 text-sm">
-                <div className="h-2 w-2 rounded-full bg-zinc-300" />
-                <span className="text-zinc-600">Pendiente de conectar</span>
-              </div>
-              <p className="text-sm text-zinc-500 mt-3">
-                Conectá tu sub-account de GoHighLevel para agendar citas, sincronizar contactos y
-                calendarios.
-              </p>
-              <Button variant="secondary" size="sm" className="mt-4 w-full" disabled>
-                Conectar (Fase 3)
-              </Button>
-            </div>
-          </Card>
+          {ghlSlot}
 
           <Card>
             <div className="p-6">
