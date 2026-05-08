@@ -10,7 +10,6 @@ type Turn = {
   id: number;
   speaker: 'agent' | 'user';
   text: string;
-  ts: number;
 };
 
 type CallState = 'idle' | 'connecting' | 'live' | 'ended' | 'error';
@@ -21,10 +20,15 @@ export function AgentTester() {
   const [transcript, setTranscript] = useState<Turn[]>([]);
   const [muted, setMuted] = useState(false);
   const [duration, setDuration] = useState(0);
+
   const clientRef = useRef<unknown>(null);
   const startedAtRef = useRef<number | null>(null);
 
-  // Cronómetro
+  // Buffer + throttle de updates de transcript para no saturar React.
+  // Retell emite 'update' decenas de veces por segundo durante la conversación.
+  const pendingTranscriptRef = useRef<Turn[] | null>(null);
+  const flushTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (state !== 'live') return;
     const iv = setInterval(() => {
@@ -35,6 +39,26 @@ export function AgentTester() {
     return () => clearInterval(iv);
   }, [state]);
 
+  // Cleanup al desmontar
+  useEffect(() => {
+    return () => {
+      try {
+        (clientRef.current as { stopCall?: () => void } | null)?.stopCall?.();
+      } catch {}
+      if (flushTimeoutRef.current) clearTimeout(flushTimeoutRef.current);
+    };
+  }, []);
+
+  function scheduleTranscriptFlush() {
+    if (flushTimeoutRef.current) return;
+    flushTimeoutRef.current = setTimeout(() => {
+      flushTimeoutRef.current = null;
+      const pending = pendingTranscriptRef.current;
+      pendingTranscriptRef.current = null;
+      if (pending) setTranscript(pending);
+    }, 150);
+  }
+
   async function startCall() {
     setError(null);
     setTranscript([]);
@@ -42,18 +66,7 @@ export function AgentTester() {
     setState('connecting');
 
     try {
-      // 1) Pre-pedir permiso de micrófono explícitamente para fallar rápido si
-      //    el navegador lo bloquea (Permissions-Policy, denied, etc.)
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // Soltamos el stream — el SDK va a pedirlo de nuevo. Solo queríamos verificar permiso.
-        for (const track of stream.getTracks()) track.stop();
-      } catch (permErr) {
-        const msg = permErr instanceof Error ? permErr.message : String(permErr);
-        throw new Error(`No se pudo acceder al micrófono: ${msg}. Revisá permisos en el navegador.`);
-      }
-
-      // 2) Pedir access_token al backend
+      // Pedir access_token al backend
       const res = await fetch('/api/retell/web-call', { method: 'POST' });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -61,7 +74,7 @@ export function AgentTester() {
       }
       const { accessToken } = (await res.json()) as { accessToken: string };
 
-      // 3) Inicializar Retell WebClient
+      // Inicializar Retell WebClient (import dinámico)
       const { RetellWebClient } = await import('retell-client-js-sdk');
       const client = new RetellWebClient();
       clientRef.current = client;
@@ -73,7 +86,7 @@ export function AgentTester() {
       });
 
       client.on('call_ready', () => {
-        console.log('[retell] call_ready — desbloqueando audio playback');
+        console.log('[retell] call_ready');
         const c = clientRef.current as { startAudioPlayback?: () => Promise<void> } | null;
         c?.startAudioPlayback?.().catch((err) => {
           console.error('[retell] startAudioPlayback failed:', err);
@@ -86,7 +99,7 @@ export function AgentTester() {
       });
 
       client.on('error', (err: unknown) => {
-        console.error('[retell] error event:', err);
+        console.error('[retell] error:', err);
         const msg = err instanceof Error ? err.message : String(err);
         setError(msg);
         setState('error');
@@ -98,25 +111,23 @@ export function AgentTester() {
       client.on('agent_start_talking', () => console.log('[retell] agent_start_talking'));
       client.on('agent_stop_talking', () => console.log('[retell] agent_stop_talking'));
 
+      // Throttled transcript: buffereamos en ref y aplicamos cada 150ms
       client.on('update', (update: { transcript?: Array<{ role: string; content: string }> }) => {
         if (!update.transcript) return;
         const turns: Turn[] = update.transcript.map((t, idx) => ({
           id: idx,
           speaker: t.role === 'agent' ? 'agent' : 'user',
           text: t.content,
-          ts: Date.now(),
         }));
-        setTranscript(turns);
+        pendingTranscriptRef.current = turns;
+        scheduleTranscriptFlush();
       });
 
-      // 4) Iniciar la llamada y desbloquear audio inmediatamente
+      // startCall internamente hace setMicrophoneEnabled(true) — eso pide
+      // permiso de mic. Dejamos al SDK manejarlo, sin pre-request.
       await client.startCall({ accessToken, sampleRate: 24000 });
-      try {
-        await (client as unknown as { startAudioPlayback?: () => Promise<void> }).startAudioPlayback?.();
-      } catch (e) {
-        console.warn('[retell] startAudioPlayback inmediato falló (ok si call_ready lo hace):', e);
-      }
     } catch (e) {
+      console.error('[retell] startCall failed:', e);
       setError(e instanceof Error ? e.message : 'Error al iniciar la llamada');
       setState('error');
     }
@@ -201,7 +212,12 @@ export function AgentTester() {
                   {muted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                   {muted ? 'Activar micrófono' : 'Silenciar micrófono'}
                 </Button>
-                <Button size="lg" variant="primary" className="w-full bg-red-600 hover:bg-red-700" onClick={stopCall}>
+                <Button
+                  size="lg"
+                  variant="primary"
+                  className="w-full bg-red-600 hover:bg-red-700"
+                  onClick={stopCall}
+                >
                   <PhoneOff className="h-4 w-4" />
                   Colgar
                 </Button>
