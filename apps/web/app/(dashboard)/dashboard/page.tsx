@@ -8,8 +8,7 @@ import {
   getDashboardStats,
   listCalls,
 } from '@/lib/data/calls-list';
-import { mockCalls, mockStats } from '@/lib/mock-data';
-import { getCurrentTenantOrNull } from '@/lib/tenant';
+import { getCurrentTenant } from '@/lib/tenant';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -23,37 +22,24 @@ import {
 import Link from 'next/link';
 
 export default async function DashboardOverview() {
-  const tenantCtx = await getCurrentTenantOrNull();
-  const stats = tenantCtx ? await getDashboardStats(tenantCtx.tenant.id) : null;
-  const recentCalls = tenantCtx ? await listCalls(tenantCtx.tenant.id, 6) : [];
-  const isDemo = !stats || (stats.callsToday === 0 && recentCalls.length === 0);
-  const display = isDemo
-    ? {
-        callsToday: mockStats.callsToday,
-        callsTodayDelta: mockStats.callsTodayDelta,
-        aht: mockStats.aht,
-        ahtDelta: mockStats.ahtDelta,
-        conversionRate: mockStats.conversionRate,
-        conversionDelta: mockStats.conversionDelta,
-        containmentRate: mockStats.containmentRate,
-        containmentDelta: mockStats.containmentDelta,
-      }
-    : {
-        callsToday: stats!.callsToday,
-        callsTodayDelta: `${stats!.callsToday - stats!.callsYesterday >= 0 ? '+' : ''}${stats!.callsToday - stats!.callsYesterday}`,
-        aht: formatDuration(stats!.avgDurationSec),
-        ahtDelta: '—',
-        conversionRate: stats!.conversionRate,
-        conversionDelta: '—',
-        containmentRate: stats!.containmentRate,
-        containmentDelta: '—',
-      };
+  const { tenant } = await getCurrentTenant();
+  const stats = await getDashboardStats(tenant.id);
+  const recentCalls = await listCalls(tenant.id, 6);
+  const display = {
+    callsToday: stats.callsToday,
+    callsTodayDelta: `${stats.callsToday - stats.callsYesterday >= 0 ? '+' : ''}${stats.callsToday - stats.callsYesterday}`,
+    aht: formatDuration(stats.avgDurationSec),
+    ahtDelta: '—',
+    conversionRate: stats.conversionRate,
+    conversionDelta: '—',
+    containmentRate: stats.containmentRate,
+    containmentDelta: '—',
+  };
   return (
     <>
       <PageHeader
-        title={tenantCtx ? `Hola, ${tenantCtx.tenant.name}` : 'Buenos días'}
+        title={`Hola, ${tenant.name}`}
         description="Esto es lo que pasó en tu clínica en las últimas 24 horas."
-        demoBadge={isDemo}
         actions={
           <Button asChild>
             <Link href="/dashboard/agent">
@@ -106,73 +92,50 @@ export default async function DashboardOverview() {
             </Button>
           </div>
           <div className="border-t border-zinc-100">
-            {isDemo
-              ? mockCalls.slice(0, 6).map((c) => (
-                  <Link
-                    key={c.id}
-                    href={`/dashboard/calls/${c.id}`}
-                    className="flex items-center justify-between gap-4 px-6 py-3.5 hover:bg-zinc-50/60 transition-colors border-b border-zinc-50 last:border-b-0"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className={`h-2 w-2 rounded-full shrink-0 ${
-                          c.sentiment === 'positive'
-                            ? 'bg-emerald-500'
-                            : c.sentiment === 'negative'
-                              ? 'bg-red-500'
-                              : 'bg-zinc-400'
-                        }`}
-                      />
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{c.patientName}</p>
-                        <p className="text-xs text-zinc-500 truncate">{c.summary}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <IntentBadge intent={c.intent} />
-                      <span className="text-xs text-zinc-400 tabular-nums w-12 text-right">
-                        {c.duration}
-                      </span>
-                    </div>
-                  </Link>
-                ))
-              : recentCalls.map((c) => (
-                  <Link
-                    key={c.id}
-                    href={`/dashboard/calls/${c.id}`}
-                    className="flex items-center justify-between gap-4 px-6 py-3.5 hover:bg-zinc-50/60 transition-colors border-b border-zinc-50 last:border-b-0"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className={`h-2 w-2 rounded-full shrink-0 ${
-                          c.sentiment === 'positivo'
-                            ? 'bg-emerald-500'
-                            : c.sentiment === 'negativo'
-                              ? 'bg-red-500'
-                              : 'bg-zinc-400'
-                        }`}
-                      />
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {c.fromNumber ?? 'Llamada anónima'}
-                        </p>
-                        <p className="text-xs text-zinc-500 truncate">
-                          {c.summary ?? 'Sin resumen aún'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <IntentBadge intent={c.intent ?? 'otro'} />
-                      <span className="text-xs text-zinc-400 tabular-nums w-16 text-right">
-                        {formatDuration(c.durationSeconds)}
-                      </span>
-                    </div>
-                  </Link>
-                ))}
-            {!isDemo && recentCalls.length === 0 && (
-              <div className="px-6 py-12 text-center text-sm text-zinc-500">
-                Aún no hay llamadas. Probá llamar al número del agente.
+            {recentCalls.length === 0 ? (
+              <div className="px-6 py-16 text-center">
+                <p className="text-sm font-medium text-zinc-700">Aún no hay llamadas</p>
+                <p className="text-xs text-zinc-500 mt-1.5">
+                  Probá el agente desde el dashboard o llamá al número configurado.
+                </p>
+                <Button asChild size="sm" className="mt-4">
+                  <Link href="/dashboard/agent">Probar agente ahora</Link>
+                </Button>
               </div>
+            ) : (
+              recentCalls.map((c) => (
+                <Link
+                  key={c.id}
+                  href={`/dashboard/calls/${c.id}`}
+                  className="flex items-center justify-between gap-4 px-6 py-3.5 hover:bg-zinc-50/60 transition-colors border-b border-zinc-50 last:border-b-0"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className={`h-2 w-2 rounded-full shrink-0 ${
+                        c.sentiment === 'positivo'
+                          ? 'bg-emerald-500'
+                          : c.sentiment === 'negativo'
+                            ? 'bg-red-500'
+                            : 'bg-zinc-400'
+                      }`}
+                    />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {c.fromNumber ?? 'Llamada anónima'}
+                      </p>
+                      <p className="text-xs text-zinc-500 truncate">
+                        {c.summary ?? 'Sin resumen aún · ' + formatRelativeTime(c.startedAt)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <IntentBadge intent={c.intent ?? 'otro'} />
+                    <span className="text-xs text-zinc-400 tabular-nums w-16 text-right">
+                      {formatDuration(c.durationSeconds)}
+                    </span>
+                  </div>
+                </Link>
+              ))
             )}
           </div>
         </Card>
@@ -183,29 +146,19 @@ export default async function DashboardOverview() {
             <div className="p-6">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-base font-semibold tracking-tight">Estado del agente</h3>
-                <Badge tone="success">● Activo</Badge>
+                <Badge tone={stats.callsToday > 0 ? 'success' : 'neutral'}>
+                  {stats.callsToday > 0 ? '● Activo' : 'Sin tráfico hoy'}
+                </Badge>
               </div>
               <div className="space-y-3 text-sm">
-                <Row label="Voz" value="Sofía (ES)" />
-                <Row label="Versión de prompt" value="v3 · publicado" />
-                <Row label="Número Twilio" value="+52 555 100 2030" />
-                <Row label="Última prueba" value="hace 2 días" />
+                <Row label="Llamadas hoy" value={String(stats.callsToday)} />
+                <Row label="Llamadas ayer" value={String(stats.callsYesterday)} />
+                <Row label="Containment" value={`${stats.containmentRate}%`} />
+                <Row label="AHT" value={formatDuration(stats.avgDurationSec)} />
               </div>
               <Button asChild variant="secondary" className="w-full mt-5" size="sm">
                 <Link href="/dashboard/agent">Ajustar agente</Link>
               </Button>
-            </div>
-          </Card>
-
-          <Card>
-            <div className="p-6">
-              <h3 className="text-base font-semibold tracking-tight mb-1">Esta semana</h3>
-              <p className="text-sm text-zinc-500 mb-4">Comparado con la anterior</p>
-              <div className="space-y-3">
-                <SparkRow label="Citas creadas" value="38" delta="+12" tone="success" />
-                <SparkRow label="Cancelaciones" value="6" delta="-2" tone="success" />
-                <SparkRow label="Transferidas a humano" value="11" delta="+3" tone="warn" />
-              </div>
             </div>
           </Card>
 
@@ -277,30 +230,6 @@ function Row({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between">
       <span className="text-zinc-500">{label}</span>
       <span className="font-medium tabular-nums">{value}</span>
-    </div>
-  );
-}
-
-function SparkRow({
-  label,
-  value,
-  delta,
-  tone,
-}: {
-  label: string;
-  value: string;
-  delta: string;
-  tone: 'success' | 'warn' | 'danger';
-}) {
-  const color =
-    tone === 'success' ? 'text-emerald-600' : tone === 'warn' ? 'text-amber-600' : 'text-red-600';
-  return (
-    <div className="flex items-center justify-between text-sm">
-      <span className="text-zinc-600">{label}</span>
-      <div className="flex items-center gap-3 tabular-nums">
-        <span className="font-medium">{value}</span>
-        <span className={`text-xs ${color}`}>{delta}</span>
-      </div>
     </div>
   );
 }

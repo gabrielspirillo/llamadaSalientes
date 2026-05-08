@@ -1,136 +1,164 @@
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { mockCallsByHour, mockIntentBreakdown, mockStats } from '@/lib/mock-data';
+import { type AnalyticsRange, getAnalytics } from '@/lib/data/analytics';
+import { formatDuration } from '@/lib/data/calls-list';
+import { getCurrentTenant } from '@/lib/tenant';
 import { ArrowUpRight, Calendar, Clock, PhoneCall, TrendingUp } from 'lucide-react';
+import Link from 'next/link';
 
-export default function AnalyticsPage() {
-  const maxCalls = Math.max(...mockCallsByHour.map((h) => h.calls));
-  const totalIntents = mockIntentBreakdown.reduce((acc, i) => acc + i.count, 0);
+const intentLabels: Record<string, { label: string; color: string }> = {
+  agendar: { label: 'Agendar', color: 'bg-emerald-500' },
+  reagendar: { label: 'Reagendar', color: 'bg-blue-500' },
+  cancelar: { label: 'Cancelar', color: 'bg-amber-500' },
+  pregunta: { label: 'Pregunta', color: 'bg-violet-500' },
+  queja: { label: 'Queja', color: 'bg-red-500' },
+  otro: { label: 'Otro', color: 'bg-zinc-500' },
+  sin_clasificar: { label: 'Sin clasificar', color: 'bg-zinc-300' },
+};
+
+export default async function AnalyticsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: AnalyticsRange }>;
+}) {
+  const sp = await searchParams;
+  const range: AnalyticsRange = sp.range === '7d' || sp.range === '30d' ? sp.range : 'today';
+  const { tenant } = await getCurrentTenant();
+  const data = await getAnalytics(tenant.id, range);
+
+  const maxByHour = Math.max(1, ...data.byHour.map((h) => h.calls));
+  const totalIntents = Math.max(1, data.intents.reduce((acc, i) => acc + i.count, 0));
 
   return (
     <>
       <PageHeader
         title="Analytics"
-        description="Métricas en tiempo real de tu agente de voz."
-        demoBadge
+        description="Métricas reales de tu agente de voz."
         actions={
-          <>
-            <Button variant="secondary" size="sm">
-              Hoy
-            </Button>
-            <Button variant="ghost" size="sm">
-              7 días
-            </Button>
-            <Button variant="ghost" size="sm">
-              30 días
-            </Button>
-          </>
+          <div className="inline-flex items-center rounded-full border border-zinc-200 bg-white p-1 text-xs">
+            <RangePill href="/dashboard/analytics?range=today" active={range === 'today'} label="Hoy" />
+            <RangePill href="/dashboard/analytics?range=7d" active={range === '7d'} label="7 días" />
+            <RangePill href="/dashboard/analytics?range=30d" active={range === '30d'} label="30 días" />
+          </div>
         }
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         <BigStat
           label="Total llamadas"
-          value="247"
-          delta="+18%"
+          value={String(data.total)}
+          delta={data.total === 0 ? '—' : 'período actual'}
           icon={<PhoneCall className="h-4 w-4" />}
         />
         <BigStat
           label="AHT promedio"
-          value={mockStats.aht}
-          delta={mockStats.ahtDelta}
+          value={formatDuration(data.avgDurationSec)}
+          delta="—"
           icon={<Clock className="h-4 w-4" />}
         />
         <BigStat
           label="Citas creadas"
-          value="158"
-          delta="+24%"
+          value={String(data.booked)}
+          delta={data.total === 0 ? '—' : `${Math.round((data.booked / Math.max(1, data.total)) * 100)}% del total`}
           icon={<Calendar className="h-4 w-4" />}
         />
         <BigStat
           label="Containment"
-          value={`${mockStats.containmentRate}%`}
-          delta={mockStats.containmentDelta}
+          value={`${data.containment}%`}
+          delta={`${data.transferred} transferidas`}
           icon={<TrendingUp className="h-4 w-4" />}
         />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Calls by hour */}
-        <Card className="xl:col-span-2">
-          <div className="flex items-center justify-between p-6 pb-2">
-            <div>
-              <h3 className="text-base font-semibold tracking-tight">Llamadas por hora</h3>
-              <p className="text-sm text-zinc-500 mt-0.5">Distribución del día</p>
-            </div>
-            <Badge>Hoy</Badge>
-          </div>
-          <div className="px-6 pb-6 pt-4">
-            <div className="flex items-end gap-2 h-56">
-              {mockCallsByHour.map((h) => (
-                <div key={h.hour} className="flex-1 flex flex-col items-center gap-2">
-                  <div
-                    className="w-full rounded-t-md bg-gradient-to-b from-zinc-900 to-zinc-700 transition-all hover:from-blue-600 hover:to-blue-500"
-                    style={{ height: `${(h.calls / maxCalls) * 100}%` }}
-                  />
-                  <span className="text-[10px] text-zinc-400 tabular-nums">{h.hour}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
-
-        {/* Intent breakdown */}
+      {data.total === 0 ? (
         <Card>
-          <div className="p-6">
-            <h3 className="text-base font-semibold tracking-tight">Por intención</h3>
-            <p className="text-sm text-zinc-500 mt-0.5">Últimos 30 días</p>
-
-            <div className="mt-6 space-y-3.5">
-              {mockIntentBreakdown.map((it) => {
-                const pct = Math.round((it.count / totalIntents) * 100);
-                return (
-                  <div key={it.intent}>
-                    <div className="flex items-center justify-between text-sm mb-1.5">
-                      <div className="flex items-center gap-2">
-                        <div className={`h-2 w-2 rounded-full ${it.color}`} />
-                        <span className="font-medium">{it.intent}</span>
-                      </div>
-                      <span className="text-zinc-500 tabular-nums">
-                        {it.count} <span className="text-xs">· {pct}%</span>
-                      </span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-zinc-100 overflow-hidden">
-                      <div
-                        className={`h-full ${it.color} rounded-full`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+          <div className="p-12 text-center">
+            <p className="text-base font-semibold tracking-tight">Sin datos en este rango</p>
+            <p className="text-sm text-zinc-500 mt-1">
+              Cuando llegue la primera llamada, los gráficos se llenan automáticamente.
+            </p>
           </div>
         </Card>
-      </div>
+      ) : (
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <Card className="xl:col-span-2">
+            <div className="flex items-center justify-between p-6 pb-2">
+              <div>
+                <h3 className="text-base font-semibold tracking-tight">Llamadas por hora</h3>
+                <p className="text-sm text-zinc-500 mt-0.5">Distribución del período</p>
+              </div>
+              <Badge>{range === 'today' ? 'Hoy' : range === '7d' ? '7 días' : '30 días'}</Badge>
+            </div>
+            <div className="px-6 pb-6 pt-4">
+              <div className="flex items-end gap-1.5 h-56">
+                {data.byHour.map((h) => (
+                  <div key={h.hour} className="flex-1 flex flex-col items-center gap-2">
+                    <div
+                      className="w-full rounded-t-md bg-gradient-to-b from-zinc-900 to-zinc-700 transition-all hover:from-blue-600 hover:to-blue-500 min-h-[2px]"
+                      style={{ height: `${(h.calls / maxByHour) * 100}%` }}
+                      title={`${h.hour}:00 — ${h.calls} llamadas`}
+                    />
+                    <span className="text-[10px] text-zinc-400 tabular-nums">
+                      {h.hour.toString().padStart(2, '0')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
 
-      {/* Funnel */}
-      <Card className="mt-6">
-        <div className="p-6">
-          <h3 className="text-base font-semibold tracking-tight">Embudo de conversión</h3>
-          <p className="text-sm text-zinc-500 mt-0.5">Llamada → cita confirmada</p>
+          <Card>
+            <div className="p-6">
+              <h3 className="text-base font-semibold tracking-tight">Por intención</h3>
+              <p className="text-sm text-zinc-500 mt-0.5">Período actual</p>
 
-          <div className="mt-7 grid grid-cols-4 gap-3">
-            <FunnelStep label="Llamadas" value="247" pct={100} />
-            <FunnelStep label="Intent identificado" value="221" pct={89} />
-            <FunnelStep label="Disponibilidad ofrecida" value="186" pct={75} />
-            <FunnelStep label="Cita confirmada" value="158" pct={64} />
-          </div>
+              <div className="mt-6 space-y-3.5">
+                {data.intents.map((it) => {
+                  const meta = intentLabels[it.intent] ?? {
+                    label: it.intent,
+                    color: 'bg-zinc-400',
+                  };
+                  const pct = Math.round((it.count / totalIntents) * 100);
+                  return (
+                    <div key={it.intent}>
+                      <div className="flex items-center justify-between text-sm mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <div className={`h-2 w-2 rounded-full ${meta.color}`} />
+                          <span className="font-medium">{meta.label}</span>
+                        </div>
+                        <span className="text-zinc-500 tabular-nums">
+                          {it.count} <span className="text-xs">· {pct}%</span>
+                        </span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-zinc-100 overflow-hidden">
+                        <div
+                          className={`h-full ${meta.color} rounded-full`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </Card>
         </div>
-      </Card>
+      )}
     </>
+  );
+}
+
+function RangePill({ href, active, label }: { href: string; active: boolean; label: string }) {
+  return (
+    <Link
+      href={href}
+      className={`px-3 py-1 rounded-full transition-colors ${
+        active ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:text-zinc-900'
+      }`}
+    >
+      {label}
+    </Link>
   );
 }
 
@@ -145,7 +173,6 @@ function BigStat({
   delta: string;
   icon: React.ReactNode;
 }) {
-  const positive = delta.startsWith('+');
   return (
     <Card className="p-5">
       <div className="flex items-center justify-between">
@@ -156,27 +183,11 @@ function BigStat({
       </div>
       <div className="mt-3 flex items-baseline gap-2">
         <span className="text-3xl font-semibold tracking-tight tabular-nums">{value}</span>
-        <span
-          className={`inline-flex items-center gap-0.5 text-xs font-medium ${
-            positive ? 'text-emerald-600' : 'text-zinc-500'
-          }`}
-        >
+        <span className="inline-flex items-center gap-0.5 text-xs font-medium text-zinc-500">
           <ArrowUpRight className="h-3 w-3" />
           {delta}
         </span>
       </div>
     </Card>
-  );
-}
-
-function FunnelStep({ label, value, pct }: { label: string; value: string; pct: number }) {
-  return (
-    <div>
-      <p className="text-xs text-zinc-500 mb-2">{label}</p>
-      <div className="rounded-xl bg-gradient-to-br from-zinc-900 to-zinc-700 text-white p-4">
-        <p className="text-2xl font-semibold tabular-nums">{value}</p>
-        <p className="text-xs text-zinc-300 mt-1">{pct}% del total</p>
-      </div>
-    </div>
   );
 }

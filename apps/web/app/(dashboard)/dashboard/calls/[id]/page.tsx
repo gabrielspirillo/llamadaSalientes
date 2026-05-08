@@ -1,19 +1,32 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { mockCalls, mockTranscript } from '@/lib/mock-data';
-import {
-  ArrowLeft,
-  Calendar,
-  Clock,
-  ExternalLink,
-  Pause,
-  Play,
-  Sparkles,
-  User,
-} from 'lucide-react';
+import { formatDuration, getCall, getCallTranscript } from '@/lib/data/calls-list';
+import { getCurrentTenant } from '@/lib/tenant';
+import { ArrowLeft, Calendar, Clock, Phone, Sparkles, User } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+
+function intentBadge(intent: string | null) {
+  if (!intent) return <Badge>—</Badge>;
+  const map: Record<string, { label: string; tone: 'success' | 'info' | 'warn' | 'violet' | 'neutral' | 'danger' }> = {
+    agendar: { label: 'Agendar', tone: 'success' },
+    reagendar: { label: 'Reagendar', tone: 'info' },
+    cancelar: { label: 'Cancelar', tone: 'warn' },
+    pregunta: { label: 'Pregunta', tone: 'violet' },
+    queja: { label: 'Queja', tone: 'danger' },
+    otro: { label: 'Otro', tone: 'neutral' },
+  };
+  const it = map[intent] ?? { label: intent, tone: 'neutral' as const };
+  return <Badge tone={it.tone}>{it.label}</Badge>;
+}
+
+function statusBadge(status: string | null, transferred: boolean) {
+  if (transferred) return <Badge tone="warn">Transferida</Badge>;
+  if (status === 'ongoing') return <Badge tone="info">En curso</Badge>;
+  if (status === 'error') return <Badge tone="danger">Error</Badge>;
+  return <Badge tone="success">Completada</Badge>;
+}
 
 export default async function CallDetailPage({
   params,
@@ -21,8 +34,16 @@ export default async function CallDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const call = mockCalls.find((c) => c.id === id);
+  const { tenant } = await getCurrentTenant();
+  const call = await getCall(tenant.id, id);
   if (!call) notFound();
+
+  const transcript = await getCallTranscript(tenant.id, id);
+  const transcriptTurns = parseTranscript(transcript);
+
+  const startedDate = call.startedAt
+    ? new Date(call.startedAt).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })
+    : '—';
 
   return (
     <>
@@ -36,26 +57,28 @@ export default async function CallDetailPage({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-semibold tracking-tight">{call.patientName}</h1>
-            <Badge tone="success">
-              {call.status === 'completed' ? 'Completada' : 'Transferida'}
-            </Badge>
+            <h1 className="text-3xl font-semibold tracking-tight">
+              {call.fromNumber ?? 'Llamada anónima'}
+            </h1>
+            {statusBadge(call.status, call.transferred ?? false)}
+            {intentBadge(call.intent)}
           </div>
-          <div className="flex items-center gap-5 text-sm text-zinc-500">
+          <div className="flex flex-wrap items-center gap-5 text-sm text-zinc-500">
             <span className="flex items-center gap-1.5">
-              <User className="h-3.5 w-3.5" /> {call.fromNumber}
+              <User className="h-3.5 w-3.5" /> {call.fromNumber ?? '—'}
             </span>
             <span className="flex items-center gap-1.5">
-              <Clock className="h-3.5 w-3.5" /> {call.duration}
+              <Phone className="h-3.5 w-3.5" /> →{' '}
+              {call.toNumber ?? '—'}
             </span>
             <span className="flex items-center gap-1.5">
-              <Calendar className="h-3.5 w-3.5" /> {call.startedAt}
+              <Clock className="h-3.5 w-3.5" /> {formatDuration(call.durationSeconds)}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Calendar className="h-3.5 w-3.5" /> {startedDate}
             </span>
           </div>
         </div>
-        <Button variant="secondary" size="sm">
-          <ExternalLink className="h-4 w-4" /> Ver en GHL
-        </Button>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -63,39 +86,22 @@ export default async function CallDetailPage({
           {/* Audio player */}
           <Card>
             <div className="p-6">
-              <div className="flex items-center gap-4">
-                <button
-                  type="button"
-                  className="h-12 w-12 inline-flex items-center justify-center rounded-full bg-black text-white hover:bg-zinc-800 transition-colors active:scale-95"
-                >
-                  <Play className="h-5 w-5 ml-0.5" />
-                </button>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-2 text-xs tabular-nums text-zinc-500">
-                    <span>0:34</span>
-                    <span>{call.duration}</span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-zinc-100 overflow-hidden">
-                    <div className="h-full w-1/4 rounded-full bg-zinc-900" />
-                  </div>
-                  <div className="mt-3 flex items-center gap-1 h-7">
-                    {Array.from({ length: 60 }).map((_, i) => {
-                      const id = `wf-${i}`;
-                      const h = 30 + Math.abs(Math.sin(i * 0.6) * 50) + (i % 7) * 3;
-                      return (
-                        <div
-                          key={id}
-                          className={`flex-1 rounded-full ${i < 15 ? 'bg-zinc-900' : 'bg-zinc-200'}`}
-                          style={{ height: `${Math.min(h, 95)}%` }}
-                        />
-                      );
-                    })}
-                  </div>
+              {call.recordingR2Key ? (
+                <>
+                  <p className="text-sm text-zinc-500 mb-3">
+                    Grabación · cifrada en Cloudflare R2
+                  </p>
+                  <p className="text-xs text-zinc-400 font-mono break-all">{call.recordingR2Key}</p>
+                  <p className="text-xs text-zinc-500 mt-3">
+                    El reproductor con URL firmada se sirve en una iteración futura. Por ahora la
+                    grabación está guardada y accesible vía API.
+                  </p>
+                </>
+              ) : (
+                <div className="text-center py-8 text-sm text-zinc-500">
+                  Aún no hay grabación procesada para esta llamada.
                 </div>
-                <Button variant="ghost" size="icon">
-                  <Pause className="h-4 w-4" />
-                </Button>
-              </div>
+              )}
             </div>
           </Card>
 
@@ -103,33 +109,39 @@ export default async function CallDetailPage({
           <Card>
             <div className="flex items-center justify-between p-6 pb-4">
               <h3 className="text-base font-semibold tracking-tight">Transcripción</h3>
-              <Badge>cifrada · AES-256</Badge>
+              {transcript && <Badge>cifrada · AES-256</Badge>}
             </div>
             <div className="border-t border-zinc-100 px-6 py-5 space-y-5 max-h-[480px] overflow-y-auto">
-              {mockTranscript.map((turn, i) => {
-                const id = `tr-${i}-${turn.t}`;
-                return (
-                  <div key={id} className="flex gap-3">
-                    <div className="text-xs text-zinc-400 tabular-nums pt-1.5 w-10 shrink-0">
-                      {turn.t}
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-xs font-medium mb-1 text-zinc-500">
-                        {turn.speaker === 'agent' ? 'Sofía (agente)' : call.patientName}
+              {transcriptTurns.length === 0 ? (
+                <div className="text-center py-8 text-sm text-zinc-500">
+                  La transcripción aparecerá cuando termine el procesamiento.
+                </div>
+              ) : (
+                transcriptTurns.map((turn, i) => {
+                  const turnId = `tr-${i}`;
+                  return (
+                    <div key={turnId} className="flex gap-3">
+                      <div className="text-xs text-zinc-400 tabular-nums pt-1.5 w-12 shrink-0">
+                        {turn.t}
                       </div>
-                      <p
-                        className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-                          turn.speaker === 'agent'
-                            ? 'bg-zinc-100 text-zinc-800'
-                            : 'bg-blue-50 text-blue-900'
-                        }`}
-                      >
-                        {turn.text}
-                      </p>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-medium mb-1 text-zinc-500">
+                          {turn.speaker === 'agent' ? 'Agente' : 'Paciente'}
+                        </div>
+                        <p
+                          className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                            turn.speaker === 'agent'
+                              ? 'bg-zinc-100 text-zinc-800'
+                              : 'bg-blue-50 text-blue-900'
+                          }`}
+                        >
+                          {turn.text}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </Card>
         </div>
@@ -142,45 +154,47 @@ export default async function CallDetailPage({
                 <Sparkles className="h-4 w-4 text-violet-600" />
                 <h3 className="text-base font-semibold tracking-tight">Resumen IA</h3>
               </div>
-              <p className="text-sm text-zinc-700 leading-relaxed">{call.summary}</p>
+              {call.summary ? (
+                <p className="text-sm text-zinc-700 leading-relaxed">{call.summary}</p>
+              ) : (
+                <p className="text-sm text-zinc-500">
+                  El resumen se genera automáticamente cuando termine el procesamiento.
+                </p>
+              )}
               <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <p className="text-xs text-zinc-500">Sentiment</p>
-                  <p className="font-medium capitalize mt-0.5">{call.sentiment}</p>
+                  <p className="text-xs text-zinc-500">Sentimiento</p>
+                  <p className="font-medium capitalize mt-0.5">{call.sentiment ?? '—'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-zinc-500">Intent</p>
-                  <p className="font-medium capitalize mt-0.5">{call.intent}</p>
+                  <p className="text-xs text-zinc-500">Intención</p>
+                  <p className="font-medium capitalize mt-0.5">{call.intent ?? '—'}</p>
                 </div>
               </div>
             </div>
           </Card>
 
-          {/* Actions executed */}
+          {/* Metadata */}
           <Card>
             <div className="p-6">
-              <h3 className="text-base font-semibold tracking-tight mb-4">Acciones ejecutadas</h3>
-              <div className="space-y-3">
-                <ToolCall name="lookup_patient" status="ok" detail="Encontrado en GHL" />
-                <ToolCall name="check_availability" status="ok" detail="3 slots devueltos" />
-                <ToolCall
-                  name="book_appointment"
-                  status="ok"
-                  detail="Cita creada · viernes 10:00"
-                />
-                <ToolCall name="end_call" status="ok" />
-              </div>
-            </div>
-          </Card>
-
-          {/* Custom fields */}
-          <Card>
-            <div className="p-6">
-              <h3 className="text-base font-semibold tracking-tight mb-4">Custom fields GHL</h3>
+              <h3 className="text-base font-semibold tracking-tight mb-4">Metadata</h3>
               <div className="space-y-2.5 text-sm">
-                <FieldRow label="Última llamada" value="hace 12 min" />
-                <FieldRow label="Resumen" value="Limpieza viernes 10:00" />
-                <FieldRow label="Voice agent priority" value="Medio" />
+                <FieldRow label="Retell Call ID" value={call.retellCallId} mono />
+                <FieldRow label="GHL Contact" value={call.ghlContactId ?? '—'} />
+                <FieldRow
+                  label="Inicio"
+                  value={
+                    call.startedAt
+                      ? new Date(call.startedAt).toLocaleString('es-ES')
+                      : '—'
+                  }
+                />
+                <FieldRow
+                  label="Fin"
+                  value={
+                    call.endedAt ? new Date(call.endedAt).toLocaleString('es-ES') : '—'
+                  }
+                />
               </div>
             </div>
           </Card>
@@ -190,33 +204,50 @@ export default async function CallDetailPage({
   );
 }
 
-function ToolCall({
-  name,
-  status,
-  detail,
-}: {
-  name: string;
-  status: 'ok' | 'error';
-  detail?: string;
-}) {
-  return (
-    <div className="flex items-start gap-3 text-sm">
-      <div
-        className={`h-2 w-2 rounded-full mt-1.5 ${status === 'ok' ? 'bg-emerald-500' : 'bg-red-500'}`}
-      />
-      <div className="flex-1 min-w-0">
-        <p className="font-medium font-mono text-xs">{name}()</p>
-        {detail && <p className="text-xs text-zinc-500 mt-0.5">{detail}</p>}
-      </div>
-    </div>
-  );
+/**
+ * Retell guarda transcript como texto plano (concatenación de turnos).
+ * Si el formato es JSON estructurado, lo parseamos. Si es texto, lo mostramos como un solo turno.
+ */
+function parseTranscript(raw: string | null): { speaker: 'agent' | 'user'; text: string; t: string }[] {
+  if (!raw) return [];
+
+  // JSON estructurado: [{ role: 'agent'|'user', content: '...' }, ...]
+  try {
+    const parsed = JSON.parse(raw) as Array<{ role?: string; speaker?: string; content?: string; text?: string }>;
+    if (Array.isArray(parsed)) {
+      return parsed.map((p, i) => ({
+        speaker: (p.role === 'agent' || p.speaker === 'agent') ? 'agent' : 'user',
+        text: p.content ?? p.text ?? '',
+        t: `${i.toString().padStart(2, '0')}`,
+      }));
+    }
+  } catch {
+    // No es JSON, fallback
+  }
+
+  // Formato Retell típico: "Agent: Hola\nUser: Hola que tal\n..."
+  const lines = raw.split('\n').filter((l) => l.trim().length > 0);
+  return lines.map((line, i) => {
+    const isAgent = /^(agent|sofía|manuel|asistente)/i.test(line);
+    const text = line.replace(/^[^:]+:\s*/, '');
+    return {
+      speaker: isAgent ? ('agent' as const) : ('user' as const),
+      text,
+      t: `${i.toString().padStart(2, '0')}`,
+    };
+  });
 }
 
-function FieldRow({ label, value }: { label: string; value: string }) {
+function FieldRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-zinc-500">{label}</span>
-      <span className="font-medium text-right truncate max-w-[60%]">{value}</span>
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-zinc-500 shrink-0">{label}</span>
+      <span
+        className={`font-medium text-right truncate min-w-0 ${mono ? 'font-mono text-xs' : ''}`}
+        title={value}
+      >
+        {value}
+      </span>
     </div>
   );
 }
