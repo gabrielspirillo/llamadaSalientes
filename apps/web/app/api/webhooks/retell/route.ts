@@ -35,9 +35,9 @@ type RetellCallPayload = {
 export async function POST(req: NextRequest) {
   const rawBody = Buffer.from(await req.arrayBuffer());
   const signature = req.headers.get('x-retell-signature');
-  const signingKey = process.env.RETELL_WEBHOOK_SIGNING_KEY ?? '';
+  const apiKey = process.env.RETELL_API_KEY ?? '';
 
-  const signatureValid = verifyRetellSignature(rawBody, signature, signingKey);
+  const signatureValid = await verifyRetellSignature(rawBody, signature, apiKey);
 
   // Loguear siempre para auditoria, incluso si la firma falla
   await db.insert(webhookLogs).values({

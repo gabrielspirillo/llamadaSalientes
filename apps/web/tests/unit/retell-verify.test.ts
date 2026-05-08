@@ -1,40 +1,41 @@
-import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
+import { sign as retellSign } from 'retell-sdk';
 import { verifyRetellSignature } from '@/lib/retell/verify';
 
-const SECRET = 'test-signing-key-fase-4';
-
-function makeSignature(body: Buffer, secret: string): string {
-  return createHmac('sha256', secret).update(body).digest('hex');
-}
+const API_KEY = 'key_test_fase_4_signing';
 
 describe('verifyRetellSignature', () => {
-  it('acepta firma válida', () => {
-    const body = Buffer.from(JSON.stringify({ event: 'call_started' }));
-    const sig = makeSignature(body, SECRET);
-    expect(verifyRetellSignature(body, sig, SECRET)).toBe(true);
+  it('acepta firma válida generada por el SDK', async () => {
+    const body = JSON.stringify({ event: 'call_started', call: { call_id: 'c1' } });
+    const sig = await retellSign(body, API_KEY);
+    expect(await verifyRetellSignature(Buffer.from(body), sig, API_KEY)).toBe(true);
   });
 
-  it('rechaza firma incorrecta', () => {
-    const body = Buffer.from(JSON.stringify({ event: 'call_started' }));
-    expect(verifyRetellSignature(body, 'bad-signature', SECRET)).toBe(false);
+  it('rechaza firma inválida', async () => {
+    const body = Buffer.from('{"x":1}');
+    expect(await verifyRetellSignature(body, 'v=123,d=deadbeef', API_KEY)).toBe(false);
   });
 
-  it('rechaza firma null', () => {
-    const body = Buffer.from('{}');
-    expect(verifyRetellSignature(body, null, SECRET)).toBe(false);
+  it('rechaza firma null', async () => {
+    expect(await verifyRetellSignature(Buffer.from('{}'), null, API_KEY)).toBe(false);
   });
 
-  it('rechaza body adulterado (firma de body original no coincide)', () => {
-    const body = Buffer.from(JSON.stringify({ event: 'call_started' }));
-    const sig = makeSignature(body, SECRET);
+  it('rechaza body adulterado (firma original ya no coincide)', async () => {
+    const body = JSON.stringify({ event: 'call_started' });
+    const sig = await retellSign(body, API_KEY);
     const tampered = Buffer.from(JSON.stringify({ event: 'call_ended' }));
-    expect(verifyRetellSignature(tampered, sig, SECRET)).toBe(false);
+    expect(await verifyRetellSignature(tampered, sig, API_KEY)).toBe(false);
   });
 
-  it('rechaza firma con key equivocada', () => {
-    const body = Buffer.from('{}');
-    const sig = makeSignature(body, 'other-key');
-    expect(verifyRetellSignature(body, sig, SECRET)).toBe(false);
+  it('rechaza firma con API key incorrecta', async () => {
+    const body = JSON.stringify({ event: 'call_started' });
+    const sig = await retellSign(body, 'other_key');
+    expect(await verifyRetellSignature(Buffer.from(body), sig, API_KEY)).toBe(false);
+  });
+
+  it('rechaza si apiKey vacío', async () => {
+    const body = JSON.stringify({ event: 'call_started' });
+    const sig = await retellSign(body, API_KEY);
+    expect(await verifyRetellSignature(Buffer.from(body), sig, '')).toBe(false);
   });
 });

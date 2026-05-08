@@ -22,9 +22,9 @@ type RetellToolCallBody = {
 export async function POST(req: NextRequest) {
   const rawBody = Buffer.from(await req.arrayBuffer());
   const signature = req.headers.get('x-retell-signature');
-  const signingKey = process.env.RETELL_WEBHOOK_SIGNING_KEY ?? '';
+  const apiKey = process.env.RETELL_API_KEY ?? '';
 
-  if (!verifyRetellSignature(rawBody, signature, signingKey)) {
+  if (!(await verifyRetellSignature(rawBody, signature, apiKey))) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
 

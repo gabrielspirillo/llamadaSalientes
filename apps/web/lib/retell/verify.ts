@@ -1,19 +1,22 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { verify as retellVerify, sign as retellSign } from 'retell-sdk';
 
 /**
- * Verifica la firma HMAC-SHA256 que Retell incluye en el header x-retell-signature.
- * Usa comparación en tiempo constante para prevenir timing attacks.
+ * Verifica la firma de Retell. El SDK firma con formato `v=<ts>,d=<digest>`
+ * usando la **API key** como secreto (HMAC-SHA256 sobre body+timestamp).
+ * Incluye protección anti-replay de 5 min built-in.
  */
-export function verifyRetellSignature(
+export async function verifyRetellSignature(
   rawBody: Buffer,
   signature: string | null,
-  signingKey: string,
-): boolean {
-  if (!signature) return false;
-  const expected = createHmac('sha256', signingKey).update(rawBody).digest('hex');
+  apiKey: string,
+): Promise<boolean> {
+  if (!signature || !apiKey) return false;
   try {
-    return timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+    return await retellVerify(rawBody.toString('utf8'), apiKey, signature);
   } catch {
     return false;
   }
 }
+
+// Re-export para tests (se usa para generar firmas válidas en fixtures)
+export { retellSign };
