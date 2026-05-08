@@ -2,15 +2,43 @@ import 'server-only';
 import { db } from '@/lib/db/client';
 import { calls } from '@/lib/db/schema';
 import { decrypt } from '@/lib/crypto';
-import { and, desc, eq, gte } from 'drizzle-orm';
+import { and, desc, eq, gte, ilike, or, type SQL } from 'drizzle-orm';
 
 export type CallRow = typeof calls.$inferSelect;
 
-export async function listCalls(tenantId: string, limit = 50): Promise<CallRow[]> {
+export type CallsFilter = {
+  intent?: string;
+  sentiment?: string;
+  q?: string;
+  since?: Date;
+};
+
+export async function listCalls(
+  tenantId: string,
+  limitOrFilter: number | (CallsFilter & { limit?: number }) = 50,
+): Promise<CallRow[]> {
+  const filter =
+    typeof limitOrFilter === 'number' ? { limit: limitOrFilter } : limitOrFilter;
+  const limit = filter.limit ?? 50;
+
+  const conditions: SQL[] = [eq(calls.tenantId, tenantId)];
+  if (filter.intent) conditions.push(eq(calls.intent, filter.intent));
+  if (filter.sentiment) conditions.push(eq(calls.sentiment, filter.sentiment));
+  if (filter.since) conditions.push(gte(calls.startedAt, filter.since));
+  if (filter.q && filter.q.trim().length > 0) {
+    const q = `%${filter.q.trim()}%`;
+    const search = or(
+      ilike(calls.fromNumber, q),
+      ilike(calls.toNumber, q),
+      ilike(calls.summary, q),
+    );
+    if (search) conditions.push(search);
+  }
+
   return db
     .select()
     .from(calls)
-    .where(eq(calls.tenantId, tenantId))
+    .where(and(...conditions))
     .orderBy(desc(calls.startedAt))
     .limit(limit);
 }

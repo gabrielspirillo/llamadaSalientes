@@ -1,9 +1,9 @@
+import { AudioPlayer } from '@/components/dashboard/audio-player';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { formatDuration, getCall, getCallTranscript } from '@/lib/data/calls-list';
 import { getCurrentTenant } from '@/lib/tenant';
-import { ArrowLeft, Calendar, Clock, Phone, Sparkles, User } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Phone, Sparkles, User, Volume2 } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
@@ -86,22 +86,14 @@ export default async function CallDetailPage({
           {/* Audio player */}
           <Card>
             <div className="p-6">
-              {call.recordingR2Key ? (
-                <>
-                  <p className="text-sm text-zinc-500 mb-3">
-                    Grabación · cifrada en Cloudflare R2
-                  </p>
-                  <p className="text-xs text-zinc-400 font-mono break-all">{call.recordingR2Key}</p>
-                  <p className="text-xs text-zinc-500 mt-3">
-                    El reproductor con URL firmada se sirve en una iteración futura. Por ahora la
-                    grabación está guardada y accesible vía API.
-                  </p>
-                </>
-              ) : (
-                <div className="text-center py-8 text-sm text-zinc-500">
-                  Aún no hay grabación procesada para esta llamada.
-                </div>
-              )}
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base font-semibold tracking-tight inline-flex items-center gap-2">
+                  <Volume2 className="h-4 w-4 text-zinc-400" />
+                  Grabación
+                </h3>
+                {call.recordingR2Key && <Badge tone="success">en R2</Badge>}
+              </div>
+              <AudioPlayer callId={call.id} />
             </div>
           </Card>
 

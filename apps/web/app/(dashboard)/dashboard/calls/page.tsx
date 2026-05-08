@@ -41,9 +41,23 @@ function sentimentDot(sentiment: string | null) {
   return <div className={`h-2 w-2 rounded-full ${cls}`} />;
 }
 
-export default async function CallsPage() {
+type SearchParams = { q?: string; intent?: string; sentiment?: string };
+
+export default async function CallsPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const sp = await searchParams;
   const { tenant } = await getCurrentTenant();
-  const realCalls = await listCalls(tenant.id, 50);
+  const realCalls = await listCalls(tenant.id, {
+    limit: 100,
+    q: sp.q,
+    intent: sp.intent,
+    sentiment: sp.sentiment,
+  });
+
+  const activeFilters = [sp.q, sp.intent, sp.sentiment].filter(Boolean).length;
 
   return (
     <>
@@ -51,28 +65,58 @@ export default async function CallsPage() {
         title="Llamadas"
         description="Todas las llamadas atendidas por el agente."
         actions={
-          <>
-            <Button variant="secondary" size="sm">
-              <Filter className="h-4 w-4" /> Filtrar
-            </Button>
-            <Button variant="secondary" size="sm">
-              <Download className="h-4 w-4" /> Exportar CSV
-            </Button>
-          </>
+          <Button variant="secondary" size="sm">
+            <Download className="h-4 w-4" /> Exportar CSV
+          </Button>
         }
       />
 
       <Card>
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-5 border-b border-zinc-100">
-          <div className="relative flex-1 max-w-md">
+        <form className="flex flex-col md:flex-row md:items-center gap-3 p-5 border-b border-zinc-100" action="/dashboard/calls">
+          <div className="relative flex-1 min-w-[220px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-            <Input placeholder="Buscar por paciente o número..." className="pl-9" />
+            <Input
+              name="q"
+              defaultValue={sp.q ?? ''}
+              placeholder="Buscar por número o resumen..."
+              className="pl-9"
+            />
           </div>
-          <div className="flex items-center gap-2 text-xs text-zinc-500">
-            <span className="hidden md:inline">Mostrando</span>
+          <select
+            name="intent"
+            defaultValue={sp.intent ?? ''}
+            className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm"
+          >
+            <option value="">Todas las intenciones</option>
+            <option value="agendar">Agendar</option>
+            <option value="reagendar">Reagendar</option>
+            <option value="cancelar">Cancelar</option>
+            <option value="pregunta">Pregunta</option>
+            <option value="queja">Queja</option>
+            <option value="otro">Otro</option>
+          </select>
+          <select
+            name="sentiment"
+            defaultValue={sp.sentiment ?? ''}
+            className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm"
+          >
+            <option value="">Cualquier sentimiento</option>
+            <option value="positivo">Positivo</option>
+            <option value="neutro">Neutro</option>
+            <option value="negativo">Negativo</option>
+          </select>
+          <Button type="submit" variant="secondary" size="sm">
+            <Filter className="h-4 w-4" /> Aplicar
+          </Button>
+          {activeFilters > 0 && (
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/dashboard/calls">Limpiar</Link>
+            </Button>
+          )}
+          <div className="flex items-center gap-2 text-xs text-zinc-500 ml-auto">
             <Badge>{realCalls.length} llamadas</Badge>
           </div>
-        </div>
+        </form>
 
         {realCalls.length === 0 ? (
           <div className="px-6 py-20 text-center">

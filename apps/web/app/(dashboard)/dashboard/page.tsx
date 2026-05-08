@@ -1,4 +1,6 @@
+import { InsightsPanel } from '@/components/dashboard/insights-panel';
 import { PageHeader } from '@/components/dashboard/page-header';
+import { RealtimeRefresh } from '@/components/dashboard/realtime-refresh';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -41,11 +43,14 @@ export default async function DashboardOverview() {
         title={`Hola, ${tenant.name}`}
         description="Esto es lo que pasó en tu clínica en las últimas 24 horas."
         actions={
-          <Button asChild>
-            <Link href="/dashboard/agent">
-              Probar agente <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
+          <>
+            <RealtimeRefresh intervalMs={30_000} />
+            <Button asChild>
+              <Link href="/dashboard/agent">
+                Probar agente <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </>
         }
       />
 
@@ -161,6 +166,8 @@ export default async function DashboardOverview() {
               </Button>
             </div>
           </Card>
+
+          <InsightsPanel />
 
           <Card>
             <div className="p-6">

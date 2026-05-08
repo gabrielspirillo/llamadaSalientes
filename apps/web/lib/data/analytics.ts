@@ -61,6 +61,33 @@ export async function getAnalytics(tenantId: string, range: AnalyticsRange) {
     .map(([intent, count]) => ({ intent, count }))
     .sort((a, b) => b.count - a.count);
 
+  // Por día (1 bucket por día, desde `start` hasta hoy)
+  const dayMs = 24 * 60 * 60 * 1000;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days: { date: string; calls: number; agendar: number; cancelar: number; otro: number }[] = [];
+  for (let d = new Date(start); d.getTime() <= today.getTime(); d = new Date(d.getTime() + dayMs)) {
+    days.push({
+      date: d.toISOString().slice(0, 10),
+      calls: 0,
+      agendar: 0,
+      cancelar: 0,
+      otro: 0,
+    });
+  }
+  const dayIndex = new Map(days.map((d, i) => [d.date, i]));
+  for (const r of rows) {
+    if (!r.startedAt) continue;
+    const key = new Date(r.startedAt).toISOString().slice(0, 10);
+    const idx = dayIndex.get(key);
+    if (idx === undefined) continue;
+    const day = days[idx]!;
+    day.calls += 1;
+    if (r.intent === 'agendar') day.agendar += 1;
+    else if (r.intent === 'cancelar') day.cancelar += 1;
+    else day.otro += 1;
+  }
+
   return {
     total,
     avgDurationSec: avgDuration,
@@ -69,6 +96,7 @@ export async function getAnalytics(tenantId: string, range: AnalyticsRange) {
     transferred,
     byHour,
     intents,
+    byDay: days,
   };
 }
 

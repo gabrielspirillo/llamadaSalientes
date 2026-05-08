@@ -1,4 +1,9 @@
 import { PageHeader } from '@/components/dashboard/page-header';
+import {
+  CallsTrendChart,
+  IntentBarList,
+  IntentDonut,
+} from '@/components/dashboard/analytics-charts';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { type AnalyticsRange, getAnalytics } from '@/lib/data/analytics';
@@ -6,16 +11,6 @@ import { formatDuration } from '@/lib/data/calls-list';
 import { getCurrentTenant } from '@/lib/tenant';
 import { ArrowUpRight, Calendar, Clock, PhoneCall, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
-
-const intentLabels: Record<string, { label: string; color: string }> = {
-  agendar: { label: 'Agendar', color: 'bg-emerald-500' },
-  reagendar: { label: 'Reagendar', color: 'bg-blue-500' },
-  cancelar: { label: 'Cancelar', color: 'bg-amber-500' },
-  pregunta: { label: 'Pregunta', color: 'bg-violet-500' },
-  queja: { label: 'Queja', color: 'bg-red-500' },
-  otro: { label: 'Otro', color: 'bg-zinc-500' },
-  sin_clasificar: { label: 'Sin clasificar', color: 'bg-zinc-300' },
-};
 
 export default async function AnalyticsPage({
   searchParams,
@@ -28,7 +23,6 @@ export default async function AnalyticsPage({
   const data = await getAnalytics(tenant.id, range);
 
   const maxByHour = Math.max(1, ...data.byHour.map((h) => h.calls));
-  const totalIntents = Math.max(1, data.intents.reduce((acc, i) => acc + i.count, 0));
 
   return (
     <>
@@ -81,68 +75,65 @@ export default async function AnalyticsPage({
           </div>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <Card className="xl:col-span-2">
-            <div className="flex items-center justify-between p-6 pb-2">
-              <div>
-                <h3 className="text-base font-semibold tracking-tight">Llamadas por hora</h3>
-                <p className="text-sm text-zinc-500 mt-0.5">Distribución del período</p>
+        <div className="space-y-6">
+          {/* Tendencia diaria con Tremor */}
+          {range !== 'today' && (
+            <Card>
+              <div className="flex items-center justify-between p-6 pb-2">
+                <div>
+                  <h3 className="text-base font-semibold tracking-tight">Tendencia diaria</h3>
+                  <p className="text-sm text-zinc-500 mt-0.5">
+                    Llamadas apiladas por intención
+                  </p>
+                </div>
+                <Badge>{range === '7d' ? '7 días' : '30 días'}</Badge>
               </div>
-              <Badge>{range === 'today' ? 'Hoy' : range === '7d' ? '7 días' : '30 días'}</Badge>
-            </div>
-            <div className="px-6 pb-6 pt-4">
-              <div className="flex items-end gap-1.5 h-56">
-                {data.byHour.map((h) => (
-                  <div key={h.hour} className="flex-1 flex flex-col items-center gap-2">
-                    <div
-                      className="w-full rounded-t-md bg-gradient-to-b from-zinc-900 to-zinc-700 transition-all hover:from-blue-600 hover:to-blue-500 min-h-[2px]"
-                      style={{ height: `${(h.calls / maxByHour) * 100}%` }}
-                      title={`${h.hour}:00 — ${h.calls} llamadas`}
-                    />
-                    <span className="text-[10px] text-zinc-400 tabular-nums">
-                      {h.hour.toString().padStart(2, '0')}
-                    </span>
-                  </div>
-                ))}
+              <div className="px-6 pb-6 pt-4">
+                <CallsTrendChart data={data.byDay} />
               </div>
-            </div>
-          </Card>
+            </Card>
+          )}
 
-          <Card>
-            <div className="p-6">
-              <h3 className="text-base font-semibold tracking-tight">Por intención</h3>
-              <p className="text-sm text-zinc-500 mt-0.5">Período actual</p>
-
-              <div className="mt-6 space-y-3.5">
-                {data.intents.map((it) => {
-                  const meta = intentLabels[it.intent] ?? {
-                    label: it.intent,
-                    color: 'bg-zinc-400',
-                  };
-                  const pct = Math.round((it.count / totalIntents) * 100);
-                  return (
-                    <div key={it.intent}>
-                      <div className="flex items-center justify-between text-sm mb-1.5">
-                        <div className="flex items-center gap-2">
-                          <div className={`h-2 w-2 rounded-full ${meta.color}`} />
-                          <span className="font-medium">{meta.label}</span>
-                        </div>
-                        <span className="text-zinc-500 tabular-nums">
-                          {it.count} <span className="text-xs">· {pct}%</span>
-                        </span>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-zinc-100 overflow-hidden">
-                        <div
-                          className={`h-full ${meta.color} rounded-full`}
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <Card className="xl:col-span-2">
+              <div className="flex items-center justify-between p-6 pb-2">
+                <div>
+                  <h3 className="text-base font-semibold tracking-tight">Llamadas por hora</h3>
+                  <p className="text-sm text-zinc-500 mt-0.5">Distribución del período</p>
+                </div>
+                <Badge>{range === 'today' ? 'Hoy' : range === '7d' ? '7 días' : '30 días'}</Badge>
+              </div>
+              <div className="px-6 pb-6 pt-4">
+                <div className="flex items-end gap-1.5 h-56">
+                  {data.byHour.map((h) => (
+                    <div key={h.hour} className="flex-1 flex flex-col items-center gap-2">
+                      <div
+                        className="w-full rounded-t-md bg-gradient-to-b from-zinc-900 to-zinc-700 transition-all hover:from-blue-600 hover:to-blue-500 min-h-[2px]"
+                        style={{ height: `${(h.calls / maxByHour) * 100}%` }}
+                        title={`${h.hour}:00 — ${h.calls} llamadas`}
+                      />
+                      <span className="text-[10px] text-zinc-400 tabular-nums">
+                        {h.hour.toString().padStart(2, '0')}
+                      </span>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
-            </div>
-          </Card>
+            </Card>
+
+            <Card>
+              <div className="p-6">
+                <h3 className="text-base font-semibold tracking-tight">Por intención</h3>
+                <p className="text-sm text-zinc-500 mt-0.5">Distribución</p>
+                <div className="mt-4">
+                  <IntentDonut data={data.intents} />
+                </div>
+                <div className="mt-4 pt-4 border-t border-zinc-100">
+                  <IntentBarList data={data.intents} />
+                </div>
+              </div>
+            </Card>
+          </div>
         </div>
       )}
     </>
