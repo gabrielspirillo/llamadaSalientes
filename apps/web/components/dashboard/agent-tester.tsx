@@ -54,11 +54,18 @@ export function AgentTester() {
       const client = new RetellWebClient();
       clientRef.current = client;
 
-      let turnId = 0;
-
       client.on('call_started', () => {
         startedAtRef.current = Date.now();
         setState('live');
+      });
+
+      // call_ready: el room está conectado pero audio playback puede estar bloqueado.
+      // Forzamos startAudioPlayback() para evitar autoplay-blocked en Chrome/Safari.
+      client.on('call_ready', () => {
+        const c = clientRef.current as { startAudioPlayback?: () => Promise<void> } | null;
+        c?.startAudioPlayback?.().catch((err) => {
+          console.error('startAudioPlayback failed:', err);
+        });
       });
 
       client.on('call_ended', () => {
@@ -87,6 +94,11 @@ export function AgentTester() {
       });
 
       await client.startCall({ accessToken, sampleRate: 24000 });
+      // Doble seguro: si el SDK no emite call_ready, lo intentamos directo.
+      // Esta llamada es safe — si ya está reproduciendo, es no-op.
+      try {
+        await (client as unknown as { startAudioPlayback?: () => Promise<void> }).startAudioPlayback?.();
+      } catch {}
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al iniciar la llamada');
       setState('error');
