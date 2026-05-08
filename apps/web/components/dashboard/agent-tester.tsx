@@ -42,6 +42,18 @@ export function AgentTester() {
     setState('connecting');
 
     try {
+      // 1) Pre-pedir permiso de micrófono explícitamente para fallar rápido si
+      //    el navegador lo bloquea (Permissions-Policy, denied, etc.)
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Soltamos el stream — el SDK va a pedirlo de nuevo. Solo queríamos verificar permiso.
+        for (const track of stream.getTracks()) track.stop();
+      } catch (permErr) {
+        const msg = permErr instanceof Error ? permErr.message : String(permErr);
+        throw new Error(`No se pudo acceder al micrófono: ${msg}. Revisá permisos en el navegador.`);
+      }
+
+      // 2) Pedir access_token al backend
       const res = await fetch('/api/retell/web-call', { method: 'POST' });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -49,30 +61,32 @@ export function AgentTester() {
       }
       const { accessToken } = (await res.json()) as { accessToken: string };
 
-      // Import dinámico para que el SDK no infle el bundle del SSR
+      // 3) Inicializar Retell WebClient
       const { RetellWebClient } = await import('retell-client-js-sdk');
       const client = new RetellWebClient();
       clientRef.current = client;
 
       client.on('call_started', () => {
+        console.log('[retell] call_started');
         startedAtRef.current = Date.now();
         setState('live');
       });
 
-      // call_ready: el room está conectado pero audio playback puede estar bloqueado.
-      // Forzamos startAudioPlayback() para evitar autoplay-blocked en Chrome/Safari.
       client.on('call_ready', () => {
+        console.log('[retell] call_ready — desbloqueando audio playback');
         const c = clientRef.current as { startAudioPlayback?: () => Promise<void> } | null;
         c?.startAudioPlayback?.().catch((err) => {
-          console.error('startAudioPlayback failed:', err);
+          console.error('[retell] startAudioPlayback failed:', err);
         });
       });
 
       client.on('call_ended', () => {
+        console.log('[retell] call_ended');
         setState('ended');
       });
 
       client.on('error', (err: unknown) => {
+        console.error('[retell] error event:', err);
         const msg = err instanceof Error ? err.message : String(err);
         setError(msg);
         setState('error');
@@ -81,7 +95,9 @@ export function AgentTester() {
         } catch {}
       });
 
-      // Eventos de transcripción incrementales del SDK
+      client.on('agent_start_talking', () => console.log('[retell] agent_start_talking'));
+      client.on('agent_stop_talking', () => console.log('[retell] agent_stop_talking'));
+
       client.on('update', (update: { transcript?: Array<{ role: string; content: string }> }) => {
         if (!update.transcript) return;
         const turns: Turn[] = update.transcript.map((t, idx) => ({
@@ -93,12 +109,13 @@ export function AgentTester() {
         setTranscript(turns);
       });
 
+      // 4) Iniciar la llamada y desbloquear audio inmediatamente
       await client.startCall({ accessToken, sampleRate: 24000 });
-      // Doble seguro: si el SDK no emite call_ready, lo intentamos directo.
-      // Esta llamada es safe — si ya está reproduciendo, es no-op.
       try {
         await (client as unknown as { startAudioPlayback?: () => Promise<void> }).startAudioPlayback?.();
-      } catch {}
+      } catch (e) {
+        console.warn('[retell] startAudioPlayback inmediato falló (ok si call_ready lo hace):', e);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al iniciar la llamada');
       setState('error');
