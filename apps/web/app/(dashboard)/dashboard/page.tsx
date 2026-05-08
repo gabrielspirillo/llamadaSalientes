@@ -2,7 +2,14 @@ import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import {
+  formatDuration,
+  formatRelativeTime,
+  getDashboardStats,
+  listCalls,
+} from '@/lib/data/calls-list';
 import { mockCalls, mockStats } from '@/lib/mock-data';
+import { getCurrentTenantOrNull } from '@/lib/tenant';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -15,13 +22,38 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
-export default function DashboardOverview() {
+export default async function DashboardOverview() {
+  const tenantCtx = await getCurrentTenantOrNull();
+  const stats = tenantCtx ? await getDashboardStats(tenantCtx.tenant.id) : null;
+  const recentCalls = tenantCtx ? await listCalls(tenantCtx.tenant.id, 6) : [];
+  const isDemo = !stats || (stats.callsToday === 0 && recentCalls.length === 0);
+  const display = isDemo
+    ? {
+        callsToday: mockStats.callsToday,
+        callsTodayDelta: mockStats.callsTodayDelta,
+        aht: mockStats.aht,
+        ahtDelta: mockStats.ahtDelta,
+        conversionRate: mockStats.conversionRate,
+        conversionDelta: mockStats.conversionDelta,
+        containmentRate: mockStats.containmentRate,
+        containmentDelta: mockStats.containmentDelta,
+      }
+    : {
+        callsToday: stats!.callsToday,
+        callsTodayDelta: `${stats!.callsToday - stats!.callsYesterday >= 0 ? '+' : ''}${stats!.callsToday - stats!.callsYesterday}`,
+        aht: formatDuration(stats!.avgDurationSec),
+        ahtDelta: '—',
+        conversionRate: stats!.conversionRate,
+        conversionDelta: '—',
+        containmentRate: stats!.containmentRate,
+        containmentDelta: '—',
+      };
   return (
     <>
       <PageHeader
-        title="Buenos días"
+        title={tenantCtx ? `Hola, ${tenantCtx.tenant.name}` : 'Buenos días'}
         description="Esto es lo que pasó en tu clínica en las últimas 24 horas."
-        demoBadge
+        demoBadge={isDemo}
         actions={
           <Button asChild>
             <Link href="/dashboard/agent">
@@ -35,26 +67,26 @@ export default function DashboardOverview() {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
         <StatCard
           label="Llamadas hoy"
-          value={String(mockStats.callsToday)}
-          delta={mockStats.callsTodayDelta}
+          value={String(display.callsToday)}
+          delta={display.callsTodayDelta}
           icon={<PhoneCall className="h-4 w-4" />}
         />
         <StatCard
           label="Tiempo promedio"
-          value={mockStats.aht}
-          delta={mockStats.ahtDelta}
+          value={display.aht}
+          delta={display.ahtDelta}
           icon={<Clock className="h-4 w-4" />}
         />
         <StatCard
           label="Conversión a cita"
-          value={`${mockStats.conversionRate}%`}
-          delta={mockStats.conversionDelta}
+          value={`${display.conversionRate}%`}
+          delta={display.conversionDelta}
           icon={<Calendar className="h-4 w-4" />}
         />
         <StatCard
           label="Resueltas por IA"
-          value={`${mockStats.containmentRate}%`}
-          delta={mockStats.containmentDelta}
+          value={`${display.containmentRate}%`}
+          delta={display.containmentDelta}
           icon={<Bot className="h-4 w-4" />}
         />
       </div>
@@ -74,35 +106,74 @@ export default function DashboardOverview() {
             </Button>
           </div>
           <div className="border-t border-zinc-100">
-            {mockCalls.slice(0, 6).map((c) => (
-              <Link
-                key={c.id}
-                href={`/dashboard/calls/${c.id}`}
-                className="flex items-center justify-between gap-4 px-6 py-3.5 hover:bg-zinc-50/60 transition-colors border-b border-zinc-50 last:border-b-0"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className={`h-2 w-2 rounded-full shrink-0 ${
-                      c.sentiment === 'positive'
-                        ? 'bg-emerald-500'
-                        : c.sentiment === 'negative'
-                          ? 'bg-red-500'
-                          : 'bg-zinc-400'
-                    }`}
-                  />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{c.patientName}</p>
-                    <p className="text-xs text-zinc-500 truncate">{c.summary}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <IntentBadge intent={c.intent} />
-                  <span className="text-xs text-zinc-400 tabular-nums w-12 text-right">
-                    {c.duration}
-                  </span>
-                </div>
-              </Link>
-            ))}
+            {isDemo
+              ? mockCalls.slice(0, 6).map((c) => (
+                  <Link
+                    key={c.id}
+                    href={`/dashboard/calls/${c.id}`}
+                    className="flex items-center justify-between gap-4 px-6 py-3.5 hover:bg-zinc-50/60 transition-colors border-b border-zinc-50 last:border-b-0"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className={`h-2 w-2 rounded-full shrink-0 ${
+                          c.sentiment === 'positive'
+                            ? 'bg-emerald-500'
+                            : c.sentiment === 'negative'
+                              ? 'bg-red-500'
+                              : 'bg-zinc-400'
+                        }`}
+                      />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{c.patientName}</p>
+                        <p className="text-xs text-zinc-500 truncate">{c.summary}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <IntentBadge intent={c.intent} />
+                      <span className="text-xs text-zinc-400 tabular-nums w-12 text-right">
+                        {c.duration}
+                      </span>
+                    </div>
+                  </Link>
+                ))
+              : recentCalls.map((c) => (
+                  <Link
+                    key={c.id}
+                    href={`/dashboard/calls/${c.id}`}
+                    className="flex items-center justify-between gap-4 px-6 py-3.5 hover:bg-zinc-50/60 transition-colors border-b border-zinc-50 last:border-b-0"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className={`h-2 w-2 rounded-full shrink-0 ${
+                          c.sentiment === 'positivo'
+                            ? 'bg-emerald-500'
+                            : c.sentiment === 'negativo'
+                              ? 'bg-red-500'
+                              : 'bg-zinc-400'
+                        }`}
+                      />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {c.fromNumber ?? 'Llamada anónima'}
+                        </p>
+                        <p className="text-xs text-zinc-500 truncate">
+                          {c.summary ?? 'Sin resumen aún'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <IntentBadge intent={c.intent ?? 'otro'} />
+                      <span className="text-xs text-zinc-400 tabular-nums w-16 text-right">
+                        {formatDuration(c.durationSeconds)}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+            {!isDemo && recentCalls.length === 0 && (
+              <div className="px-6 py-12 text-center text-sm text-zinc-500">
+                Aún no hay llamadas. Probá llamar al número del agente.
+              </div>
+            )}
           </div>
         </Card>
 
@@ -260,6 +331,14 @@ function IntentBadge({ intent }: { intent: string }) {
     string,
     { label: string; tone: 'success' | 'info' | 'violet' | 'warn' | 'danger' | 'neutral' }
   > = {
+    // ES (datos reales)
+    agendar: { label: 'Agendar', tone: 'success' },
+    reagendar: { label: 'Reagendar', tone: 'info' },
+    cancelar: { label: 'Cancelar', tone: 'warn' },
+    pregunta: { label: 'Pregunta', tone: 'violet' },
+    queja: { label: 'Queja', tone: 'danger' },
+    otro: { label: 'Otro', tone: 'neutral' },
+    // EN (datos mock)
     book: { label: 'Agendar', tone: 'success' },
     reschedule: { label: 'Reagendar', tone: 'info' },
     cancel: { label: 'Cancelar', tone: 'warn' },

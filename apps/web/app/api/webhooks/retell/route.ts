@@ -3,6 +3,7 @@ import { db } from '@/lib/db/client';
 import { webhookLogs } from '@/lib/db/schema';
 import { encrypt } from '@/lib/crypto';
 import { resolveTenantId } from '@/lib/data/phone-tenant';
+import { sendInngestEvent } from '@/lib/inngest/client';
 import { verifyRetellSignature } from '@/lib/retell/verify';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -109,9 +110,10 @@ export async function POST(req: NextRequest) {
 
     case 'call_analyzed': {
       const analysis = call.call_analysis;
-      // Cifrar transcript antes de persistir (Fase 5 añade procesamiento async completo)
       const transcriptEnc = call.transcript ? encrypt(call.transcript) : null;
 
+      // Persistencia inmediata (sentiment + transcript del payload de Retell).
+      // El job Inngest después agrega: grabación en R2 + summary OpenAI + intent.
       await upsertCall({
         tenantId,
         retellCallId: call.call_id,
@@ -119,6 +121,21 @@ export async function POST(req: NextRequest) {
         transcriptEnc,
         summary: analysis?.call_summary ?? null,
         sentiment: analysis?.user_sentiment ?? null,
+      });
+
+      // Dispatch al job de procesamiento async — fire-and-forget
+      const recordingUrl =
+        typeof (call as { recording_url?: unknown }).recording_url === 'string'
+          ? ((call as { recording_url?: string }).recording_url ?? null)
+          : null;
+      await sendInngestEvent('call/process.requested', {
+        data: {
+          tenantId,
+          retellCallId: call.call_id,
+          recordingUrl,
+          transcript: call.transcript ?? null,
+          analysisSummary: analysis?.call_summary ?? null,
+        },
       });
       break;
     }

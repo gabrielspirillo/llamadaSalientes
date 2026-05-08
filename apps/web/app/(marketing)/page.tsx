@@ -67,42 +67,56 @@ export default async function Home() {
           </p>
         </div>
 
-        {/* Mock dashboard preview */}
-        <div className="mx-auto max-w-5xl px-6 pb-24">
-          <div className="rounded-3xl border border-zinc-200/80 bg-white p-2 shadow-2xl shadow-zinc-200/40">
-            <div className="rounded-2xl bg-zinc-50 p-6 md:p-10">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <StatPreview label="Llamadas hoy" value="47" delta="+12%" />
-                <StatPreview label="Tiempo promedio" value="3:24" delta="-8s" />
-                <StatPreview label="Conversión" value="64%" delta="+5pp" />
-                <StatPreview label="Resueltas por IA" value="78%" delta="+2pp" />
-              </div>
-              <div className="mt-6 rounded-xl bg-white border border-zinc-200/70 p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-sm font-semibold">Últimas llamadas</p>
-                  <span className="text-xs text-zinc-500">en vivo</span>
-                </div>
-                <div className="space-y-3">
-                  <CallRowPreview
-                    name="María González"
-                    intent="Agendar cita"
-                    time="hace 12 min"
-                    tone="success"
-                  />
-                  <CallRowPreview
-                    name="Carlos Ruiz"
-                    intent="Consulta de precios"
-                    time="hace 28 min"
-                    tone="info"
-                  />
-                  <CallRowPreview
-                    name="Ana Martínez"
-                    intent="Reagendar"
-                    time="hace 1 h"
-                    tone="violet"
-                  />
+        {/* Hero image + dashboard preview */}
+        <div className="mx-auto max-w-6xl px-6 pb-24">
+          <div className="relative rounded-3xl overflow-hidden border border-zinc-200/80 shadow-2xl shadow-zinc-300/50">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/hero.png"
+              alt="Recepción moderna de clínica dental con asistente de voz IA"
+              className="w-full aspect-[16/9] object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 p-6 md:p-10">
+              <div className="rounded-2xl bg-white/95 backdrop-blur-md border border-white/40 p-5 md:p-6 shadow-xl">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <StatPreview label="Llamadas hoy" value="47" delta="+12%" />
+                  <StatPreview label="Tiempo promedio" value="3:24" delta="-8s" />
+                  <StatPreview label="Conversión" value="64%" delta="+5pp" />
+                  <StatPreview label="Resueltas por IA" value="78%" delta="+2pp" />
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Recent calls floating panel */}
+          <div className="mt-6 rounded-2xl bg-white border border-zinc-200/70 p-6 shadow-lg shadow-zinc-200/30 max-w-3xl mx-auto">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-semibold">Últimas llamadas</p>
+              <span className="inline-flex items-center gap-1.5 text-xs text-zinc-500">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                en vivo
+              </span>
+            </div>
+            <div className="space-y-3">
+              <CallRowPreview
+                name="María González"
+                intent="Agendar limpieza"
+                time="hace 12 min"
+                tone="success"
+              />
+              <CallRowPreview
+                name="Carlos Ruiz"
+                intent="Consulta de precios"
+                time="hace 28 min"
+                tone="info"
+              />
+              <CallRowPreview
+                name="Ana Martínez"
+                intent="Reagendar carillas"
+                time="hace 1 h"
+                tone="violet"
+              />
             </div>
           </div>
         </div>
