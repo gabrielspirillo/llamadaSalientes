@@ -2,6 +2,7 @@ import { logCallEvent, upsertCall } from '@/lib/data/calls';
 import { db } from '@/lib/db/client';
 import { webhookLogs } from '@/lib/db/schema';
 import { encrypt } from '@/lib/crypto';
+import { resolveTenantId } from '@/lib/data/phone-tenant';
 import { verifyRetellSignature } from '@/lib/retell/verify';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -60,10 +61,16 @@ export async function POST(req: NextRequest) {
 
   const { event, call } = payload;
 
-  // El tenantId viene en metadata (lo inyectamos al crear la llamada)
-  const tenantId = (call.metadata?.tenant_id as string) ?? null;
+  // Outbound: tenant_id viene en metadata. Inbound: lo resolvemos por to_number.
+  const tenantId = await resolveTenantId({
+    metadataTenantId: call.metadata?.tenant_id as string | undefined,
+    toNumber: call.to_number,
+  });
   if (!tenantId) {
-    return NextResponse.json({ error: 'Missing tenant_id in metadata' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'No se pudo resolver tenant: número de destino no registrado' },
+      { status: 400 },
+    );
   }
 
   await logCallEvent({ tenantId, callId: call.call_id, event, payload: payload.call });

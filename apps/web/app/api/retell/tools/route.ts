@@ -1,3 +1,4 @@
+import { resolveTenantId } from '@/lib/data/phone-tenant';
 import { verifyRetellSignature } from '@/lib/retell/verify';
 import { dispatchTool } from '@/lib/retell/tools';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -6,15 +7,17 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // Retell llama este endpoint cuando el agente invoca una tool durante la conversación.
-// Body shape (Retell custom tool call):
-// { tool_call_id, name, arguments: {...}, call: { call_id, metadata: { tenant_id } } }
+// Body shape (custom function call):
+// { name, args: {...}, call: { call_id, to_number, from_number, metadata: { tenant_id? } } }
 
 type RetellToolCallBody = {
-  tool_call_id: string;
   name: string;
-  arguments: Record<string, unknown>;
+  args?: Record<string, unknown>;
+  arguments?: Record<string, unknown>; // alias por compat
   call: {
     call_id: string;
+    to_number?: string;
+    from_number?: string;
     metadata?: { tenant_id?: string };
   };
 };
@@ -35,12 +38,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const tenantId = body.call.metadata?.tenant_id;
+  const tenantId = await resolveTenantId({
+    metadataTenantId: body.call.metadata?.tenant_id,
+    toNumber: body.call.to_number,
+  });
   if (!tenantId) {
-    return NextResponse.json({ error: 'Missing tenant_id in call metadata' }, { status: 400 });
+    // Devolvemos 200 con un result entendible para que el agente no quede colgado
+    return NextResponse.json({
+      result:
+        'No pude identificar la clínica para esta llamada. El equipo te contactará en breve.',
+    });
   }
 
-  const toolResult = await dispatchTool(tenantId, body.name, body.arguments);
+  const toolArgs = body.args ?? body.arguments ?? {};
+  const toolResult = await dispatchTool(tenantId, body.name, toolArgs);
 
   // Retell espera { result: string } como respuesta del tool
   return NextResponse.json(toolResult);
