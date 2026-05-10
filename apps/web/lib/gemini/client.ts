@@ -1,6 +1,7 @@
 import 'server-only';
 
-const MODEL = 'gemini-2.0-flash-exp';
+// `gemini-2.0-flash-exp` se deprecó. Usamos el GA stable.
+const MODEL = 'gemini-2.0-flash';
 const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
 const SUMMARY_SYSTEM = `Eres un analista de conversaciones telefónicas de una clínica dental.

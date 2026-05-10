@@ -141,7 +141,8 @@ export function AudioPlayer({ callId }: Props) {
         <div className="flex-1">
           <p className="text-sm font-medium text-amber-900">Grabación procesándose</p>
           <p className="text-xs text-amber-700 mt-0.5">
-            {errorMsg ?? 'Retell todavía está procesando el audio. Volvé a intentar en unos minutos.'}
+            Retell genera el audio entre 30 y 90 segundos después de que termina la llamada. Si
+            recién colgaste, esperá un momento y dale al botón.
           </p>
           <Button size="sm" variant="secondary" className="mt-3" onClick={load}>
             <RotateCcw className="h-3.5 w-3.5" /> Reintentar
