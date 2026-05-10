@@ -1,3 +1,4 @@
+import { createCipheriv, randomBytes } from 'node:crypto';
 import path from 'node:path';
 import { config } from 'dotenv';
 import { drizzle } from 'drizzle-orm/postgres-js';
@@ -5,13 +6,27 @@ import { eq } from 'drizzle-orm';
 import postgres from 'postgres';
 import * as schema from '../lib/db/schema';
 import { ghlIntegrations, tenants } from '../lib/db/schema';
-import { encrypt } from '../lib/crypto';
 
 config({ path: path.resolve(__dirname, '../.env.local') });
 
 // Uso: pnpm tsx scripts/connect-ghl-pit.ts <pit> <locationId> [tenantSlug]
 
 const PIT_MARKER = '__PIT_NO_REFRESH__';
+const IV_BYTES = 12;
+
+// Inline crypto.encrypt — duplicado de lib/crypto.ts pero sin "server-only"
+// para que tsx pueda ejecutar este script como CLI.
+function encrypt(plaintext: string): string {
+  const raw = process.env.ENCRYPTION_KEY;
+  if (!raw) throw new Error('ENCRYPTION_KEY no configurada');
+  const key = Buffer.from(raw, 'base64');
+  if (key.length !== 32) throw new Error(`ENCRYPTION_KEY debe ser 32 bytes (es ${key.length})`);
+  const iv = randomBytes(IV_BYTES);
+  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  return Buffer.concat([iv, authTag, encrypted]).toString('base64');
+}
 
 async function main() {
   const pit = process.argv[2];
