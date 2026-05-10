@@ -95,14 +95,26 @@ export async function checkAvailability(
     }
 
     // Parser de fecha tolerante: acepta YYYY-MM-DD o ISO completo.
-    // Si parsea inválido, asumimos "mañana" para no fallar silente.
     let day = new Date(args.preferred_date);
     if (Number.isNaN(day.getTime())) {
       console.warn('[check_availability] preferred_date inválido, asumo mañana:', args.preferred_date);
       day = new Date();
       day.setDate(day.getDate() + 1);
     }
-    day.setUTCHours(0, 0, 0, 0); // explicit UTC para evitar drifts según TZ del server
+    day.setUTCHours(0, 0, 0, 0);
+
+    // Validación crítica: el LLM a veces alucina años (ej. 2024 cuando es 2026).
+    // Si la fecha es del pasado, devolvemos mensaje explícito con la fecha actual
+    // para que el agente recalcule en su próximo turno.
+    const now = new Date();
+    now.setUTCHours(0, 0, 0, 0);
+    if (day.getTime() < now.getTime()) {
+      const todayStr = now.toISOString().slice(0, 10);
+      console.warn('[check_availability] fecha en el pasado:', args.preferred_date, '(hoy es', todayStr, ')');
+      return {
+        result: `Esa fecha (${args.preferred_date}) ya pasó. Hoy es ${todayStr}. Recalculá la fecha correcta del año actual y volvé a llamar al tool con preferred_date en formato YYYY-MM-DD.`,
+      };
+    }
 
     const next = new Date(day);
     next.setUTCDate(next.getUTCDate() + 1);
