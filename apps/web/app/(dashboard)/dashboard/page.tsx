@@ -1,3 +1,4 @@
+import { BackfillButton } from '@/components/dashboard/backfill-button';
 import { InsightsPanel } from '@/components/dashboard/insights-panel';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { RealtimeRefresh } from '@/components/dashboard/realtime-refresh';
@@ -6,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
+  countCallsPendingIntent,
   formatDuration,
   formatRelativeTime,
   getDashboardStats,
@@ -30,11 +32,12 @@ import Link from 'next/link';
 
 export default async function DashboardOverview() {
   const { tenant } = await getCurrentTenant();
-  const [stats, recentCalls, upcoming, motivos] = await Promise.all([
+  const [stats, recentCalls, upcoming, motivos, pendingIntent] = await Promise.all([
     getDashboardStats(tenant.id),
     listCalls(tenant.id, 6),
     getUpcomingAppointments(tenant.id, 5),
     getMotivoBreakdown(tenant.id),
+    countCallsPendingIntent(tenant.id),
   ]);
   const display = {
     callsToday: stats.callsToday,
@@ -230,6 +233,8 @@ export default async function DashboardOverview() {
               </div>
             </Card>
           )}
+
+          <BackfillButton pending={pendingIntent} />
 
           <InsightsPanel />
 

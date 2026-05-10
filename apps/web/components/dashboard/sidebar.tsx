@@ -6,7 +6,6 @@ import {
   BarChart3,
   Bot,
   Building2,
-  CreditCard,
   HelpCircle,
   Home,
   PhoneCall,
@@ -26,7 +25,6 @@ const items = [
   { href: '/dashboard/faqs', label: 'FAQs', icon: HelpCircle },
   { href: '/dashboard/team', label: 'Equipo', icon: Users },
   { href: '/dashboard/settings', label: 'Clínica', icon: Building2 },
-  { href: '/dashboard/billing', label: 'Facturación', icon: CreditCard },
 ] as const;
 
 export function DashboardSidebar() {

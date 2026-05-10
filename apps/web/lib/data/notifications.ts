@@ -52,8 +52,9 @@ export async function listNotifications(tenantId: string, limit = 20): Promise<N
   return rows
     .map<Notification | null>((c) => {
       const cd = (c.customData ?? {}) as { patient_name?: string };
-      const phone = c.fromNumber ?? c.toNumber ?? 'Sin número';
-      const who = cd.patient_name ?? phone;
+      const isWeb = !c.fromNumber && !c.toNumber;
+      const phone = c.fromNumber ?? c.toNumber ?? null;
+      const who = cd.patient_name ?? phone ?? (isWeb ? 'Prueba desde el panel' : 'Llamada anónima');
       const startedAt = c.startedAt ?? new Date();
 
       let kind: Notification['kind'];
@@ -65,11 +66,19 @@ export async function listNotifications(tenantId: string, limit = 20): Promise<N
       else if (c.intent === 'queja') kind = 'queja';
       else kind = 'otro';
 
+      // Detail: nombre + resumen corto (o motivo si no hay resumen aún)
+      const summarySnippet = c.summary?.trim();
+      const detailRight = summarySnippet
+        ? summarySnippet.slice(0, 90) + (summarySnippet.length > 90 ? '…' : '')
+        : c.intent
+          ? `Motivo: ${c.intent}`
+          : 'Procesando resumen…';
+
       return {
         id: c.id,
         kind,
         title: KIND_TITLE[kind] ?? 'Llamada',
-        detail: `${who} · ${c.summary?.slice(0, 80) ?? 'Sin resumen aún'}`,
+        detail: `${who} · ${detailRight}`,
         callId: c.id,
         createdAt: startedAt,
       };

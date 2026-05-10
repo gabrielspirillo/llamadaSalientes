@@ -182,6 +182,22 @@ export async function getUpcomingAppointments(
 }
 
 /**
+ * Cuenta llamadas con transcript pero sin intent (candidatas a re-procesar).
+ */
+export async function countCallsPendingIntent(tenantId: string): Promise<number> {
+  const rows = await db
+    .select({ id: calls.id })
+    .from(calls)
+    .where(
+      and(
+        eq(calls.tenantId, tenantId),
+        sql`${calls.transcriptEnc} IS NOT NULL AND ${calls.intent} IS NULL`,
+      ),
+    );
+  return rows.length;
+}
+
+/**
  * Cantidades agregadas por motivo en los últimos 7 días.
  * Para mini-charts en el dashboard.
  */

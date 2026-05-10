@@ -1,7 +1,7 @@
 'use client';
 
 import { UserButton } from '@clerk/nextjs';
-import { Bell, Calendar, MessageCircle, Phone, Search, X } from 'lucide-react';
+import { ArrowRight, Bell, Calendar, Check, MessageCircle, Phone, Search, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -195,6 +195,8 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
   );
 }
 
+const NOTIF_LAST_SEEN_KEY = 'futura.notif.lastSeenAt';
+
 function NotificationsBell({
   open,
   onToggle,
@@ -205,8 +207,13 @@ function NotificationsBell({
   onClose: () => void;
 }) {
   const [items, setItems] = useState<Notification[]>([]);
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
-  const [unread, setUnread] = useState(0);
+  const [lastSeenAt, setLastSeenAt] = useState<number>(() => {
+    if (typeof window === 'undefined') return 0;
+    const v = window.localStorage.getItem(NOTIF_LAST_SEEN_KEY);
+    return v ? Number(v) : 0;
+  });
 
   useEffect(() => {
     let mounted = true;
@@ -217,9 +224,6 @@ function NotificationsBell({
         if (res.ok && mounted) {
           const data = (await res.json()) as { items: Notification[] };
           setItems(data.items ?? []);
-          // Heurística simple: unread = items en las últimas 4hs
-          const cut = Date.now() - 4 * 60 * 60_000;
-          setUnread(data.items.filter((i) => new Date(i.createdAt).getTime() > cut).length);
         }
       } catch {}
       if (mounted) setLoading(false);
@@ -245,6 +249,30 @@ function NotificationsBell({
     return () => document.removeEventListener('mousedown', onDoc);
   }, [open, onClose]);
 
+  const visible = items.filter((i) => !dismissed.has(i.id));
+  const unreadCount = visible.filter((i) => new Date(i.createdAt).getTime() > lastSeenAt).length;
+
+  function markAllRead() {
+    const now = Date.now();
+    setLastSeenAt(now);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(NOTIF_LAST_SEEN_KEY, String(now));
+    }
+  }
+
+  function clearAll() {
+    setDismissed(new Set(items.map((i) => i.id)));
+    markAllRead();
+  }
+
+  function dismissOne(id: string) {
+    setDismissed((s) => {
+      const next = new Set(s);
+      next.add(id);
+      return next;
+    });
+  }
+
   return (
     <div className="relative">
       <button
@@ -252,65 +280,112 @@ function NotificationsBell({
         data-notif-bell
         onClick={() => {
           onToggle();
-          setUnread(0);
+          if (!open) markAllRead(); // al abrir, marcar como vistas
         }}
         className="relative h-9 w-9 inline-flex items-center justify-center rounded-full hover:bg-zinc-100 transition-colors"
         aria-label="Notificaciones"
       >
         <Bell className="h-4 w-4 text-zinc-600" />
-        {unread > 0 && (
-          <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
+        {unreadCount > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-semibold flex items-center justify-center ring-2 ring-white">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
         )}
       </button>
 
       {open && (
         <div
           data-notif-panel
-          className="absolute right-0 mt-2 w-[380px] max-h-[70vh] overflow-hidden rounded-2xl bg-white shadow-2xl border border-zinc-200 z-50"
+          className="absolute right-0 mt-2 w-[380px] max-h-[70vh] flex flex-col rounded-2xl bg-white shadow-2xl border border-zinc-200 z-50 overflow-hidden"
         >
-          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
-            <h3 className="text-sm font-semibold tracking-tight">Notificaciones</h3>
-            <span className="text-xs text-zinc-500">{items.length} recientes</span>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100 shrink-0">
+            <div>
+              <h3 className="text-sm font-semibold tracking-tight">Notificaciones</h3>
+              <p className="text-[11px] text-zinc-500">
+                {visible.length} {visible.length === 1 ? 'reciente' : 'recientes'}
+              </p>
+            </div>
+            {visible.length > 0 && (
+              <button
+                type="button"
+                onClick={clearAll}
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-zinc-900 transition-colors"
+                title="Limpiar todas"
+              >
+                <Check className="h-3 w-3" />
+                Limpiar
+              </button>
+            )}
           </div>
-          <div className="overflow-y-auto max-h-[60vh]">
-            {loading && items.length === 0 ? (
+
+          <div className="flex-1 overflow-y-auto min-h-0">
+            {loading && visible.length === 0 ? (
               <div className="px-6 py-10 text-center text-sm text-zinc-400">Cargando…</div>
-            ) : items.length === 0 ? (
-              <div className="px-6 py-10 text-center">
+            ) : visible.length === 0 ? (
+              <div className="px-6 py-12 text-center">
                 <MessageCircle className="mx-auto h-6 w-6 text-zinc-300 mb-2" />
-                <p className="text-sm text-zinc-500">Sin notificaciones todavía.</p>
-                <p className="text-xs text-zinc-400 mt-1">Las llamadas nuevas aparecen acá.</p>
+                <p className="text-sm text-zinc-500">Estás al día.</p>
+                <p className="text-xs text-zinc-400 mt-1">Las nuevas llamadas aparecen acá.</p>
               </div>
             ) : (
               <ul>
-                {items.map((n) => (
-                  <li key={n.id}>
-                    <Link
-                      href={`/dashboard/calls/${n.callId}`}
-                      onClick={onClose}
-                      className="flex items-start gap-3 px-4 py-3 hover:bg-zinc-50 transition-colors border-b border-zinc-50 last:border-b-0"
+                {visible.map((n) => {
+                  const isUnread = new Date(n.createdAt).getTime() > lastSeenAt;
+                  return (
+                    <li
+                      key={n.id}
+                      className="group relative border-b border-zinc-50 last:border-b-0"
                     >
-                      <div className={`h-2 w-2 rounded-full mt-1.5 shrink-0 ${KIND_DOT[n.kind]}`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">{n.title}</p>
-                        <p className="text-xs text-zinc-500 truncate">{n.detail}</p>
-                        <p className="text-[11px] text-zinc-400 mt-0.5">
-                          {timeAgo(n.createdAt)}
-                        </p>
-                      </div>
-                    </Link>
-                  </li>
-                ))}
+                      <Link
+                        href={`/dashboard/calls/${n.callId}`}
+                        onClick={onClose}
+                        className="flex items-start gap-3 px-4 py-3 hover:bg-zinc-50 transition-colors"
+                      >
+                        <div
+                          className={`h-2 w-2 rounded-full mt-1.5 shrink-0 ${KIND_DOT[n.kind]}`}
+                        />
+                        <div className="flex-1 min-w-0 pr-7">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium">{n.title}</p>
+                            {isUnread && (
+                              <span className="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />
+                            )}
+                          </div>
+                          <p className="text-xs text-zinc-500 truncate">{n.detail}</p>
+                          <p className="text-[11px] text-zinc-400 mt-0.5">
+                            {timeAgo(n.createdAt)}
+                          </p>
+                        </div>
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          dismissOne(n.id);
+                        }}
+                        className="absolute top-3 right-3 h-5 w-5 inline-flex items-center justify-center rounded-md text-zinc-300 hover:text-zinc-700 hover:bg-zinc-200 opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Descartar"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
-          <Link
-            href="/dashboard/calls"
-            onClick={onClose}
-            className="block text-center text-xs font-medium text-violet-600 hover:text-violet-700 py-2.5 border-t border-zinc-100 bg-zinc-50/60"
-          >
-            Ver todas las llamadas →
-          </Link>
+
+          <div className="border-t border-zinc-100 bg-zinc-50/60 shrink-0">
+            <Link
+              href="/dashboard/calls"
+              onClick={onClose}
+              className="flex items-center justify-center gap-1.5 text-xs font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 py-3 transition-colors"
+            >
+              Ver todas las llamadas
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
         </div>
       )}
     </div>
