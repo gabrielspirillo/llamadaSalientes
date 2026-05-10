@@ -1,5 +1,6 @@
 import 'server-only';
 import { GhlApiError, ghlFetch } from '@/lib/ghl/client';
+import { getFreeSlots, resolveCalendarId } from '@/lib/ghl/calendars';
 import { getGhlIntegration } from '@/lib/data/ghl-integration';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -45,16 +46,23 @@ type GhlAppointment = { id: string };
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function ghlNotConnected(): ToolResult {
-  return { result: 'El CRM no está conectado aún. Por favor dile al paciente que un agente humano le contactará para confirmar.' };
+  return { result: 'El CRM no está conectado aún. Tomá nota del nombre y teléfono del paciente para que recepción lo contacte.' };
 }
 
 function formatSlots(slots: GhlSlot[]): string {
-  if (slots.length === 0) return 'No hay disponibilidad en esa fecha. Intenta con otra fecha.';
+  if (slots.length === 0) return 'No hay disponibilidad en esa fecha. Proponé al paciente otra fecha.';
   const formatted = slots
-    .slice(0, 5)
-    .map((s) => new Date(s.startTime).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }))
+    .slice(0, 4)
+    .map((s) =>
+      new Date(s.startTime).toLocaleString('es-ES', {
+        weekday: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Europe/Madrid',
+      }),
+    )
     .join(', ');
-  return `Horarios disponibles: ${formatted}`;
+  return `Horarios disponibles: ${formatted}.`;
 }
 
 // ─── Tool handlers ────────────────────────────────────────────────────────────
@@ -67,25 +75,35 @@ export async function checkAvailability(
   if (!integration) return ghlNotConnected();
 
   try {
-    const startTime = new Date(args.preferred_date).toISOString();
-    const endTime = new Date(
-      new Date(args.preferred_date).setDate(new Date(args.preferred_date).getDate() + 1),
-    ).toISOString();
-
-    const data = await ghlFetch<GhlSlotsResponse>({
-      tenantId,
-      path: '/calendars/free-slots',
-      query: {
-        calendarId: args.calendar_id ?? integration.locationId,
-        startDate: startTime,
-        endDate: endTime,
-      },
+    const resolved = await resolveCalendarId(tenantId, {
+      explicitCalendarId: args.calendar_id ?? null,
+      treatmentName: args.treatment_name,
     });
 
-    return { result: formatSlots(data.slots ?? []) };
+    if (!resolved.calendarId) {
+      return {
+        result:
+          'La clínica todavía no tiene calendarios configurados en su CRM. Tomá nota del nombre y teléfono del paciente para que recepción lo contacte y agende manualmente.',
+      };
+    }
+
+    // Fechas en ms epoch (formato que pide GHL)
+    const day = new Date(args.preferred_date);
+    day.setHours(0, 0, 0, 0);
+    const next = new Date(day);
+    next.setDate(next.getDate() + 1);
+
+    const slots = await getFreeSlots(tenantId, resolved.calendarId, {
+      startDateMs: day.getTime(),
+      endDateMs: next.getTime(),
+    });
+
+    return { result: formatSlots(slots) };
   } catch (err) {
     if (err instanceof GhlApiError) {
-      return { result: 'No pude consultar el calendario en este momento. El agente humano te contactará para confirmar.' };
+      return {
+        result: `No pude consultar el calendario (error ${err.status}). Tomá nombre y teléfono y avisá que recepción confirma en breve.`,
+      };
     }
     throw err;
   }
@@ -99,12 +117,25 @@ export async function bookAppointment(
   if (!integration) return ghlNotConnected();
 
   try {
+    // Resolver calendarId si el agente no lo conoce
+    const resolved = await resolveCalendarId(tenantId, {
+      explicitCalendarId: args.calendar_id ?? null,
+      treatmentName: args.treatment_name,
+    });
+
+    if (!resolved.calendarId) {
+      return {
+        result:
+          'No puedo agendar porque la clínica no tiene calendarios configurados. Tomá nombre y teléfono — recepción confirma manualmente.',
+      };
+    }
+
     const appointment = await ghlFetch<GhlAppointment>({
       tenantId,
       path: '/calendars/events/appointments',
       method: 'POST',
       body: {
-        calendarId: args.calendar_id,
+        calendarId: resolved.calendarId,
         locationId: integration.locationId,
         contactId: args.contact_id,
         startTime: args.start_time,
@@ -112,10 +143,14 @@ export async function bookAppointment(
       },
     });
 
-    return { result: `Cita agendada correctamente. ID: ${appointment.id}. El paciente recibirá una confirmación.` };
+    return {
+      result: `Cita agendada correctamente. ID ${appointment.id}. El paciente va a recibir confirmación.`,
+    };
   } catch (err) {
     if (err instanceof GhlApiError) {
-      return { result: 'No pude agendar la cita en este momento. Por favor comunícate con la clínica directamente.' };
+      return {
+        result: `No pude agendar (error ${err.status}). Tomá nombre y teléfono y avisá que recepción confirma a la brevedad.`,
+      };
     }
     throw err;
   }

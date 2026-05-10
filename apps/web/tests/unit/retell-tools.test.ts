@@ -19,12 +19,22 @@ vi.mock('@/lib/ghl/client', () => ({
   },
 }));
 
+// Mock de calendars (evita pulling de DB client + env)
+vi.mock('@/lib/ghl/calendars', () => ({
+  resolveCalendarId: vi.fn(),
+  getFreeSlots: vi.fn(),
+  listCalendars: vi.fn(),
+}));
+
 import { getGhlIntegration } from '@/lib/data/ghl-integration';
 import { ghlFetch } from '@/lib/ghl/client';
+import { getFreeSlots, resolveCalendarId } from '@/lib/ghl/calendars';
 import { dispatchTool, checkAvailability, getPatientInfo } from '@/lib/retell/tools';
 
 const mockGetGhlIntegration = vi.mocked(getGhlIntegration);
 const mockGhlFetch = vi.mocked(ghlFetch);
+const mockResolveCalendarId = vi.mocked(resolveCalendarId);
+const mockGetFreeSlots = vi.mocked(getFreeSlots);
 
 beforeAll(() => {
   process.env.ENCRYPTION_KEY = Buffer.alloc(32, 'a').toString('base64');
@@ -48,25 +58,25 @@ describe('dispatchTool', () => {
 });
 
 describe('checkAvailability', () => {
-  it('formatea slots correctamente cuando GHL responde', async () => {
-    mockGetGhlIntegration.mockResolvedValue({
-      tenantId: 'tenant-1',
-      locationId: 'loc-123',
-      companyId: null,
-      accessTokenEnc: 'enc',
-      refreshTokenEnc: 'enc',
-      expiresAt: new Date(Date.now() + 3600_000),
-      scopes: 'contacts.readonly',
-      connectedBy: null,
-      connectedAt: new Date(),
-    });
+  const mockIntegration = {
+    tenantId: 'tenant-1',
+    locationId: 'loc-123',
+    companyId: null,
+    accessTokenEnc: 'enc',
+    refreshTokenEnc: 'enc',
+    expiresAt: new Date(Date.now() + 3600_000),
+    scopes: 'pit',
+    connectedBy: null,
+    connectedAt: new Date(),
+  };
 
-    mockGhlFetch.mockResolvedValue({
-      slots: [
-        { startTime: '2025-06-01T10:00:00Z', endTime: '2025-06-01T10:30:00Z' },
-        { startTime: '2025-06-01T14:00:00Z', endTime: '2025-06-01T14:30:00Z' },
-      ],
-    });
+  it('formatea slots correctamente cuando GHL responde', async () => {
+    mockGetGhlIntegration.mockResolvedValue(mockIntegration);
+    mockResolveCalendarId.mockResolvedValue({ calendarId: 'cal-1', reason: 'first-active' });
+    mockGetFreeSlots.mockResolvedValue([
+      { startTime: '2025-06-01T10:00:00Z', endTime: '2025-06-01T10:30:00Z' },
+      { startTime: '2025-06-01T14:00:00Z', endTime: '2025-06-01T14:30:00Z' },
+    ]);
 
     const result = await checkAvailability('tenant-1', {
       treatment_name: 'limpieza dental',
@@ -74,22 +84,15 @@ describe('checkAvailability', () => {
     });
 
     expect(result.result).toContain('Horarios disponibles');
+    expect(mockResolveCalendarId).toHaveBeenCalledWith('tenant-1', expect.objectContaining({
+      treatmentName: 'limpieza dental',
+    }));
   });
 
   it('responde amigablemente cuando no hay slots', async () => {
-    mockGetGhlIntegration.mockResolvedValue({
-      tenantId: 'tenant-1',
-      locationId: 'loc-123',
-      companyId: null,
-      accessTokenEnc: 'enc',
-      refreshTokenEnc: 'enc',
-      expiresAt: new Date(Date.now() + 3600_000),
-      scopes: 'contacts.readonly',
-      connectedBy: null,
-      connectedAt: new Date(),
-    });
-
-    mockGhlFetch.mockResolvedValue({ slots: [] });
+    mockGetGhlIntegration.mockResolvedValue(mockIntegration);
+    mockResolveCalendarId.mockResolvedValue({ calendarId: 'cal-1', reason: 'first-active' });
+    mockGetFreeSlots.mockResolvedValue([]);
 
     const result = await checkAvailability('tenant-1', {
       treatment_name: 'blanqueamiento',
@@ -97,6 +100,18 @@ describe('checkAvailability', () => {
     });
 
     expect(result.result).toContain('No hay disponibilidad');
+  });
+
+  it('avisa si la clínica no tiene calendarios configurados', async () => {
+    mockGetGhlIntegration.mockResolvedValue(mockIntegration);
+    mockResolveCalendarId.mockResolvedValue({ calendarId: null, reason: 'no-calendars' });
+
+    const result = await checkAvailability('tenant-1', {
+      treatment_name: 'limpieza',
+      preferred_date: '2025-06-01',
+    });
+
+    expect(result.result).toContain('no tiene calendarios');
   });
 });
 
