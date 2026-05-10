@@ -73,15 +73,19 @@ export async function resolveCalendarId(
 
 /**
  * Obtiene los slots libres para un calendario en un rango.
- * Endpoint correcto: GET /calendars/{calendarId}/free-slots
- * Las fechas van como **milisegundos epoch**, no ISO.
+ * Endpoint: GET /calendars/{calendarId}/free-slots
+ * Fechas como **ms epoch**, no ISO.
+ *
+ * GHL devuelve uno de dos shapes:
+ *   1. { slots: [{startTime, endTime}, ...] }
+ *   2. { 'YYYY-MM-DD': { slots: ['ISO', ...] }, traceId: '...' }
  */
 export async function getFreeSlots(
   tenantId: string,
   calendarId: string,
   range: { startDateMs: number; endDateMs: number; timezone?: string },
 ): Promise<GhlSlot[]> {
-  const data = await ghlFetch<{ slots?: GhlSlot[]; _dates_?: Record<string, { slots?: string[] }> }>({
+  const data = await ghlFetch<Record<string, unknown>>({
     tenantId,
     path: `/calendars/${calendarId}/free-slots`,
     query: {
@@ -91,22 +95,23 @@ export async function getFreeSlots(
     },
   });
 
-  // GHL puede devolver slots[] directo, o { _dates_: { 'YYYY-MM-DD': { slots: ['ISO', ...] } } }
-  if (data.slots && data.slots.length > 0) return data.slots;
-
-  if (data._dates_) {
-    const allSlots: GhlSlot[] = [];
-    for (const day of Object.values(data._dates_)) {
-      if (!day.slots) continue;
-      for (const startIso of day.slots) {
-        // GHL devuelve sólo startTime; estimamos endTime sumando 30 min
-        const start = new Date(startIso);
-        const end = new Date(start.getTime() + 30 * 60_000);
-        allSlots.push({ startTime: start.toISOString(), endTime: end.toISOString() });
-      }
-    }
-    return allSlots;
+  // Shape 1: slots[] directo (legacy)
+  if (Array.isArray((data as { slots?: GhlSlot[] }).slots)) {
+    return ((data as { slots: GhlSlot[] }).slots) ?? [];
   }
 
-  return [];
+  // Shape 2: keys son fechas YYYY-MM-DD; cada una tiene { slots: ['ISO', ...] }
+  const dateKeyRegex = /^\d{4}-\d{2}-\d{2}$/;
+  const allSlots: GhlSlot[] = [];
+  for (const [key, value] of Object.entries(data)) {
+    if (!dateKeyRegex.test(key)) continue; // skip traceId, etc
+    const day = value as { slots?: string[] };
+    if (!day?.slots) continue;
+    for (const startIso of day.slots) {
+      const start = new Date(startIso);
+      const end = new Date(start.getTime() + 30 * 60_000); // estimación 30 min
+      allSlots.push({ startTime: start.toISOString(), endTime: end.toISOString() });
+    }
+  }
+  return allSlots;
 }
