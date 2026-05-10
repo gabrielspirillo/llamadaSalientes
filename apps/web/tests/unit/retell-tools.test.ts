@@ -70,17 +70,24 @@ describe('checkAvailability', () => {
     connectedAt: new Date(),
   };
 
+  // Fecha futura: 30 días desde hoy
+  const futureDate = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d.toISOString().slice(0, 10);
+  })();
+
   it('formatea slots correctamente cuando GHL responde', async () => {
     mockGetGhlIntegration.mockResolvedValue(mockIntegration);
     mockResolveCalendarId.mockResolvedValue({ calendarId: 'cal-1', reason: 'first-active' });
     mockGetFreeSlots.mockResolvedValue([
-      { startTime: '2025-06-01T10:00:00Z', endTime: '2025-06-01T10:30:00Z' },
-      { startTime: '2025-06-01T14:00:00Z', endTime: '2025-06-01T14:30:00Z' },
+      { startTime: `${futureDate}T10:00:00Z`, endTime: `${futureDate}T10:30:00Z` },
+      { startTime: `${futureDate}T14:00:00Z`, endTime: `${futureDate}T14:30:00Z` },
     ]);
 
     const result = await checkAvailability('tenant-1', {
       treatment_name: 'limpieza dental',
-      preferred_date: '2025-06-01',
+      preferred_date: futureDate,
     });
 
     expect(result.result).toContain('Horarios disponibles');
@@ -96,10 +103,23 @@ describe('checkAvailability', () => {
 
     const result = await checkAvailability('tenant-1', {
       treatment_name: 'blanqueamiento',
-      preferred_date: '2025-06-01',
+      preferred_date: futureDate,
     });
 
     expect(result.result).toContain('No hay disponibilidad');
+  });
+
+  it('rechaza fechas del pasado con feedback al agente', async () => {
+    mockGetGhlIntegration.mockResolvedValue(mockIntegration);
+    mockResolveCalendarId.mockResolvedValue({ calendarId: 'cal-1', reason: 'first-active' });
+
+    const result = await checkAvailability('tenant-1', {
+      treatment_name: 'limpieza',
+      preferred_date: '2020-01-01',
+    });
+
+    expect(result.result).toContain('ya pasó');
+    expect(result.result).toContain('Recalculá');
   });
 
   it('avisa si la clínica no tiene calendarios configurados', async () => {
@@ -108,7 +128,7 @@ describe('checkAvailability', () => {
 
     const result = await checkAvailability('tenant-1', {
       treatment_name: 'limpieza',
-      preferred_date: '2025-06-01',
+      preferred_date: futureDate,
     });
 
     expect(result.result).toContain('no tiene calendarios');
@@ -116,23 +136,24 @@ describe('checkAvailability', () => {
 });
 
 describe('getPatientInfo', () => {
-  it('devuelve datos del paciente si existe en GHL', async () => {
-    mockGetGhlIntegration.mockResolvedValue({
-      tenantId: 'tenant-1',
-      locationId: 'loc-123',
-      companyId: null,
-      accessTokenEnc: 'enc',
-      refreshTokenEnc: 'enc',
-      expiresAt: new Date(Date.now() + 3600_000),
-      scopes: 'contacts.readonly',
-      connectedBy: null,
-      connectedAt: new Date(),
-    });
+  const mockIntegration = {
+    tenantId: 'tenant-1',
+    locationId: 'loc-123',
+    companyId: null,
+    accessTokenEnc: 'enc',
+    refreshTokenEnc: 'enc',
+    expiresAt: new Date(Date.now() + 3600_000),
+    scopes: 'pit',
+    connectedBy: null,
+    connectedAt: new Date(),
+  };
 
+  it('devuelve datos del paciente si existe en GHL', async () => {
+    mockGetGhlIntegration.mockResolvedValue(mockIntegration);
+
+    // Nuevo endpoint: /contacts/search/duplicate → { contact: {...} | null }
     mockGhlFetch.mockResolvedValue({
-      contacts: [
-        { id: 'contact-abc', firstName: 'María', lastName: 'García', email: 'maria@test.com' },
-      ],
+      contact: { id: 'contact-abc', firstName: 'María', lastName: 'García', email: 'maria@test.com' },
     });
 
     const result = await getPatientInfo('tenant-1', { phone: '+525512345678' });
@@ -141,19 +162,8 @@ describe('getPatientInfo', () => {
   });
 
   it('indica paciente nuevo si no existe', async () => {
-    mockGetGhlIntegration.mockResolvedValue({
-      tenantId: 'tenant-1',
-      locationId: 'loc-123',
-      companyId: null,
-      accessTokenEnc: 'enc',
-      refreshTokenEnc: 'enc',
-      expiresAt: new Date(Date.now() + 3600_000),
-      scopes: 'contacts.readonly',
-      connectedBy: null,
-      connectedAt: new Date(),
-    });
-
-    mockGhlFetch.mockResolvedValue({ contacts: [] });
+    mockGetGhlIntegration.mockResolvedValue(mockIntegration);
+    mockGhlFetch.mockResolvedValue({ contact: null });
 
     const result = await getPatientInfo('tenant-1', { phone: '+525599999999' });
     expect(result.result).toContain('paciente nuevo');

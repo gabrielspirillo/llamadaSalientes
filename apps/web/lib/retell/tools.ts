@@ -15,8 +15,9 @@ export type CheckAvailabilityArgs = {
 };
 
 export type BookAppointmentArgs = {
-  contact_id: string;
-  calendar_id: string;
+  contact_id?: string; // si no se pasa, lo resolvemos por phone
+  phone?: string;
+  calendar_id?: string; // opcional, auto-resuelve por treatment_name
   start_time: string; // ISO datetime
   treatment_name: string;
 };
@@ -27,6 +28,13 @@ export type CancelAppointmentArgs = {
 
 export type GetPatientInfoArgs = {
   phone: string;
+};
+
+export type RegisterPatientArgs = {
+  first_name: string;
+  last_name?: string;
+  phone: string;
+  email?: string;
 };
 
 // ─── GHL response shapes (mínimos) ───────────────────────────────────────────
@@ -40,8 +48,63 @@ type GhlContact = {
   email?: string;
   phone?: string;
 };
-type GhlContactsResponse = { contacts?: GhlContact[] };
+type GhlSearchDuplicateResponse = { contact: GhlContact | null };
+type GhlContactCreateResponse = { contact: GhlContact };
 type GhlAppointment = { id: string };
+
+// Heurística: GHL contact IDs son alfanuméricos de 20 chars sin espacios
+// (ej. W5CUSlYRHfeubqP8j29P). Si el agente nos pasa basura ("Gabriel/+542..."),
+// la rechazamos y caemos al lookup por teléfono.
+function looksLikeGhlId(s: string | undefined | null): boolean {
+  if (!s) return false;
+  return /^[A-Za-z0-9]{15,30}$/.test(s);
+}
+
+async function lookupContactByPhone(
+  tenantId: string,
+  phone: string,
+): Promise<GhlContact | null> {
+  // GHL: /contacts/search/duplicate?locationId=...&number=... → { contact: {} | null }
+  const integration = await getGhlIntegration(tenantId);
+  if (!integration) return null;
+  try {
+    const data = await ghlFetch<GhlSearchDuplicateResponse>({
+      tenantId,
+      path: '/contacts/search/duplicate',
+      query: { locationId: integration.locationId, number: phone },
+    });
+    return data.contact ?? null;
+  } catch (err) {
+    console.error('[lookupContactByPhone]', err);
+    return null;
+  }
+}
+
+async function createContact(
+  tenantId: string,
+  args: { firstName: string; lastName?: string; phone: string; email?: string },
+): Promise<GhlContact | null> {
+  const integration = await getGhlIntegration(tenantId);
+  if (!integration) return null;
+  try {
+    const data = await ghlFetch<GhlContactCreateResponse>({
+      tenantId,
+      path: '/contacts/',
+      method: 'POST',
+      body: {
+        locationId: integration.locationId,
+        firstName: args.firstName,
+        lastName: args.lastName ?? '',
+        phone: args.phone,
+        ...(args.email ? { email: args.email } : {}),
+      },
+    });
+    return data.contact;
+  } catch (err) {
+    console.error('[createContact]', err);
+    return null;
+  }
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -145,13 +208,20 @@ export async function bookAppointment(
   const integration = await getGhlIntegration(tenantId);
   if (!integration) return ghlNotConnected();
 
+  console.log('[book_appointment] args:', {
+    contact_id: args.contact_id,
+    phone: args.phone,
+    calendar_id: args.calendar_id,
+    start_time: args.start_time,
+    treatment_name: args.treatment_name,
+  });
+
   try {
-    // Resolver calendarId si el agente no lo conoce
+    // 1. Resolver calendar
     const resolved = await resolveCalendarId(tenantId, {
-      explicitCalendarId: args.calendar_id ?? null,
+      explicitCalendarId: looksLikeGhlId(args.calendar_id) ? args.calendar_id : null,
       treatmentName: args.treatment_name,
     });
-
     if (!resolved.calendarId) {
       return {
         result:
@@ -159,6 +229,28 @@ export async function bookAppointment(
       };
     }
 
+    // 2. Resolver contactId. Si el agente nos pasa basura, intentar lookup por phone.
+    let contactId: string | null = looksLikeGhlId(args.contact_id) ? args.contact_id! : null;
+    if (!contactId && args.phone) {
+      const found = await lookupContactByPhone(tenantId, args.phone);
+      if (found) contactId = found.id;
+    }
+    if (!contactId) {
+      return {
+        result:
+          'Para agendar necesito el contact_id real del paciente. Llamá primero a get_patient_info(phone) para encontrarlo, o si es nuevo a register_patient(first_name, last_name, phone) para crearlo, y usá el id que te devuelva.',
+      };
+    }
+
+    // 3. Validar formato de start_time (debe ser ISO con timezone)
+    const startDate = new Date(args.start_time);
+    if (Number.isNaN(startDate.getTime())) {
+      return {
+        result: `start_time inválido: "${args.start_time}". Debe ser ISO 8601 (ej: 2026-05-11T09:00:00).`,
+      };
+    }
+
+    // 4. Crear la cita
     const appointment = await ghlFetch<GhlAppointment>({
       tenantId,
       path: '/calendars/events/appointments',
@@ -166,23 +258,61 @@ export async function bookAppointment(
       body: {
         calendarId: resolved.calendarId,
         locationId: integration.locationId,
-        contactId: args.contact_id,
-        startTime: args.start_time,
+        contactId,
+        startTime: startDate.toISOString(),
         title: args.treatment_name,
       },
     });
 
+    console.log('[book_appointment] ok:', appointment.id);
     return {
-      result: `Cita agendada correctamente. ID ${appointment.id}. El paciente va a recibir confirmación.`,
+      result: `Cita agendada correctamente. El paciente va a recibir confirmación.`,
     };
   } catch (err) {
+    console.error('[book_appointment]', err);
     if (err instanceof GhlApiError) {
       return {
-        result: `No pude agendar (error ${err.status}). Tomá nombre y teléfono y avisá que recepción confirma a la brevedad.`,
+        result: `No pude agendar (error ${err.status}). ${err.body.slice(0, 100)}`,
       };
     }
     throw err;
   }
+}
+
+export async function registerPatient(
+  tenantId: string,
+  args: RegisterPatientArgs,
+): Promise<ToolResult> {
+  const integration = await getGhlIntegration(tenantId);
+  if (!integration) return ghlNotConnected();
+
+  if (!args.first_name || !args.phone) {
+    return { result: 'Para registrar necesito al menos first_name y phone.' };
+  }
+
+  // Si ya existe, devolver el contact_id existente
+  const existing = await lookupContactByPhone(tenantId, args.phone);
+  if (existing) {
+    const name = [existing.firstName, existing.lastName].filter(Boolean).join(' ');
+    return {
+      result: `Ya existe un paciente con ese teléfono: ${name || 'sin nombre'}. contact_id=${existing.id}. Usá ese id para agendar.`,
+    };
+  }
+
+  const created = await createContact(tenantId, {
+    firstName: args.first_name,
+    lastName: args.last_name,
+    phone: args.phone,
+    email: args.email,
+  });
+  if (!created) {
+    return {
+      result: 'No pude crear al paciente en el sistema. Tomá nombre y teléfono — recepción confirma manualmente.',
+    };
+  }
+  return {
+    result: `Paciente creado correctamente. contact_id=${created.id}. Usá ese id para llamar a book_appointment.`,
+  };
 }
 
 export async function cancelAppointment(
@@ -219,20 +349,19 @@ export async function getPatientInfo(
   if (!integration) return ghlNotConnected();
 
   try {
-    const data = await ghlFetch<GhlContactsResponse>({
-      tenantId,
-      path: '/contacts/search',
-      query: { locationId: integration.locationId, phone: args.phone },
-    });
-
-    const contact = data.contacts?.[0];
+    const contact = await lookupContactByPhone(tenantId, args.phone);
     if (!contact) {
-      return { result: 'No encontré al paciente en el sistema. Es un paciente nuevo.' };
+      return {
+        result:
+          'No encontré al paciente en el sistema. Es un paciente nuevo: pediles nombre y apellido y luego usá register_patient para crearlo antes de agendar.',
+      };
     }
-
     const name = [contact.firstName, contact.lastName].filter(Boolean).join(' ') || 'Sin nombre';
-    return { result: `Paciente encontrado: ${name}. ID: ${contact.id}. Email: ${contact.email ?? 'no registrado'}.` };
+    return {
+      result: `Paciente encontrado: ${name}. contact_id=${contact.id}. Usá ese contact_id para agendar la cita.`,
+    };
   } catch (err) {
+    console.error('[get_patient_info]', err);
     if (err instanceof GhlApiError) {
       return { result: 'No pude buscar al paciente en este momento.' };
     }
@@ -246,7 +375,8 @@ export type KnownToolName =
   | 'check_availability'
   | 'book_appointment'
   | 'cancel_appointment'
-  | 'get_patient_info';
+  | 'get_patient_info'
+  | 'register_patient';
 
 export async function dispatchTool(
   tenantId: string,
@@ -262,6 +392,8 @@ export async function dispatchTool(
       return cancelAppointment(tenantId, args as CancelAppointmentArgs);
     case 'get_patient_info':
       return getPatientInfo(tenantId, args as GetPatientInfoArgs);
+    case 'register_patient':
+      return registerPatient(tenantId, args as RegisterPatientArgs);
     default:
       return { result: `Tool desconocida: ${toolName}` };
   }
