@@ -71,20 +71,33 @@ async function main() {
     const firstCal = cals.calendars[0]!;
     console.log(`\n→ Primer calendario: ${firstCal.name ?? '(sin nombre)'} (${firstCal.id})`);
 
-    // 2) Free slots para mañana — formato correcto: ms epoch
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(0, 0, 0, 0);
-    const dayAfter = new Date(tomorrow);
-    dayAfter.setDate(dayAfter.getDate() + 1);
-
-    const startMs = tomorrow.getTime();
-    const endMs = dayAfter.getTime();
-
-    await ghlGet(
-      token,
-      `/calendars/${firstCal.id}/free-slots?startDate=${startMs}&endDate=${endMs}&timezone=Europe/Madrid`,
+    // Buscar específicamente "Blanqueamiento"
+    const blanqueamiento = cals.calendars.find((c) =>
+      c.name?.toLowerCase().includes('blanqueamiento'),
     );
+    const targetCal = blanqueamiento ?? firstCal;
+    console.log(`\n→ Probando calendario: ${targetCal.name ?? '(sin nombre)'} (${targetCal.id})`);
+
+    // Probar 4 días: mañana (sab), pasado (dom), martes, miércoles
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const labels = ['mañana (+1)', 'pasado (+2)', 'martes (+4)', 'miércoles (+5)'];
+    const offsets = [1, 2, 4, 5];
+
+    for (let i = 0; i < offsets.length; i++) {
+      const offset = offsets[i]!;
+      const day = new Date(today);
+      day.setDate(day.getDate() + offset);
+      const next = new Date(day);
+      next.setDate(next.getDate() + 1);
+
+      const dayLabel = day.toISOString().slice(0, 10);
+      console.log(`\n--- ${labels[i]} → ${dayLabel} ---`);
+      await ghlGet(
+        token,
+        `/calendars/${targetCal.id}/free-slots?startDate=${day.getTime()}&endDate=${next.getTime()}&timezone=Europe/Madrid`,
+      );
+    }
   } finally {
     await sql.end();
   }

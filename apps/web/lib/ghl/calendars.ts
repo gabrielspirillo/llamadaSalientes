@@ -32,8 +32,9 @@ export async function listCalendars(tenantId: string): Promise<GhlCalendar[]> {
 /**
  * Resuelve el calendario a usar para una llamada:
  *   1. Si se pasa explícito, lo usa.
- *   2. Si el tratamiento tiene ghlCalendarId, lo usa.
- *   3. Si no, primer calendario activo de la location.
+ *   2. Match fuzzy del treatmentName contra treatments del tenant
+ *      (cualquier palabra significativa del input matcheada por ILIKE).
+ *   3. Fallback: primer calendario activo de la location.
  *   4. Sino, retorna null (caller maneja error friendly).
  */
 export async function resolveCalendarId(
@@ -44,23 +45,34 @@ export async function resolveCalendarId(
     return { calendarId: options.explicitCalendarId, reason: 'explicit' };
   }
 
-  // Match por nombre de tratamiento en nuestra DB
   if (options.treatmentName) {
     const { db } = await import('@/lib/db/client');
     const { treatments } = await import('@/lib/db/schema');
-    const { and, eq, ilike } = await import('drizzle-orm');
-    const rows = await db
-      .select({ ghlCalendarId: treatments.ghlCalendarId })
-      .from(treatments)
-      .where(
-        and(
-          eq(treatments.tenantId, tenantId),
-          ilike(treatments.name, `%${options.treatmentName}%`),
-        ),
-      )
-      .limit(1);
-    const id = rows[0]?.ghlCalendarId;
-    if (id) return { calendarId: id, reason: 'treatment-match' };
+    const { and, eq, ilike, or } = await import('drizzle-orm');
+
+    // Tokenizar input del agente y buscar cada palabra ≥ 4 chars contra treatment.name.
+    // Esto resuelve "blanqueamiento dental" matcheando "Blanqueamiento", o "limpieza profunda"
+    // matcheando "Limpieza dental", etc. Acumulamos OR de ILIKE %word%.
+    const words = options.treatmentName
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '') // quitar acentos
+      .split(/[^a-z0-9]+/)
+      .filter((w) => w.length >= 4 && !['para', 'cita', 'dental', 'consulta'].includes(w));
+
+    if (words.length > 0) {
+      const ilikes = words.map((w) => ilike(treatments.name, `%${w}%`));
+      const search = ilikes.length === 1 ? ilikes[0]! : or(...ilikes);
+
+      const rows = await db
+        .select({ ghlCalendarId: treatments.ghlCalendarId, name: treatments.name })
+        .from(treatments)
+        .where(and(eq(treatments.tenantId, tenantId), search!))
+        .limit(1);
+
+      const id = rows[0]?.ghlCalendarId;
+      if (id) return { calendarId: id, reason: `treatment-match:${rows[0]?.name}` };
+    }
   }
 
   // Fallback: primer calendario activo

@@ -80,6 +80,13 @@ export async function checkAvailability(
       treatmentName: args.treatment_name,
     });
 
+    console.log('[check_availability]', {
+      tenantId,
+      treatment: args.treatment_name,
+      preferred_date: args.preferred_date,
+      resolved,
+    });
+
     if (!resolved.calendarId) {
       return {
         result:
@@ -87,19 +94,29 @@ export async function checkAvailability(
       };
     }
 
-    // Fechas en ms epoch (formato que pide GHL)
-    const day = new Date(args.preferred_date);
-    day.setHours(0, 0, 0, 0);
+    // Parser de fecha tolerante: acepta YYYY-MM-DD o ISO completo.
+    // Si parsea inválido, asumimos "mañana" para no fallar silente.
+    let day = new Date(args.preferred_date);
+    if (Number.isNaN(day.getTime())) {
+      console.warn('[check_availability] preferred_date inválido, asumo mañana:', args.preferred_date);
+      day = new Date();
+      day.setDate(day.getDate() + 1);
+    }
+    day.setUTCHours(0, 0, 0, 0); // explicit UTC para evitar drifts según TZ del server
+
     const next = new Date(day);
-    next.setDate(next.getDate() + 1);
+    next.setUTCDate(next.getUTCDate() + 1);
 
     const slots = await getFreeSlots(tenantId, resolved.calendarId, {
       startDateMs: day.getTime(),
       endDateMs: next.getTime(),
     });
 
+    console.log('[check_availability] slots devueltos:', slots.length);
+
     return { result: formatSlots(slots) };
   } catch (err) {
+    console.error('[check_availability] error:', err);
     if (err instanceof GhlApiError) {
       return {
         result: `No pude consultar el calendario (error ${err.status}). Tomá nombre y teléfono y avisá que recepción confirma en breve.`,
