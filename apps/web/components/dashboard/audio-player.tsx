@@ -55,21 +55,30 @@ export function AudioPlayer({ callId }: Props) {
     setLoadState('loading');
     setErrorMsg(null);
     try {
-      const res = await fetch(`/api/calls/${callId}/recording`);
-      if (res.status === 425) {
+      // Pre-flight: HEAD para detectar 425 / 404 sin descargar el blob entero.
+      // Pasamos esto directamente al <audio> que sabe streamear con Range requests.
+      const head = await fetch(`/api/calls/${callId}/recording`, {
+        method: 'HEAD',
+      });
+      if (head.status === 425) {
         setLoadState('too-early');
-        const body = await res.json().catch(() => ({}));
-        setErrorMsg(body.error ?? 'La grabación todavía no está lista');
+        setErrorMsg('La grabación todavía no está lista (Retell la procesa después de la llamada)');
         return;
       }
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? `Error ${res.status}`);
+      if (head.status === 404) {
+        setLoadState('error');
+        setErrorMsg('No se encontró la grabación');
+        return;
       }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
+      if (!head.ok && head.status !== 405 /* HEAD no soportado, intentamos GET */) {
+        setLoadState('error');
+        setErrorMsg(`Error ${head.status} al cargar`);
+        return;
+      }
+
+      // Asignamos directo la URL al <audio> para streaming progresivo.
       if (audioRef.current) {
-        audioRef.current.src = url;
+        audioRef.current.src = `/api/calls/${callId}/recording`;
         audioRef.current.load();
       }
     } catch (e) {

@@ -6,10 +6,10 @@ export function MarketingTopbar() {
     <header className="sticky top-0 z-50 w-full border-b border-zinc-200/60 bg-white/70 backdrop-blur-xl">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
         <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-black">
-            <span className="text-xs font-semibold text-white">D</span>
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-blue-600">
+            <span className="text-xs font-semibold text-white">F</span>
           </div>
-          <span className="text-[15px] font-semibold tracking-tight">DentalVoice</span>
+          <span className="text-[15px] font-semibold tracking-tight">FUTURA SOLUTIONS</span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-7 text-sm text-zinc-600">

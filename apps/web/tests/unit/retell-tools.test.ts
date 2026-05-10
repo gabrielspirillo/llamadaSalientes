@@ -26,6 +26,15 @@ vi.mock('@/lib/ghl/calendars', () => ({
   listCalendars: vi.fn(),
 }));
 
+// Mock de data/calls (evita pulling de DB en tests)
+vi.mock('@/lib/data/calls', () => ({
+  patchCallCustomData: vi.fn(),
+  setCallGhlContact: vi.fn(),
+  upsertCall: vi.fn(),
+  getCallByRetellId: vi.fn(),
+  logCallEvent: vi.fn(),
+}));
+
 import { getGhlIntegration } from '@/lib/data/ghl-integration';
 import { ghlFetch } from '@/lib/ghl/client';
 import { getFreeSlots, resolveCalendarId } from '@/lib/ghl/calendars';

@@ -3,23 +3,24 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { formatDuration, formatRelativeTime, listCalls } from '@/lib/data/calls-list';
+import { formatDuration, listCalls } from '@/lib/data/calls-list';
 import { getCurrentTenant } from '@/lib/tenant';
 import { ArrowRight, Download, Filter, Phone, Search } from 'lucide-react';
 import Link from 'next/link';
 
-const intentMap: Record<string, { label: string; tone: 'success' | 'info' | 'warn' | 'violet' | 'neutral' | 'danger' }> = {
+const motivoMap: Record<string, { label: string; tone: 'success' | 'info' | 'warn' | 'violet' | 'neutral' | 'danger' }> = {
   agendar: { label: 'Agendar', tone: 'success' },
   reagendar: { label: 'Reagendar', tone: 'info' },
   cancelar: { label: 'Cancelar', tone: 'warn' },
-  pregunta: { label: 'Pregunta', tone: 'violet' },
+  consulta: { label: 'Consulta', tone: 'violet' },
+  pregunta: { label: 'Consulta', tone: 'violet' }, // legacy
   queja: { label: 'Queja', tone: 'danger' },
   otro: { label: 'Otro', tone: 'neutral' },
 };
 
-function intentBadge(intent: string | null) {
+function motivoBadge(intent: string | null) {
   if (!intent) return <Badge>—</Badge>;
-  const it = intentMap[intent] ?? { label: intent, tone: 'neutral' as const };
+  const it = motivoMap[intent] ?? { label: intent, tone: 'neutral' as const };
   return <Badge tone={it.tone}>{it.label}</Badge>;
 }
 
@@ -87,11 +88,11 @@ export default async function CallsPage({
             defaultValue={sp.intent ?? ''}
             className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm"
           >
-            <option value="">Todas las intenciones</option>
+            <option value="">Todos los motivos</option>
             <option value="agendar">Agendar</option>
             <option value="reagendar">Reagendar</option>
             <option value="cancelar">Cancelar</option>
-            <option value="pregunta">Pregunta</option>
+            <option value="consulta">Consulta</option>
             <option value="queja">Queja</option>
             <option value="otro">Otro</option>
           </select>
@@ -137,47 +138,60 @@ export default async function CallsPage({
                   <tr className="text-left text-xs uppercase tracking-wider text-zinc-500 border-b border-zinc-100">
                     <th className="px-5 py-3 font-medium">Paciente</th>
                     <th className="px-5 py-3 font-medium">Número</th>
-                    <th className="px-5 py-3 font-medium">Intent</th>
+                    <th className="px-5 py-3 font-medium">Motivo</th>
                     <th className="px-5 py-3 font-medium">Estado</th>
                     <th className="px-5 py-3 font-medium">Duración</th>
-                    <th className="px-5 py-3 font-medium">Cuándo</th>
+                    <th className="px-5 py-3 font-medium">Fecha y hora</th>
                     <th className="px-5 py-3 font-medium" />
                   </tr>
                 </thead>
                 <tbody>
-                  {realCalls.map((c) => (
-                    <tr
-                      key={c.id}
-                      className="border-b border-zinc-50 last:border-b-0 hover:bg-zinc-50/60 transition-colors"
-                    >
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-3">
-                          {sentimentDot(c.sentiment)}
-                          <span className="font-medium">
-                            {c.fromNumber ?? 'Anónimo'}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5 text-zinc-600 tabular-nums">
-                        {c.fromNumber ?? '—'}
-                      </td>
-                      <td className="px-5 py-3.5">{intentBadge(c.intent)}</td>
-                      <td className="px-5 py-3.5">{statusBadge(c.status, c.transferred ?? false)}</td>
-                      <td className="px-5 py-3.5 text-zinc-700 tabular-nums">
-                        {formatDuration(c.durationSeconds)}
-                      </td>
-                      <td className="px-5 py-3.5 text-zinc-500">
-                        {formatRelativeTime(c.startedAt)}
-                      </td>
-                      <td className="px-5 py-3.5 text-right">
-                        <Button asChild variant="ghost" size="sm">
-                          <Link href={`/dashboard/calls/${c.id}`}>
-                            <ArrowRight className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
+                  {realCalls.map((c) => {
+                    const phone = c.fromNumber ?? c.toNumber ?? null;
+                    const customData = (c.customData ?? {}) as { patient_name?: string };
+                    const patientName = customData.patient_name ?? null;
+                    return (
+                      <tr
+                        key={c.id}
+                        className="border-b border-zinc-50 last:border-b-0 hover:bg-zinc-50/60 transition-colors"
+                      >
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-3">
+                            {sentimentDot(c.sentiment)}
+                            <span className="font-medium">
+                              {patientName ?? (phone ? phone.slice(-4).padStart(8, '·') : 'Sin identificar')}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-3.5 text-zinc-600 tabular-nums">
+                          {phone ?? '—'}
+                        </td>
+                        <td className="px-5 py-3.5">{motivoBadge(c.intent)}</td>
+                        <td className="px-5 py-3.5">{statusBadge(c.status, c.transferred ?? false)}</td>
+                        <td className="px-5 py-3.5 text-zinc-700 tabular-nums">
+                          {formatDuration(c.durationSeconds)}
+                        </td>
+                        <td className="px-5 py-3.5 text-zinc-600 tabular-nums">
+                          {c.startedAt
+                            ? new Date(c.startedAt).toLocaleString('es-ES', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })
+                            : '—'}
+                        </td>
+                        <td className="px-5 py-3.5 text-right">
+                          <Button asChild variant="ghost" size="sm">
+                            <Link href={`/dashboard/calls/${c.id}`}>
+                              <ArrowRight className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

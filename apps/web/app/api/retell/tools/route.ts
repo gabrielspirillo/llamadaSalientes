@@ -51,7 +51,9 @@ export async function POST(req: NextRequest) {
   }
 
   const toolArgs = body.args ?? body.arguments ?? {};
-  const toolResult = await dispatchTool(tenantId, body.name, toolArgs);
+  const toolResult = await dispatchTool(tenantId, body.name, toolArgs, {
+    retellCallId: body.call.call_id,
+  });
 
   // Retell espera { result: string } como respuesta del tool
   return NextResponse.json(toolResult);

@@ -112,15 +112,32 @@ export async function POST(req: NextRequest) {
       const analysis = call.call_analysis;
       const transcriptEnc = call.transcript ? encrypt(call.transcript) : null;
 
-      // Persistencia inmediata (sentiment + transcript del payload de Retell).
-      // El job Inngest después agrega: grabación en R2 + summary OpenAI + intent.
+      // Resumen rápido en español usando Gemini (si está disponible).
+      // El job Inngest después puede sobreescribir con OpenAI si está configurado.
+      let summaryEs: string | null = analysis?.call_summary ?? null;
+      let intentEs: string | null = null;
+      let sentimentEs: string | null = mapRetellSentiment(analysis?.user_sentiment);
+
+      if (call.transcript && process.env.GEMINI_API_KEY) {
+        try {
+          const { summarizeCallWithGemini } = await import('@/lib/gemini/client');
+          const ai = await summarizeCallWithGemini(call.transcript);
+          summaryEs = ai.summary;
+          intentEs = ai.intent;
+          sentimentEs = ai.sentiment;
+        } catch (err) {
+          console.error('[retell-webhook] gemini summary fallo:', err);
+        }
+      }
+
       await upsertCall({
         tenantId,
         retellCallId: call.call_id,
         status: 'ended',
         transcriptEnc,
-        summary: analysis?.call_summary ?? null,
-        sentiment: analysis?.user_sentiment ?? null,
+        summary: summaryEs,
+        intent: intentEs,
+        sentiment: sentimentEs,
       });
 
       // Dispatch al job de procesamiento async — fire-and-forget
@@ -142,4 +159,17 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ ok: true });
+}
+
+function mapRetellSentiment(s: string | null | undefined): string | null {
+  if (!s) return null;
+  const map: Record<string, string> = {
+    Positive: 'positivo',
+    Neutral: 'neutro',
+    Negative: 'negativo',
+    positive: 'positivo',
+    neutral: 'neutro',
+    negative: 'negativo',
+  };
+  return map[s] ?? s.toLowerCase();
 }

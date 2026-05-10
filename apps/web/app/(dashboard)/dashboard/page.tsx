@@ -2,12 +2,15 @@ import { InsightsPanel } from '@/components/dashboard/insights-panel';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { RealtimeRefresh } from '@/components/dashboard/realtime-refresh';
 import { Badge } from '@/components/ui/badge';
+// RealtimeRefresh sigue corriendo en background — el toggle UI se ocultó.
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
   formatDuration,
   formatRelativeTime,
   getDashboardStats,
+  getMotivoBreakdown,
+  getUpcomingAppointments,
   listCalls,
 } from '@/lib/data/calls-list';
 import { getCurrentTenant } from '@/lib/tenant';
@@ -15,18 +18,24 @@ import {
   ArrowRight,
   ArrowUpRight,
   Bot,
+  CalendarClock,
   Calendar,
   Clock,
   PhoneCall,
   Stethoscope,
   TrendingUp,
+  User,
 } from 'lucide-react';
 import Link from 'next/link';
 
 export default async function DashboardOverview() {
   const { tenant } = await getCurrentTenant();
-  const stats = await getDashboardStats(tenant.id);
-  const recentCalls = await listCalls(tenant.id, 6);
+  const [stats, recentCalls, upcoming, motivos] = await Promise.all([
+    getDashboardStats(tenant.id),
+    listCalls(tenant.id, 6),
+    getUpcomingAppointments(tenant.id, 5),
+    getMotivoBreakdown(tenant.id),
+  ]);
   const display = {
     callsToday: stats.callsToday,
     callsTodayDelta: `${stats.callsToday - stats.callsYesterday >= 0 ? '+' : ''}${stats.callsToday - stats.callsYesterday}`,
@@ -40,19 +49,20 @@ export default async function DashboardOverview() {
   return (
     <>
       <PageHeader
-        title={`Hola, ${tenant.name}`}
-        description="Esto es lo que pasó en tu clínica en las últimas 24 horas."
+        title={`Buenas, ${tenant.name.split(/['']s|\s/)[0]}`}
+        description="Resumen en tiempo real de tu clínica."
         actions={
-          <>
-            <RealtimeRefresh intervalMs={30_000} />
-            <Button asChild>
-              <Link href="/dashboard/agent">
-                Probar agente <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </>
+          <Button asChild>
+            <Link href="/dashboard/agent">
+              Probar agente <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
         }
       />
+      {/* Sin UI: refresca server components cada 30s mientras la pestaña está visible */}
+      <div className="hidden">
+        <RealtimeRefresh intervalMs={30_000} />
+      </div>
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
@@ -147,6 +157,49 @@ export default async function DashboardOverview() {
 
         {/* Sidebar — quick actions + agent status */}
         <div className="space-y-6">
+          {/* Próximas citas */}
+          <Card>
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-base font-semibold tracking-tight inline-flex items-center gap-2">
+                  <CalendarClock className="h-4 w-4 text-violet-600" />
+                  Próximas citas
+                </h3>
+                <Badge tone="violet">{upcoming.length}</Badge>
+              </div>
+              {upcoming.length === 0 ? (
+                <p className="text-xs text-zinc-500">
+                  Cuando el agente agende una cita, aparece acá.
+                </p>
+              ) : (
+                <ul className="space-y-3">
+                  {upcoming.map((u) => (
+                    <li key={u.callId} className="flex gap-3">
+                      <div className="h-8 w-8 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center shrink-0">
+                        <User className="h-3.5 w-3.5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {u.patientName ?? u.phone ?? 'Paciente'}
+                        </p>
+                        <p className="text-xs text-zinc-500 truncate">
+                          {u.treatmentName ?? 'Cita'} ·{' '}
+                          {u.startTime.toLocaleString('es-ES', {
+                            weekday: 'short',
+                            day: '2-digit',
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </Card>
+
           <Card>
             <div className="p-6">
               <div className="flex items-center justify-between mb-3">
@@ -166,6 +219,17 @@ export default async function DashboardOverview() {
               </Button>
             </div>
           </Card>
+
+          {/* Distribución por motivo (últimos 7d) */}
+          {motivos.length > 0 && (
+            <Card>
+              <div className="p-6">
+                <h3 className="text-base font-semibold tracking-tight mb-1">Por motivo</h3>
+                <p className="text-xs text-zinc-500 mb-4">Últimos 7 días</p>
+                <MotivoBars motivos={motivos} />
+              </div>
+            </Card>
+          )}
 
           <InsightsPanel />
 
@@ -267,22 +331,52 @@ function IntentBadge({ intent }: { intent: string }) {
     string,
     { label: string; tone: 'success' | 'info' | 'violet' | 'warn' | 'danger' | 'neutral' }
   > = {
-    // ES (datos reales)
     agendar: { label: 'Agendar', tone: 'success' },
     reagendar: { label: 'Reagendar', tone: 'info' },
     cancelar: { label: 'Cancelar', tone: 'warn' },
-    pregunta: { label: 'Pregunta', tone: 'violet' },
+    consulta: { label: 'Consulta', tone: 'violet' },
+    pregunta: { label: 'Consulta', tone: 'violet' },
     queja: { label: 'Queja', tone: 'danger' },
     otro: { label: 'Otro', tone: 'neutral' },
-    // EN (datos mock)
-    book: { label: 'Agendar', tone: 'success' },
-    reschedule: { label: 'Reagendar', tone: 'info' },
-    cancel: { label: 'Cancelar', tone: 'warn' },
-    pricing: { label: 'Precios', tone: 'violet' },
-    faq: { label: 'FAQ', tone: 'neutral' },
-    human: { label: 'Humano', tone: 'danger' },
-    other: { label: 'Otro', tone: 'neutral' },
   };
   const it = map[intent] ?? { label: intent, tone: 'neutral' as const };
   return <Badge tone={it.tone}>{it.label}</Badge>;
+}
+
+function MotivoBars({ motivos }: { motivos: Array<{ motivo: string; count: number }> }) {
+  const labels: Record<string, { label: string; color: string }> = {
+    agendar: { label: 'Agendar', color: 'bg-emerald-500' },
+    reagendar: { label: 'Reagendar', color: 'bg-blue-500' },
+    cancelar: { label: 'Cancelar', color: 'bg-amber-500' },
+    consulta: { label: 'Consulta', color: 'bg-violet-500' },
+    pregunta: { label: 'Consulta', color: 'bg-violet-500' },
+    queja: { label: 'Queja', color: 'bg-red-500' },
+    otro: { label: 'Otro', color: 'bg-zinc-400' },
+    sin_clasificar: { label: 'Sin clasificar', color: 'bg-zinc-300' },
+  };
+  const total = Math.max(1, motivos.reduce((a, b) => a + b.count, 0));
+  return (
+    <div className="space-y-3">
+      {motivos.map((m) => {
+        const meta = labels[m.motivo] ?? { label: m.motivo, color: 'bg-zinc-400' };
+        const pct = Math.round((m.count / total) * 100);
+        return (
+          <div key={m.motivo}>
+            <div className="flex items-center justify-between text-xs mb-1">
+              <div className="flex items-center gap-2">
+                <span className={`h-2 w-2 rounded-full ${meta.color}`} />
+                <span className="font-medium text-zinc-700">{meta.label}</span>
+              </div>
+              <span className="text-zinc-500 tabular-nums">
+                {m.count} <span className="text-zinc-400">· {pct}%</span>
+              </span>
+            </div>
+            <div className="h-1.5 rounded-full bg-zinc-100 overflow-hidden">
+              <div className={`h-full ${meta.color} rounded-full`} style={{ width: `${pct}%` }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }

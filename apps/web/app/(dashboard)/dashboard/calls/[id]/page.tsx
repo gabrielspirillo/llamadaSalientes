@@ -139,7 +139,7 @@ export default async function CallDetailPage({
         </div>
 
         <div className="space-y-6">
-          {/* AI summary */}
+          {/* AI summary — siempre en español, traduce on-demand si vino en inglés */}
           <Card>
             <div className="p-6">
               <div className="flex items-center gap-2 mb-3">
@@ -147,7 +147,7 @@ export default async function CallDetailPage({
                 <h3 className="text-base font-semibold tracking-tight">Resumen IA</h3>
               </div>
               {call.summary ? (
-                <p className="text-sm text-zinc-700 leading-relaxed">{call.summary}</p>
+                <p className="text-sm text-zinc-700 leading-relaxed">{await ensureSpanish(call.summary)}</p>
               ) : (
                 <p className="text-sm text-zinc-500">
                   El resumen se genera automáticamente cuando termine el procesamiento.
@@ -159,12 +159,27 @@ export default async function CallDetailPage({
                   <p className="font-medium capitalize mt-0.5">{call.sentiment ?? '—'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-zinc-500">Intención</p>
+                  <p className="text-xs text-zinc-500">Motivo</p>
                   <p className="font-medium capitalize mt-0.5">{call.intent ?? '—'}</p>
                 </div>
               </div>
             </div>
           </Card>
+
+          {/* GHL contact link */}
+          {call.ghlContactId && (
+            <Card>
+              <div className="p-6">
+                <h3 className="text-base font-semibold tracking-tight mb-3 inline-flex items-center gap-2">
+                  Contacto en GHL
+                </h3>
+                <p className="text-xs text-zinc-500 mb-3">
+                  Abrí la ficha del paciente en GoHighLevel para ver historial completo.
+                </p>
+                <GhlContactLink contactId={call.ghlContactId} tenantId={tenant.id} />
+              </div>
+            </Card>
+          )}
 
           {/* Metadata */}
           <Card>
@@ -172,7 +187,7 @@ export default async function CallDetailPage({
               <h3 className="text-base font-semibold tracking-tight mb-4">Metadata</h3>
               <div className="space-y-2.5 text-sm">
                 <FieldRow label="Retell Call ID" value={call.retellCallId} mono />
-                <FieldRow label="GHL Contact" value={call.ghlContactId ?? '—'} />
+                <FieldRow label="GHL Contact" value={call.ghlContactId ?? '—'} mono />
                 <FieldRow
                   label="Inicio"
                   value={
@@ -193,6 +208,34 @@ export default async function CallDetailPage({
         </div>
       </div>
     </>
+  );
+}
+
+async function ensureSpanish(text: string): Promise<string> {
+  // Heurística rápida: si tiene tilde / ñ / palabras españolas frecuentes → ya está
+  if (/[áéíóúñ¿¡]|paciente|cita|llamó|consulta|agendar/i.test(text)) return text;
+  if (!process.env.GEMINI_API_KEY) return text;
+  try {
+    const { translateToSpanish } = await import('@/lib/gemini/client');
+    return await translateToSpanish(text);
+  } catch {
+    return text;
+  }
+}
+
+function GhlContactLink({ contactId, tenantId: _tenantId }: { contactId: string; tenantId: string }) {
+  // GHL deep-link: /v2/location/{locationId}/contacts/detail/{contactId}
+  // Como el locationId no está en client, usamos el contact short URL que GHL acepta.
+  const url = `https://app.gohighlevel.com/contacts/detail/${contactId}`;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex items-center gap-2 text-sm font-medium text-violet-600 hover:text-violet-700 transition-colors"
+    >
+      Abrir ficha en GHL ↗
+    </a>
   );
 }
 

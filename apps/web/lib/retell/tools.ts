@@ -1,6 +1,7 @@
 import 'server-only';
 import { GhlApiError, ghlFetch } from '@/lib/ghl/client';
 import { getFreeSlots, resolveCalendarId } from '@/lib/ghl/calendars';
+import { patchCallCustomData, setCallGhlContact } from '@/lib/data/calls';
 import { getGhlIntegration } from '@/lib/data/ghl-integration';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -204,6 +205,7 @@ export async function checkAvailability(
 export async function bookAppointment(
   tenantId: string,
   args: BookAppointmentArgs,
+  ctx: { retellCallId?: string } = {},
 ): Promise<ToolResult> {
   const integration = await getGhlIntegration(tenantId);
   if (!integration) return ghlNotConnected();
@@ -265,6 +267,17 @@ export async function bookAppointment(
     });
 
     console.log('[book_appointment] ok:', appointment.id);
+
+    // Enriquecer fila call: marcar intent=agendar, ghlContactId, appointmentId
+    if (ctx.retellCallId) {
+      await setCallGhlContact(ctx.retellCallId, contactId).catch(() => undefined);
+      await patchCallCustomData(ctx.retellCallId, {
+        ghl_appointment_id: appointment.id,
+        treatment_name: args.treatment_name,
+        appointment_start: startDate.toISOString(),
+      }).catch(() => undefined);
+    }
+
     return {
       result: `Cita agendada correctamente. El paciente va a recibir confirmación.`,
     };
@@ -282,6 +295,7 @@ export async function bookAppointment(
 export async function registerPatient(
   tenantId: string,
   args: RegisterPatientArgs,
+  ctx: { retellCallId?: string } = {},
 ): Promise<ToolResult> {
   const integration = await getGhlIntegration(tenantId);
   if (!integration) return ghlNotConnected();
@@ -294,6 +308,11 @@ export async function registerPatient(
   const existing = await lookupContactByPhone(tenantId, args.phone);
   if (existing) {
     const name = [existing.firstName, existing.lastName].filter(Boolean).join(' ');
+    if (ctx.retellCallId) {
+      await setCallGhlContact(ctx.retellCallId, existing.id, name || args.first_name).catch(
+        () => undefined,
+      );
+    }
     return {
       result: `Ya existe un paciente con ese teléfono: ${name || 'sin nombre'}. contact_id=${existing.id}. Usá ese id para agendar.`,
     };
@@ -310,6 +329,13 @@ export async function registerPatient(
       result: 'No pude crear al paciente en el sistema. Tomá nombre y teléfono — recepción confirma manualmente.',
     };
   }
+
+  // Enriquecer la fila de la llamada
+  if (ctx.retellCallId) {
+    const fullName = [args.first_name, args.last_name].filter(Boolean).join(' ');
+    await setCallGhlContact(ctx.retellCallId, created.id, fullName).catch(() => undefined);
+  }
+
   return {
     result: `Paciente creado correctamente. contact_id=${created.id}. Usá ese id para llamar a book_appointment.`,
   };
@@ -344,6 +370,7 @@ export async function cancelAppointment(
 export async function getPatientInfo(
   tenantId: string,
   args: GetPatientInfoArgs,
+  ctx: { retellCallId?: string } = {},
 ): Promise<ToolResult> {
   const integration = await getGhlIntegration(tenantId);
   if (!integration) return ghlNotConnected();
@@ -357,6 +384,14 @@ export async function getPatientInfo(
       };
     }
     const name = [contact.firstName, contact.lastName].filter(Boolean).join(' ') || 'Sin nombre';
+
+    // Enriquecer la fila de la llamada con info del contacto encontrado
+    if (ctx.retellCallId) {
+      await setCallGhlContact(ctx.retellCallId, contact.id, name).catch((e) =>
+        console.error('[get_patient_info] enrich call failed:', e),
+      );
+    }
+
     return {
       result: `Paciente encontrado: ${name}. contact_id=${contact.id}. Usá ese contact_id para agendar la cita.`,
     };
@@ -378,22 +413,27 @@ export type KnownToolName =
   | 'get_patient_info'
   | 'register_patient';
 
+export type ToolContext = {
+  retellCallId?: string;
+};
+
 export async function dispatchTool(
   tenantId: string,
   toolName: string,
   args: Record<string, unknown>,
+  ctx: ToolContext = {},
 ): Promise<ToolResult> {
   switch (toolName as KnownToolName) {
     case 'check_availability':
       return checkAvailability(tenantId, args as CheckAvailabilityArgs);
     case 'book_appointment':
-      return bookAppointment(tenantId, args as BookAppointmentArgs);
+      return bookAppointment(tenantId, args as BookAppointmentArgs, ctx);
     case 'cancel_appointment':
       return cancelAppointment(tenantId, args as CancelAppointmentArgs);
     case 'get_patient_info':
-      return getPatientInfo(tenantId, args as GetPatientInfoArgs);
+      return getPatientInfo(tenantId, args as GetPatientInfoArgs, ctx);
     case 'register_patient':
-      return registerPatient(tenantId, args as RegisterPatientArgs);
+      return registerPatient(tenantId, args as RegisterPatientArgs, ctx);
     default:
       return { result: `Tool desconocida: ${toolName}` };
   }

@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'DentalVoice',
+  title: 'FUTURA SOLUTIONS',
   description: 'Agente de voz IA para clínicas dentales',
 };
 

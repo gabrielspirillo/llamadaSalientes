@@ -2,7 +2,7 @@ import 'server-only';
 import { db } from '@/lib/db/client';
 import { calls } from '@/lib/db/schema';
 import { decrypt } from '@/lib/crypto';
-import { and, desc, eq, gte, ilike, or, type SQL } from 'drizzle-orm';
+import { and, count, desc, eq, gte, ilike, isNotNull, or, sql, type SQL } from 'drizzle-orm';
 
 export type CallRow = typeof calls.$inferSelect;
 
@@ -123,6 +123,89 @@ export async function getDashboardStats(tenantId: string): Promise<DashboardStat
     conversionRate,
     containmentRate,
   };
+}
+
+/**
+ * Próximas citas: lee customData.appointment_start de calls que tengan
+ * cita agendada en el futuro.
+ */
+export type UpcomingAppointment = {
+  callId: string;
+  patientName: string | null;
+  phone: string | null;
+  treatmentName: string | null;
+  startTime: Date;
+};
+
+export async function getUpcomingAppointments(
+  tenantId: string,
+  limit = 5,
+): Promise<UpcomingAppointment[]> {
+  const rows = await db
+    .select({
+      callId: calls.id,
+      fromNumber: calls.fromNumber,
+      customData: calls.customData,
+    })
+    .from(calls)
+    .where(
+      and(
+        eq(calls.tenantId, tenantId),
+        eq(calls.intent, 'agendar'),
+        isNotNull(calls.customData),
+      ),
+    )
+    .orderBy(desc(calls.startedAt))
+    .limit(50); // luego filtramos en memoria por appointment_start futuro
+
+  const now = Date.now();
+  const upcoming: UpcomingAppointment[] = [];
+  for (const r of rows) {
+    const cd = (r.customData ?? {}) as {
+      patient_name?: string;
+      treatment_name?: string;
+      appointment_start?: string;
+    };
+    if (!cd.appointment_start) continue;
+    const start = new Date(cd.appointment_start);
+    if (Number.isNaN(start.getTime()) || start.getTime() <= now) continue;
+    upcoming.push({
+      callId: r.callId,
+      patientName: cd.patient_name ?? null,
+      phone: r.fromNumber,
+      treatmentName: cd.treatment_name ?? null,
+      startTime: start,
+    });
+  }
+  upcoming.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+  return upcoming.slice(0, limit);
+}
+
+/**
+ * Cantidades agregadas por motivo en los últimos 7 días.
+ * Para mini-charts en el dashboard.
+ */
+export async function getMotivoBreakdown(
+  tenantId: string,
+): Promise<Array<{ motivo: string; count: number }>> {
+  const since = new Date();
+  since.setDate(since.getDate() - 7);
+
+  const rows = await db
+    .select({
+      intent: calls.intent,
+      total: count(),
+    })
+    .from(calls)
+    .where(
+      and(eq(calls.tenantId, tenantId), gte(calls.startedAt, since), isNotNull(calls.intent)),
+    )
+    .groupBy(calls.intent);
+
+  return rows.map((r) => ({
+    motivo: r.intent ?? 'sin_clasificar',
+    count: Number(r.total),
+  }));
 }
 
 export function formatDuration(seconds: number | null): string {

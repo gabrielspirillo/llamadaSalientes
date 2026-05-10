@@ -3,6 +3,73 @@ import 'server-only';
 const MODEL = 'gemini-2.0-flash-exp';
 const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
+const SUMMARY_SYSTEM = `Eres un analista de conversaciones telefónicas de una clínica dental.
+Recibís el transcript completo de una llamada entre un paciente y el agente.
+Devolvés EXCLUSIVAMENTE un JSON válido sin markdown:
+{
+  "intent": "agendar" | "reagendar" | "cancelar" | "consulta" | "queja" | "otro",
+  "sentiment": "positivo" | "neutro" | "negativo",
+  "summary": "2-3 frases en ESPAÑOL describiendo qué pasó (NUNCA en inglés)",
+  "followUp": null o un string corto con acción pendiente para recepción
+}`;
+
+export type CallSummaryResult = {
+  intent: string;
+  sentiment: 'positivo' | 'neutro' | 'negativo';
+  summary: string;
+  followUp: string | null;
+};
+
+export async function summarizeCallWithGemini(transcript: string): Promise<CallSummaryResult> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GEMINI_API_KEY no está configurada');
+
+  const res = await fetch(`${ENDPOINT}?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: SUMMARY_SYSTEM }] },
+      contents: [{ role: 'user', parts: [{ text: `Transcript:\n${transcript.slice(0, 8000)}` }] }],
+      generationConfig: {
+        temperature: 0.2,
+        responseMimeType: 'application/json',
+      },
+    }),
+  });
+  if (!res.ok) throw new Error(`Gemini ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const data = (await res.json()) as GeminiResponse;
+  const raw = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}';
+  const parsed = JSON.parse(raw) as Partial<CallSummaryResult>;
+  return {
+    intent: parsed.intent ?? 'otro',
+    sentiment: (parsed.sentiment as CallSummaryResult['sentiment']) ?? 'neutro',
+    summary: parsed.summary ?? 'Sin resumen disponible.',
+    followUp: parsed.followUp ?? null,
+  };
+}
+
+export async function translateToSpanish(text: string): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey || !text || /^[¿¡a-záéíóúñ\s,.\d]+/i.test(text.slice(0, 60))) {
+    // Heurística simple: si parece español, no traducir
+    return text;
+  }
+  const res = await fetch(`${ENDPOINT}?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: {
+        parts: [{ text: 'Traducí al español neutro el texto siguiente. Devolvé SOLO la traducción sin comentarios.' }],
+      },
+      contents: [{ role: 'user', parts: [{ text }] }],
+      generationConfig: { temperature: 0.1 },
+    }),
+  });
+  if (!res.ok) return text;
+  const data = (await res.json()) as GeminiResponse;
+  return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? text;
+}
+
 export type GeminiResponse = {
   candidates?: Array<{
     content?: {

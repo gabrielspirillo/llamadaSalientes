@@ -20,17 +20,26 @@ export async function GET(_req: NextRequest) {
   }
 
   if (!process.env.GEMINI_API_KEY) {
-    return NextResponse.json({ error: 'Gemini no configurado' }, { status: 503 });
+    return NextResponse.json(
+      { error: 'GEMINI_API_KEY no está configurada en Vercel. Pedile al admin que la agregue.' },
+      { status: 503 },
+    );
   }
 
-  // Últimas 50 llamadas del tenant
-  const recent = await listCalls(tenantId, 50);
+  let recent: Awaited<ReturnType<typeof listCalls>>;
+  try {
+    recent = await listCalls(tenantId, 50);
+  } catch (err) {
+    console.error('[insights] listCalls failed:', err);
+    return NextResponse.json({ error: 'No pude leer las llamadas del tenant.' }, { status: 500 });
+  }
+
   if (recent.length === 0) {
     return NextResponse.json({
       topPatterns: [],
       alerts: [],
       promptSuggestions: [],
-      message: 'Sin datos suficientes',
+      message: 'Necesito al menos 1 llamada para analizar patrones.',
     });
   }
 
@@ -43,15 +52,26 @@ export async function GET(_req: NextRequest) {
     sentimentCounts.set(sk, (sentimentCounts.get(sk) ?? 0) + 1);
   }
 
-  const insights = await generateCallInsights({
-    totalCalls: recent.length,
-    byIntent: Array.from(intentCounts, ([intent, count]) => ({ intent, count })),
-    bySentiment: Array.from(sentimentCounts, ([sentiment, count]) => ({ sentiment, count })),
-    recentSummaries: recent
-      .map((c) => c.summary)
-      .filter((s): s is string => typeof s === 'string' && s.length > 0)
-      .slice(0, 20),
-  });
-
-  return NextResponse.json(insights);
+  try {
+    const insights = await generateCallInsights({
+      totalCalls: recent.length,
+      byIntent: Array.from(intentCounts, ([intent, count]) => ({ intent, count })),
+      bySentiment: Array.from(sentimentCounts, ([sentiment, count]) => ({
+        sentiment,
+        count,
+      })),
+      recentSummaries: recent
+        .map((c) => c.summary)
+        .filter((s): s is string => typeof s === 'string' && s.length > 0)
+        .slice(0, 20),
+    });
+    return NextResponse.json(insights);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Error desconocido';
+    console.error('[insights] gemini failed:', err);
+    return NextResponse.json(
+      { error: `Gemini falló: ${msg.slice(0, 200)}` },
+      { status: 502 },
+    );
+  }
 }

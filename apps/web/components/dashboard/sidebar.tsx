@@ -18,7 +18,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const items = [
-  { href: '/dashboard', label: 'Overview', icon: Home },
+  { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: '/dashboard/calls', label: 'Llamadas', icon: PhoneCall },
   { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/dashboard/agent', label: 'Agente', icon: Bot },
@@ -35,10 +35,10 @@ export function DashboardSidebar() {
   return (
     <aside className="hidden lg:flex w-60 shrink-0 flex-col border-r border-zinc-200/70 bg-zinc-50/40">
       <div className="flex h-14 items-center gap-2 border-b border-zinc-200/70 px-5">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-black">
-          <span className="text-xs font-semibold text-white">D</span>
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-blue-600">
+          <span className="text-xs font-semibold text-white">F</span>
         </div>
-        <span className="text-[15px] font-semibold tracking-tight">DentalVoice</span>
+        <span className="text-[15px] font-semibold tracking-tight">FUTURA SOLUTIONS</span>
       </div>
 
       <div className="px-3 pt-3">
