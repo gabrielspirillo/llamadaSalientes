@@ -1,6 +1,6 @@
 import { PageHeader } from '@/components/dashboard/page-header';
 import { getClinicSettings } from '@/lib/data/clinic';
-import { getGhlIntegration } from '@/lib/data/ghl-integration';
+import { getGhlIntegration, isPitIntegration } from '@/lib/data/ghl-integration';
 import { getCurrentTenant } from '@/lib/tenant';
 import { GhlCard } from './ghl-card';
 import { SettingsForm } from './settings-form';
@@ -41,6 +41,7 @@ export default async function SettingsPage({
               scopes: ghl.scopes,
               connectedAt: ghl.connectedAt,
               expiresAt: ghl.expiresAt,
+              method: isPitIntegration(ghl) ? 'pit' : 'oauth',
             }
           : { kind: 'disconnected' }
       }

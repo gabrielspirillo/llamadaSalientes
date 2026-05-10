@@ -8,6 +8,11 @@ import { eq } from 'drizzle-orm';
 
 const REFRESH_BUFFER_MS = 5 * 60 * 1000; // refresca si quedan < 5 min
 
+// Sentinel: distingue Private Integration Tokens (PIT) de tokens OAuth.
+// PIT no expira y no tiene refresh — guardamos este string en refreshTokenEnc
+// (cifrado igualmente) y skipeamos el refresh flow.
+const PIT_MARKER = '__PIT_NO_REFRESH__';
+
 export type GhlIntegration = typeof ghlIntegrations.$inferSelect;
 
 export async function getGhlIntegration(tenantId: string) {
@@ -54,13 +59,67 @@ export async function deleteGhlIntegration(tenantId: string) {
 }
 
 /**
- * Devuelve un access token válido. Si está por expirar, lo refresca y persiste
- * los nuevos tokens cifrados antes de devolver.
+ * Conecta GHL via Private Integration Token (alternativa a OAuth).
+ * Más simple: el token no expira y no tiene refresh.
+ */
+export async function upsertGhlPit(input: {
+  tenantId: string;
+  pit: string;
+  locationId: string;
+  companyId?: string | null;
+  scopes?: string;
+  connectedBy?: string | null;
+}) {
+  if (!input.pit.startsWith('pit-')) {
+    throw new Error('El token no parece ser un PIT válido (debe empezar con "pit-")');
+  }
+
+  const values = {
+    tenantId: input.tenantId,
+    locationId: input.locationId,
+    companyId: input.companyId ?? null,
+    accessTokenEnc: encrypt(input.pit),
+    refreshTokenEnc: encrypt(PIT_MARKER),
+    expiresAt: new Date('2099-12-31T00:00:00Z'),
+    scopes: input.scopes ?? 'pit',
+    connectedBy: input.connectedBy ?? null,
+  };
+
+  const existing = await getGhlIntegration(input.tenantId);
+  if (existing) {
+    const [row] = await db
+      .update(ghlIntegrations)
+      .set(values)
+      .where(eq(ghlIntegrations.tenantId, input.tenantId))
+      .returning();
+    return row;
+  }
+  const [row] = await db.insert(ghlIntegrations).values(values).returning();
+  return row;
+}
+
+export function isPitIntegration(integration: GhlIntegration): boolean {
+  try {
+    return decrypt(integration.refreshTokenEnc) === PIT_MARKER;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Devuelve un access token válido.
+ *  - PIT: lo desencripta y devuelve directo (no expira).
+ *  - OAuth: refresca si está por expirar y persiste los nuevos tokens.
  */
 export async function getValidAccessToken(tenantId: string): Promise<string> {
   const integration = await getGhlIntegration(tenantId);
   if (!integration) {
     throw new Error('GHL no está conectado para este tenant');
+  }
+
+  // PIT: token estático, no hay refresh.
+  if (isPitIntegration(integration)) {
+    return decrypt(integration.accessTokenEnc);
   }
 
   const now = Date.now();
@@ -70,7 +129,7 @@ export async function getValidAccessToken(tenantId: string): Promise<string> {
     return decrypt(integration.accessTokenEnc);
   }
 
-  // Refresh
+  // Refresh OAuth
   const refreshToken = decrypt(integration.refreshTokenEnc);
   const fresh = await refreshAccessToken(refreshToken);
 

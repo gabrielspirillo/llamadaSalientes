@@ -10,6 +10,9 @@ export default defineConfig({
       'server-only': path.resolve(__dirname, 'tests/mocks/server-only.ts'),
     },
   },
+  // Skip PostCSS — los tests son unit, no necesitan CSS de Tailwind.
+  // Sin esto, vitest intenta cargar lightningcss native binary y rompe.
+  css: { postcss: { plugins: [] } },
   test: {
     environment: 'happy-dom',
     globals: true,
