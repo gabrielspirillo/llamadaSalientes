@@ -34,11 +34,13 @@ export function DashboardSidebar() {
 
   return (
     <aside className="hidden lg:flex w-60 shrink-0 flex-col border-r border-zinc-200/70 bg-zinc-50/40">
-      <div className="flex h-14 items-center gap-2 border-b border-zinc-200/70 px-5">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-blue-600">
-          <span className="text-xs font-semibold text-white">F</span>
+      <div className="flex h-14 items-center border-b border-zinc-200/70 px-5">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[18px] font-extrabold tracking-tight text-[#0f1f2e] leading-none">
+            FUTURA
+          </span>
+          <span className="inline-block h-2 w-2 rounded-full bg-[#5fa896]" />
         </div>
-        <span className="text-[15px] font-semibold tracking-tight">FUTURA SOLUTIONS</span>
       </div>
 
       <div className="px-3 pt-3">
