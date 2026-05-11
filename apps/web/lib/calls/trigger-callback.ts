@@ -174,9 +174,33 @@ export async function triggerCallback(
       };
     }
     if (callStatus === 'not_connected') {
+      // Diagnóstico fino según la disconnection_reason que devuelve Retell
+      let hint = '';
+      switch (disconnectionReason) {
+        case 'telephony_provider_permission_denied':
+          hint = `Twilio bloqueó la llamada por geo-permisos. Activá el país de destino en Twilio Console → Voice → Settings → Geo Permissions. País detectado: ${phone.startsWith('+54') ? 'Argentina' : phone.startsWith('+34') ? 'España' : phone.startsWith('+52') ? 'México' : 'desconocido'}.`;
+          break;
+        case 'dial_busy':
+          hint = 'El número está ocupado. Probá de nuevo en unos minutos.';
+          break;
+        case 'dial_failed':
+          hint = 'Twilio no pudo discar. Verificá que el número de destino sea válido y que tu cuenta Twilio tenga saldo.';
+          break;
+        case 'dial_no_answer':
+          hint = 'El paciente no atendió.';
+          break;
+        case 'invalid_destination':
+          hint = `El número de destino (${phone}) no es válido. Revisá el formato E.164.`;
+          break;
+        case 'voicemail':
+          hint = 'Saltó al buzón de voz.';
+          break;
+        default:
+          hint = `Razón Retell/Twilio: ${disconnectionReason ?? 'desconocida'}.`;
+      }
       return {
         ok: false,
-        error: `La llamada no se pudo conectar. Causa probable: Twilio en modo trial sólo puede llamar a números verificados, o el número de destino (${phone}) está bloqueado por país.`,
+        error: hint,
         reason: 'retell_error',
       };
     }
