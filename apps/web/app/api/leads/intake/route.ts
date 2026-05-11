@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
 
   if (!result.ok) {
     const status =
-      result.reason === 'rate_limit' ? 429 : result.reason === 'invalid_input' ? 422 : 400;
+      result.reason === 'invalid_input' ? 422 : 400;
     return NextResponse.json({ error: result.error, reason: result.reason }, { status });
   }
 

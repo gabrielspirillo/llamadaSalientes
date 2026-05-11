@@ -1,11 +1,11 @@
 import 'server-only';
 import { db } from '@/lib/db/client';
-import { calls, phoneNumbers, tenants } from '@/lib/db/schema';
+import { phoneNumbers, tenants } from '@/lib/db/schema';
 import { resolveRetellAgentId } from '@/lib/data/agent-config';
 import { getGhlIntegration } from '@/lib/data/ghl-integration';
 import { createContact, lookupContactByPhone } from '@/lib/ghl/contacts-mutations';
 import { getRetellClient } from '@/lib/retell/client';
-import { and, desc, eq, gte } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 export type TriggerCallbackInput = {
   tenantId: string;
@@ -23,16 +23,16 @@ export type TriggerCallbackInput = {
 
 export type TriggerCallbackResult =
   | { ok: true; callId: string; status: string; contactId: string | null }
-  | { ok: false; error: string; reason: 'rate_limit' | 'no_agent' | 'no_phone' | 'retell_error' | 'invalid_input' };
-
-const RATE_LIMIT_WINDOW_MS = 30 * 60_000; // 30 min entre callbacks al mismo número
+  | { ok: false; error: string; reason: 'no_agent' | 'no_phone' | 'retell_error' | 'invalid_input' };
 
 /**
  * Trigger atómico de un callback saliente:
  *   1. Valida que haya agente Retell + número de origen configurados.
- *   2. Aplica rate-limit por número (30 min entre llamadas al mismo phone).
- *   3. Asegura que exista un contacto en GHL (crea si falta).
- *   4. Llama a Retell para iniciar la llamada saliente con metadata + dynamic vars.
+ *   2. Asegura que exista un contacto en GHL (crea si falta).
+ *   3. Llama a Retell para iniciar la llamada saliente con metadata + dynamic vars.
+ *
+ * Sin rate-limit: el usuario quiere poder probar y reintentar inmediatamente.
+ * (Si en producción spam se vuelve un problema, agregar throttle por phone.)
  *
  * Usado desde:
  *   - Botón "Llamar ahora" del dashboard
@@ -47,30 +47,7 @@ export async function triggerCallback(
     return { ok: false, error: 'Número de teléfono inválido', reason: 'invalid_input' };
   }
 
-  // 1. Rate limit: no llamar al mismo phone si ya hubo una en los últimos 30 min
-  const since = new Date(Date.now() - RATE_LIMIT_WINDOW_MS);
-  const recent = await db
-    .select({ id: calls.id, startedAt: calls.startedAt })
-    .from(calls)
-    .where(
-      and(
-        eq(calls.tenantId, input.tenantId),
-        eq(calls.toNumber, phone),
-        gte(calls.startedAt, since),
-      ),
-    )
-    .orderBy(desc(calls.startedAt))
-    .limit(1);
-
-  if (recent[0]) {
-    return {
-      ok: false,
-      error: `Ya se llamó a ${phone} en los últimos 30 minutos. Esperá un poco.`,
-      reason: 'rate_limit',
-    };
-  }
-
-  // 2. Resolver agente + número de origen
+  // Resolver agente + número de origen
   const agentId = await resolveRetellAgentId(input.tenantId);
   if (!agentId) {
     return { ok: false, error: 'No hay agente Retell configurado para este tenant.', reason: 'no_agent' };
