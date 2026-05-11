@@ -141,6 +141,25 @@ export async function getUpcomingAppointments(
   tenantId: string,
   limit = 5,
 ): Promise<UpcomingAppointment[]> {
+  // Source of truth: GHL appointments. Si falla / no hay GHL, fallback a
+  // los appointments registrados en customData de calls (creados por el agente).
+  try {
+    const { listUpcomingAppointments } = await import('@/lib/ghl/calendars');
+    const ghlItems = await listUpcomingAppointments(tenantId, 14);
+    if (ghlItems.length > 0) {
+      return ghlItems.slice(0, limit).map((a) => ({
+        callId: a.id, // usamos el appointment id como key
+        patientName: a.contactName ?? null,
+        phone: null,
+        treatmentName: a.title ?? a.calendarName,
+        startTime: new Date(a.startTime),
+      }));
+    }
+  } catch (err) {
+    console.error('[getUpcomingAppointments] GHL fallo, fallback local:', err);
+  }
+
+  // Fallback local
   const rows = await db
     .select({
       callId: calls.id,
@@ -156,7 +175,7 @@ export async function getUpcomingAppointments(
       ),
     )
     .orderBy(desc(calls.startedAt))
-    .limit(50); // luego filtramos en memoria por appointment_start futuro
+    .limit(50);
 
   const now = Date.now();
   const upcoming: UpcomingAppointment[] = [];

@@ -13,6 +13,18 @@ export type GhlSlot = { startTime: string; endTime: string };
 
 type ListResponse = { calendars?: GhlCalendar[] };
 
+export type DayKey = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
+
+const DAY_TO_NUMBER: Record<DayKey, number> = {
+  Mon: 1,
+  Tue: 2,
+  Wed: 3,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
+  Sun: 0,
+};
+
 /**
  * Lista calendarios de la sub-account de GHL.
  * Endpoint: GET /calendars/?locationId={id}
@@ -126,4 +138,166 @@ export async function getFreeSlots(
     }
   }
   return allSlots;
+}
+
+/**
+ * Crea un calendario en GHL para un tratamiento específico.
+ * Devuelve el calendarId creado.
+ */
+export async function createCalendarForTreatment(
+  tenantId: string,
+  args: {
+    name: string;
+    durationMinutes: number;
+    days: DayKey[];
+    startTime: string; // "09:00"
+    endTime: string; // "18:00"
+  },
+): Promise<string | null> {
+  const integration = await getGhlIntegration(tenantId);
+  if (!integration) return null;
+
+  // GHL espera openHours como array por día numérico (Sun=0 .. Sat=6)
+  const openHours = args.days.map((d) => ({
+    daysOfTheWeek: [DAY_TO_NUMBER[d]],
+    hours: [{ openHour: parseHour(args.startTime), openMinute: parseMinute(args.startTime), closeHour: parseHour(args.endTime), closeMinute: parseMinute(args.endTime) }],
+  }));
+
+  const body = {
+    locationId: integration.locationId,
+    name: args.name,
+    description: '',
+    calendarType: 'event',
+    eventType: 'RoundRobin_OptimizeForAvailability',
+    slotDuration: args.durationMinutes,
+    slotDurationUnit: 'mins',
+    slotInterval: args.durationMinutes,
+    slotIntervalUnit: 'mins',
+    slotBuffer: 0,
+    slotBufferUnit: 'mins',
+    preBufferUnit: 'mins',
+    appoinmentPerSlot: 1,
+    appoinmentPerDay: 0,
+    allowBookingAfter: 0,
+    allowBookingAfterUnit: 'hours',
+    allowBookingFor: 30,
+    allowBookingForUnit: 'days',
+    openHours,
+    enableRecurring: false,
+    autoConfirm: true,
+    googleInvitationEmails: false,
+    allowReschedule: true,
+    allowCancellation: true,
+    isActive: true,
+    formSubmitType: 'ThankYouMessage',
+    formSubmitRedirectURL: '',
+    formSubmitThanksMessage: 'Gracias, recibimos tu reserva.',
+  };
+
+  const data = await ghlFetch<{ id?: string; calendar?: { id?: string } }>({
+    tenantId,
+    path: '/calendars/',
+    method: 'POST',
+    body,
+  });
+  return data.id ?? data.calendar?.id ?? null;
+}
+
+export async function deleteCalendar(tenantId: string, calendarId: string): Promise<void> {
+  await ghlFetch({
+    tenantId,
+    path: `/calendars/${calendarId}`,
+    method: 'DELETE',
+  });
+}
+
+function parseHour(t: string): number {
+  return Number(t.split(':')[0] ?? 0);
+}
+function parseMinute(t: string): number {
+  return Number(t.split(':')[1] ?? 0);
+}
+
+/**
+ * Próximas citas del location en los próximos N días.
+ * Itera los calendarios y consolida appointments.
+ */
+export type UpcomingAppointment = {
+  id: string;
+  calendarId: string;
+  calendarName: string | null;
+  contactId: string | null;
+  contactName: string | null;
+  startTime: string;
+  endTime: string | null;
+  status: string | null;
+  title: string | null;
+};
+
+export async function listUpcomingAppointments(
+  tenantId: string,
+  daysAhead = 14,
+): Promise<UpcomingAppointment[]> {
+  const integration = await getGhlIntegration(tenantId);
+  if (!integration) return [];
+
+  const cals = await listCalendars(tenantId);
+  if (cals.length === 0) return [];
+
+  const now = new Date();
+  now.setUTCHours(0, 0, 0, 0);
+  const end = new Date(now);
+  end.setUTCDate(end.getUTCDate() + daysAhead);
+
+  type RawAppt = {
+    id: string;
+    calendarId?: string;
+    contactId?: string;
+    contact?: { id?: string; firstName?: string; lastName?: string };
+    startTime?: string;
+    endTime?: string;
+    appointmentStatus?: string;
+    status?: string;
+    title?: string;
+  };
+
+  const results: UpcomingAppointment[] = [];
+  for (const cal of cals) {
+    try {
+      const data = await ghlFetch<{ events?: RawAppt[]; appointments?: RawAppt[] }>({
+        tenantId,
+        path: '/calendars/events',
+        query: {
+          locationId: integration.locationId,
+          calendarId: cal.id,
+          startTime: now.getTime(),
+          endTime: end.getTime(),
+        },
+      });
+      const items = data.events ?? data.appointments ?? [];
+      for (const a of items) {
+        if (!a.startTime) continue;
+        const cname = a.contact
+          ? [a.contact.firstName, a.contact.lastName].filter(Boolean).join(' ')
+          : null;
+        results.push({
+          id: a.id,
+          calendarId: cal.id,
+          calendarName: cal.name ?? null,
+          contactId: a.contactId ?? a.contact?.id ?? null,
+          contactName: cname || null,
+          startTime: a.startTime,
+          endTime: a.endTime ?? null,
+          status: a.appointmentStatus ?? a.status ?? null,
+          title: a.title ?? null,
+        });
+      }
+    } catch (err) {
+      console.error('[listUpcomingAppointments] cal', cal.id, err);
+    }
+  }
+
+  // Ordenar por startTime ascendente
+  results.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+  return results;
 }

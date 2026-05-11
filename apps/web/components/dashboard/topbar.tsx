@@ -1,14 +1,25 @@
 'use client';
 
 import { UserButton } from '@clerk/nextjs';
-import { ArrowRight, Bell, Calendar, Check, MessageCircle, Phone, Search, X } from 'lucide-react';
+import {
+  ArrowRight,
+  Bell,
+  Calendar,
+  Check,
+  Contact,
+  MessageCircle,
+  Phone,
+  Search,
+  X,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 type SearchHit =
   | { kind: 'call'; id: string; title: string; subtitle: string; href: string; when: string | null }
-  | { kind: 'treatment'; id: string; title: string; subtitle: string; href: string; when: null };
+  | { kind: 'treatment'; id: string; title: string; subtitle: string; href: string; when: null }
+  | { kind: 'contact'; id: string; title: string; subtitle: string; href: string; when: null };
 
 type Notification = {
   id: string;
@@ -166,6 +177,8 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
                     <div className="h-8 w-8 rounded-lg bg-zinc-100 flex items-center justify-center shrink-0 text-zinc-600">
                       {h.kind === 'call' ? (
                         <Phone className="h-4 w-4" />
+                      ) : h.kind === 'contact' ? (
+                        <Contact className="h-4 w-4" />
                       ) : (
                         <Calendar className="h-4 w-4" />
                       )}

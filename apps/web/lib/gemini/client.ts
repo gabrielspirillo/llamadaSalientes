@@ -1,7 +1,8 @@
 import 'server-only';
 
-// `gemini-2.0-flash-exp` se deprecó. Usamos el GA stable.
-const MODEL = 'gemini-2.0-flash';
+// gemini-2.0-flash dio 404 ("no longer available to new users").
+// Usamos el alias "latest" para que siempre apunte al GA vigente.
+const MODEL = 'gemini-flash-latest';
 const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
 const SUMMARY_SYSTEM = `Eres un analista de conversaciones telefónicas de una clínica dental.

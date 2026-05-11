@@ -1,11 +1,13 @@
 import 'server-only';
 import { db } from '@/lib/db/client';
 import { calls, treatments } from '@/lib/db/schema';
+import { listContacts } from '@/lib/ghl/contacts';
 import { and, desc, eq, ilike, or } from 'drizzle-orm';
 
 export type SearchHit =
   | { kind: 'call'; id: string; title: string; subtitle: string; href: string; when: Date | null }
-  | { kind: 'treatment'; id: string; title: string; subtitle: string; href: string; when: null };
+  | { kind: 'treatment'; id: string; title: string; subtitle: string; href: string; when: null }
+  | { kind: 'contact'; id: string; title: string; subtitle: string; href: string; when: null };
 
 /**
  * Búsqueda global: llamadas (por número, summary, intent) + tratamientos.
@@ -77,6 +79,29 @@ export async function searchAll(tenantId: string, q: string, limit = 10): Promis
       href: '/dashboard/treatments',
       when: null,
     });
+  }
+
+  // Contactos vivos de GHL (no en DB local — usan API externa).
+  // Falla silenciosamente si GHL no está conectado.
+  try {
+    const { contacts } = await listContacts(tenantId, { query: term, limit: 5 });
+    for (const c of contacts) {
+      const name =
+        [c.firstName, c.lastName].filter(Boolean).join(' ').trim() ||
+        c.email ||
+        c.phone ||
+        'Sin nombre';
+      hits.push({
+        kind: 'contact',
+        id: c.id,
+        title: name,
+        subtitle: [c.phone, c.email].filter(Boolean).join(' · ') || 'Contacto',
+        href: `/dashboard/contacts?focus=${encodeURIComponent(c.id)}`,
+        when: null,
+      });
+    }
+  } catch (err) {
+    console.error('[searchAll] GHL contacts fallo:', err);
   }
 
   return hits;
