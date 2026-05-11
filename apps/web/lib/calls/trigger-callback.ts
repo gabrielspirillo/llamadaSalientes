@@ -116,9 +116,18 @@ export async function triggerCallback(
   const clinicName = tenantRow?.name ?? 'la clínica';
 
   // 5. Llamar a Retell
+  console.log('[triggerCallback] createPhoneCall', {
+    from: phoneRow.e164,
+    to: phone,
+    agentId,
+    tenantId: input.tenantId,
+    name: input.patientName,
+  });
+
+  let createdCall: { call_id: string; call_status?: string } | null = null;
   try {
     const retell = getRetellClient();
-    const call = await retell.call.createPhoneCall({
+    createdCall = await retell.call.createPhoneCall({
       from_number: phoneRow.e164,
       to_number: phone,
       override_agent_id: agentId,
@@ -129,7 +138,6 @@ export async function triggerCallback(
         source: input.source ?? 'manual',
         direction: 'outbound',
       },
-      // Dynamic variables → el prompt de Retell puede usar {{patient_name}}, etc.
       retell_llm_dynamic_variables: {
         patient_name: input.patientName ?? 'paciente',
         clinic_name: clinicName,
@@ -138,17 +146,56 @@ export async function triggerCallback(
         lead_source: input.source ?? 'manual',
       },
     });
-
-    return {
-      ok: true,
-      callId: call.call_id,
-      status: call.call_status ?? 'registered',
-      contactId: ghlContactId,
-    };
+    console.log('[triggerCallback] Retell ACK:', {
+      callId: createdCall.call_id,
+      status: createdCall.call_status,
+    });
   } catch (err) {
     console.error('[triggerCallback] Retell createPhoneCall fallo:', err);
     const msg = err instanceof Error ? err.message : 'Error desconocido';
     return { ok: false, error: `Retell rechazó la llamada: ${msg}`, reason: 'retell_error' };
+  }
+
+  // 6. Follow-up: esperá 3 segundos y verificá que la llamada esté progresando.
+  // Si está en "error" o "not_connected", Twilio/Retell rechazó el dial-out.
+  await new Promise((r) => setTimeout(r, 3000));
+  try {
+    const retell = getRetellClient();
+    const status = await retell.call.retrieve(createdCall.call_id);
+    const callStatus = (status as { call_status?: string }).call_status;
+    const disconnectionReason = (status as { disconnection_reason?: string }).disconnection_reason;
+    console.log('[triggerCallback] follow-up:', { callStatus, disconnectionReason });
+
+    if (callStatus === 'error') {
+      return {
+        ok: false,
+        error: `Retell marcó la llamada como error: ${disconnectionReason ?? 'razón desconocida'}. Revisá los logs de Retell y Twilio.`,
+        reason: 'retell_error',
+      };
+    }
+    if (callStatus === 'not_connected') {
+      return {
+        ok: false,
+        error: `La llamada no se pudo conectar. Causa probable: Twilio en modo trial sólo puede llamar a números verificados, o el número de destino (${phone}) está bloqueado por país.`,
+        reason: 'retell_error',
+      };
+    }
+    // 'registered', 'ongoing', 'ended' → en algún punto del happy path
+    return {
+      ok: true,
+      callId: createdCall.call_id,
+      status: callStatus ?? 'registered',
+      contactId: ghlContactId,
+    };
+  } catch (err) {
+    console.error('[triggerCallback] follow-up retrieve fallo:', err);
+    // Si no podemos verificar, asumimos que está OK (no bloqueamos al usuario)
+    return {
+      ok: true,
+      callId: createdCall.call_id,
+      status: createdCall.call_status ?? 'registered',
+      contactId: ghlContactId,
+    };
   }
 }
 

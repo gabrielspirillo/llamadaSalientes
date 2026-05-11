@@ -143,7 +143,7 @@ export function ContactDetailDialog({
   async function callNow() {
     if (!contact?.phone) return;
     setCallingNow(true);
-    setCallFeedback(null);
+    setCallFeedback({ ok: true, msg: `Disparando llamada a ${fullName}…` });
     try {
       const res = await fetch('/api/calls/outbound', {
         method: 'POST',
@@ -155,11 +155,16 @@ export function ContactDetailDialog({
           email: contact.email ?? null,
         }),
       });
-      const body = await res.json().catch(() => ({}));
+      const body = (await res.json().catch(() => ({}))) as {
+        callId?: string;
+        status?: string;
+        error?: string;
+      };
       if (res.ok) {
+        const callId = body.callId ?? '';
         setCallFeedback({
           ok: true,
-          msg: `Llamando a ${fullName}… El paciente va a recibir la llamada en unos segundos.`,
+          msg: `Llamada disparada (${body.status ?? 'registered'}). Call ID: ${callId.slice(-12)}. Si el paciente no recibe la llamada en 10 segundos, revisá Retell logs.`,
         });
       } else {
         setCallFeedback({
