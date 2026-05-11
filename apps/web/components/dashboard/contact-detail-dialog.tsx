@@ -6,13 +6,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import {
   Calendar,
+  CheckCircle2,
   ExternalLink,
   Loader2,
   Mail,
-  MessageSquare,
+  PhoneCall,
   Phone,
   User,
-  X,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -100,6 +100,8 @@ export function ContactDetailDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<'datos' | 'llamadas' | 'citas'>('datos');
+  const [callingNow, setCallingNow] = useState(false);
+  const [callFeedback, setCallFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -138,14 +140,76 @@ export function ContactDetailDialog({
     (a) => new Date(a.startTime).getTime() > Date.now(),
   ).length;
 
+  async function callNow() {
+    if (!contact?.phone) return;
+    setCallingNow(true);
+    setCallFeedback(null);
+    try {
+      const res = await fetch('/api/calls/outbound', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          toNumber: contact.phone,
+          patientName: fullName,
+          ghlContactId: contact.id,
+          email: contact.email ?? null,
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setCallFeedback({
+          ok: true,
+          msg: `Llamando a ${fullName}… El paciente va a recibir la llamada en unos segundos.`,
+        });
+      } else {
+        setCallFeedback({
+          ok: false,
+          msg: body.error ?? `Error ${res.status}`,
+        });
+      }
+    } catch (e) {
+      setCallFeedback({
+        ok: false,
+        msg: e instanceof Error ? e.message : 'Error',
+      });
+    }
+    setCallingNow(false);
+  }
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-[800px] p-0 gap-0 overflow-hidden">
         <DialogHeader className="px-6 pt-5 pb-4 border-b border-zinc-100">
-          <DialogTitle className="text-lg flex items-center gap-3">
-            <User className="h-5 w-5 text-violet-600" />
-            {fullName}
-          </DialogTitle>
+          <div className="flex items-center justify-between gap-3">
+            <DialogTitle className="text-lg flex items-center gap-3">
+              <User className="h-5 w-5 text-violet-600" />
+              {fullName}
+            </DialogTitle>
+            {contact?.phone && (
+              <Button size="sm" onClick={callNow} disabled={callingNow}>
+                {callingNow ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <PhoneCall className="h-3.5 w-3.5" />
+                )}
+                Llamar ahora
+              </Button>
+            )}
+          </div>
+          {callFeedback && (
+            <div
+              className={`mt-3 flex items-start gap-2 rounded-lg px-3 py-2 text-xs ${
+                callFeedback.ok
+                  ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+                  : 'bg-red-50 border border-red-200 text-red-800'
+              }`}
+            >
+              {callFeedback.ok ? (
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+              ) : null}
+              <span>{callFeedback.msg}</span>
+            </div>
+          )}
         </DialogHeader>
 
         <div className="flex items-center gap-1 px-6 border-b border-zinc-100">

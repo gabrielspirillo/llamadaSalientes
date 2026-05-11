@@ -44,9 +44,11 @@ const DEFAULT_HOURS: WorkingHours = {
 export function SettingsForm({
   initial,
   ghlSlot,
+  autoCallbackSlot,
 }: {
   initial: Settings;
   ghlSlot: React.ReactNode;
+  autoCallbackSlot?: React.ReactNode;
 }) {
   const [hours, setHours] = useState<WorkingHours>(initial.workingHours ?? DEFAULT_HOURS);
   const [phones, setPhones] = useState<string[]>(initial.phones ?? []);
@@ -281,6 +283,7 @@ export function SettingsForm({
 
         <div className="space-y-6">
           {ghlSlot}
+          {autoCallbackSlot}
 
           <Card>
             <div className="p-6">

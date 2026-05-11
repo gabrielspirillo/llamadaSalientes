@@ -1,9 +1,13 @@
 import { PageHeader } from '@/components/dashboard/page-header';
+import { deriveIntakeKey } from '@/lib/auth/intake-key';
 import { getClinicSettings } from '@/lib/data/clinic';
 import { getGhlIntegration, isPitIntegration } from '@/lib/data/ghl-integration';
 import { getCurrentTenant } from '@/lib/tenant';
+import { AutoCallbackCard } from './auto-callback-card';
 import { GhlCard } from './ghl-card';
 import { SettingsForm } from './settings-form';
+
+import { headers } from 'next/headers';
 
 export default async function SettingsPage({
   searchParams,
@@ -48,6 +52,27 @@ export default async function SettingsPage({
     />
   );
 
+  // Construir URLs absolutas para el panel auto-callback
+  const hdrs = await headers();
+  const host = hdrs.get('host') ?? 'localhost:3000';
+  const proto =
+    hdrs.get('x-forwarded-proto') ?? (host.includes('localhost') ? 'http' : 'https');
+  const baseUrl = `${proto}://${host}`;
+  const intakeKey = deriveIntakeKey(tenant.id);
+  const intakeUrl = `${baseUrl}/api/leads/intake?tenant=${encodeURIComponent(tenant.slug)}`;
+  const ghlWebhookUrl = ghl
+    ? `${baseUrl}/api/webhooks/ghl/contact?location=${encodeURIComponent(ghl.locationId)}`
+    : `${baseUrl}/api/webhooks/ghl/contact`;
+
+  const autoCallbackCard = (
+    <AutoCallbackCard
+      intakeUrl={intakeUrl}
+      intakeKey={intakeKey}
+      ghlWebhookUrl={ghlWebhookUrl}
+      locationId={ghl?.locationId ?? null}
+    />
+  );
+
   return (
     <>
       <PageHeader
@@ -67,6 +92,7 @@ export default async function SettingsPage({
 
       <SettingsForm
         ghlSlot={ghlCard}
+        autoCallbackSlot={autoCallbackCard}
         initial={{
           address: settings.address,
           phones: settings.phones,

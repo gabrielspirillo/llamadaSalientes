@@ -1,6 +1,7 @@
 import 'server-only';
 import { GhlApiError, ghlFetch } from '@/lib/ghl/client';
 import { getFreeSlots, resolveCalendarId } from '@/lib/ghl/calendars';
+import { createContact, lookupContactByPhone } from '@/lib/ghl/contacts-mutations';
 import { patchCallCustomData, setCallGhlContact } from '@/lib/data/calls';
 import { getGhlIntegration } from '@/lib/data/ghl-integration';
 
@@ -41,16 +42,6 @@ export type RegisterPatientArgs = {
 // ─── GHL response shapes (mínimos) ───────────────────────────────────────────
 
 type GhlSlot = { startTime: string; endTime: string };
-type GhlSlotsResponse = { slots?: GhlSlot[] };
-type GhlContact = {
-  id: string;
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  phone?: string;
-};
-type GhlSearchDuplicateResponse = { contact: GhlContact | null };
-type GhlContactCreateResponse = { contact: GhlContact };
 type GhlAppointment = { id: string };
 
 // Heurística: GHL contact IDs son alfanuméricos de 20 chars sin espacios
@@ -61,51 +52,8 @@ function looksLikeGhlId(s: string | undefined | null): boolean {
   return /^[A-Za-z0-9]{15,30}$/.test(s);
 }
 
-async function lookupContactByPhone(
-  tenantId: string,
-  phone: string,
-): Promise<GhlContact | null> {
-  // GHL: /contacts/search/duplicate?locationId=...&number=... → { contact: {} | null }
-  const integration = await getGhlIntegration(tenantId);
-  if (!integration) return null;
-  try {
-    const data = await ghlFetch<GhlSearchDuplicateResponse>({
-      tenantId,
-      path: '/contacts/search/duplicate',
-      query: { locationId: integration.locationId, number: phone },
-    });
-    return data.contact ?? null;
-  } catch (err) {
-    console.error('[lookupContactByPhone]', err);
-    return null;
-  }
-}
-
-async function createContact(
-  tenantId: string,
-  args: { firstName: string; lastName?: string; phone: string; email?: string },
-): Promise<GhlContact | null> {
-  const integration = await getGhlIntegration(tenantId);
-  if (!integration) return null;
-  try {
-    const data = await ghlFetch<GhlContactCreateResponse>({
-      tenantId,
-      path: '/contacts/',
-      method: 'POST',
-      body: {
-        locationId: integration.locationId,
-        firstName: args.firstName,
-        lastName: args.lastName ?? '',
-        phone: args.phone,
-        ...(args.email ? { email: args.email } : {}),
-      },
-    });
-    return data.contact;
-  } catch (err) {
-    console.error('[createContact]', err);
-    return null;
-  }
-}
+// lookupContactByPhone + createContact se importan desde @/lib/ghl/contacts-mutations
+// para evitar duplicación con triggerCallback.
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
