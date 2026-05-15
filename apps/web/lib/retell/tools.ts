@@ -4,6 +4,8 @@ import { getFreeSlots, resolveCalendarId } from '@/lib/ghl/calendars';
 import { createContact, lookupContactByPhone } from '@/lib/ghl/contacts-mutations';
 import { patchCallCustomData, setCallGhlContact } from '@/lib/data/calls';
 import { getGhlIntegration } from '@/lib/data/ghl-integration';
+import { listTreatmentsForTenant } from '@/lib/data/treatments';
+import { listFaqsForTenant } from '@/lib/data/faqs';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -352,6 +354,111 @@ export async function getPatientInfo(
   }
 }
 
+// ─── Tools de catálogo (clínica) ──────────────────────────────────────────────
+
+export type GetTreatmentDetailsArgs = { name: string };
+export type SearchFaqsArgs = { query: string };
+
+function priceRange(
+  min: string | number | null | undefined,
+  max: string | number | null | undefined,
+  currency: string | null | undefined,
+): string {
+  const cur = currency ?? 'USD';
+  const m = min != null ? String(min) : null;
+  const M = max != null ? String(max) : null;
+  if (m && M && m !== M) return `${cur} ${m}-${M}`;
+  if (m) return `${cur} ${m}`;
+  if (M) return `${cur} ${M}`;
+  return 'consultar';
+}
+
+function normalize(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '');
+}
+
+export async function listTreatments(tenantId: string): Promise<ToolResult> {
+  const rows = await listTreatmentsForTenant(tenantId);
+  const active = rows.filter((t) => t.active);
+  if (active.length === 0) {
+    return { result: 'No hay tratamientos cargados en el catálogo de la clínica.' };
+  }
+  const lines = active
+    .slice(0, 30)
+    .map(
+      (t) =>
+        `- ${t.name} (${t.durationMinutes} min, ${priceRange(t.priceMin, t.priceMax, t.currency)})`,
+    );
+  return {
+    result: `Tratamientos disponibles:\n${lines.join('\n')}`,
+  };
+}
+
+export async function getTreatmentDetails(
+  tenantId: string,
+  args: GetTreatmentDetailsArgs,
+): Promise<ToolResult> {
+  if (!args.name?.trim()) {
+    return { result: 'Necesito el nombre del tratamiento para buscar detalles.' };
+  }
+  const rows = await listTreatmentsForTenant(tenantId);
+  const q = normalize(args.name);
+  const match =
+    rows.find((t) => normalize(t.name) === q) ??
+    rows.find((t) => normalize(t.name).includes(q)) ??
+    rows.find((t) => q.includes(normalize(t.name)));
+  if (!match) {
+    const names = rows
+      .filter((t) => t.active)
+      .slice(0, 5)
+      .map((t) => t.name)
+      .join(', ');
+    return {
+      result: `No encontré "${args.name}" en el catálogo. Los más comunes son: ${names || 'sin catálogo cargado'}.`,
+    };
+  }
+  if (!match.active) {
+    return {
+      result: `El tratamiento "${match.name}" no está activo actualmente. Ofrecé otro o transferí a recepción.`,
+    };
+  }
+  const desc = match.description?.trim() || 'sin descripción';
+  return {
+    result: `${match.name}: ${desc}. Duración aproximada: ${match.durationMinutes} minutos. Precio: ${priceRange(match.priceMin, match.priceMax, match.currency)}.`,
+  };
+}
+
+export async function searchFaqs(
+  tenantId: string,
+  args: SearchFaqsArgs,
+): Promise<ToolResult> {
+  if (!args.query?.trim()) {
+    return { result: 'Necesito una palabra clave para buscar en las FAQs.' };
+  }
+  const rows = await listFaqsForTenant(tenantId);
+  const q = normalize(args.query);
+  const terms = q.split(/\s+/).filter((t) => t.length >= 3);
+  const scored = rows
+    .map((f) => {
+      const hay = normalize(`${f.question} ${f.answer} ${f.category ?? ''}`);
+      const hits = terms.reduce((n, t) => n + (hay.includes(t) ? 1 : 0), 0);
+      return { f, score: hits };
+    })
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score || (b.f.priority ?? 0) - (a.f.priority ?? 0))
+    .slice(0, 3);
+  if (scored.length === 0) {
+    return {
+      result: `No encontré nada en las FAQs sobre "${args.query}". Si la información no está en la clínica, ofrecé tomar el dato y devolver llamada.`,
+    };
+  }
+  const lines = scored.map(({ f }) => `P: ${f.question}\nR: ${f.answer}`);
+  return { result: lines.join('\n\n') };
+}
+
 // ─── Dispatcher ───────────────────────────────────────────────────────────────
 
 export type KnownToolName =
@@ -359,7 +466,10 @@ export type KnownToolName =
   | 'book_appointment'
   | 'cancel_appointment'
   | 'get_patient_info'
-  | 'register_patient';
+  | 'register_patient'
+  | 'list_treatments'
+  | 'get_treatment_details'
+  | 'search_faqs';
 
 export type ToolContext = {
   retellCallId?: string;
@@ -382,6 +492,12 @@ export async function dispatchTool(
       return getPatientInfo(tenantId, args as GetPatientInfoArgs, ctx);
     case 'register_patient':
       return registerPatient(tenantId, args as RegisterPatientArgs, ctx);
+    case 'list_treatments':
+      return listTreatments(tenantId);
+    case 'get_treatment_details':
+      return getTreatmentDetails(tenantId, args as GetTreatmentDetailsArgs);
+    case 'search_faqs':
+      return searchFaqs(tenantId, args as SearchFaqsArgs);
     default:
       return { result: `Tool desconocida: ${toolName}` };
   }

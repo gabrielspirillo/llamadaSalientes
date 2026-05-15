@@ -1,5 +1,6 @@
 import { resolveRetellAgentId } from '@/lib/data/agent-config';
 import { getRetellClient } from '@/lib/retell/client';
+import { buildClinicContextVars } from '@/lib/retell/clinic-context';
 import { getCurrentTenant } from '@/lib/tenant';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -16,11 +17,9 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(_req: NextRequest) {
   let tenantId: string;
-  let tenantName = 'la clínica';
   try {
     const ctx = await getCurrentTenant();
     tenantId = ctx.tenant.id;
-    tenantName = ctx.tenant.name;
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -40,12 +39,7 @@ export async function POST(_req: NextRequest) {
     return NextResponse.json({ error: 'RETELL_API_KEY no configurada' }, { status: 500 });
   }
 
-  // Si el tenant.name es un nombre auto-generado de Clerk (e.g., "Gabriel's
-  // Organization"), usamos "Futura Solutions" como marca por defecto.
-  const clinicName = /['']s organization|^test|^demo/i.test(tenantName)
-    ? 'Futura Solutions'
-    : tenantName;
-
+  const clinicVars = await buildClinicContextVars(tenantId);
   const retell = getRetellClient();
 
   const webCall = await retell.call.createWebCall({
@@ -56,7 +50,7 @@ export async function POST(_req: NextRequest) {
       direction: 'inbound',
     },
     retell_llm_dynamic_variables: {
-      clinic_name: clinicName,
+      ...clinicVars,
       patient_name: 'paciente',
       current_date: new Date().toISOString().slice(0, 10),
       direction: 'inbound',

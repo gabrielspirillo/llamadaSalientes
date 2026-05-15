@@ -2,9 +2,10 @@ import 'server-only';
 import { resolveRetellAgentId } from '@/lib/data/agent-config';
 import { getGhlIntegration } from '@/lib/data/ghl-integration';
 import { db } from '@/lib/db/client';
-import { phoneNumbers, tenants } from '@/lib/db/schema';
+import { phoneNumbers } from '@/lib/db/schema';
 import { createContact, lookupContactByPhone } from '@/lib/ghl/contacts-mutations';
 import { getRetellClient } from '@/lib/retell/client';
+import { buildClinicContextVars } from '@/lib/retell/clinic-context';
 import { and, eq } from 'drizzle-orm';
 
 export type TriggerCallbackInput = {
@@ -100,13 +101,8 @@ export async function triggerCallback(input: TriggerCallbackInput): Promise<Trig
     }
   }
 
-  // 4. Resolver nombre de la clínica para dynamic vars
-  const [tenantRow] = await db
-    .select({ name: tenants.name })
-    .from(tenants)
-    .where(eq(tenants.id, input.tenantId))
-    .limit(1);
-  const clinicName = tenantRow?.name ?? 'la clínica';
+  // 4. Resolver contexto de clínica (nombre, dirección, horarios, etc.)
+  const clinicVars = await buildClinicContextVars(input.tenantId);
 
   // 5. Llamar a Retell
   console.log('[triggerCallback] createPhoneCall', {
@@ -133,8 +129,8 @@ export async function triggerCallback(input: TriggerCallbackInput): Promise<Trig
         use_case: input.useCase ?? 'custom',
       },
       retell_llm_dynamic_variables: {
+        ...clinicVars,
         patient_name: input.patientName ?? 'paciente',
-        clinic_name: clinicName,
         current_date: new Date().toISOString().slice(0, 10),
         direction: 'outbound',
         lead_source: input.source ?? 'manual',
