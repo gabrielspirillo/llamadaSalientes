@@ -14,6 +14,10 @@ export type TriggerCallbackInput = {
   email?: string | null;
   ghlContactId?: string | null;
   source?: string; // 'manual' | 'ghl_webhook' | 'lead_intake' | 'form_x'
+  /** payment | info | reminder | reactivation | custom */
+  useCase?: string | null;
+  /** Variables dinámicas extra (monto_pendiente, fecha_cita, tratamiento, etc.) */
+  dynamicVars?: Record<string, string>;
   /**
    * Si el contacto no existe en GHL, lo crea con los datos pasados.
    * Default true.
@@ -126,6 +130,7 @@ export async function triggerCallback(input: TriggerCallbackInput): Promise<Trig
         patient_name: input.patientName ?? null,
         source: input.source ?? 'manual',
         direction: 'outbound',
+        use_case: input.useCase ?? 'custom',
       },
       retell_llm_dynamic_variables: {
         patient_name: input.patientName ?? 'paciente',
@@ -133,6 +138,8 @@ export async function triggerCallback(input: TriggerCallbackInput): Promise<Trig
         current_date: new Date().toISOString().slice(0, 10),
         direction: 'outbound',
         lead_source: input.source ?? 'manual',
+        use_case: input.useCase ?? 'custom',
+        ...(input.dynamicVars ?? {}),
       },
     });
     console.log('[triggerCallback] Retell ACK:', {

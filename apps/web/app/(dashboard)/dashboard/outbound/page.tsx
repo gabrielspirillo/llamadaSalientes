@@ -1,3 +1,4 @@
+import { OutboundQuickCall } from '@/components/dashboard/outbound-quick-call';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,12 @@ export default async function OutboundPage() {
           </Button>
         }
       />
+
+      <OutboundQuickCall />
+
+      <div className="flex items-center justify-between mb-3 mt-2">
+        <h2 className="text-sm font-medium text-zinc-700">Campañas</h2>
+      </div>
 
       {campaigns.length === 0 ? (
         <Card className="p-10 text-center">

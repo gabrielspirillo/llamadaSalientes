@@ -11,6 +11,8 @@ const bodySchema = z.object({
   patientName: z.string().optional().nullable(),
   email: z.string().email().optional().nullable(),
   ghlContactId: z.string().optional().nullable(),
+  useCase: z.enum(['payment', 'info', 'reminder', 'reactivation', 'custom']).optional().nullable(),
+  dynamicVars: z.record(z.string()).optional(),
 });
 
 /**
@@ -38,6 +40,8 @@ export async function POST(req: NextRequest) {
     patientName: parsed.data.patientName ?? null,
     email: parsed.data.email ?? null,
     ghlContactId: parsed.data.ghlContactId ?? null,
+    useCase: parsed.data.useCase ?? null,
+    dynamicVars: parsed.data.dynamicVars ?? {},
     source: 'manual',
   });
 
