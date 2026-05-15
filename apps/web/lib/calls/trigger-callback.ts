@@ -1,8 +1,8 @@
 import 'server-only';
-import { db } from '@/lib/db/client';
-import { phoneNumbers, tenants } from '@/lib/db/schema';
 import { resolveRetellAgentId } from '@/lib/data/agent-config';
 import { getGhlIntegration } from '@/lib/data/ghl-integration';
+import { db } from '@/lib/db/client';
+import { phoneNumbers, tenants } from '@/lib/db/schema';
 import { createContact, lookupContactByPhone } from '@/lib/ghl/contacts-mutations';
 import { getRetellClient } from '@/lib/retell/client';
 import { and, eq } from 'drizzle-orm';
@@ -23,7 +23,11 @@ export type TriggerCallbackInput = {
 
 export type TriggerCallbackResult =
   | { ok: true; callId: string; status: string; contactId: string | null }
-  | { ok: false; error: string; reason: 'no_agent' | 'no_phone' | 'retell_error' | 'invalid_input' };
+  | {
+      ok: false;
+      error: string;
+      reason: 'no_agent' | 'no_phone' | 'retell_error' | 'invalid_input';
+    };
 
 /**
  * Trigger atómico de un callback saliente:
@@ -39,18 +43,22 @@ export type TriggerCallbackResult =
  *   - Endpoint /api/leads/intake (formularios externos)
  *   - Webhook GHL contact.create
  */
-export async function triggerCallback(
-  input: TriggerCallbackInput,
-): Promise<TriggerCallbackResult> {
+export async function triggerCallback(input: TriggerCallbackInput): Promise<TriggerCallbackResult> {
   const phone = normalizePhone(input.toNumber);
   if (!phone) {
     return { ok: false, error: 'Número de teléfono inválido', reason: 'invalid_input' };
   }
 
-  // Resolver agente + número de origen
-  const agentId = await resolveRetellAgentId(input.tenantId);
+  // Resolver agente outbound + número de origen. El callback reactivo siempre
+  // usa el agente "outbound" (parametrizado por use_case en dynamic_vars).
+  const agentId = await resolveRetellAgentId(input.tenantId, 'outbound');
   if (!agentId) {
-    return { ok: false, error: 'No hay agente Retell configurado para este tenant.', reason: 'no_agent' };
+    return {
+      ok: false,
+      error:
+        'No hay agente outbound de Retell configurado. Corré `pnpm tsx scripts/setup-outbound-agent.ts` o seteá RETELL_OUTBOUND_DEFAULT_AGENT_ID.',
+      reason: 'no_agent',
+    };
   }
 
   const [phoneRow] = await db
@@ -60,7 +68,11 @@ export async function triggerCallback(
     .limit(1);
 
   if (!phoneRow) {
-    return { ok: false, error: 'No hay número de teléfono configurado para este tenant.', reason: 'no_phone' };
+    return {
+      ok: false,
+      error: 'No hay número de teléfono configurado para este tenant.',
+      reason: 'no_phone',
+    };
   }
 
   // 3. Asegurar contacto en GHL si tenemos integración
@@ -161,7 +173,8 @@ export async function triggerCallback(
           hint = 'El número está ocupado. Probá de nuevo en unos minutos.';
           break;
         case 'dial_failed':
-          hint = 'Twilio no pudo discar. Verificá que el número de destino sea válido y que tu cuenta Twilio tenga saldo.';
+          hint =
+            'Twilio no pudo discar. Verificá que el número de destino sea válido y que tu cuenta Twilio tenga saldo.';
           break;
         case 'dial_no_answer':
           hint = 'El paciente no atendió.';

@@ -1,10 +1,11 @@
-import { logCallEvent, upsertCall } from '@/lib/data/calls';
-import { db } from '@/lib/db/client';
-import { webhookLogs } from '@/lib/db/schema';
 import { encrypt } from '@/lib/crypto';
+import { logCallEvent, upsertCall } from '@/lib/data/calls';
 import { resolveTenantId } from '@/lib/data/phone-tenant';
+import { db } from '@/lib/db/client';
+import { outboundTargets, webhookLogs } from '@/lib/db/schema';
 import { sendInngestEvent } from '@/lib/inngest/client';
 import { verifyRetellSignature } from '@/lib/retell/verify';
+import { and, eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -76,6 +77,10 @@ export async function POST(req: NextRequest) {
 
   await logCallEvent({ tenantId, callId: call.call_id, event, payload: payload.call });
 
+  // Si el call viene de una campaña outbound, sincronizar el target.
+  const campaignId = call.metadata?.campaign_id as string | undefined;
+  const targetId = call.metadata?.target_id as string | undefined;
+
   switch (event) {
     case 'call_started': {
       await upsertCall({
@@ -86,6 +91,16 @@ export async function POST(req: NextRequest) {
         startedAt: call.start_timestamp ? new Date(call.start_timestamp) : new Date(),
         status: 'ongoing',
       });
+      if (targetId) {
+        await db
+          .update(outboundTargets)
+          .set({
+            status: 'ongoing',
+            retellCallId: call.call_id,
+            lastAttemptAt: new Date(),
+          })
+          .where(and(eq(outboundTargets.id, targetId), eq(outboundTargets.tenantId, tenantId)));
+      }
       break;
     }
 
@@ -105,6 +120,22 @@ export async function POST(req: NextRequest) {
         durationSeconds,
         status: call.call_status ?? 'ended',
       });
+
+      if (targetId) {
+        const disconnectionReason = (call as { disconnection_reason?: string })
+          .disconnection_reason;
+        const status = mapOutboundStatus(call.call_status, disconnectionReason);
+        await db
+          .update(outboundTargets)
+          .set({
+            status,
+            retellCallId: call.call_id,
+            lastDisconnectionReason: disconnectionReason ?? null,
+            lastAttemptAt: end ?? new Date(),
+          })
+          .where(and(eq(outboundTargets.id, targetId), eq(outboundTargets.tenantId, tenantId)));
+      }
+      void campaignId; // reservado para Entrega 2: chequear si la campaña ya completó
       break;
     }
 
@@ -159,6 +190,26 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ ok: true });
+}
+
+function mapOutboundStatus(
+  callStatus: string | undefined,
+  disconnectionReason: string | undefined,
+): string {
+  if (callStatus === 'error') return 'failed';
+  if (callStatus === 'not_connected') {
+    switch (disconnectionReason) {
+      case 'voicemail':
+        return 'voicemail';
+      case 'dial_no_answer':
+        return 'no_answer';
+      case 'dial_busy':
+        return 'busy';
+      default:
+        return 'failed';
+    }
+  }
+  return 'ended';
 }
 
 function mapRetellSentiment(s: string | null | undefined): string | null {

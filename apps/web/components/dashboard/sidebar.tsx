@@ -10,6 +10,7 @@ import {
   HelpCircle,
   Home,
   PhoneCall,
+  PhoneOutgoing,
   Settings,
   Stethoscope,
   Users,
@@ -20,6 +21,7 @@ import { usePathname } from 'next/navigation';
 const items = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: '/dashboard/calls', label: 'Llamadas', icon: PhoneCall },
+  { href: '/dashboard/outbound', label: 'Salientes', icon: PhoneOutgoing },
   { href: '/dashboard/contacts', label: 'Contactos', icon: Contact },
   { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/dashboard/agent', label: 'Agente', icon: Bot },
