@@ -117,24 +117,30 @@ export const faqs = pgTable(
 // Agent
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const agentConfigs = pgTable('agent_configs', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  tenantId: uuid('tenant_id')
-    .references(() => tenants.id, { onDelete: 'cascade' })
-    .notNull()
-    .unique(),
-  retellAgentId: text('retell_agent_id'),
-  retellLlmId: text('retell_llm_id'),
-  promptVersion: integer('prompt_version').default(1),
-  currentPromptText: text('current_prompt_text').notNull(),
-  voiceId: text('voice_id').notNull(),
-  tone: text('tone').default('cercano'),
-  transferNumber: text('transfer_number'),
-  welcomeMessage: text('welcome_message'),
-  published: boolean('published').default(false),
-  lastTestCallId: text('last_test_call_id'),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
+export const agentConfigs = pgTable(
+  'agent_configs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    role: text('role').notNull().default('inbound'), // inbound | outbound
+    retellAgentId: text('retell_agent_id'),
+    retellLlmId: text('retell_llm_id'),
+    promptVersion: integer('prompt_version').default(1),
+    currentPromptText: text('current_prompt_text').notNull(),
+    voiceId: text('voice_id').notNull(),
+    tone: text('tone').default('cercano'),
+    transferNumber: text('transfer_number'),
+    welcomeMessage: text('welcome_message'),
+    published: boolean('published').default(false),
+    lastTestCallId: text('last_test_call_id'),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantRoleUnique: unique('agent_configs_tenant_role_unique').on(t.tenantId, t.role),
+  }),
+);
 
 export const agentPromptVersions = pgTable(
   'agent_prompt_versions',
@@ -245,6 +251,74 @@ export const callEvents = pgTable(
   (t) => ({
     uniqCallEvent: unique('call_events_call_event_unique').on(t.callId, t.event),
     tenantIdx: index('call_events_tenant_idx').on(t.tenantId),
+  }),
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Outbound calls module (campañas batch)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const outboundCampaigns = pgTable(
+  'outbound_campaigns',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    name: text('name').notNull(),
+    useCase: text('use_case').notNull(), // payment | info | reminder | reactivation | custom
+    status: text('status').notNull().default('draft'), // draft | dispatching | running | paused | completed | failed
+    fromPhoneId: uuid('from_phone_id').references(() => phoneNumbers.id),
+    overrideAgentId: text('override_agent_id'), // retell agent id (cacheado al dispatch)
+    retellBatchCallId: text('retell_batch_call_id'),
+    scheduledAt: timestamp('scheduled_at', { withTimezone: true }),
+    callWindowStart: integer('call_window_start'), // minutos desde 00:00 local
+    callWindowEnd: integer('call_window_end'),
+    timezone: text('timezone'),
+    maxRetries: integer('max_retries').notNull().default(0),
+    retryDelayMinutes: integer('retry_delay_minutes').notNull().default(60),
+    sharedDynamicVars: jsonb('shared_dynamic_vars').$type<Record<string, string>>().default({}),
+    notes: text('notes'),
+    createdBy: uuid('created_by').references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    dispatchedAt: timestamp('dispatched_at', { withTimezone: true }),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+  },
+  (t) => ({
+    tenantIdx: index('outbound_campaigns_tenant_idx').on(t.tenantId, t.createdAt),
+    statusIdx: index('outbound_campaigns_status_idx').on(t.tenantId, t.status),
+  }),
+);
+
+export const outboundTargets = pgTable(
+  'outbound_targets',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    campaignId: uuid('campaign_id')
+      .references(() => outboundCampaigns.id, { onDelete: 'cascade' })
+      .notNull(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    toNumber: text('to_number').notNull(),
+    patientName: text('patient_name'),
+    email: text('email'),
+    ghlContactId: text('ghl_contact_id'),
+    dynamicVars: jsonb('dynamic_vars').$type<Record<string, string>>().default({}),
+    status: text('status').notNull().default('pending'),
+    // pending | queued | ongoing | ended | voicemail | no_answer | busy | failed | skipped
+    attempts: integer('attempts').notNull().default(0),
+    retellCallId: text('retell_call_id'),
+    lastDisconnectionReason: text('last_disconnection_reason'),
+    lastError: text('last_error'),
+    nextRetryAt: timestamp('next_retry_at', { withTimezone: true }),
+    lastAttemptAt: timestamp('last_attempt_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    campaignIdx: index('outbound_targets_campaign_idx').on(t.campaignId, t.status),
+    tenantIdx: index('outbound_targets_tenant_idx').on(t.tenantId),
+    retellCallIdx: index('outbound_targets_retell_call_idx').on(t.retellCallId),
   }),
 );
 
