@@ -80,6 +80,13 @@ const envSchema = z.object({
 
   // OpenAI — Fase 5
   OPENAI_API_KEY: z.string().optional(),
+
+  // WhatsApp — opcional (se configura por-tenant en /dashboard/whatsapp/integrations)
+  // WHATSAPP_VERIFY_TOKEN es el único requerido para el webhook handshake de Meta Cloud.
+  WHATSAPP_VERIFY_TOKEN: z.string().optional(),
+  WHATSAPP_GRAPH_API_VERSION: z.string().default('v21.0'),
+  EVOLUTION_API_URL: z.string().optional(),
+  EVOLUTION_API_KEY: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
