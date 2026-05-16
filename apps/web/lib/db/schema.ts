@@ -5,6 +5,7 @@ import {
   integer,
   jsonb,
   numeric,
+  pgEnum,
   pgTable,
   primaryKey,
   text,
@@ -381,7 +382,7 @@ export const webhookLogs = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     tenantId: uuid('tenant_id'),
-    source: text('source').notNull(), // retell|ghl|stripe|twilio|clerk
+    source: text('source').notNull(), // retell|ghl|stripe|twilio|clerk|whatsapp_cloud|whatsapp_evolution
     event: text('event'),
     signatureValid: boolean('signature_valid'),
     statusCode: integer('status_code'),
@@ -428,6 +429,182 @@ export const billingSubscriptions = pgTable('billing_subscriptions', {
   usedMinutesPeriod: integer('used_minutes_period').default(0),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WhatsApp module (Meta Cloud API + Evolution self-hosted)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const whatsappModeEnum = pgEnum('whatsapp_mode', ['CLOUD', 'EVOLUTION']);
+export const whatsappStatusEnum = pgEnum('whatsapp_status', [
+  'PENDING',
+  'CONNECTED',
+  'DISCONNECTED',
+  'ERROR',
+]);
+export const conversationChannelEnum = pgEnum('conversation_channel', [
+  'WHATSAPP_CLOUD',
+  'WHATSAPP_EVOLUTION',
+]);
+export const conversationStatusEnum = pgEnum('conversation_status', [
+  'ACTIVE',
+  'HANDOFF',
+  'CLOSED',
+]);
+export const messageDirectionEnum = pgEnum('message_direction', ['INBOUND', 'OUTBOUND']);
+export const messageSenderEnum = pgEnum('message_sender', [
+  'CONTACT',
+  'AGENT',
+  'HUMAN',
+  'SYSTEM',
+]);
+export const messageDeliveryStatusEnum = pgEnum('message_delivery_status', [
+  'PENDING',
+  'SENT',
+  'DELIVERED',
+  'READ',
+  'FAILED',
+]);
+export const messageTypeEnum = pgEnum('message_type', [
+  'TEXT',
+  'AUDIO',
+  'IMAGE',
+  'PDF',
+  'VIDEO',
+  'STICKER',
+  'LOCATION',
+  'CONTACT',
+  'TEMPLATE',
+  'INTERACTIVE',
+  'SYSTEM',
+]);
+
+export const whatsappConnections = pgTable(
+  'whatsapp_connections',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    mode: whatsappModeEnum('mode').notNull(),
+    status: whatsappStatusEnum('status').notNull().default('PENDING'),
+    qrB64: text('qr_b64'),
+    wabaId: text('waba_id'),
+    phoneId: text('phone_id'),
+    cloudAccessTokenEnc: text('cloud_access_token_enc'),
+    cloudAppSecretEnc: text('cloud_app_secret_enc'),
+    evolutionInstance: text('evolution_instance'),
+    evolutionTokenEnc: text('evolution_token_enc'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantModeUnique: unique('whatsapp_connections_tenant_mode_unique').on(t.tenantId, t.mode),
+    phoneIdIdx: index('whatsapp_connections_phone_id_idx').on(t.phoneId),
+    tenantStatusIdx: index('whatsapp_connections_tenant_status_idx').on(t.tenantId, t.status),
+  }),
+);
+
+export const whatsappContacts = pgTable(
+  'whatsapp_contacts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    phoneE164: text('phone_e164').notNull(),
+    name: text('name'),
+    ghlContactId: text('ghl_contact_id'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantPhoneUnique: unique('whatsapp_contacts_tenant_phone_unique').on(
+      t.tenantId,
+      t.phoneE164,
+    ),
+    ghlIdx: index('whatsapp_contacts_ghl_idx').on(t.tenantId, t.ghlContactId),
+  }),
+);
+
+export const whatsappConversations = pgTable(
+  'whatsapp_conversations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    contactId: uuid('contact_id')
+      .references(() => whatsappContacts.id, { onDelete: 'cascade' })
+      .notNull(),
+    channel: conversationChannelEnum('channel').notNull(),
+    status: conversationStatusEnum('status').notNull().default('ACTIVE'),
+    urgentFlag: boolean('urgent_flag').notNull().default(false),
+    lastMsgAt: timestamp('last_msg_at', { withTimezone: true }),
+    assignedUserId: uuid('assigned_user_id').references(() => users.id, { onDelete: 'set null' }),
+    humanTakeoverAt: timestamp('human_takeover_at', { withTimezone: true }),
+    humanTakeoverUntil: timestamp('human_takeover_until', { withTimezone: true }),
+    lastHumanMsgAt: timestamp('last_human_msg_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantStatusIdx: index('whatsapp_conversations_tenant_status_idx').on(t.tenantId, t.status),
+    tenantLastMsgIdx: index('whatsapp_conversations_tenant_last_msg_idx').on(
+      t.tenantId,
+      t.lastMsgAt,
+    ),
+    contactIdx: index('whatsapp_conversations_contact_idx').on(t.contactId),
+  }),
+);
+
+export const whatsappMessages = pgTable(
+  'whatsapp_messages',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    conversationId: uuid('conversation_id')
+      .references(() => whatsappConversations.id, { onDelete: 'cascade' })
+      .notNull(),
+    externalId: text('external_id'),
+    direction: messageDirectionEnum('direction').notNull(),
+    type: messageTypeEnum('type').notNull().default('TEXT'),
+    senderType: messageSenderEnum('sender_type').notNull().default('CONTACT'),
+    senderUserId: uuid('sender_user_id').references(() => users.id, { onDelete: 'set null' }),
+    deliveryStatus: messageDeliveryStatusEnum('delivery_status'),
+    failureReason: text('failure_reason'),
+    internalNote: boolean('internal_note').notNull().default(false),
+    clientNonce: uuid('client_nonce'),
+    contentText: text('content_text'),
+    mediaUrl: text('media_url'),
+    mediaType: text('media_type'),
+    transcription: text('transcription'),
+    mediaAnalysisJson: jsonb('media_analysis_json').notNull().default({}),
+    rawJson: jsonb('raw_json').notNull().default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    convExternalUnique: unique('whatsapp_messages_conv_external_unique').on(
+      t.conversationId,
+      t.externalId,
+    ),
+    convNonceUnique: unique('whatsapp_messages_conv_nonce_unique').on(
+      t.conversationId,
+      t.clientNonce,
+    ),
+    tenantConvCreatedIdx: index('whatsapp_messages_tenant_conv_created_idx').on(
+      t.tenantId,
+      t.conversationId,
+      t.createdAt,
+    ),
+    tenantSenderCreatedIdx: index('whatsapp_messages_tenant_sender_created_idx').on(
+      t.tenantId,
+      t.senderType,
+      t.createdAt,
+    ),
+  }),
+);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SQL helpers (RLS preparado pero NO activado en Fase 1; se enciende en Fase 7)
