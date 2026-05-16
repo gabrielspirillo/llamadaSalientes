@@ -62,5 +62,6 @@ export async function buildClinicContextVars(
     clinic_timezone: clinic?.timezone ?? 'America/Mexico_City',
     after_hours_message: clinic?.afterHoursMessage?.trim() || '',
     recording_consent: clinic?.recordingConsentText?.trim() || '',
+    clinic_transfer_number: clinic?.transferNumber?.trim() || '',
   };
 }

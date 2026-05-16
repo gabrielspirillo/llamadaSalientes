@@ -25,6 +25,8 @@ const workingHoursSchema = z.object({
   sunday: dayHoursSchema,
 });
 
+const e164Regex = /^\+[1-9]\d{6,14}$/;
+
 const settingsSchema = z.object({
   address: z.string().max(300).optional().nullable(),
   phones: z.array(z.string().max(40)).optional(),
@@ -32,6 +34,13 @@ const settingsSchema = z.object({
   defaultLanguage: z.enum(['es', 'en']),
   afterHoursMessage: z.string().max(1000).optional().nullable(),
   recordingConsentText: z.string().min(20, 'El mensaje de consentimiento es obligatorio'),
+  transferNumber: z
+    .string()
+    .regex(e164Regex, 'El número de transferencia debe estar en formato E.164 (ej. +5491139530968)')
+    .or(z.literal(''))
+    .optional()
+    .nullable()
+    .transform((v) => (v ? v : null)),
   workingHours: workingHoursSchema,
 });
 

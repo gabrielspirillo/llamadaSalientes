@@ -40,7 +40,37 @@ CASO DE USO: {{use_case}}
 FECHA ACTUAL: {{current_date}}
 ORIGEN: campaña "{{campaign_name}}", lead_source {{lead_source}}
 
-Al final, agradecé y despedíte.`;
+CIERRE DE LLAMADA
+- Antes de despedirte, preguntá: "¿Hay algo más en lo que pueda ayudarlo?".
+- Cuando la persona no tenga más dudas o el objetivo del caso de uso esté cumplido,
+  despedíte cortésmente e INMEDIATAMENTE invocá la tool end_call.
+- Si saltó al buzón, dejá el mensaje breve y llamá a end_call.
+- Si la persona pide explícitamente terminar la llamada, despedíte y llamá a end_call.
+
+TRANSFERENCIA A HUMANO
+- Si el paciente pide hablar con alguien de la clínica, o tu interacción no alcanza
+  (urgencia médica, queja seria, decisión que requiere autorización humana),
+  invocá la tool transfer_to_human para pasar la llamada al teléfono configurado.
+- Antes de transferir, decí: "Te paso con una persona de la clínica, un momento por favor."
+- IMPORTANTE: solo transferí si {{clinic_transfer_number}} tiene un número válido.
+  Si está vacío, ofrecé tomar los datos del paciente para que la clínica lo contacte
+  y NO llames a transfer_to_human.`;
+
+const END_CALL_TOOL = {
+  type: 'end_call' as const,
+  name: 'end_call',
+  description:
+    'Finaliza y cuelga la llamada. Usar cuando el objetivo ya se cumplió y la persona no tiene más dudas, cuando ella pidió terminar, o tras dejar mensaje de buzón.',
+};
+
+const TRANSFER_TOOL = {
+  type: 'transfer_call' as const,
+  name: 'transfer_to_human',
+  description:
+    "Transferir la llamada a un humano de la clínica cuando: (a) el paciente pide hablar con una persona, (b) la situación excede tus capacidades, (c) hay queja seria o tema de pago complejo que requiere autorización, o (d) el paciente está alterado. Antes de transferir, decí: 'Te paso con una persona de la clínica, un momento por favor.' Solo invocar si {{clinic_transfer_number}} tiene un valor.",
+  transfer_destination: { type: 'predefined' as const, number: '{{clinic_transfer_number}}' },
+  transfer_option: { type: 'cold_transfer' as const, show_transferee_as_caller: true },
+};
 
 async function ensureLlm(client: Retell, existingLlmId: string | null): Promise<string> {
   // biome-ignore lint/suspicious/noExplicitAny: SDK params shape
@@ -49,6 +79,7 @@ async function ensureLlm(client: Retell, existingLlmId: string | null): Promise<
     general_prompt: OUTBOUND_PROMPT,
     begin_message:
       'Hola, soy el asistente virtual de {{clinic_name}}. ¿Hablo con {{patient_name}}?',
+    general_tools: [END_CALL_TOOL, TRANSFER_TOOL],
   };
 
   if (existingLlmId) {

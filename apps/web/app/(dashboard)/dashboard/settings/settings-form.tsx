@@ -28,6 +28,7 @@ type Settings = {
   defaultLanguage: string;
   afterHoursMessage: string | null;
   recordingConsentText: string;
+  transferNumber: string | null;
   workingHours: WorkingHours | null;
 };
 
@@ -92,6 +93,7 @@ export function SettingsForm({
       defaultLanguage: formData.get('defaultLanguage') as string,
       afterHoursMessage: (formData.get('afterHoursMessage') as string) || null,
       recordingConsentText: formData.get('recordingConsentText') as string,
+      transferNumber: ((formData.get('transferNumber') as string) || '').trim() || null,
       workingHours: hours,
     };
     startTransition(async () => {
@@ -213,6 +215,22 @@ export function SettingsForm({
                   className="mt-2"
                   placeholder="Gracias por llamar. Estamos cerrados…"
                 />
+              </div>
+
+              <div>
+                <Label htmlFor="transferNumber">Número de transferencia a humano</Label>
+                <Input
+                  id="transferNumber"
+                  name="transferNumber"
+                  type="tel"
+                  defaultValue={initial.transferNumber ?? ''}
+                  placeholder="+5491139530968"
+                  className="mt-2"
+                />
+                <p className="mt-1.5 text-xs text-zinc-500">
+                  Cuando el paciente pida hablar con una persona, ambos agentes (entrante y
+                  saliente) transfieren la llamada a este número. Formato E.164 (con +).
+                </p>
               </div>
             </div>
           </Card>

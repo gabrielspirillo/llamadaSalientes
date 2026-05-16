@@ -100,6 +100,7 @@ export default async function SettingsPage({
           defaultLanguage: settings.defaultLanguage,
           afterHoursMessage: settings.afterHoursMessage,
           recordingConsentText: settings.recordingConsentText,
+          transferNumber: settings.transferNumber,
           // Drizzle tipa workingHours como Record<string, ...> aunque insertamos
           // siempre las 7 keys; el form espera el shape estricto WorkingHours.
           workingHours: settings.workingHours as never,

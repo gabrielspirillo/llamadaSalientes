@@ -68,6 +68,7 @@ export const clinicSettings = pgTable('clinic_settings', {
   defaultLanguage: text('default_language').notNull().default('es'),
   afterHoursMessage: text('after_hours_message'),
   recordingConsentText: text('recording_consent_text').notNull(),
+  transferNumber: text('transfer_number'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
