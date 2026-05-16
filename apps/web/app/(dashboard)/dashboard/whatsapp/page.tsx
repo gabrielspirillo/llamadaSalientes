@@ -74,7 +74,7 @@ export default async function WhatsappConversationsPage() {
         <div>
           <h1 className="text-2xl font-semibold text-zinc-900">WhatsApp</h1>
           <p className="text-sm text-zinc-500">
-            Conversaciones entrantes de Meta Cloud API y Evolution.
+            Conversaciones entrantes de Meta Cloud API, Twilio y Evolution.
           </p>
         </div>
         <Link
@@ -140,7 +140,11 @@ export default async function WhatsappConversationsPage() {
                       </Link>
                     </td>
                     <td className="px-4 py-3 text-xs text-zinc-500">
-                      {r.channel === 'WHATSAPP_CLOUD' ? 'Cloud API' : 'Evolution'}
+                      {r.channel === 'WHATSAPP_CLOUD'
+                        ? 'Cloud API'
+                        : r.channel === 'WHATSAPP_TWILIO'
+                          ? 'Twilio'
+                          : 'Evolution'}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${badge.cls}`}>
