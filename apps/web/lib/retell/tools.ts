@@ -6,6 +6,7 @@ import { patchCallCustomData, setCallGhlContact } from '@/lib/data/calls';
 import { getGhlIntegration } from '@/lib/data/ghl-integration';
 import { listTreatmentsForTenant } from '@/lib/data/treatments';
 import { listFaqsForTenant } from '@/lib/data/faqs';
+import { clockArticle, speakClockTime } from '@/lib/retell/time-speech';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -65,17 +66,16 @@ function ghlNotConnected(): ToolResult {
 
 function formatSlots(slots: GhlSlot[]): string {
   if (slots.length === 0) return 'No hay disponibilidad en esa fecha. Proponé al paciente otra fecha.';
+  const tz = 'Europe/Madrid';
   const formatted = slots
     .slice(0, 4)
-    .map((s) =>
-      new Date(s.startTime).toLocaleString('es-ES', {
-        weekday: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZone: 'Europe/Madrid',
-      }),
-    )
-    .join(', ');
+    .map((s) => {
+      const d = new Date(s.startTime);
+      const weekday = d.toLocaleDateString('es-ES', { weekday: 'long', timeZone: tz });
+      const time = speakClockTime(d, tz);
+      return `${weekday} ${clockArticle(time)} ${time}`;
+    })
+    .join('; ');
   return `Horarios disponibles: ${formatted}.`;
 }
 

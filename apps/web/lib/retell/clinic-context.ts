@@ -1,5 +1,6 @@
 import 'server-only';
 import { getClinicSettings, getTenant } from '@/lib/data/clinic';
+import { speakWorkingHoursRange } from '@/lib/retell/time-speech';
 
 type DayKey =
   | 'monday'
@@ -11,13 +12,13 @@ type DayKey =
   | 'sunday';
 
 const DAY_LABEL: Record<DayKey, string> = {
-  monday: 'Lun',
-  tuesday: 'Mar',
-  wednesday: 'Mié',
-  thursday: 'Jue',
-  friday: 'Vie',
-  saturday: 'Sáb',
-  sunday: 'Dom',
+  monday: 'lunes',
+  tuesday: 'martes',
+  wednesday: 'miércoles',
+  thursday: 'jueves',
+  friday: 'viernes',
+  saturday: 'sábado',
+  sunday: 'domingo',
 };
 
 function formatWorkingHours(
@@ -28,10 +29,10 @@ function formatWorkingHours(
   for (const day of Object.keys(DAY_LABEL) as DayKey[]) {
     const slot = wh[day];
     if (slot?.open && slot?.close) {
-      parts.push(`${DAY_LABEL[day]} ${slot.open}-${slot.close}`);
+      parts.push(`${DAY_LABEL[day]} ${speakWorkingHoursRange(slot.open, slot.close)}`);
     }
   }
-  return parts.length ? parts.join(', ') : 'sin horarios cargados';
+  return parts.length ? parts.join('; ') : 'sin horarios cargados';
 }
 
 function normalizeTenantName(name: string | undefined | null): string {
