@@ -11,6 +11,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/ghl/webhook',
   '/api/stripe/webhook',
   '/api/inngest(.*)',
+  '/api/twilio/(.*)', // SMS passthrough u otros callbacks de Twilio — Twilio firma con auth_token
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
