@@ -6,6 +6,7 @@ import { and, desc, eq } from 'drizzle-orm';
 
 import { WhatsAppCloudConnector } from './cloud';
 import { EvolutionConnector } from './evolution';
+import { TwilioConnector } from './twilio';
 import { type WhatsAppConnector, WhatsAppConnectorError } from './types';
 
 type WhatsAppConnectionRow = typeof whatsappConnections.$inferSelect;
@@ -51,6 +52,22 @@ export function buildConnector(conn: WhatsAppConnectionRow): WhatsAppConnector {
       phoneNumberId: conn.phoneId,
       accessToken: decrypt(conn.cloudAccessTokenEnc),
       appSecret: decrypt(conn.cloudAppSecretEnc),
+    });
+  }
+
+  if (conn.mode === 'TWILIO') {
+    if (!conn.twilioAccountSid || !conn.twilioAuthTokenEnc || !conn.twilioFromNumber) {
+      throw new WhatsAppConnectorError(
+        `Tenant ${conn.tenantId} sin credenciales Twilio completas (accountSid/authToken/fromNumber)`,
+        'INCOMPLETE_TWILIO_CREDS',
+        undefined,
+        false,
+      );
+    }
+    return new TwilioConnector({
+      accountSid: conn.twilioAccountSid,
+      authToken: decrypt(conn.twilioAuthTokenEnc),
+      fromNumber: conn.twilioFromNumber,
     });
   }
 

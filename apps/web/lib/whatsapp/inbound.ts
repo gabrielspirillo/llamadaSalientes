@@ -224,3 +224,64 @@ function ensureE164(raw: string): string {
   if (/^\d{6,15}$/.test(trimmed)) return `+${trimmed}`;
   return trimmed;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Twilio Programmable Messaging (WhatsApp)
+// Docs: https://www.twilio.com/docs/messaging/guides/webhook-request
+// Twilio entrega payload form-encoded con campos como From, To, Body, NumMedia,
+// MediaUrl{N}, MediaContentType{N}, ProfileName, MessageSid, WaId, SmsStatus.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const twilioInboundFormSchema = z.object({
+  MessageSid: z.string(),
+  From: z.string(),
+  To: z.string(),
+  Body: z.string().optional(),
+  NumMedia: z.string().optional(),
+  MediaUrl0: z.string().optional(),
+  MediaContentType0: z.string().optional(),
+  ProfileName: z.string().optional(),
+  WaId: z.string().optional(),
+  SmsStatus: z.string().optional(),
+});
+
+export type TwilioInboundForm = z.infer<typeof twilioInboundFormSchema>;
+
+function twilioMessageType(form: TwilioInboundForm): InboundMessageType {
+  const numMedia = Number(form.NumMedia ?? '0');
+  if (numMedia === 0) return form.Body ? 'TEXT' : 'SYSTEM';
+  const mime = form.MediaContentType0 ?? '';
+  if (mime.startsWith('image/')) return 'IMAGE';
+  if (mime.startsWith('audio/')) return 'AUDIO';
+  if (mime.startsWith('video/')) return 'VIDEO';
+  if (mime === 'application/pdf') return 'PDF';
+  if (mime.startsWith('image/webp')) return 'STICKER';
+  return 'SYSTEM';
+}
+
+/**
+ * Convierte el payload Twilio en `NormalizedInboundMessage`.
+ * `From` viene como "whatsapp:+E164"; lo despojamos del prefijo.
+ * Para media usamos `MediaUrl0` directamente como `mediaId` porque Twilio
+ * entrega la URL completa con auth requerida — el connector la descarga
+ * usando Basic auth con el SID/Token de la cuenta.
+ */
+export function normalizeTwilioMessage(
+  form: TwilioInboundForm,
+  tenantId: string,
+): NormalizedInboundMessage {
+  const fromRaw = form.From.replace(/^whatsapp:/, '');
+  return {
+    tenantId,
+    providerMessageId: form.MessageSid,
+    fromPhoneE164: ensureE164(fromRaw),
+    channel: 'WHATSAPP_TWILIO',
+    type: twilioMessageType(form),
+    text: form.Body ?? null,
+    mediaId: form.MediaUrl0 ?? null,
+    mediaMimeType: form.MediaContentType0 ?? null,
+    contactName: form.ProfileName ?? null,
+    timestamp: new Date(),
+    raw: form,
+  };
+}

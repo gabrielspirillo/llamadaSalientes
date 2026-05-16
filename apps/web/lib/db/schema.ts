@@ -434,7 +434,7 @@ export const billingSubscriptions = pgTable('billing_subscriptions', {
 // WhatsApp module (Meta Cloud API + Evolution self-hosted)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const whatsappModeEnum = pgEnum('whatsapp_mode', ['CLOUD', 'EVOLUTION']);
+export const whatsappModeEnum = pgEnum('whatsapp_mode', ['CLOUD', 'EVOLUTION', 'TWILIO']);
 export const whatsappStatusEnum = pgEnum('whatsapp_status', [
   'PENDING',
   'CONNECTED',
@@ -444,6 +444,7 @@ export const whatsappStatusEnum = pgEnum('whatsapp_status', [
 export const conversationChannelEnum = pgEnum('conversation_channel', [
   'WHATSAPP_CLOUD',
   'WHATSAPP_EVOLUTION',
+  'WHATSAPP_TWILIO',
 ]);
 export const conversationStatusEnum = pgEnum('conversation_status', [
   'ACTIVE',
@@ -494,6 +495,9 @@ export const whatsappConnections = pgTable(
     cloudAppSecretEnc: text('cloud_app_secret_enc'),
     evolutionInstance: text('evolution_instance'),
     evolutionTokenEnc: text('evolution_token_enc'),
+    twilioAccountSid: text('twilio_account_sid'),
+    twilioAuthTokenEnc: text('twilio_auth_token_enc'),
+    twilioFromNumber: text('twilio_from_number'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
@@ -501,6 +505,7 @@ export const whatsappConnections = pgTable(
     tenantModeUnique: unique('whatsapp_connections_tenant_mode_unique').on(t.tenantId, t.mode),
     phoneIdIdx: index('whatsapp_connections_phone_id_idx').on(t.phoneId),
     tenantStatusIdx: index('whatsapp_connections_tenant_status_idx').on(t.tenantId, t.status),
+    twilioFromIdx: index('whatsapp_connections_twilio_from_idx').on(t.twilioFromNumber),
   }),
 );
 

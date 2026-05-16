@@ -48,7 +48,7 @@ export async function upsertWhatsappContact(input: {
 export async function getOrCreateOpenConversation(input: {
   tenantId: string;
   contactId: string;
-  channel: 'WHATSAPP_CLOUD' | 'WHATSAPP_EVOLUTION';
+  channel: 'WHATSAPP_CLOUD' | 'WHATSAPP_EVOLUTION' | 'WHATSAPP_TWILIO';
 }) {
   const open = await db
     .select()

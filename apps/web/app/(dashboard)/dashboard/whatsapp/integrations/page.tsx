@@ -8,6 +8,7 @@ import { getCurrentTenant } from '@/lib/tenant';
 
 import { CloudConnectionForm } from './_components/cloud-connection-form';
 import { EvolutionConnectionPanel } from './_components/evolution-connection-panel';
+import { TwilioConnectionForm } from './_components/twilio-connection-form';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,10 +21,12 @@ export default async function WhatsappIntegrationsPage() {
     .where(eq(whatsappConnections.tenantId, tenant.id));
   const cloud = rows.find((r) => r.mode === 'CLOUD');
   const evolution = rows.find((r) => r.mode === 'EVOLUTION');
+  const twilio = rows.find((r) => r.mode === 'TWILIO');
 
   const appUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
   const cloudWebhookUrl = `${appUrl}/api/webhooks/whatsapp/cloud`;
   const evolutionWebhookUrl = `${appUrl}/api/webhooks/whatsapp/evolution`;
+  const twilioWebhookUrl = `${appUrl}/api/webhooks/whatsapp/twilio`;
 
   return (
     <div className="space-y-6">
@@ -36,12 +39,13 @@ export default async function WhatsappIntegrationsPage() {
             Integraciones de WhatsApp
           </h1>
           <p className="text-sm text-zinc-500">
-            Conecta Meta Cloud API (oficial) o Evolution API (self-hosted, Baileys).
+            Conecta Meta Cloud API (oficial), Twilio (BSP oficial) o Evolution API
+            (self-hosted, Baileys).
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
         {/* Cloud API */}
         <section className="rounded-xl border border-zinc-200 bg-white p-6">
           <div className="mb-4 flex items-start justify-between">
@@ -109,6 +113,42 @@ export default async function WhatsappIntegrationsPage() {
                     instanceName: evolution.evolutionInstance,
                     qrBase64: evolution.qrB64,
                     status: evolution.status,
+                  }
+                : null
+            }
+          />
+        </section>
+
+        {/* Twilio */}
+        <section className="rounded-xl border border-zinc-200 bg-white p-6">
+          <div className="mb-4 flex items-start justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-zinc-900">Twilio (BSP)</h2>
+              <p className="text-xs text-zinc-500">
+                Business Solution Provider oficial. Sender propio aprobado.
+              </p>
+            </div>
+            <StatusBadge status={twilio?.status ?? 'NOT_CONFIGURED'} />
+          </div>
+
+          <div className="mb-4 rounded-lg bg-zinc-50 p-3 text-xs text-zinc-700">
+            <div className="font-medium">Webhook URL</div>
+            <code className="block break-all text-[11px] text-zinc-600">{twilioWebhookUrl}</code>
+            <div className="mt-2 font-medium">Cómo configurarlo</div>
+            <p className="text-[11px] text-zinc-600">
+              En Twilio Console → Messaging → WhatsApp sender, pegá la URL en
+              <em> When a message comes in</em> con método HTTP <code>POST</code>.
+              Twilio firma cada request con tu Auth Token; lo verificamos en cada
+              callback.
+            </p>
+          </div>
+
+          <TwilioConnectionForm
+            initial={
+              twilio && twilio.twilioAccountSid && twilio.twilioFromNumber
+                ? {
+                    accountSid: twilio.twilioAccountSid,
+                    fromNumber: twilio.twilioFromNumber,
                   }
                 : null
             }

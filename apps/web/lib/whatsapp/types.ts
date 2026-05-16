@@ -16,7 +16,7 @@ export interface MessageId {
   /** ID interno del provider (wamid del Cloud API o key.id de Evolution). */
   id: string;
   /** Driver que generó el id, útil para tracing. */
-  channel: 'whatsapp_cloud' | 'whatsapp_evolution';
+  channel: 'whatsapp_cloud' | 'whatsapp_evolution' | 'whatsapp_twilio';
 }
 
 /** Botón interactivo de WhatsApp (max 3 botones, max 20 chars cada uno). */
@@ -73,7 +73,7 @@ export type SendMediaKind = 'image' | 'audio' | 'video' | 'document' | 'sticker'
  * Cada driver implementa rate limiting interno y errores tipados.
  */
 export interface WhatsAppConnector {
-  readonly channel: 'whatsapp_cloud' | 'whatsapp_evolution';
+  readonly channel: 'whatsapp_cloud' | 'whatsapp_evolution' | 'whatsapp_twilio';
 
   sendText(to: string, text: string): Promise<MessageId>;
 
@@ -135,7 +135,7 @@ export interface NormalizedInboundMessage {
   tenantId: string;
   providerMessageId: string;
   fromPhoneE164: string;
-  channel: 'WHATSAPP_CLOUD' | 'WHATSAPP_EVOLUTION';
+  channel: 'WHATSAPP_CLOUD' | 'WHATSAPP_EVOLUTION' | 'WHATSAPP_TWILIO';
   type: InboundMessageType;
   text: string | null;
   mediaId: string | null;

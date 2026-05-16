@@ -1,5 +1,7 @@
 'use server';
 
+import { Buffer } from 'node:buffer';
+
 import { revalidatePath } from 'next/cache';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
@@ -100,6 +102,85 @@ export async function connectCloud(input: unknown): Promise<ActionResult<{ statu
       action: 'wa_cloud_connected',
       entity: 'whatsapp_connection',
       after: { phoneNumberId, wabaId } as never,
+    });
+  } catch (auditErr) {
+    console.error('audit_failed', auditErr);
+  }
+
+  revalidatePath('/dashboard/whatsapp/integrations');
+  return ok({ status: 'CONNECTED' });
+}
+
+// ─── Twilio ────────────────────────────────────────────────────────────────────
+
+const e164Regex = /^\+[1-9]\d{6,14}$/;
+
+const twilioSchema = z.object({
+  accountSid: z.string().regex(/^AC[a-fA-F0-9]{32}$/, 'Account SID inválido (formato AC...32hex)'),
+  authToken: z.string().min(20),
+  fromNumber: z
+    .string()
+    .trim()
+    .transform((s) => (s.startsWith('whatsapp:') ? s.slice('whatsapp:'.length) : s))
+    .pipe(z.string().regex(e164Regex, 'Número remitente debe ser E.164 (ej: +34123456789)')),
+});
+
+export async function connectTwilio(input: unknown): Promise<ActionResult<{ status: string }>> {
+  const parsed = twilioSchema.safeParse(input);
+  if (!parsed.success) return fail('Datos inválidos', parsed.error.flatten().fieldErrors);
+  const { accountSid, authToken, fromNumber } = parsed.data;
+
+  // Probe contra Twilio antes de persistir: GET /Accounts/{SID}.json valida
+  // tanto el SID como el token con un solo round-trip.
+  const authHeader = `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString('base64')}`;
+  let probeRes: Response;
+  try {
+    probeRes = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(accountSid)}.json`,
+      { headers: { Authorization: authHeader } },
+    );
+  } catch (probeErr) {
+    return fail(`No pude alcanzar Twilio: ${(probeErr as Error).message}`);
+  }
+  if (!probeRes.ok) {
+    const body = await probeRes.text().catch(() => '');
+    return fail(
+      `Validación Twilio falló (HTTP ${probeRes.status}): ${body.slice(0, 200)}. Revisa Account SID y Auth Token.`,
+    );
+  }
+
+  const { tenant } = await getCurrentTenant();
+  const senderUserId = await getInternalUserId();
+
+  await db
+    .insert(whatsappConnections)
+    .values({
+      tenantId: tenant.id,
+      mode: 'TWILIO',
+      twilioAccountSid: accountSid,
+      twilioAuthTokenEnc: encrypt(authToken),
+      twilioFromNumber: fromNumber,
+      status: 'CONNECTED',
+    })
+    .onConflictDoUpdate({
+      target: [whatsappConnections.tenantId, whatsappConnections.mode],
+      set: {
+        twilioAccountSid: accountSid,
+        twilioAuthTokenEnc: encrypt(authToken),
+        twilioFromNumber: fromNumber,
+        status: 'CONNECTED',
+        qrB64: null,
+        updatedAt: new Date(),
+      },
+    });
+
+  try {
+    await db.insert(auditLogs).values({
+      tenantId: tenant.id,
+      actorUserId: senderUserId,
+      action: 'wa_twilio_connected',
+      entity: 'whatsapp_connection',
+      after: { accountSid, fromNumber } as never,
     });
   } catch (auditErr) {
     console.error('audit_failed', auditErr);
@@ -218,6 +299,11 @@ export interface ConnectionSnapshot {
     instanceName: string | null;
     qrBase64: string | null;
   } | null;
+  twilio: {
+    status: string;
+    accountSid: string | null;
+    fromNumber: string | null;
+  } | null;
 }
 
 export async function getConnectionStatus(): Promise<ActionResult<ConnectionSnapshot>> {
@@ -228,6 +314,7 @@ export async function getConnectionStatus(): Promise<ActionResult<ConnectionSnap
     .where(eq(whatsappConnections.tenantId, tenant.id));
   const cloud = rows.find((r) => r.mode === 'CLOUD');
   const evolution = rows.find((r) => r.mode === 'EVOLUTION');
+  const twilio = rows.find((r) => r.mode === 'TWILIO');
   return ok({
     cloud: cloud ? { status: cloud.status, phoneId: cloud.phoneId, wabaId: cloud.wabaId } : null,
     evolution: evolution
@@ -237,10 +324,17 @@ export async function getConnectionStatus(): Promise<ActionResult<ConnectionSnap
           qrBase64: evolution.qrB64,
         }
       : null,
+    twilio: twilio
+      ? {
+          status: twilio.status,
+          accountSid: twilio.twilioAccountSid,
+          fromNumber: twilio.twilioFromNumber,
+        }
+      : null,
   });
 }
 
-const disconnectSchema = z.object({ mode: z.enum(['CLOUD', 'EVOLUTION']) });
+const disconnectSchema = z.object({ mode: z.enum(['CLOUD', 'EVOLUTION', 'TWILIO']) });
 
 export async function disconnect(input: unknown): Promise<ActionResult<null>> {
   const parsed = disconnectSchema.safeParse(input);
@@ -255,6 +349,7 @@ export async function disconnect(input: unknown): Promise<ActionResult<null>> {
       cloudAccessTokenEnc: parsed.data.mode === 'CLOUD' ? null : undefined,
       cloudAppSecretEnc: parsed.data.mode === 'CLOUD' ? null : undefined,
       evolutionTokenEnc: parsed.data.mode === 'EVOLUTION' ? null : undefined,
+      twilioAuthTokenEnc: parsed.data.mode === 'TWILIO' ? null : undefined,
       qrB64: null,
       updatedAt: new Date(),
     })
