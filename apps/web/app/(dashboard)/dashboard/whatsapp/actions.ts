@@ -76,7 +76,12 @@ export async function sendManualMessage(input: unknown): Promise<ActionResult<{ 
   if (!row) return fail('Conversación no encontrada');
 
   // Cargar conexión según channel.
-  const mode = row.conv.channel === 'WHATSAPP_CLOUD' ? 'CLOUD' : 'EVOLUTION';
+  const mode =
+    row.conv.channel === 'WHATSAPP_CLOUD'
+      ? ('CLOUD' as const)
+      : row.conv.channel === 'WHATSAPP_TWILIO'
+        ? ('TWILIO' as const)
+        : ('EVOLUTION' as const);
   const connRows = await db
     .select()
     .from(whatsappConnections)

@@ -43,7 +43,12 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
     .orderBy(asc(whatsappMessages.createdAt))
     .limit(500);
 
-  const channelLabel = row.conv.channel === 'WHATSAPP_CLOUD' ? 'Cloud API' : 'Evolution';
+  const channelLabel =
+    row.conv.channel === 'WHATSAPP_CLOUD'
+      ? 'Cloud API'
+      : row.conv.channel === 'WHATSAPP_TWILIO'
+        ? 'Twilio'
+        : 'Evolution';
 
   return (
     <div className="flex h-[calc(100vh-9rem)] flex-col gap-4">
