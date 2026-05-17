@@ -45,7 +45,7 @@ export async function InboundModule({ tenantId }: { tenantId: string }) {
 
   return (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
         <StatCard
           label="Llamadas hoy"
           value={String(display.callsToday)}
@@ -72,9 +72,9 @@ export async function InboundModule({ tenantId }: { tenantId: string }) {
         />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
         <Card className="xl:col-span-2">
-          <div className="flex items-center justify-between p-6 pb-4">
+          <div className="flex items-center justify-between p-4 sm:p-6 pb-3 sm:pb-4">
             <div>
               <h3 className="text-base font-semibold tracking-tight">Últimas llamadas</h3>
               <p className="text-sm text-zinc-500 mt-0.5">Actualizado en tiempo real</p>
@@ -101,7 +101,7 @@ export async function InboundModule({ tenantId }: { tenantId: string }) {
                 <Link
                   key={c.id}
                   href={`/dashboard/calls/${c.id}`}
-                  className="flex items-center justify-between gap-4 px-6 py-3.5 hover:bg-zinc-50/60 transition-colors border-b border-zinc-50 last:border-b-0"
+                  className="flex items-center justify-between gap-3 sm:gap-4 px-4 sm:px-6 py-3.5 hover:bg-zinc-50/60 transition-colors border-b border-zinc-50 last:border-b-0"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div
@@ -122,9 +122,9 @@ export async function InboundModule({ tenantId }: { tenantId: string }) {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                     <IntentBadge intent={c.intent ?? 'otro'} />
-                    <span className="text-xs text-zinc-400 tabular-nums w-16 text-right">
+                    <span className="hidden sm:inline text-xs text-zinc-400 tabular-nums w-16 text-right">
                       {formatDuration(c.durationSeconds)}
                     </span>
                   </div>
@@ -134,9 +134,9 @@ export async function InboundModule({ tenantId }: { tenantId: string }) {
           </div>
         </Card>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           <Card>
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-base font-semibold tracking-tight inline-flex items-center gap-2">
                   <CalendarClock className="h-4 w-4 text-violet-600" />
@@ -178,7 +178,7 @@ export async function InboundModule({ tenantId }: { tenantId: string }) {
           </Card>
 
           <Card>
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-base font-semibold tracking-tight">Estado del agente</h3>
                 <Badge tone={stats.callsToday > 0 ? 'success' : 'neutral'}>
@@ -212,7 +212,7 @@ export async function InboundModule({ tenantId }: { tenantId: string }) {
           <InsightsPanel />
 
           <Card>
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <h3 className="text-base font-semibold tracking-tight mb-3">Accesos rápidos</h3>
               <div className="space-y-2">
                 <QuickAction
@@ -252,7 +252,7 @@ function StatCard({
 }) {
   const positive = delta.startsWith('+');
   return (
-    <Card className="p-5">
+    <Card className="p-4 sm:p-5">
       <div className="flex items-center justify-between">
         <p className="text-sm text-zinc-500">{label}</p>
         <div className="h-7 w-7 inline-flex items-center justify-center rounded-lg bg-zinc-100 text-zinc-600">
@@ -260,7 +260,7 @@ function StatCard({
         </div>
       </div>
       <div className="mt-3 flex items-baseline gap-2">
-        <span className="text-3xl font-semibold tracking-tight tabular-nums">{value}</span>
+        <span className="text-2xl sm:text-3xl font-semibold tracking-tight tabular-nums">{value}</span>
         <span
           className={`inline-flex items-center gap-0.5 text-xs font-medium ${
             positive ? 'text-emerald-600' : 'text-zinc-500'

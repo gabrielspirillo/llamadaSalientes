@@ -125,9 +125,9 @@ export function ContactsGrid({ initial }: { initial: Contact[] }) {
 
   return (
     <div>
-      <Card className="mb-5">
-        <div className="flex items-center gap-3 p-5">
-          <div className="relative flex-1 min-w-[220px]">
+      <Card className="mb-4 sm:mb-5">
+        <div className="flex items-center gap-3 p-3 sm:p-5">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
             <Input
               value={q}
@@ -136,10 +136,13 @@ export function ContactsGrid({ initial }: { initial: Contact[] }) {
               className="pl-9"
             />
           </div>
-          <div className="flex items-center gap-2 text-xs text-zinc-500">
+          <div className="flex items-center gap-2 text-xs text-zinc-500 shrink-0">
             {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             <Badge>
-              {contacts.length} {contacts.length === 1 ? 'contacto' : 'contactos'}
+              {contacts.length}
+              <span className="hidden sm:inline ml-1">
+                {contacts.length === 1 ? 'contacto' : 'contactos'}
+              </span>
             </Badge>
           </div>
         </div>
@@ -160,7 +163,7 @@ export function ContactsGrid({ initial }: { initial: Contact[] }) {
           </div>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {contacts.map((c) => {
             const tags = visibleTags(c);
             return (
@@ -169,10 +172,10 @@ export function ContactsGrid({ initial }: { initial: Contact[] }) {
                 className="overflow-hidden hover:shadow-lg hover:border-zinc-300 cursor-pointer transition-all"
                 onClick={() => setOpenContactId(c.id)}
               >
-                <div className="p-5">
+                <div className="p-4 sm:p-5">
                   <div className="flex items-start gap-3">
                     <div
-                      className={`h-12 w-12 shrink-0 rounded-xl bg-gradient-to-br ${gradientFor(c.id)} flex items-center justify-center text-white font-semibold text-sm shadow-sm ring-2 ring-white`}
+                      className={`h-11 w-11 sm:h-12 sm:w-12 shrink-0 rounded-xl bg-gradient-to-br ${gradientFor(c.id)} flex items-center justify-center text-white font-semibold text-sm shadow-sm ring-2 ring-white`}
                     >
                       {initialsOf(c)}
                     </div>

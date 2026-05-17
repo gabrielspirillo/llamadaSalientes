@@ -34,30 +34,30 @@ export default async function Home() {
         <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[600px] bg-gradient-to-b from-zinc-50 to-white" />
         <div className="pointer-events-none absolute -top-40 left-1/2 -z-10 h-[500px] w-[900px] -translate-x-1/2 rounded-full bg-blue-100/40 blur-3xl" />
 
-        <div className="mx-auto max-w-6xl px-6 pt-24 pb-16 md:pt-32 md:pb-24 text-center">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-16 sm:pt-24 pb-12 sm:pb-16 md:pt-32 md:pb-24 text-center">
           <Badge tone="info" className="mb-6">
             <Sparkles className="h-3 w-3" /> Agente de voz con IA · 24/7
           </Badge>
 
-          <h1 className="mx-auto max-w-4xl text-5xl md:text-7xl font-semibold tracking-tight leading-[1.05]">
+          <h1 className="mx-auto max-w-4xl text-4xl sm:text-5xl md:text-7xl font-semibold tracking-tight leading-[1.05]">
             Tu clínica que nunca <br className="hidden md:block" />
             <span className="bg-gradient-to-br from-zinc-900 to-zinc-500 bg-clip-text text-transparent">
               deja un teléfono sin contestar.
             </span>
           </h1>
 
-          <p className="mx-auto mt-6 max-w-2xl text-lg md:text-xl text-zinc-600 leading-relaxed">
+          <p className="mx-auto mt-5 sm:mt-6 max-w-2xl text-base sm:text-lg md:text-xl text-zinc-600 leading-relaxed">
             DentalVoice atiende llamadas, identifica al paciente, agenda citas y se sincroniza con
             GoHighLevel — todo sin intervención humana.
           </p>
 
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Button asChild size="lg">
+          <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
+            <Button asChild size="lg" className="justify-center">
               <Link href="/sign-up">
                 Probar gratis <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
-            <Button asChild size="lg" variant="secondary">
+            <Button asChild size="lg" variant="secondary" className="justify-center">
               <Link href="/dashboard">Ver demo →</Link>
             </Button>
           </div>
@@ -68,8 +68,8 @@ export default async function Home() {
         </div>
 
         {/* Hero image + dashboard preview */}
-        <div className="mx-auto max-w-6xl px-6 pb-24">
-          <div className="relative rounded-3xl overflow-hidden border border-zinc-200/80 shadow-2xl shadow-zinc-300/50">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 pb-16 sm:pb-24">
+          <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden border border-zinc-200/80 shadow-2xl shadow-zinc-300/50">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/hero.png"
@@ -77,9 +77,9 @@ export default async function Home() {
               className="w-full aspect-[16/9] object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 p-6 md:p-10">
-              <div className="rounded-2xl bg-white/95 backdrop-blur-md border border-white/40 p-5 md:p-6 shadow-xl">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="absolute inset-x-0 bottom-0 p-3 sm:p-6 md:p-10">
+              <div className="rounded-xl sm:rounded-2xl bg-white/95 backdrop-blur-md border border-white/40 p-3 sm:p-5 md:p-6 shadow-xl">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                   <StatPreview label="Llamadas hoy" value="47" delta="+12%" />
                   <StatPreview label="Tiempo promedio" value="3:24" delta="-8s" />
                   <StatPreview label="Conversión" value="64%" delta="+5pp" />
@@ -90,7 +90,7 @@ export default async function Home() {
           </div>
 
           {/* Recent calls floating panel */}
-          <div className="mt-6 rounded-2xl bg-white border border-zinc-200/70 p-6 shadow-lg shadow-zinc-200/30 max-w-3xl mx-auto">
+          <div className="mt-6 rounded-2xl bg-white border border-zinc-200/70 p-4 sm:p-6 shadow-lg shadow-zinc-200/30 max-w-3xl mx-auto">
             <div className="flex items-center justify-between mb-4">
               <p className="text-sm font-semibold">Últimas llamadas</p>
               <span className="inline-flex items-center gap-1.5 text-xs text-zinc-500">
@@ -124,19 +124,19 @@ export default async function Home() {
 
       {/* FEATURES */}
       <section id="producto" className="border-t border-zinc-200/60">
-        <div className="mx-auto max-w-6xl px-6 py-24">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-16 sm:py-24">
           <div className="max-w-2xl">
             <p className="text-sm font-medium text-blue-600">El producto</p>
-            <h2 className="mt-2 text-4xl md:text-5xl font-semibold tracking-tight">
+            <h2 className="mt-2 text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight">
               Pensado para clínicas, no para developers.
             </h2>
-            <p className="mt-4 text-lg text-zinc-600">
+            <p className="mt-4 text-base sm:text-lg text-zinc-600">
               Configurás tu agente desde un panel limpio en español. Sin código, sin integraciones
               raras, sin curva de aprendizaje.
             </p>
           </div>
 
-          <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="mt-10 sm:mt-14 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
             <FeatureCard
               icon={<Phone className="h-5 w-5" />}
               title="Atiende 24/7"
@@ -173,13 +173,13 @@ export default async function Home() {
 
       {/* INTEGRACIONES */}
       <section id="integraciones" className="border-t border-zinc-200/60 bg-zinc-50">
-        <div className="mx-auto max-w-6xl px-6 py-24 grid md:grid-cols-2 gap-12 items-center">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-16 sm:py-24 grid md:grid-cols-2 gap-8 md:gap-12 items-center">
           <div>
             <p className="text-sm font-medium text-blue-600">Integraciones</p>
-            <h2 className="mt-2 text-4xl md:text-5xl font-semibold tracking-tight">
+            <h2 className="mt-2 text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight">
               Funciona con lo que ya tenés.
             </h2>
-            <p className="mt-4 text-lg text-zinc-600">
+            <p className="mt-4 text-base sm:text-lg text-zinc-600">
               Conectás tu sub-account de GoHighLevel en un click. El número Twilio se importa
               automáticamente. El resto es pura conversación.
             </p>
@@ -202,8 +202,8 @@ export default async function Home() {
               </li>
             </ul>
           </div>
-          <Card className="p-8">
-            <div className="grid grid-cols-2 gap-3">
+          <Card className="p-4 sm:p-8">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 gap-3">
               {['GHL', 'Twilio', 'Retell', 'Stripe', 'Clerk', 'OpenAI'].map((n) => (
                 <div
                   key={n}
@@ -219,18 +219,18 @@ export default async function Home() {
 
       {/* PRICING */}
       <section id="precios" className="border-t border-zinc-200/60">
-        <div className="mx-auto max-w-6xl px-6 py-24">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-16 sm:py-24">
           <div className="text-center max-w-2xl mx-auto">
             <p className="text-sm font-medium text-blue-600">Planes simples</p>
-            <h2 className="mt-2 text-4xl md:text-5xl font-semibold tracking-tight">
+            <h2 className="mt-2 text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight">
               Pagás por lo que usás.
             </h2>
-            <p className="mt-4 text-lg text-zinc-600">
+            <p className="mt-4 text-base sm:text-lg text-zinc-600">
               Sin sorpresas. Sin contratos largos. Cambiás de plan cuando quieras.
             </p>
           </div>
 
-          <div className="mt-14 grid md:grid-cols-3 gap-6">
+          <div className="mt-10 sm:mt-14 grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
             <PricingCard
               name="Starter"
               price="149 €"
@@ -275,18 +275,18 @@ export default async function Home() {
 
       {/* CTA */}
       <section className="border-t border-zinc-200/60 bg-zinc-50">
-        <div className="mx-auto max-w-4xl px-6 py-24 text-center">
-          <h2 className="text-4xl md:text-5xl font-semibold tracking-tight">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 py-16 sm:py-24 text-center">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight">
             Empezá hoy. <br />
             <span className="text-zinc-500">Tu próxima llamada se contesta sola.</span>
           </h2>
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Button asChild size="lg">
+          <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
+            <Button asChild size="lg" className="justify-center">
               <Link href="/sign-up">
                 Empezar ahora <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
-            <Button asChild size="lg" variant="secondary">
+            <Button asChild size="lg" variant="secondary" className="justify-center">
               <Link href="/dashboard">Ver demo</Link>
             </Button>
           </div>
@@ -295,7 +295,7 @@ export default async function Home() {
 
       {/* FOOTER */}
       <footer className="border-t border-zinc-200/60">
-        <div className="mx-auto max-w-6xl px-6 py-12 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-zinc-500">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-10 sm:py-12 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-zinc-500">
           <div className="flex items-center gap-2">
             <div className="flex h-5 w-5 items-center justify-center rounded-md bg-black">
               <span className="text-[10px] font-semibold text-white">D</span>
@@ -396,7 +396,7 @@ function PricingCard({
 }) {
   return (
     <Card
-      className={`p-8 ${highlighted ? 'border-zinc-900/80 ring-1 ring-zinc-900/80 shadow-xl shadow-zinc-200/60 scale-[1.02]' : ''}`}
+      className={`p-6 sm:p-8 ${highlighted ? 'border-zinc-900/80 ring-1 ring-zinc-900/80 shadow-xl shadow-zinc-200/60 md:scale-[1.02]' : ''}`}
     >
       {highlighted && (
         <Badge tone="info" className="mb-4">

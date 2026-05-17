@@ -145,7 +145,7 @@ export function ContactSidebar({
   const assignedMember = members.find((m) => m.userId === assignedUserId);
 
   return (
-    <aside className="flex w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-zinc-200 bg-zinc-50/50 p-4">
+    <aside className="hidden lg:flex w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-zinc-200 bg-zinc-50/50 p-4">
       {error && (
         <div className="rounded bg-red-50 px-3 py-2 text-xs text-red-700">{error}</div>
       )}

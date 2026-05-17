@@ -83,7 +83,7 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
   }
 
   return (
-    <div className="flex h-[calc(100vh-7.5rem)]">
+    <div className="flex h-[calc(100vh-7.5rem)] -mx-4 sm:mx-0">
       {/* Centro: cabecera + thread + composer */}
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center justify-between border-b border-zinc-200 bg-white px-4 py-3">
@@ -135,7 +135,7 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
                 return (
                   <li
                     key={m.id}
-                    className={`max-w-[70%] rounded-2xl px-3 py-2 text-sm ${containerCls}`}
+                    className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-3 py-2 text-sm ${containerCls}`}
                   >
                     {isInternal && (
                       <div className="mb-1 text-[10px] font-semibold uppercase text-amber-700">

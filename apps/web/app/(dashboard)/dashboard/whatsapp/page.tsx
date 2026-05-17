@@ -69,8 +69,8 @@ export default async function WhatsappConversationsPage() {
   const previewMap = new Map(previews.map((p) => [p.id, p.last]));
 
   return (
-    <div className="flex h-[calc(100vh-7.5rem)] flex-col gap-6">
-      <div className="flex shrink-0 items-center justify-between">
+    <div className="flex min-h-[calc(100vh-7.5rem)] flex-col gap-4 sm:gap-6">
+      <div className="flex shrink-0 flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-zinc-900">WhatsApp</h1>
           <p className="text-sm text-zinc-500">
@@ -79,7 +79,7 @@ export default async function WhatsappConversationsPage() {
         </div>
         <Link
           href="/dashboard/whatsapp/integrations"
-          className="inline-flex items-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+          className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 self-start sm:self-auto"
         >
           Integraciones
         </Link>
@@ -100,13 +100,64 @@ export default async function WhatsappConversationsPage() {
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white">
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          {/* Mobile: cards */}
+          <ul className="md:hidden divide-y divide-zinc-100">
+            {rows.map((r) => {
+              const badge = statusBadge(r.status);
+              const preview = previewMap.get(r.id);
+              return (
+                <li key={r.id}>
+                  <Link
+                    href={`/dashboard/whatsapp/${r.id}`}
+                    className="flex flex-col gap-1 p-4 hover:bg-zinc-50/60 transition-colors"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <p className="text-sm font-medium text-zinc-900 truncate">
+                          {r.contactName ?? r.contactPhone}
+                        </p>
+                        {r.urgentFlag && (
+                          <span className="inline-flex items-center rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700 shrink-0">
+                            URGENTE
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] text-zinc-400 shrink-0">
+                        {relativeTime(r.lastMsgAt)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-zinc-500 line-clamp-2">
+                      {preview?.direction === 'OUTBOUND' && (
+                        <span className="text-zinc-400">Tú: </span>
+                      )}
+                      {preview?.contentText ?? '—'}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`inline-flex rounded px-2 py-0.5 text-[11px] font-medium ${badge.cls}`}>
+                        {badge.label}
+                      </span>
+                      <span className="text-[11px] text-zinc-400">
+                        {r.channel === 'WHATSAPP_CLOUD'
+                          ? 'Cloud API'
+                          : r.channel === 'WHATSAPP_TWILIO'
+                            ? 'Twilio'
+                            : 'Evolution'}
+                      </span>
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+
+          {/* Tablet/Desktop: table */}
+          <div className="hidden md:block min-h-0 flex-1 overflow-auto">
           <table className="w-full">
             <thead className="sticky top-0 z-10 border-b border-zinc-200 bg-zinc-50/95 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 backdrop-blur">
               <tr>
                 <th className="px-4 py-3">Contacto</th>
                 <th className="px-4 py-3">Último mensaje</th>
-                <th className="px-4 py-3">Canal</th>
+                <th className="px-4 py-3 hidden lg:table-cell">Canal</th>
                 <th className="px-4 py-3">Estado</th>
                 <th className="px-4 py-3">Cuándo</th>
               </tr>
@@ -140,7 +191,7 @@ export default async function WhatsappConversationsPage() {
                         </span>
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-xs text-zinc-500">
+                    <td className="px-4 py-3 text-xs text-zinc-500 hidden lg:table-cell">
                       {r.channel === 'WHATSAPP_CLOUD'
                         ? 'Cloud API'
                         : r.channel === 'WHATSAPP_TWILIO'

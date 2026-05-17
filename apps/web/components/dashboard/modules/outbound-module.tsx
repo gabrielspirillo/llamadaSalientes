@@ -40,7 +40,7 @@ export async function OutboundModule({ tenantId }: { tenantId: string }) {
 
   return (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
         <KpiCard
           label="Llamadas (30 días)"
           value={String(kpis.callsAttempted)}
@@ -68,9 +68,9 @@ export async function OutboundModule({ tenantId }: { tenantId: string }) {
         />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
         <Card className="xl:col-span-2">
-          <div className="flex items-center justify-between p-5 pb-2">
+          <div className="flex items-center justify-between p-4 sm:p-5 pb-2">
             <div>
               <h3 className="text-base font-semibold tracking-tight">Tendencia diaria</h3>
               <p className="text-xs text-zinc-500 mt-0.5">Últimos 30 días</p>
@@ -81,13 +81,13 @@ export async function OutboundModule({ tenantId }: { tenantId: string }) {
               </Link>
             </Button>
           </div>
-          <div className="px-5 pb-5 pt-2">
+          <div className="px-4 sm:px-5 pb-4 sm:pb-5 pt-2">
             <OutboundTrendChart data={trend} />
           </div>
         </Card>
 
         <Card>
-          <div className="p-5 pb-2">
+          <div className="p-4 sm:p-5 pb-2">
             <h3 className="text-base font-semibold tracking-tight">Campañas recientes</h3>
             <p className="text-xs text-zinc-500 mt-0.5">Performance últimos 30 días</p>
           </div>
@@ -158,7 +158,7 @@ function KpiCard({
         ? 'bg-amber-50 text-amber-700'
         : 'bg-zinc-100 text-zinc-600';
   return (
-    <Card className="p-5">
+    <Card className="p-4 sm:p-5">
       <div className="flex items-center justify-between">
         <p className="text-sm text-zinc-500">{label}</p>
         <div className={`h-7 w-7 inline-flex items-center justify-center rounded-lg ${accent}`}>
@@ -166,7 +166,7 @@ function KpiCard({
         </div>
       </div>
       <div className="mt-3">
-        <span className="text-3xl font-semibold tracking-tight tabular-nums">{value}</span>
+        <span className="text-2xl sm:text-3xl font-semibold tracking-tight tabular-nums">{value}</span>
       </div>
       {hint && <p className="mt-1 text-xs text-zinc-500">{hint}</p>}
     </Card>

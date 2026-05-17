@@ -54,16 +54,16 @@ export default async function CallDetailPage({
         <ArrowLeft className="h-4 w-4" /> Volver a llamadas
       </Link>
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-semibold tracking-tight">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 sm:mb-8">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
+            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight truncate">
               {call.fromNumber ?? 'Llamada anónima'}
             </h1>
             {statusBadge(call.status, call.transferred ?? false)}
             {intentBadge(call.intent)}
           </div>
-          <div className="flex flex-wrap items-center gap-5 text-sm text-zinc-500">
+          <div className="flex flex-wrap items-center gap-x-4 sm:gap-x-5 gap-y-1.5 text-sm text-zinc-500">
             <span className="flex items-center gap-1.5">
               <User className="h-3.5 w-3.5" /> {call.fromNumber ?? '—'}
             </span>
@@ -81,11 +81,11 @@ export default async function CallDetailPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
+        <div className="xl:col-span-2 space-y-4 sm:space-y-6">
           {/* Audio player */}
           <Card>
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-semibold tracking-tight inline-flex items-center gap-2">
                   <Volume2 className="h-4 w-4 text-zinc-400" />
@@ -99,11 +99,11 @@ export default async function CallDetailPage({
 
           {/* Transcript */}
           <Card>
-            <div className="flex items-center justify-between p-6 pb-4">
+            <div className="flex items-center justify-between p-4 sm:p-6 pb-3 sm:pb-4">
               <h3 className="text-base font-semibold tracking-tight">Transcripción</h3>
               {transcript && <Badge>cifrada · AES-256</Badge>}
             </div>
-            <div className="border-t border-zinc-100 px-6 py-5 space-y-5 max-h-[480px] overflow-y-auto">
+            <div className="border-t border-zinc-100 px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5 max-h-[60vh] sm:max-h-[480px] overflow-y-auto">
               {transcriptTurns.length === 0 ? (
                 <div className="text-center py-8 text-sm text-zinc-500">
                   La transcripción aparecerá cuando termine el procesamiento.
@@ -112,8 +112,8 @@ export default async function CallDetailPage({
                 transcriptTurns.map((turn, i) => {
                   const turnId = `tr-${i}`;
                   return (
-                    <div key={turnId} className="flex gap-3">
-                      <div className="text-xs text-zinc-400 tabular-nums pt-1.5 w-12 shrink-0">
+                    <div key={turnId} className="flex gap-2 sm:gap-3">
+                      <div className="hidden sm:block text-xs text-zinc-400 tabular-nums pt-1.5 w-12 shrink-0">
                         {turn.t}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -138,10 +138,10 @@ export default async function CallDetailPage({
           </Card>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* AI summary — siempre en español, traduce on-demand si vino en inglés */}
           <Card>
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <div className="flex items-center gap-2 mb-3">
                 <Sparkles className="h-4 w-4 text-violet-600" />
                 <h3 className="text-base font-semibold tracking-tight">Resumen IA</h3>
@@ -169,7 +169,7 @@ export default async function CallDetailPage({
           {/* GHL contact link */}
           {call.ghlContactId && (
             <Card>
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 <h3 className="text-base font-semibold tracking-tight mb-3 inline-flex items-center gap-2">
                   Contacto en GHL
                 </h3>
@@ -183,7 +183,7 @@ export default async function CallDetailPage({
 
           {/* Metadata */}
           <Card>
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <h3 className="text-base font-semibold tracking-tight mb-4">Metadata</h3>
               <div className="space-y-2.5 text-sm">
                 <FieldRow label="Retell Call ID" value={call.retellCallId} mono />

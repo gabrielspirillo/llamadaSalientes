@@ -3,7 +3,7 @@ import { SignIn } from '@clerk/nextjs';
 export default function SignInPage() {
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-white">
-      <div className="flex items-center justify-center px-8 py-12">
+      <div className="flex items-center justify-center px-4 sm:px-8 py-8 sm:py-12">
         <SignIn />
       </div>
       <div className="hidden lg:flex relative bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 items-center justify-center p-12 overflow-hidden">

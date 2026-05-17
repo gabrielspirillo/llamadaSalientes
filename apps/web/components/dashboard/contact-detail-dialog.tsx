@@ -184,14 +184,14 @@ export function ContactDetailDialog({
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-[800px] p-0 gap-0 overflow-hidden">
-        <DialogHeader className="px-6 pt-5 pb-4 border-b border-zinc-100">
-          <div className="flex items-center justify-between gap-3">
-            <DialogTitle className="text-lg flex items-center gap-3">
-              <User className="h-5 w-5 text-violet-600" />
-              {fullName}
+        <DialogHeader className="px-4 sm:px-6 pt-5 pb-4 border-b border-zinc-100">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <DialogTitle className="text-lg flex items-center gap-3 min-w-0">
+              <User className="h-5 w-5 text-violet-600 shrink-0" />
+              <span className="truncate">{fullName}</span>
             </DialogTitle>
             {contact?.phone && (
-              <Button size="sm" onClick={callNow} disabled={callingNow}>
+              <Button size="sm" onClick={callNow} disabled={callingNow} className="self-start sm:self-auto">
                 {callingNow ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
@@ -217,7 +217,7 @@ export function ContactDetailDialog({
           )}
         </DialogHeader>
 
-        <div className="flex items-center gap-1 px-6 border-b border-zinc-100">
+        <div className="flex items-center gap-1 px-4 sm:px-6 border-b border-zinc-100 overflow-x-auto">
           <TabButton active={tab === 'datos'} onClick={() => setTab('datos')}>
             <User className="h-3.5 w-3.5" /> Datos
           </TabButton>
@@ -239,7 +239,7 @@ export function ContactDetailDialog({
           </TabButton>
         </div>
 
-        <div className="max-h-[60vh] overflow-y-auto px-6 py-5">
+        <div className="max-h-[60vh] overflow-y-auto px-4 sm:px-6 py-5">
           {loading && (
             <div className="flex items-center justify-center py-16 text-sm text-zinc-500">
               <Loader2 className="h-5 w-5 animate-spin mr-2" />
@@ -256,7 +256,7 @@ export function ContactDetailDialog({
             <>
               {tab === 'datos' && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <ReadOnlyField label="Nombre" value={contact?.firstName ?? '—'} />
                     <ReadOnlyField label="Apellido" value={contact?.lastName ?? '—'} />
                     <ReadOnlyField label="Teléfono" value={contact?.phone ?? '—'} mono />

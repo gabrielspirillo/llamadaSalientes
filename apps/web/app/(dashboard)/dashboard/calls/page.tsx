@@ -73,49 +73,53 @@ export default async function CallsPage({
       />
 
       <Card>
-        <form className="flex flex-col md:flex-row md:items-center gap-3 p-5 border-b border-zinc-100" action="/dashboard/calls">
-          <div className="relative flex-1 min-w-[220px]">
+        <form className="flex flex-col md:flex-row md:items-center md:flex-wrap gap-3 p-4 sm:p-5 border-b border-zinc-100" action="/dashboard/calls">
+          <div className="relative flex-1 md:min-w-[220px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
             <Input
               name="q"
               defaultValue={sp.q ?? ''}
               placeholder="Buscar por número o resumen..."
-              className="pl-9"
+              className="pl-9 w-full"
             />
           </div>
-          <select
-            name="intent"
-            defaultValue={sp.intent ?? ''}
-            className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm"
-          >
-            <option value="">Todos los motivos</option>
-            <option value="agendar">Agendar</option>
-            <option value="reagendar">Reagendar</option>
-            <option value="cancelar">Cancelar</option>
-            <option value="consulta">Consulta</option>
-            <option value="queja">Queja</option>
-            <option value="otro">Otro</option>
-          </select>
-          <select
-            name="sentiment"
-            defaultValue={sp.sentiment ?? ''}
-            className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm"
-          >
-            <option value="">Cualquier sentimiento</option>
-            <option value="positivo">Positivo</option>
-            <option value="neutro">Neutro</option>
-            <option value="negativo">Negativo</option>
-          </select>
-          <Button type="submit" variant="secondary" size="sm">
-            <Filter className="h-4 w-4" /> Aplicar
-          </Button>
-          {activeFilters > 0 && (
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/dashboard/calls">Limpiar</Link>
+          <div className="grid grid-cols-2 md:flex md:items-center gap-2 md:gap-3">
+            <select
+              name="intent"
+              defaultValue={sp.intent ?? ''}
+              className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm w-full md:w-auto"
+            >
+              <option value="">Todos los motivos</option>
+              <option value="agendar">Agendar</option>
+              <option value="reagendar">Reagendar</option>
+              <option value="cancelar">Cancelar</option>
+              <option value="consulta">Consulta</option>
+              <option value="queja">Queja</option>
+              <option value="otro">Otro</option>
+            </select>
+            <select
+              name="sentiment"
+              defaultValue={sp.sentiment ?? ''}
+              className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm w-full md:w-auto"
+            >
+              <option value="">Cualquier sentimiento</option>
+              <option value="positivo">Positivo</option>
+              <option value="neutro">Neutro</option>
+              <option value="negativo">Negativo</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap md:flex-nowrap">
+            <Button type="submit" variant="secondary" size="sm">
+              <Filter className="h-4 w-4" /> Aplicar
             </Button>
-          )}
-          <div className="flex items-center gap-2 text-xs text-zinc-500 ml-auto">
-            <Badge>{realCalls.length} llamadas</Badge>
+            {activeFilters > 0 && (
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/dashboard/calls">Limpiar</Link>
+              </Button>
+            )}
+            <div className="flex items-center gap-2 text-xs text-zinc-500 ml-auto">
+              <Badge>{realCalls.length} llamadas</Badge>
+            </div>
           </div>
         </form>
 
@@ -132,15 +136,65 @@ export default async function CallsPage({
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            {/* Mobile: card list */}
+            <ul className="md:hidden divide-y divide-zinc-50">
+              {realCalls.map((c) => {
+                const phone = c.fromNumber ?? c.toNumber ?? null;
+                const customData = (c.customData ?? {}) as { patient_name?: string };
+                const patientName = customData.patient_name ?? null;
+                return (
+                  <li key={c.id}>
+                    <Link
+                      href={`/dashboard/calls/${c.id}`}
+                      className="flex items-start gap-3 px-4 py-3.5 hover:bg-zinc-50/60 transition-colors"
+                    >
+                      <div className="mt-1.5">{sentimentDot(c.sentiment)}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-medium truncate">
+                            {patientName ?? (phone ?? 'Sin identificar')}
+                          </p>
+                          <span className="text-[11px] text-zinc-400 shrink-0 tabular-nums">
+                            {c.startedAt
+                              ? new Date(c.startedAt).toLocaleString('es-ES', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })
+                              : '—'}
+                          </span>
+                        </div>
+                        {phone && patientName && (
+                          <p className="text-xs text-zinc-500 truncate tabular-nums mt-0.5">
+                            {phone}
+                          </p>
+                        )}
+                        <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                          {motivoBadge(c.intent)}
+                          {statusBadge(c.status, c.transferred ?? false)}
+                          <span className="text-[11px] text-zinc-500 tabular-nums">
+                            {formatDuration(c.durationSeconds)}
+                          </span>
+                        </div>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-zinc-300 shrink-0 mt-1.5" />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {/* Tablet/Desktop: table */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs uppercase tracking-wider text-zinc-500 border-b border-zinc-100">
                     <th className="px-5 py-3 font-medium">Paciente</th>
-                    <th className="px-5 py-3 font-medium">Número</th>
+                    <th className="px-5 py-3 font-medium hidden lg:table-cell">Número</th>
                     <th className="px-5 py-3 font-medium">Motivo</th>
                     <th className="px-5 py-3 font-medium">Estado</th>
-                    <th className="px-5 py-3 font-medium">Duración</th>
+                    <th className="px-5 py-3 font-medium hidden lg:table-cell">Duración</th>
                     <th className="px-5 py-3 font-medium">Fecha y hora</th>
                     <th className="px-5 py-3 font-medium" />
                   </tr>
@@ -163,12 +217,12 @@ export default async function CallsPage({
                             </span>
                           </div>
                         </td>
-                        <td className="px-5 py-3.5 text-zinc-600 tabular-nums">
+                        <td className="px-5 py-3.5 text-zinc-600 tabular-nums hidden lg:table-cell">
                           {phone ?? '—'}
                         </td>
                         <td className="px-5 py-3.5">{motivoBadge(c.intent)}</td>
                         <td className="px-5 py-3.5">{statusBadge(c.status, c.transferred ?? false)}</td>
-                        <td className="px-5 py-3.5 text-zinc-700 tabular-nums">
+                        <td className="px-5 py-3.5 text-zinc-700 tabular-nums hidden lg:table-cell">
                           {formatDuration(c.durationSeconds)}
                         </td>
                         <td className="px-5 py-3.5 text-zinc-600 tabular-nums">
@@ -196,7 +250,7 @@ export default async function CallsPage({
               </table>
             </div>
 
-            <div className="flex items-center justify-between p-5 border-t border-zinc-100 text-sm text-zinc-500">
+            <div className="flex items-center justify-between p-4 sm:p-5 border-t border-zinc-100 text-sm text-zinc-500">
               <div className="flex items-center gap-2">
                 <Phone className="h-3.5 w-3.5" />
                 Mostrando {realCalls.length} de {realCalls.length}

@@ -97,7 +97,7 @@ export function OutboundCampaignForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-5">
-      <Card className="p-6 space-y-4">
+      <Card className="p-4 sm:p-6 space-y-4">
         <div>
           <Label htmlFor="campaign-name">Nombre</Label>
           <Input
@@ -140,7 +140,7 @@ export function OutboundCampaignForm() {
         </div>
       </Card>
 
-      <Card className="p-6 space-y-4">
+      <Card className="p-4 sm:p-6 space-y-4">
         <div>
           <Label>Destinatarios (CSV)</Label>
           <p className="mt-1 text-xs text-zinc-500">
@@ -150,7 +150,7 @@ export function OutboundCampaignForm() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3.5 text-sm hover:bg-zinc-50">
             <Upload className="h-4 w-4" />
             Elegir archivo

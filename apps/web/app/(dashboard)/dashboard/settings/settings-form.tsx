@@ -127,10 +127,10 @@ export function SettingsForm({
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           <Card>
-            <div className="p-6 space-y-5">
+            <div className="p-4 sm:p-6 space-y-5">
               <h3 className="text-base font-semibold tracking-tight">Información general</h3>
 
               <div>
@@ -181,7 +181,7 @@ export function SettingsForm({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="timezone">Zona horaria</Label>
                   <Input
@@ -236,13 +236,13 @@ export function SettingsForm({
           </Card>
 
           <Card>
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <h3 className="text-base font-semibold tracking-tight mb-4">Horarios de atención</h3>
               <div className="space-y-2">
                 {DAYS.map((d) => {
                   const h = hours[d.key];
                   return (
-                    <div key={d.key} className="flex items-center gap-4">
+                    <div key={d.key} className="flex flex-wrap items-center gap-2 sm:gap-4">
                       <input
                         type="checkbox"
                         checked={h !== null}
@@ -252,7 +252,7 @@ export function SettingsForm({
                       />
                       <label
                         htmlFor={`day-${d.key}`}
-                        className="w-24 text-sm font-medium cursor-pointer"
+                        className="w-20 sm:w-24 text-sm font-medium cursor-pointer"
                       >
                         {d.label}
                       </label>
@@ -262,14 +262,14 @@ export function SettingsForm({
                             type="time"
                             value={h.open}
                             onChange={(e) => setDayHours(d.key, 'open', e.target.value)}
-                            className="w-32"
+                            className="w-28 sm:w-32"
                           />
                           <span className="text-zinc-400 text-sm">a</span>
                           <Input
                             type="time"
                             value={h.close}
                             onChange={(e) => setDayHours(d.key, 'close', e.target.value)}
-                            className="w-32"
+                            className="w-28 sm:w-32"
                           />
                         </>
                       ) : (
@@ -283,7 +283,7 @@ export function SettingsForm({
           </Card>
 
           <Card>
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <h3 className="text-base font-semibold tracking-tight">Texto de consentimiento</h3>
               <p className="text-sm text-zinc-500 mt-1 mb-4">
                 Lo que el agente dice <span className="font-medium">verbatim</span> al inicio de
@@ -299,12 +299,12 @@ export function SettingsForm({
           </Card>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {ghlSlot}
           {autoCallbackSlot}
 
           <Card>
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <h3 className="text-base font-semibold tracking-tight">Tips</h3>
               <ul className="mt-3 space-y-2 text-sm text-zinc-600">
                 <li>• La zona horaria afecta cómo el agente lee horarios al paciente.</li>

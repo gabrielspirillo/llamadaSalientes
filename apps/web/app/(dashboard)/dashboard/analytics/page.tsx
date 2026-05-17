@@ -42,7 +42,7 @@ export default async function AnalyticsPage({
       />
 
       <Tabs defaultValue={tab}>
-        <TabsList>
+        <TabsList className="overflow-x-auto max-w-full">
           <TabsTrigger value="outbound">
             <PhoneOutgoing className="h-3.5 w-3.5 mr-1.5" />
             Salientes
@@ -105,7 +105,7 @@ async function InboundAnalytics({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
         <BigStat
           label="Total llamadas"
           value={String(data.total)}
@@ -162,9 +162,9 @@ async function InboundAnalytics({
             </Card>
           )}
 
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
             <Card className="xl:col-span-2">
-              <div className="flex items-center justify-between p-6 pb-2">
+              <div className="flex items-center justify-between p-4 sm:p-6 pb-2">
                 <div>
                   <h3 className="text-base font-semibold tracking-tight">Llamadas por hora</h3>
                   <p className="text-sm text-zinc-500 mt-0.5">Distribución del período</p>
@@ -173,16 +173,16 @@ async function InboundAnalytics({
                   {range === 'today' ? 'Hoy' : range === '7d' ? '7 días' : '30 días'}
                 </Badge>
               </div>
-              <div className="px-6 pb-6 pt-4">
-                <div className="flex items-end gap-1.5 h-56">
+              <div className="px-4 sm:px-6 pb-4 sm:pb-6 pt-4">
+                <div className="flex items-end gap-1 sm:gap-1.5 h-48 sm:h-56">
                   {data.byHour.map((h) => (
-                    <div key={h.hour} className="flex-1 flex flex-col items-center gap-2">
+                    <div key={h.hour} className="flex-1 flex flex-col items-center gap-1.5 sm:gap-2 min-w-0">
                       <div
                         className="w-full rounded-t-md bg-gradient-to-b from-zinc-900 to-zinc-700 transition-all hover:from-blue-600 hover:to-blue-500 min-h-[2px]"
                         style={{ height: `${(h.calls / maxByHour) * 100}%` }}
                         title={`${h.hour}:00 — ${h.calls} llamadas`}
                       />
-                      <span className="text-[10px] text-zinc-400 tabular-nums">
+                      <span className="text-[9px] sm:text-[10px] text-zinc-400 tabular-nums">
                         {h.hour.toString().padStart(2, '0')}
                       </span>
                     </div>
@@ -192,7 +192,7 @@ async function InboundAnalytics({
             </Card>
 
             <Card>
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 <h3 className="text-base font-semibold tracking-tight">Por intención</h3>
                 <p className="text-sm text-zinc-500 mt-0.5">Distribución</p>
                 <div className="mt-4">
@@ -235,7 +235,7 @@ function BigStat({
   icon: React.ReactNode;
 }) {
   return (
-    <Card className="p-5">
+    <Card className="p-4 sm:p-5">
       <div className="flex items-center justify-between">
         <p className="text-sm text-zinc-500">{label}</p>
         <div className="h-7 w-7 inline-flex items-center justify-center rounded-lg bg-zinc-100 text-zinc-600">
@@ -243,7 +243,7 @@ function BigStat({
         </div>
       </div>
       <div className="mt-3 flex items-baseline gap-2">
-        <span className="text-3xl font-semibold tracking-tight tabular-nums">{value}</span>
+        <span className="text-2xl sm:text-3xl font-semibold tracking-tight tabular-nums">{value}</span>
         <span className="inline-flex items-center gap-0.5 text-xs font-medium text-zinc-500">
           <ArrowUpRight className="h-3 w-3" />
           {delta}

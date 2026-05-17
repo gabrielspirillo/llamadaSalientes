@@ -152,10 +152,10 @@ export function AgentTester() {
     `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
       {/* Control panel */}
       <Card className="lg:col-span-1">
-        <div className="p-6 flex flex-col items-center text-center">
+        <div className="p-4 sm:p-6 flex flex-col items-center text-center">
           <div
             className={`relative h-20 w-20 rounded-full flex items-center justify-center transition-all ${
               state === 'live'
@@ -233,7 +233,7 @@ export function AgentTester() {
 
       {/* Live transcript */}
       <Card className="lg:col-span-2">
-        <div className="flex items-center justify-between p-6 pb-4">
+        <div className="flex items-center justify-between p-4 sm:p-6 pb-3 sm:pb-4">
           <h3 className="text-base font-semibold tracking-tight">Transcripción en vivo</h3>
           {state === 'live' && (
             <Badge tone="success">
@@ -242,7 +242,7 @@ export function AgentTester() {
             </Badge>
           )}
         </div>
-        <div className="border-t border-zinc-100 px-6 py-5 space-y-4 min-h-[400px] max-h-[500px] overflow-y-auto">
+        <div className="border-t border-zinc-100 px-4 sm:px-6 py-4 sm:py-5 space-y-4 min-h-[300px] sm:min-h-[400px] max-h-[60vh] sm:max-h-[500px] overflow-y-auto">
           {transcript.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-[360px] text-center text-sm text-zinc-400">
               <Phone className="h-8 w-8 mb-3 text-zinc-300" />

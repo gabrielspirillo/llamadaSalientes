@@ -16,17 +16,17 @@ export default function BillingPage() {
     <>
       <PageHeader title="Facturación" description="Plan, consumo y facturas." demoBadge />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
         {/* Plan */}
         <Card className="lg:col-span-2">
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-1">
               <Badge tone="info">Plan actual</Badge>
               <Badge tone="success">
                 <CheckCircle2 className="h-3 w-3" /> Activo
               </Badge>
             </div>
-            <h3 className="text-3xl font-semibold tracking-tight mt-3">Pro</h3>
+            <h3 className="text-2xl sm:text-3xl font-semibold tracking-tight mt-3">Pro</h3>
             <p className="text-zinc-500 mt-1">299 € / mes · Renueva el 1 jun 2026</p>
 
             <div className="mt-6">
@@ -40,7 +40,7 @@ export default function BillingPage() {
               <p className="text-xs text-zinc-400 mt-2">213 min restantes · Overage 0,20 €/min</p>
             </div>
 
-            <div className="mt-7 flex items-center gap-2">
+            <div className="mt-7 flex flex-col sm:flex-row sm:items-center gap-2">
               <Button>Cambiar plan</Button>
               <Button variant="secondary">
                 <CreditCard className="h-4 w-4" /> Portal de cliente
@@ -51,7 +51,7 @@ export default function BillingPage() {
 
         {/* Payment method */}
         <Card>
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <h3 className="text-base font-semibold tracking-tight">Método de pago</h3>
             <div className="mt-4 rounded-xl border border-zinc-200 p-4 flex items-center gap-3">
               <div className="h-10 w-14 rounded-md bg-gradient-to-br from-zinc-900 to-zinc-700 text-white flex items-center justify-center text-xs font-semibold">
@@ -70,25 +70,25 @@ export default function BillingPage() {
       </div>
 
       <Card>
-        <div className="flex items-center justify-between p-6 pb-4">
+        <div className="flex items-center justify-between p-4 sm:p-6 pb-3 sm:pb-4">
           <h3 className="text-base font-semibold tracking-tight">Facturas</h3>
           <Button variant="ghost" size="sm">
-            <Download className="h-4 w-4" /> Descargar todas
+            <Download className="h-4 w-4" /> <span className="hidden sm:inline">Descargar todas</span>
           </Button>
         </div>
         <div className="border-t border-zinc-100 divide-y divide-zinc-100">
           {invoices.map((i) => (
             <div
               key={i.id}
-              className="flex items-center justify-between p-5 hover:bg-zinc-50/60 transition-colors"
+              className="flex items-center justify-between gap-3 p-4 sm:p-5 hover:bg-zinc-50/60 transition-colors"
             >
-              <div>
-                <p className="font-medium font-mono text-sm">{i.id}</p>
+              <div className="min-w-0">
+                <p className="font-medium font-mono text-sm truncate">{i.id}</p>
                 <p className="text-xs text-zinc-500 mt-0.5">{i.date}</p>
               </div>
-              <div className="flex items-center gap-4">
-                <span className="tabular-nums font-medium">{i.amount}</span>
-                <Badge tone="success">Pagada</Badge>
+              <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+                <span className="tabular-nums font-medium text-sm">{i.amount}</span>
+                <Badge tone="success" className="hidden sm:inline-flex">Pagada</Badge>
                 <Button variant="ghost" size="icon">
                   <Download className="h-4 w-4" />
                 </Button>

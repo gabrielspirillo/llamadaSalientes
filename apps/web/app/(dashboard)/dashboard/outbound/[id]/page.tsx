@@ -74,7 +74,7 @@ export default async function OutboundCampaignDetail({
         }
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
         <Stat label="Total" value={summary.total} />
         <Stat label="Pendientes" value={summary.pending} />
         <Stat label="En curso" value={summary.ongoing} />
@@ -84,32 +84,34 @@ export default async function OutboundCampaignDetail({
       </div>
 
       <Card>
-        <table className="w-full text-sm">
-          <thead className="text-zinc-500 border-b border-zinc-100">
-            <tr>
-              <th className="text-left font-medium px-5 py-3">Teléfono</th>
-              <th className="text-left font-medium px-5 py-3">Nombre</th>
-              <th className="text-left font-medium px-5 py-3">Estado</th>
-              <th className="text-left font-medium px-5 py-3">Razón</th>
-              <th className="text-right font-medium px-5 py-3">Último intento</th>
-            </tr>
-          </thead>
-          <tbody>
-            {targets.map((t) => (
-              <tr key={t.id} className="border-b border-zinc-50 last:border-0">
-                <td className="px-5 py-3 font-mono text-xs">{t.toNumber}</td>
-                <td className="px-5 py-3">{t.patientName ?? '—'}</td>
-                <td className="px-5 py-3">{targetStatusBadge(t.status)}</td>
-                <td className="px-5 py-3 text-xs text-zinc-500">
-                  {t.lastDisconnectionReason ?? t.lastError ?? '—'}
-                </td>
-                <td className="px-5 py-3 text-right text-xs text-zinc-500">
-                  {t.lastAttemptAt ? new Date(t.lastAttemptAt).toLocaleString('es-AR') : '—'}
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-zinc-500 border-b border-zinc-100">
+              <tr>
+                <th className="text-left font-medium px-4 sm:px-5 py-3">Teléfono</th>
+                <th className="text-left font-medium px-4 sm:px-5 py-3 hidden sm:table-cell">Nombre</th>
+                <th className="text-left font-medium px-4 sm:px-5 py-3">Estado</th>
+                <th className="text-left font-medium px-4 sm:px-5 py-3 hidden md:table-cell">Razón</th>
+                <th className="text-right font-medium px-4 sm:px-5 py-3 hidden md:table-cell">Último intento</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {targets.map((t) => (
+                <tr key={t.id} className="border-b border-zinc-50 last:border-0">
+                  <td className="px-4 sm:px-5 py-3 font-mono text-xs">{t.toNumber}</td>
+                  <td className="px-4 sm:px-5 py-3 hidden sm:table-cell">{t.patientName ?? '—'}</td>
+                  <td className="px-4 sm:px-5 py-3">{targetStatusBadge(t.status)}</td>
+                  <td className="px-4 sm:px-5 py-3 text-xs text-zinc-500 hidden md:table-cell">
+                    {t.lastDisconnectionReason ?? t.lastError ?? '—'}
+                  </td>
+                  <td className="px-4 sm:px-5 py-3 text-right text-xs text-zinc-500 hidden md:table-cell">
+                    {t.lastAttemptAt ? new Date(t.lastAttemptAt).toLocaleString('es-AR') : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Card>
     </div>
   );

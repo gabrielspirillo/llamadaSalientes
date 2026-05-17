@@ -64,7 +64,7 @@ function DisconnectedState() {
 
   return (
     <Card>
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <h3 className="text-base font-semibold tracking-tight">Integración GoHighLevel</h3>
         <div className="mt-3 flex items-center gap-2 text-sm">
           <div className="h-2 w-2 rounded-full bg-zinc-300" />
@@ -175,7 +175,7 @@ function ConnectedState({
 
   return (
     <Card>
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="flex items-center justify-between">
           <h3 className="text-base font-semibold tracking-tight">Integración GoHighLevel</h3>
           <Badge tone="success">

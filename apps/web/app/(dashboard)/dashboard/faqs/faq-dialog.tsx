@@ -51,8 +51,8 @@ export function FaqDialog({ faq, trigger }: { faq?: Faq; trigger: React.ReactNod
           </DialogDescription>
         </DialogHeader>
         <form action={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
-            <div className="col-span-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="sm:col-span-2">
               <Label htmlFor="category">Categoría</Label>
               <Input
                 id="category"

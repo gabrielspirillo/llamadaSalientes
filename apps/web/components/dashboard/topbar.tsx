@@ -1,5 +1,6 @@
 'use client';
 
+import { DashboardSidebarMobile } from '@/components/dashboard/sidebar';
 import { UserButton } from '@clerk/nextjs';
 import {
   ArrowRight,
@@ -7,6 +8,7 @@ import {
   Calendar,
   Check,
   Contact,
+  Menu,
   MessageCircle,
   Phone,
   Search,
@@ -43,6 +45,7 @@ const KIND_DOT: Record<Notification['kind'], string> = {
 export function DashboardTopbar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Cmd-K abre el buscador
   useEffect(() => {
@@ -62,8 +65,26 @@ export function DashboardTopbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-zinc-200/70 bg-white/70 backdrop-blur-xl px-6">
-        <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-zinc-200/70 bg-white/70 backdrop-blur-xl px-4 sm:px-6 gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+          <button
+            type="button"
+            onClick={() => setMobileNavOpen(true)}
+            aria-label="Abrir menú"
+            className="lg:hidden inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-zinc-600 hover:bg-zinc-100 transition-colors"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <Link
+            href="/dashboard"
+            className="lg:hidden flex items-center gap-1.5 shrink-0"
+            aria-label="FUTURA"
+          >
+            <span className="text-[16px] font-extrabold tracking-tight text-[#0f1f2e] leading-none">
+              FUTURA
+            </span>
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#5fa896]" />
+          </Link>
           <button
             type="button"
             onClick={() => setSearchOpen(true)}
@@ -75,7 +96,15 @@ export function DashboardTopbar() {
           </button>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1 sm:gap-3 shrink-0">
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            aria-label="Buscar"
+            className="md:hidden inline-flex h-9 w-9 items-center justify-center rounded-full hover:bg-zinc-100 transition-colors"
+          >
+            <Search className="h-4 w-4 text-zinc-600" />
+          </button>
           <NotificationsBell open={notifOpen} onToggle={() => setNotifOpen((v) => !v)} onClose={() => setNotifOpen(false)} />
           <UserButton
             appearance={{
@@ -87,6 +116,7 @@ export function DashboardTopbar() {
         </div>
       </header>
 
+      <DashboardSidebarMobile open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
       {searchOpen && <SearchPalette onClose={() => setSearchOpen(false)} />}
     </>
   );
@@ -309,7 +339,7 @@ function NotificationsBell({
       {open && (
         <div
           data-notif-panel
-          className="absolute right-0 mt-2 w-[380px] max-h-[70vh] flex flex-col rounded-2xl bg-white shadow-2xl border border-zinc-200 z-50 overflow-hidden"
+          className="fixed sm:absolute right-2 sm:right-0 left-2 sm:left-auto mt-2 sm:w-[380px] max-w-[calc(100vw-1rem)] max-h-[75vh] sm:max-h-[70vh] flex flex-col rounded-2xl bg-white shadow-2xl border border-zinc-200 z-50 overflow-hidden"
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100 shrink-0">
             <div>

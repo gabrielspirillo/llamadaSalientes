@@ -49,17 +49,17 @@ export default async function FaqsPage() {
       ) : (
         <div className="space-y-3">
           {rows.map((f) => (
-            <Card key={f.id} className="p-5">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
+            <Card key={f.id} className="p-4 sm:p-5">
+              <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
+                <div className="flex-1 min-w-0 w-full">
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
                     {f.category && <Badge>{f.category}</Badge>}
                     <span className="text-xs text-zinc-400">prioridad {f.priority ?? 0}</span>
                   </div>
                   <h3 className="font-medium">{f.question}</h3>
                   <p className="text-sm text-zinc-600 mt-1.5 leading-relaxed">{f.answer}</p>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 self-end sm:self-start shrink-0">
                   <FaqDialog
                     faq={f}
                     trigger={

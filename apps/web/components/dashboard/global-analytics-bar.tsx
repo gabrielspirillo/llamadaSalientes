@@ -48,7 +48,7 @@ export async function GlobalAnalyticsBar({ tenantId }: { tenantId: string }) {
         <span className="text-xs text-zinc-400">Cross-channel</span>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
         <KpiCard
           label="Citas hoy"
           value={String(today)}
@@ -102,26 +102,26 @@ export async function GlobalAnalyticsBar({ tenantId }: { tenantId: string }) {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 sm:gap-4">
         <Card className="xl:col-span-2">
-          <div className="flex items-center justify-between p-5 pb-2">
+          <div className="flex items-center justify-between p-4 sm:p-5 pb-2">
             <div>
               <h3 className="text-base font-semibold tracking-tight">Tendencia de no-show</h3>
               <p className="text-xs text-zinc-500 mt-0.5">Semanal, últimos 90 días</p>
             </div>
             <Badge tone="warn">3 meses</Badge>
           </div>
-          <div className="px-5 pb-5 pt-2">
+          <div className="px-4 sm:px-5 pb-4 sm:pb-5 pt-2">
             <NoShowTrendChart data={noShowSeries} />
           </div>
         </Card>
 
         <Card>
-          <div className="p-5 pb-2">
+          <div className="p-4 sm:p-5 pb-2">
             <h3 className="text-base font-semibold tracking-tight">Top tratamientos</h3>
             <p className="text-xs text-zinc-500 mt-0.5">Últimos 30 días</p>
           </div>
-          <div className="px-5 pb-5 pt-2">
+          <div className="px-4 sm:px-5 pb-4 sm:pb-5 pt-2">
             <TopTreatmentsChart data={treatments} />
           </div>
         </Card>
@@ -152,7 +152,7 @@ function KpiCard({
         ? 'bg-amber-50 text-amber-700'
         : 'bg-zinc-100 text-zinc-600';
   return (
-    <Card className="p-5">
+    <Card className="p-4 sm:p-5">
       <div className="flex items-center justify-between">
         <p className="text-sm text-zinc-500">{label}</p>
         <div className={`h-7 w-7 inline-flex items-center justify-center rounded-lg ${accent}`}>
@@ -160,7 +160,7 @@ function KpiCard({
         </div>
       </div>
       <div className="mt-3">
-        <span className="text-3xl font-semibold tracking-tight tabular-nums">{value}</span>
+        <span className="text-2xl sm:text-3xl font-semibold tracking-tight tabular-nums">{value}</span>
       </div>
       {hint && <p className="mt-1 text-xs text-zinc-500">{hint}</p>}
     </Card>

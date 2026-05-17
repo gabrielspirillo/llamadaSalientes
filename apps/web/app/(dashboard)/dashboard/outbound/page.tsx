@@ -67,43 +67,77 @@ export default async function OutboundPage() {
         </Card>
       ) : (
         <Card>
-          <table className="w-full text-sm">
-            <thead className="text-zinc-500 border-b border-zinc-100">
-              <tr>
-                <th className="text-left font-medium px-5 py-3">Campaña</th>
-                <th className="text-left font-medium px-5 py-3">Caso de uso</th>
-                <th className="text-left font-medium px-5 py-3">Estado</th>
-                <th className="text-right font-medium px-5 py-3">Progreso</th>
-                <th className="text-right font-medium px-5 py-3">Creada</th>
-                <th className="px-5 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {campaigns.map((c) => (
-                <tr key={c.id} className="border-b border-zinc-50 last:border-0">
-                  <td className="px-5 py-3 font-medium">{c.name}</td>
-                  <td className="px-5 py-3 text-zinc-600">
-                    {USE_CASE_LABEL[c.useCase as UseCase] ?? c.useCase}
-                  </td>
-                  <td className="px-5 py-3">{statusBadge(c.status)}</td>
-                  <td className="px-5 py-3 text-right text-zinc-600 tabular-nums">
-                    {c.completedTargets}/{c.totalTargets}
-                  </td>
-                  <td className="px-5 py-3 text-right text-zinc-500 text-xs">
-                    {new Date(c.createdAt).toLocaleDateString('es-AR')}
-                  </td>
-                  <td className="px-5 py-3 text-right">
-                    <Link
-                      href={`/dashboard/outbound/${c.id}`}
-                      className="text-violet-600 hover:text-violet-700 inline-flex items-center gap-1 text-xs font-medium"
-                    >
-                      Ver <ArrowRight className="h-3 w-3" />
-                    </Link>
-                  </td>
+          {/* Mobile: cards */}
+          <ul className="md:hidden divide-y divide-zinc-50">
+            {campaigns.map((c) => (
+              <li key={c.id}>
+                <Link
+                  href={`/dashboard/outbound/${c.id}`}
+                  className="flex items-start gap-3 p-4 hover:bg-zinc-50/60 transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium truncate">{c.name}</p>
+                      <span className="text-[11px] text-zinc-400 shrink-0">
+                        {new Date(c.createdAt).toLocaleDateString('es-AR')}
+                      </span>
+                    </div>
+                    <p className="text-xs text-zinc-500 truncate mt-0.5">
+                      {USE_CASE_LABEL[c.useCase as UseCase] ?? c.useCase}
+                    </p>
+                    <div className="mt-2 flex items-center gap-2 flex-wrap">
+                      {statusBadge(c.status)}
+                      <span className="text-xs text-zinc-500 tabular-nums">
+                        {c.completedTargets}/{c.totalTargets}
+                      </span>
+                    </div>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-zinc-300 shrink-0 mt-1.5" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+
+          {/* Tablet/Desktop: table */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-zinc-500 border-b border-zinc-100">
+                <tr>
+                  <th className="text-left font-medium px-5 py-3">Campaña</th>
+                  <th className="text-left font-medium px-5 py-3 hidden lg:table-cell">Caso de uso</th>
+                  <th className="text-left font-medium px-5 py-3">Estado</th>
+                  <th className="text-right font-medium px-5 py-3">Progreso</th>
+                  <th className="text-right font-medium px-5 py-3 hidden lg:table-cell">Creada</th>
+                  <th className="px-5 py-3" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {campaigns.map((c) => (
+                  <tr key={c.id} className="border-b border-zinc-50 last:border-0">
+                    <td className="px-5 py-3 font-medium">{c.name}</td>
+                    <td className="px-5 py-3 text-zinc-600 hidden lg:table-cell">
+                      {USE_CASE_LABEL[c.useCase as UseCase] ?? c.useCase}
+                    </td>
+                    <td className="px-5 py-3">{statusBadge(c.status)}</td>
+                    <td className="px-5 py-3 text-right text-zinc-600 tabular-nums">
+                      {c.completedTargets}/{c.totalTargets}
+                    </td>
+                    <td className="px-5 py-3 text-right text-zinc-500 text-xs hidden lg:table-cell">
+                      {new Date(c.createdAt).toLocaleDateString('es-AR')}
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <Link
+                        href={`/dashboard/outbound/${c.id}`}
+                        className="text-violet-600 hover:text-violet-700 inline-flex items-center gap-1 text-xs font-medium"
+                      >
+                        Ver <ArrowRight className="h-3 w-3" />
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </Card>
       )}
     </div>

@@ -42,9 +42,9 @@ export default async function DashboardOverview() {
 
       <GlobalAnalyticsBar tenantId={tenant.id} />
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
         <Card className="xl:col-span-2">
-          <div className="flex items-center justify-between p-6 pb-4">
+          <div className="flex items-center justify-between p-4 sm:p-6 pb-3 sm:pb-4">
             <div>
               <h3 className="text-base font-semibold tracking-tight inline-flex items-center gap-2">
                 <CalendarClock className="h-4 w-4 text-violet-600" />
@@ -56,7 +56,7 @@ export default async function DashboardOverview() {
           </div>
           <div className="border-t border-zinc-100">
             {upcoming.length === 0 ? (
-              <div className="px-6 py-16 text-center">
+              <div className="px-6 py-12 sm:py-16 text-center">
                 <p className="text-sm font-medium text-zinc-700">Sin próximas citas</p>
                 <p className="text-xs text-zinc-500 mt-1.5">
                   Cuando el agente agende una cita, aparece acá.
@@ -67,7 +67,7 @@ export default async function DashboardOverview() {
                 {upcoming.map((u) => (
                   <li
                     key={u.callId}
-                    className="flex items-center gap-3 px-6 py-3.5 border-b border-zinc-50 last:border-b-0"
+                    className="flex items-center gap-3 px-4 sm:px-6 py-3.5 border-b border-zinc-50 last:border-b-0"
                   >
                     <div className="h-9 w-9 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center shrink-0">
                       <User className="h-4 w-4" />
@@ -95,7 +95,7 @@ export default async function DashboardOverview() {
         </Card>
 
         <Card>
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <h3 className="text-base font-semibold tracking-tight mb-3">Accesos rápidos</h3>
             <div className="space-y-2">
               <QuickAction

@@ -85,44 +85,44 @@ export default async function TeamPage() {
             const role = roleMap[m.role] ?? { label: m.role, tone: 'neutral' as const };
 
             return (
-              <div key={m.id} className="flex items-center justify-between p-5">
-                <div className="flex items-center gap-3">
+              <div key={m.id} className="flex items-center justify-between gap-3 p-4 sm:p-5">
+                <div className="flex items-center gap-3 min-w-0">
                   {m.publicUserData?.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={m.publicUserData.imageUrl}
                       alt={userName}
-                      className="h-9 w-9 rounded-full object-cover"
+                      className="h-9 w-9 rounded-full object-cover shrink-0"
                     />
                   ) : (
-                    <div className="h-9 w-9 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 text-white flex items-center justify-center text-sm font-semibold">
+                    <div className="h-9 w-9 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 text-white flex items-center justify-center text-sm font-semibold shrink-0">
                       {initials(userName)}
                     </div>
                   )}
-                  <div>
-                    <p className="font-medium">{userName}</p>
-                    <p className="text-xs text-zinc-500">{email}</p>
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{userName}</p>
+                    <p className="text-xs text-zinc-500 truncate">{email}</p>
                   </div>
                 </div>
-                <Badge tone={role.tone}>{role.label}</Badge>
+                <Badge tone={role.tone} className="shrink-0">{role.label}</Badge>
               </div>
             );
           })}
 
           {invitations.data.map((inv) => (
-            <div key={inv.id} className="flex items-center justify-between p-5">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-full bg-zinc-100 text-zinc-500 flex items-center justify-center text-sm font-semibold">
+            <div key={inv.id} className="flex items-center justify-between gap-3 p-4 sm:p-5">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="h-9 w-9 rounded-full bg-zinc-100 text-zinc-500 flex items-center justify-center text-sm font-semibold shrink-0">
                   {initials(inv.emailAddress)}
                 </div>
-                <div>
-                  <p className="font-medium">{inv.emailAddress}</p>
-                  <p className="text-xs text-zinc-500">
+                <div className="min-w-0">
+                  <p className="font-medium truncate">{inv.emailAddress}</p>
+                  <p className="text-xs text-zinc-500 truncate">
                     Invitación enviada · {new Date(inv.createdAt).toLocaleDateString('es-ES')}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 sm:gap-3 shrink-0 flex-wrap justify-end">
                 <Badge tone="warn">Pendiente</Badge>
                 <Badge tone={(roleMap[inv.role] ?? { tone: 'neutral' as const }).tone}>
                   {(roleMap[inv.role] ?? { label: inv.role }).label}

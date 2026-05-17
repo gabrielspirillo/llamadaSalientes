@@ -35,7 +35,7 @@ export function TelephonySettings({
   const [state, setState] = useState<TelephonyState>(initial);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
       <CredentialsCard state={state} onChange={setState} />
       <CallerIdCard state={state} onChange={setState} />
       <InboundCard state={state} onChange={setState} webhookUrls={webhookUrls} />
@@ -83,7 +83,7 @@ function CredentialsCard({
 
   return (
     <Card className="lg:col-span-2">
-      <div className="p-6 space-y-4">
+      <div className="p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-5 w-5 text-zinc-500" />
           <h3 className="text-base font-semibold tracking-tight">Credenciales Twilio</h3>
@@ -249,7 +249,7 @@ function CallerIdCard({
 
   return (
     <Card>
-      <div className="p-6 space-y-4">
+      <div className="p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-2">
           <PhoneOutgoing className="h-5 w-5 text-zinc-500" />
           <h3 className="text-base font-semibold tracking-tight">Caller ID saliente</h3>
@@ -416,7 +416,7 @@ function InboundCard({
 
   return (
     <Card>
-      <div className="p-6 space-y-4">
+      <div className="p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-2">
           <PhoneIncoming className="h-5 w-5 text-zinc-500" />
           <h3 className="text-base font-semibold tracking-tight">Número entrante</h3>
@@ -561,7 +561,7 @@ function InboundCard({
 function HelpCard({ webhookUrls }: { webhookUrls: { voice: string; sms: string } }) {
   return (
     <Card>
-      <div className="p-6 space-y-3">
+      <div className="p-4 sm:p-6 space-y-3">
         <h3 className="text-base font-semibold tracking-tight">Cómo funciona</h3>
         <ul className="text-sm text-zinc-600 space-y-2 list-disc pl-5">
           <li>
