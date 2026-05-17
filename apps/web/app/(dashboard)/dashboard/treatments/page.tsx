@@ -62,6 +62,11 @@ export default async function TreatmentsPage() {
                     </td>
                     <td className="px-5 py-3.5 text-zinc-700 tabular-nums">
                       {formatPrice(t.priceMin, t.priceMax)}
+                      {t.priceCents != null && (
+                        <div className="text-xs text-zinc-500 mt-0.5">
+                          ${(t.priceCents / 100).toFixed(0)} · revenue
+                        </div>
+                      )}
                     </td>
                     <td className="px-5 py-3.5">
                       <Badge tone={t.active ? 'success' : 'neutral'}>
