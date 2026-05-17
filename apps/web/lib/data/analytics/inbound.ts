@@ -16,7 +16,7 @@ function rangeStart(range: AnalyticsRange): Date {
   return d;
 }
 
-export async function getAnalytics(tenantId: string, range: AnalyticsRange) {
+export async function getInboundAnalytics(tenantId: string, range: AnalyticsRange) {
   const start = rangeStart(range);
 
   const rows = await db
@@ -100,4 +100,4 @@ export async function getAnalytics(tenantId: string, range: AnalyticsRange) {
   };
 }
 
-export type Analytics = Awaited<ReturnType<typeof getAnalytics>>;
+export type InboundAnalytics = Awaited<ReturnType<typeof getInboundAnalytics>>;
