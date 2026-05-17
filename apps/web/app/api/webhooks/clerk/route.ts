@@ -147,7 +147,7 @@ async function handleOrgCreated(evt: ClerkOrgEvent) {
   // El usuario puede editarlos / borrarlos desde la UI.
   await db
     .insert(treatments)
-    .values(SEED_TREATMENTS.map((t) => ({ tenantId: tenant.id, ...t, currency: 'USD' })));
+    .values(SEED_TREATMENTS.map((t) => ({ tenantId: tenant.id, ...t, currency: 'EUR' })));
   await db.insert(faqs).values(SEED_FAQS.map((f) => ({ tenantId: tenant.id, ...f })));
 }
 

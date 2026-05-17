@@ -95,7 +95,7 @@ export function FaqDialog({ faq, trigger }: { faq?: Faq; trigger: React.ReactNod
               name="answer"
               required
               defaultValue={faq?.answer ?? ''}
-              placeholder="Entre $40 y $80 USD según el caso. Incluye revisión y profilaxis."
+              placeholder="Entre 40 € y 80 € según el caso. Incluye revisión y profilaxis."
               className="mt-1.5 min-h-[120px]"
             />
           </div>

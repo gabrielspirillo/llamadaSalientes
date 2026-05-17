@@ -16,7 +16,7 @@ function formatPercent(rate: number): string {
   return `${(rate * 100).toFixed(0)}%`;
 }
 
-function formatMoney(cents: number, currency = 'USD'): string {
+function formatMoney(cents: number, currency = 'EUR'): string {
   try {
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',

@@ -71,7 +71,7 @@ const FAQS = [
   {
     category: 'Precios',
     question: '¿Cuánto cuesta una limpieza dental?',
-    answer: 'Entre $40 y $80 USD según el caso. Incluye revisión y profilaxis.',
+    answer: 'Entre 40 € y 80 € según el caso. Incluye revisión y profilaxis.',
     priority: 10,
   },
   {
@@ -90,7 +90,7 @@ const FAQS = [
     category: 'Pagos',
     question: '¿Tienen planes de financiación?',
     answer:
-      'Sí, hasta 12 meses sin intereses con tarjetas participantes para tratamientos de más de $500.',
+      'Sí, hasta 12 meses sin intereses con tarjetas participantes para tratamientos de más de 500 €.',
     priority: 7,
   },
   {
@@ -148,7 +148,7 @@ async function main() {
 
       await db
         .insert(treatments)
-        .values(TREATMENTS.map((tr) => ({ tenantId: t.id, ...tr, currency: 'USD' as const })));
+        .values(TREATMENTS.map((tr) => ({ tenantId: t.id, ...tr, currency: 'EUR' as const })));
       await db.insert(faqs).values(FAQS.map((f) => ({ tenantId: t.id, ...f })));
 
       console.log(

@@ -87,7 +87,7 @@ export const treatments = pgTable(
     priceMax: numeric('price_max'),
     // Precio puntual en centavos para revenue de slots optimizados (analytics).
     priceCents: integer('price_cents'),
-    currency: text('currency').default('USD'),
+    currency: text('currency').default('EUR'),
     ghlCalendarId: text('ghl_calendar_id'),
     assignedDentists: jsonb('assigned_dentists').$type<string[]>().default([]),
     active: boolean('active').default(true),
@@ -768,7 +768,7 @@ export const schedulingOffers = pgTable(
     ghlAppointmentId: text('ghl_appointment_id').notNull(),
     acceptedAt: timestamp('accepted_at', { withTimezone: true }).defaultNow().notNull(),
     estimatedRevenueCents: integer('estimated_revenue_cents').notNull().default(0),
-    currency: text('currency').notNull().default('USD'),
+    currency: text('currency').notNull().default('EUR'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => ({

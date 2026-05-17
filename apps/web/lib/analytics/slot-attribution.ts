@@ -299,7 +299,7 @@ async function lookupRevenueCents(
   tenantId: string,
   treatmentId: string | null | undefined,
 ): Promise<{ priceCents: number; currency: string }> {
-  if (!treatmentId) return { priceCents: 0, currency: 'USD' };
+  if (!treatmentId) return { priceCents: 0, currency: 'EUR' };
   const [t] = await db
     .select({ priceCents: treatments.priceCents, currency: treatments.currency })
     .from(treatments)
@@ -307,7 +307,7 @@ async function lookupRevenueCents(
     .limit(1);
   return {
     priceCents: t?.priceCents ?? 0,
-    currency: t?.currency ?? 'USD',
+    currency: t?.currency ?? 'EUR',
   };
 }
 

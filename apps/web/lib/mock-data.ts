@@ -34,7 +34,7 @@ export const mockCalls: MockCall[] = [
     duration: '2:18',
     startedAt: 'hace 28 min',
     sentiment: 'neutral',
-    summary: 'Consultó precio de blanqueamiento. Se le informó rango $200-$400.',
+    summary: 'Consultó precio de blanqueamiento. Se le informó rango 200 €-400 €.',
   },
   {
     id: 'call_03',
@@ -202,7 +202,7 @@ export const mockFaqs: MockFaq[] = [
     id: 'f1',
     category: 'Precios',
     question: '¿Cuánto cuesta una limpieza dental?',
-    answer: 'Entre $40 y $80 USD según el caso. Incluye revisión y profilaxis.',
+    answer: 'Entre 40 € y 80 € según el caso. Incluye revisión y profilaxis.',
     priority: 10,
   },
   {
@@ -224,7 +224,7 @@ export const mockFaqs: MockFaq[] = [
     category: 'Pagos',
     question: '¿Tienen planes de financiación?',
     answer:
-      'Sí, hasta 12 meses sin intereses con tarjetas participantes para tratamientos de más de $500.',
+      'Sí, hasta 12 meses sin intereses con tarjetas participantes para tratamientos de más de 500 €.',
     priority: 7,
   },
   {

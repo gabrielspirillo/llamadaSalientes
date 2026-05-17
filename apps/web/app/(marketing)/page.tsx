@@ -233,7 +233,7 @@ export default async function Home() {
           <div className="mt-14 grid md:grid-cols-3 gap-6">
             <PricingCard
               name="Starter"
-              price="$149"
+              price="149 €"
               minutes="200"
               features={[
                 '1 número Twilio',
@@ -244,7 +244,7 @@ export default async function Home() {
             />
             <PricingCard
               name="Pro"
-              price="$299"
+              price="299 €"
               minutes="600"
               features={[
                 '1 número Twilio',
@@ -256,7 +256,7 @@ export default async function Home() {
             />
             <PricingCard
               name="Premium"
-              price="$499"
+              price="499 €"
               minutes="1.500"
               features={[
                 'Múltiples números',
@@ -268,7 +268,7 @@ export default async function Home() {
           </div>
 
           <p className="mt-10 text-center text-sm text-zinc-500">
-            Overage: $0.20/min · Sin costos de setup
+            Overage: 0,20 €/min · Sin costos de setup
           </p>
         </div>
       </section>

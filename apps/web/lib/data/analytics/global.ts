@@ -126,7 +126,7 @@ export async function getOptimizedRevenueMTD(tenantId: string): Promise<Optimize
   for (const r of rows) {
     totalsByCurrency.set(r.currency, (totalsByCurrency.get(r.currency) ?? 0) + r.cents);
   }
-  let dominantCurrency = 'USD';
+  let dominantCurrency = 'EUR';
   let dominantCents = 0;
   for (const [cur, cents] of totalsByCurrency) {
     if (cents > dominantCents) {

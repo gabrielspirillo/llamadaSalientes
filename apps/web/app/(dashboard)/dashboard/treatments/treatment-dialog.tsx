@@ -127,7 +127,7 @@ export function TreatmentDialog({
               />
             </div>
             <div>
-              <Label htmlFor="priceMin">Precio mín ($)</Label>
+              <Label htmlFor="priceMin">Precio mín (€)</Label>
               <Input
                 id="priceMin"
                 name="priceMin"
@@ -140,7 +140,7 @@ export function TreatmentDialog({
               />
             </div>
             <div>
-              <Label htmlFor="priceMax">Precio máx ($)</Label>
+              <Label htmlFor="priceMax">Precio máx (€)</Label>
               <Input
                 id="priceMax"
                 name="priceMax"
@@ -155,7 +155,7 @@ export function TreatmentDialog({
           </div>
 
           <div>
-            <Label htmlFor="price">Precio referencial ($)</Label>
+            <Label htmlFor="price">Precio referencial (€)</Label>
             <Input
               id="price"
               name="price"

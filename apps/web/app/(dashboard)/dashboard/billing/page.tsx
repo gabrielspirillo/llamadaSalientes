@@ -5,10 +5,10 @@ import { Card } from '@/components/ui/card';
 import { CheckCircle2, CreditCard, Download } from 'lucide-react';
 
 const invoices = [
-  { id: 'INV-2026-005', date: '01 May 2026', amount: '$299.00', status: 'paid' },
-  { id: 'INV-2026-004', date: '01 Apr 2026', amount: '$299.00', status: 'paid' },
-  { id: 'INV-2026-003', date: '01 Mar 2026', amount: '$299.00', status: 'paid' },
-  { id: 'INV-2026-002', date: '01 Feb 2026', amount: '$149.00', status: 'paid' },
+  { id: 'INV-2026-005', date: '01 May 2026', amount: '299,00 €', status: 'paid' },
+  { id: 'INV-2026-004', date: '01 Apr 2026', amount: '299,00 €', status: 'paid' },
+  { id: 'INV-2026-003', date: '01 Mar 2026', amount: '299,00 €', status: 'paid' },
+  { id: 'INV-2026-002', date: '01 Feb 2026', amount: '149,00 €', status: 'paid' },
 ];
 
 export default function BillingPage() {
@@ -27,7 +27,7 @@ export default function BillingPage() {
               </Badge>
             </div>
             <h3 className="text-3xl font-semibold tracking-tight mt-3">Pro</h3>
-            <p className="text-zinc-500 mt-1">$299 / mes · Renueva el 1 jun 2026</p>
+            <p className="text-zinc-500 mt-1">299 € / mes · Renueva el 1 jun 2026</p>
 
             <div className="mt-6">
               <div className="flex items-center justify-between text-sm mb-2">
@@ -37,7 +37,7 @@ export default function BillingPage() {
               <div className="h-2 rounded-full bg-zinc-100 overflow-hidden">
                 <div className="h-full w-[64%] rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400" />
               </div>
-              <p className="text-xs text-zinc-400 mt-2">213 min restantes · Overage $0.20/min</p>
+              <p className="text-xs text-zinc-400 mt-2">213 min restantes · Overage 0,20 €/min</p>
             </div>
 
             <div className="mt-7 flex items-center gap-2">

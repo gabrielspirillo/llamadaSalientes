@@ -64,7 +64,7 @@ export default async function TreatmentsPage() {
                       {formatPrice(t.priceMin, t.priceMax)}
                       {t.priceCents != null && (
                         <div className="text-xs text-zinc-500 mt-0.5">
-                          ${(t.priceCents / 100).toFixed(0)} · revenue
+                          {(t.priceCents / 100).toFixed(0)} € · revenue
                         </div>
                       )}
                     </td>
@@ -99,8 +99,8 @@ export default async function TreatmentsPage() {
 
 function formatPrice(min: string | null, max: string | null) {
   if (!min && !max) return 'Consulta gratuita';
-  if (min === max) return `$${min}`;
-  return `$${min ?? '—'} – $${max ?? '—'}`;
+  if (min === max) return `${min} €`;
+  return `${min ?? '—'} € – ${max ?? '—'} €`;
 }
 
 function EmptyState() {

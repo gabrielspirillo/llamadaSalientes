@@ -364,7 +364,7 @@ function priceRange(
   max: string | number | null | undefined,
   currency: string | null | undefined,
 ): string {
-  const cur = currency ?? 'USD';
+  const cur = currency ?? 'EUR';
   const m = min != null ? String(min) : null;
   const M = max != null ? String(max) : null;
   if (m && M && m !== M) return `${cur} ${m}-${M}`;
