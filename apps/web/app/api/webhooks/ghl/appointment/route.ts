@@ -4,6 +4,11 @@ import {
   recordCancelledSlot,
   tryAttributeNewAppointment,
 } from '@/lib/analytics/slot-attribution';
+import {
+  type GhlAppointmentPayload,
+  classifyEvent,
+  parseDate,
+} from '@/lib/analytics/ghl-webhook-helpers';
 import { eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -21,37 +26,6 @@ export const dynamic = 'force-dynamic';
  *
  * Auth: matcheo por location → tenant. Sin firma en v1 (endurecer en prod).
  */
-type GhlAppointmentPayload = {
-  type?: string;
-  locationId?: string;
-  appointment?: {
-    id?: string;
-    calendarId?: string;
-    contactId?: string;
-    startTime?: string;
-    endTime?: string;
-    status?: string;
-    treatmentId?: string;
-    dateAdded?: string;
-  };
-};
-
-function parseDate(value: string | undefined): Date | null {
-  if (!value) return null;
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
-
-function classifyEvent(payload: GhlAppointmentPayload): 'create' | 'cancel' | null {
-  const type = (payload.type ?? '').toLowerCase();
-  const status = (payload.appointment?.status ?? '').toLowerCase();
-
-  if (/appointment\.?delete/.test(type)) return 'cancel';
-  if (status === 'cancelled' || status === 'canceled' || status === 'no_show') return 'cancel';
-  if (/appointment\.?create/.test(type)) return 'create';
-  return null;
-}
-
 export async function POST(req: NextRequest) {
   const locationFromQuery = req.nextUrl.searchParams.get('location') ?? '';
   let payload: GhlAppointmentPayload;

@@ -22,6 +22,7 @@ type Treatment = {
   durationMinutes: number;
   priceMin: string | null;
   priceMax: string | null;
+  priceCents: number | null;
   active: boolean | null;
 };
 
@@ -151,6 +152,28 @@ export function TreatmentDialog({
                 className="mt-1.5"
               />
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="price">Precio referencial ($)</Label>
+            <Input
+              id="price"
+              name="price"
+              type="number"
+              min="0"
+              step="0.01"
+              defaultValue={
+                treatment?.priceCents != null
+                  ? (treatment.priceCents / 100).toString()
+                  : ''
+              }
+              placeholder="60"
+              className="mt-1.5"
+            />
+            <p className="text-xs text-zinc-500 mt-1.5">
+              Se usa para calcular el revenue recuperado cuando el sistema llena un slot
+              cancelado con este tratamiento. Dejalo vacío si no querés contabilizarlo.
+            </p>
           </div>
 
           {!isEdit && (

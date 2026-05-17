@@ -36,6 +36,17 @@ const treatmentSchema = z.object({
     .string()
     .optional()
     .transform((v) => (v && v.length > 0 ? v : null)),
+  // Precio referencial (en unidades, ej. "60.00"). Lo guardamos en cents
+  // como entero para evitar drift en cálculos de revenue.
+  price: z
+    .string()
+    .optional()
+    .transform((v) => {
+      if (!v || v.length === 0) return null;
+      const n = Number(v);
+      if (!Number.isFinite(n) || n < 0) return null;
+      return Math.round(n * 100);
+    }),
   active: checkboxString,
   // Schedule (opcional). Si vienen, creamos calendario en GHL al crear el treatment.
   scheduleDays: daysCsv,
@@ -83,6 +94,7 @@ export async function createTreatmentAction(formData: FormData): Promise<ActionR
       durationMinutes: parsed.data.durationMinutes,
       priceMin: parsed.data.priceMin,
       priceMax: parsed.data.priceMax,
+      priceCents: parsed.data.price,
       active: parsed.data.active,
       ghlCalendarId,
     });
@@ -123,6 +135,7 @@ export async function updateTreatmentAction(id: string, formData: FormData): Pro
     if (parsed.data.durationMinutes !== undefined) patch.durationMinutes = parsed.data.durationMinutes;
     if (parsed.data.priceMin !== undefined) patch.priceMin = parsed.data.priceMin;
     if (parsed.data.priceMax !== undefined) patch.priceMax = parsed.data.priceMax;
+    if (parsed.data.price !== undefined) patch.priceCents = parsed.data.price;
     if (parsed.data.active !== undefined) patch.active = parsed.data.active;
 
     const after = await updateTreatment(tenant.id, id, patch);
