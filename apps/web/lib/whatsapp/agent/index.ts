@@ -1,0 +1,213 @@
+import 'server-only';
+
+import { type LlmCallResult, type LlmMessage, callLLM } from './llm';
+import {
+  HANDOFF_RESPONSE_TEXT,
+  URGENT_RESPONSE_TEXT,
+  buildSystemPrompt,
+  loadGroundingForTenant,
+} from './prompt';
+import { type AgentToolName, executeAgentTool, getAgentToolDefinitions } from './tools';
+import type { AgentInput, AgentIntent, AgentOutput, ToolCallTrace } from './types';
+
+/**
+ * Orquestador del agente conversacional de WhatsApp.
+ *
+ * Una invocación = una ráfaga de mensajes ya pasada por el debouncer y
+ * unificada por el preprocesador multimodal (F2). Devolvemos un AgentOutput
+ * con TODA la información necesaria para:
+ *   - enviar la respuesta al paciente (F5),
+ *   - aplicar los flags handoff/urgent a la conversación (F5),
+ *   - persistir el run en whatsapp_agent_runs (writeAgentRun, F4).
+ *
+ * El loop tool-calling vive aquí (no en `callLLM`) para tener control
+ * granular sobre las trazas, el corte por terminal-tools y el límite de
+ * iteraciones. No re-implementa lógica: solo orquesta llm + tools + prompt.
+ */
+
+const MAX_TOOL_ITERATIONS = 5;
+const TEMPERATURE = 0.3;
+
+export async function runWhatsappAgent(input: AgentInput): Promise<AgentOutput> {
+  const startedAll = Date.now();
+
+  // Grounding por-tenant: clinic settings + treatments + FAQs.
+  const grounding = await loadGroundingForTenant(input.tenantId);
+  const system = buildSystemPrompt({
+    clinic: grounding.clinic,
+    treatments: grounding.treatments,
+    faqs: grounding.faqs,
+    nowIso: new Date().toISOString(),
+  });
+
+  const tools = getAgentToolDefinitions();
+
+  const messages: LlmMessage[] = [
+    { role: 'system', content: system },
+    ...input.history.map((h) => ({ role: h.role, content: h.content })),
+    { role: 'user', content: input.userText },
+  ];
+
+  // Telemetría acumulada a lo largo del loop.
+  const toolsCalled: ToolCallTrace[] = [];
+  let tokensIn = 0;
+  let tokensOut = 0;
+  let model = 'unknown';
+  let fallbackUsed = false;
+  let errorText: string | null = null;
+
+  let finalText: string | null = null;
+  let handoff = false;
+  let urgent = false;
+
+  for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
+    let result: LlmCallResult;
+    try {
+      result = await callLLM({ messages, tools, temperature: TEMPERATURE });
+    } catch (err) {
+      errorText = (err as Error).message ?? 'llm_error';
+      console.warn('[wa-agent] callLLM falló', { tenantId: input.tenantId, errorText });
+      // Sin LLM no podemos seguir → handoff humano.
+      handoff = true;
+      finalText = HANDOFF_RESPONSE_TEXT;
+      break;
+    }
+
+    tokensIn += result.tokensIn;
+    tokensOut += result.tokensOut;
+    model = result.model;
+    if (result.fallbackUsed) fallbackUsed = true;
+
+    // Sin tool-calls → texto final, salimos.
+    if (result.toolCalls.length === 0) {
+      finalText = result.text;
+      break;
+    }
+
+    // Hay tool-calls: re-inyectamos la respuesta del LLM como assistant para
+    // que el contexto siga coherente en la próxima vuelta.
+    messages.push({
+      role: 'assistant',
+      content: result.text,
+      toolCalls: result.toolCalls,
+    });
+
+    // Ejecutamos todas las tools de esta vuelta y guardamos sus traces.
+    let terminalHit = false;
+    for (const tc of result.toolCalls) {
+      const trace = await executeAgentTool({
+        tenantId: input.tenantId,
+        toolName: tc.name,
+        rawArgs: tc.args,
+      });
+      toolsCalled.push(trace);
+
+      messages.push({
+        role: 'tool',
+        toolCallId: tc.id,
+        name: tc.name,
+        content: trace.result,
+      });
+
+      if (trace.ok && tc.name === 'flag_urgent') {
+        urgent = true;
+        handoff = true;
+        terminalHit = true;
+      } else if (trace.ok && tc.name === 'request_handoff') {
+        handoff = true;
+        terminalHit = true;
+      }
+    }
+
+    if (terminalHit) {
+      // El orquestador es la fuente de verdad de la respuesta plantillada.
+      // El LLM no debería seguir generando — descartamos su `text` final si
+      // hubiera intentado escribir uno tras llamar a la terminal.
+      finalText = urgent ? URGENT_RESPONSE_TEXT : HANDOFF_RESPONSE_TEXT;
+      break;
+    }
+  }
+
+  // Llegamos al límite de iteraciones sin respuesta final → handoff fallback.
+  if (finalText === null && !handoff && !urgent) {
+    handoff = true;
+    finalText = HANDOFF_RESPONSE_TEXT;
+    errorText = errorText ?? 'max_tool_iterations_reached';
+  }
+
+  const intent = deriveIntent({ urgent, handoff, toolsCalled });
+  const intentConfidence = deriveConfidence({ urgent, handoff, toolsCalled });
+
+  // latencyMs total: incluye carga de grounding + todas las vueltas LLM +
+  // ejecución de tools. Lo persistimos como latencia "end-to-end" del run.
+  const latencyMs = Date.now() - startedAll;
+
+  return {
+    intent,
+    intentConfidence,
+    intentReasoning: null,
+    responseText: finalText,
+    responseButtons: null,
+    handoff,
+    urgent,
+    model,
+    tokensIn,
+    tokensOut,
+    latencyMs,
+    fallbackUsed,
+    toolsCalled,
+    errorText,
+    traceId: null,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Derivación de intent + confidence a partir del comportamiento del LLM
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SCHEDULING_TOOLS: ReadonlySet<AgentToolName> = new Set([
+  'check_availability',
+  'book_appointment',
+  'cancel_appointment',
+  'get_patient_info',
+  'register_patient',
+]);
+
+const FAQ_TOOLS: ReadonlySet<AgentToolName> = new Set([
+  'list_treatments',
+  'get_treatment_details',
+  'search_faqs',
+]);
+
+function deriveIntent(input: {
+  urgent: boolean;
+  handoff: boolean;
+  toolsCalled: ToolCallTrace[];
+}): AgentIntent {
+  if (input.urgent) return 'URGENT';
+  if (input.handoff) return 'HANDOFF';
+  const successfulTools = input.toolsCalled.filter((t) => t.ok);
+  // SCHEDULING gana sobre FAQ si hubo cualquier tool de scheduling (el caso
+  // típico es "agenda + pregunta info" — la conversión es lo que cuenta).
+  if (successfulTools.some((t) => SCHEDULING_TOOLS.has(t.name as AgentToolName))) {
+    return 'SCHEDULING';
+  }
+  if (successfulTools.some((t) => FAQ_TOOLS.has(t.name as AgentToolName))) {
+    return 'FAQ';
+  }
+  return 'OTHER';
+}
+
+function deriveConfidence(input: {
+  urgent: boolean;
+  handoff: boolean;
+  toolsCalled: ToolCallTrace[];
+}): number {
+  // Tools terminales del propio LLM: alta confianza, las pidió él mismo.
+  if (input.urgent || input.handoff) return 1.0;
+  const okCount = input.toolsCalled.filter((t) => t.ok).length;
+  if (okCount > 0) return 0.9;
+  // Texto sin tools: el LLM respondió "de oído" — bajamos confianza para que
+  // el dashboard pueda filtrar runs de baja calidad si hace falta.
+  return 0.5;
+}
