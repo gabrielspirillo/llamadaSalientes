@@ -1,11 +1,30 @@
 'use client';
 
-import { BarChart, DonutChart } from '@tremor/react';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import type { OutboundDailyPoint } from '@/lib/data/analytics/outbound';
 import type {
   ConversationStatusBreakdown,
   MessagesByHourPoint,
 } from '@/lib/data/analytics/whatsapp';
+import { axisProps, chartPalette, gridProps, tooltipStyle } from './chart-theme';
+
+const STATUS_COLORS = {
+  Activas: chartPalette.emerald,
+  'Con humano': chartPalette.amber,
+  Cerradas: chartPalette.slate,
+} as const;
 
 export function OutboundTrendChart({ data }: { data: OutboundDailyPoint[] }) {
   if (data.length === 0) {
@@ -16,22 +35,25 @@ export function OutboundTrendChart({ data }: { data: OutboundDailyPoint[] }) {
     );
   }
   const chartData = data.map((d) => ({
-    Día: new Date(d.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
+    label: new Date(d.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
     Completadas: d.ended,
     'Sin contactar': Math.max(0, d.attempted - d.ended - d.failed),
     Fallidas: d.failed,
   }));
+
   return (
-    <BarChart
-      data={chartData}
-      index="Día"
-      categories={['Completadas', 'Sin contactar', 'Fallidas']}
-      colors={['emerald', 'zinc', 'rose']}
-      stack
-      yAxisWidth={36}
-      showAnimation
-      className="h-56"
-    />
+    <ResponsiveContainer width="100%" height={224}>
+      <BarChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }} barCategoryGap="20%">
+        <CartesianGrid {...gridProps} />
+        <XAxis dataKey="label" {...axisProps} />
+        <YAxis {...axisProps} width={32} />
+        <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(99,102,241,0.06)' }} />
+        <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+        <Bar dataKey="Completadas" stackId="a" fill={chartPalette.emerald} radius={[0, 0, 0, 0]} />
+        <Bar dataKey="Sin contactar" stackId="a" fill={chartPalette.zinc} />
+        <Bar dataKey="Fallidas" stackId="a" fill={chartPalette.rose} radius={[4, 4, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
   );
 }
 
@@ -45,21 +67,23 @@ export function MessagesByHourChart({ data }: { data: MessagesByHourPoint[] }) {
     );
   }
   const chartData = data.map((d) => ({
-    Hora: `${d.hour.toString().padStart(2, '0')}:00`,
+    label: `${d.hour.toString().padStart(2, '0')}:00`,
     Entrantes: d.inbound,
     Salientes: d.outbound,
   }));
+
   return (
-    <BarChart
-      data={chartData}
-      index="Hora"
-      categories={['Entrantes', 'Salientes']}
-      colors={['indigo', 'cyan']}
-      stack
-      yAxisWidth={36}
-      showAnimation
-      className="h-56"
-    />
+    <ResponsiveContainer width="100%" height={224}>
+      <BarChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }} barCategoryGap="20%">
+        <CartesianGrid {...gridProps} />
+        <XAxis dataKey="label" {...axisProps} interval={2} />
+        <YAxis {...axisProps} width={32} />
+        <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(99,102,241,0.06)' }} />
+        <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+        <Bar dataKey="Entrantes" stackId="m" fill={chartPalette.indigo} />
+        <Bar dataKey="Salientes" stackId="m" fill={chartPalette.cyan} radius={[4, 4, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
   );
 }
 
@@ -77,14 +101,45 @@ export function ConversationStatusChart({ data }: { data: ConversationStatusBrea
     { name: 'Con humano', value: data.handoff },
     { name: 'Cerradas', value: data.closed },
   ].filter((d) => d.value > 0);
+
   return (
-    <DonutChart
-      data={chartData}
-      category="value"
-      index="name"
-      colors={['emerald', 'amber', 'zinc']}
-      showAnimation
-      className="h-56"
-    />
+    <div className="relative">
+      <ResponsiveContainer width="100%" height={224}>
+        <PieChart>
+          <Tooltip contentStyle={tooltipStyle} />
+          <Pie
+            data={chartData}
+            dataKey="value"
+            nameKey="name"
+            innerRadius={62}
+            outerRadius={92}
+            paddingAngle={2}
+            stroke="none"
+          >
+            {chartData.map((d) => (
+              <Cell key={d.name} fill={STATUS_COLORS[d.name as keyof typeof STATUS_COLORS]} />
+            ))}
+          </Pie>
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+        <span className="text-2xl font-semibold tabular-nums">{total}</span>
+        <span className="text-[11px] text-zinc-500 uppercase tracking-wider">Total</span>
+      </div>
+      <ul className="mt-4 space-y-1.5 text-xs">
+        {chartData.map((d) => (
+          <li key={d.name} className="flex items-center justify-between">
+            <span className="inline-flex items-center gap-2 text-zinc-600">
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: STATUS_COLORS[d.name as keyof typeof STATUS_COLORS] }}
+              />
+              {d.name}
+            </span>
+            <span className="tabular-nums font-medium">{d.value}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
