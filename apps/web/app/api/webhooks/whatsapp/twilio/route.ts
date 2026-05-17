@@ -75,9 +75,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     fromNumber: toRaw,
   });
 
-  const appUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
-  const fullUrl = `${appUrl}/api/webhooks/whatsapp/twilio`;
+  // Reconstruimos la URL canónica que Twilio firmó a partir de los headers
+  // que Vercel pone (x-forwarded-proto + host). Esto es más robusto que
+  // depender de NEXT_PUBLIC_APP_URL — si el host real difiere (alias de
+  // Vercel, dominio custom, etc.) la firma sigue verificando correctamente.
+  // Fallback a env.NEXT_PUBLIC_APP_URL si no vienen headers (dev local).
+  const proto = req.headers.get('x-forwarded-proto') ?? 'https';
+  const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host');
+  const fullUrl = host
+    ? `${proto}://${host}/api/webhooks/whatsapp/twilio`
+    : `${env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '')}/api/webhooks/whatsapp/twilio`;
   if (!twilio.verifyWebhookSignature(fullUrl, params, sigHeader)) {
+    console.warn('[wa-twilio-webhook] invalid signature', {
+      fullUrl,
+      sigHeaderPresent: !!sigHeader,
+      paramKeys: Object.keys(params).sort().join(','),
+    });
     return NextResponse.json({ error: 'invalid signature' }, { status: 401 });
   }
 
