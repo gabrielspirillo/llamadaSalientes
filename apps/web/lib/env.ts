@@ -59,11 +59,19 @@ const envSchema = z.object({
   INNGEST_EVENT_KEY: z.string().optional(),
   INNGEST_SIGNING_KEY: z.string().optional(),
 
-  // R2 — Fase 5
+  // R2 — Fase 5 (recordings de Retell)
   R2_ACCOUNT_ID: z.string().optional(),
   R2_ACCESS_KEY_ID: z.string().optional(),
   R2_SECRET_ACCESS_KEY: z.string().optional(),
   R2_BUCKET: z.string().optional(),
+
+  // Supabase Storage — adjuntos del inbox de WhatsApp.
+  // SUPABASE_URL = https://<project-ref>.supabase.co
+  // SUPABASE_SERVICE_ROLE_KEY = clave service_role (NUNCA exponer al cliente).
+  // Bucket público: whatsapp-media
+  SUPABASE_URL: z.string().optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
+  SUPABASE_WHATSAPP_BUCKET: z.string().default('whatsapp-media'),
 
   // Crypto — required desde Fase 3 (AES-256-GCM, 32 bytes base64)
   ENCRYPTION_KEY: z.string().min(1, 'ENCRYPTION_KEY es requerida (openssl rand -base64 32)'),

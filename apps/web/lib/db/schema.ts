@@ -574,6 +574,7 @@ export const whatsappConversations = pgTable(
     channel: conversationChannelEnum('channel').notNull(),
     status: conversationStatusEnum('status').notNull().default('ACTIVE'),
     urgentFlag: boolean('urgent_flag').notNull().default(false),
+    aiEnabled: boolean('ai_enabled').notNull().default(true),
     lastMsgAt: timestamp('last_msg_at', { withTimezone: true }),
     assignedUserId: uuid('assigned_user_id').references(() => users.id, { onDelete: 'set null' }),
     humanTakeoverAt: timestamp('human_takeover_at', { withTimezone: true }),
@@ -638,6 +639,65 @@ export const whatsappMessages = pgTable(
       t.senderType,
       t.createdAt,
     ),
+  }),
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WhatsApp inbox extras: tags, conversation_tags, quick_replies
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const whatsappTags = pgTable(
+  'whatsapp_tags',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    label: text('label').notNull(),
+    color: text('color').notNull().default('#71717a'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantLabelUnique: unique('whatsapp_tags_tenant_label_unique').on(t.tenantId, t.label),
+    tenantIdx: index('whatsapp_tags_tenant_idx').on(t.tenantId),
+  }),
+);
+
+export const whatsappConversationTags = pgTable(
+  'whatsapp_conversation_tags',
+  {
+    conversationId: uuid('conversation_id')
+      .references(() => whatsappConversations.id, { onDelete: 'cascade' })
+      .notNull(),
+    tagId: uuid('tag_id')
+      .references(() => whatsappTags.id, { onDelete: 'cascade' })
+      .notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.conversationId, t.tagId] }),
+    tagIdx: index('whatsapp_conversation_tags_tag_idx').on(t.tagId),
+  }),
+);
+
+export const whatsappQuickReplies = pgTable(
+  'whatsapp_quick_replies',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    shortcut: text('shortcut').notNull(),
+    text: text('text').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantShortcutUnique: unique('whatsapp_quick_replies_tenant_shortcut_unique').on(
+      t.tenantId,
+      t.shortcut,
+    ),
+    tenantIdx: index('whatsapp_quick_replies_tenant_idx').on(t.tenantId),
   }),
 );
 
