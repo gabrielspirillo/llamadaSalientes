@@ -102,6 +102,30 @@ dental-voice/
 └── .github/workflows/         # CI
 ```
 
+## Telefonía multi-tenant (Caller ID + número entrante)
+
+Cada clínica conserva su número público y recibe llamadas como antes; Twilio sólo es el medio.
+
+**Salientes** (clínica como Caller ID):
+1. Settings → Telefonía → cargar Account SID + Auth Token del subaccount Twilio del tenant.
+2. "Caller ID saliente" → ingresar el número público de la clínica → Twilio llama y dicta un código de 6 dígitos → la persona en la clínica lo tipea por DTMF → queda verificado.
+3. Las salientes (`triggerCallback`, batch campaigns) pasan `override_from_number` con ese número a Retell. **Requisito**: el subaccount Twilio del tenant tiene que estar registrado en Retell como BYOT (importing phone numbers from Twilio).
+
+**Entrantes** (desvío al número Twilio):
+1. Settings → Telefonía → "Número entrante" → elegir un IncomingPhoneNumber del subaccount.
+2. Decidir routing: `agent` (Retell vía SIP) o `forward` (a un humano).
+3. Configurar webhooks lo hace la app sola: setea `VoiceUrl = /api/twilio/inbound-voice` y `SmsUrl = /api/twilio/sms-passthrough`.
+4. La clínica activa "desvío de llamadas" en su operador apuntando al Twilio number elegido. Las entrantes llegan a `/api/twilio/inbound-voice`, se resuelve el tenant por `To`, y devolvemos TwiML que conecta al agente Retell vía SIP (o un `<Dial>` directo al humano).
+
+Long-term alternativa: portar el número de la clínica directamente a Twilio en lugar de usar desvío.
+
+Tablas/archivos clave:
+- `supabase/migrations/0006_tenant_telephony.sql` — esquema
+- `apps/web/lib/twilio/client.ts` — wrapper REST (Verified Caller IDs + IncomingPhoneNumbers)
+- `apps/web/app/api/telephony/*` — endpoints autenticados (Clerk org)
+- `apps/web/app/api/twilio/inbound-voice/route.ts` — webhook público (multi-tenant)
+- `apps/web/app/(dashboard)/dashboard/settings/telephony/page.tsx` — UI
+
 ## Roadmap
 
 Ver `PRD.md` y `CLAUDE_CODE_PROMPT.md` (ambos fuera de este repo). Resumen:

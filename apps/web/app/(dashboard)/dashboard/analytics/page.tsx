@@ -1,42 +1,109 @@
-import { PageHeader } from '@/components/dashboard/page-header';
 import {
   CallsTrendChart,
   IntentBarList,
   IntentDonut,
 } from '@/components/dashboard/analytics-charts';
+import { OutboundModule } from '@/components/dashboard/modules/outbound-module';
+import { WhatsappModule } from '@/components/dashboard/modules/whatsapp-module';
+import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { type AnalyticsRange, getAnalytics } from '@/lib/data/analytics';
 import { formatDuration } from '@/lib/data/calls-list';
 import { getCurrentTenant } from '@/lib/tenant';
-import { ArrowUpRight, Calendar, Clock, PhoneCall, TrendingUp } from 'lucide-react';
+import {
+  ArrowUpRight,
+  Calendar,
+  Clock,
+  MessageCircle,
+  Phone,
+  PhoneCall,
+  PhoneOutgoing,
+  TrendingUp,
+} from 'lucide-react';
 import Link from 'next/link';
 
 export default async function AnalyticsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: AnalyticsRange }>;
+  searchParams: Promise<{ range?: AnalyticsRange; tab?: string }>;
 }) {
   const sp = await searchParams;
   const range: AnalyticsRange = sp.range === '7d' || sp.range === '30d' ? sp.range : 'today';
+  const tab = sp.tab === 'outbound' || sp.tab === 'whatsapp' ? sp.tab : 'inbound';
   const { tenant } = await getCurrentTenant();
-  const data = await getAnalytics(tenant.id, range);
-
-  const maxByHour = Math.max(1, ...data.byHour.map((h) => h.calls));
 
   return (
     <>
       <PageHeader
         title="Analytics"
-        description="Métricas reales de tu agente de voz."
-        actions={
-          <div className="inline-flex items-center rounded-full border border-zinc-200 bg-white p-1 text-xs">
-            <RangePill href="/dashboard/analytics?range=today" active={range === 'today'} label="Hoy" />
-            <RangePill href="/dashboard/analytics?range=7d" active={range === '7d'} label="7 días" />
-            <RangePill href="/dashboard/analytics?range=30d" active={range === '30d'} label="30 días" />
-          </div>
-        }
+        description="Métricas reales por módulo: entrantes, salientes y WhatsApp."
       />
+
+      <Tabs defaultValue={tab}>
+        <TabsList>
+          <TabsTrigger value="outbound">
+            <PhoneOutgoing className="h-3.5 w-3.5 mr-1.5" />
+            Salientes
+          </TabsTrigger>
+          <TabsTrigger value="inbound">
+            <Phone className="h-3.5 w-3.5 mr-1.5" />
+            Entrantes
+          </TabsTrigger>
+          <TabsTrigger value="whatsapp">
+            <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
+            WhatsApp
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="outbound">
+          <OutboundModule tenantId={tenant.id} />
+        </TabsContent>
+
+        <TabsContent value="inbound">
+          <InboundAnalytics tenantId={tenant.id} range={range} />
+        </TabsContent>
+
+        <TabsContent value="whatsapp">
+          <WhatsappModule tenantId={tenant.id} />
+        </TabsContent>
+      </Tabs>
+    </>
+  );
+}
+
+async function InboundAnalytics({
+  tenantId,
+  range,
+}: {
+  tenantId: string;
+  range: AnalyticsRange;
+}) {
+  const data = await getAnalytics(tenantId, range);
+  const maxByHour = Math.max(1, ...data.byHour.map((h) => h.calls));
+
+  return (
+    <>
+      <div className="flex justify-end mb-4">
+        <div className="inline-flex items-center rounded-full border border-zinc-200 bg-white p-1 text-xs">
+          <RangePill
+            href="/dashboard/analytics?tab=inbound&range=today"
+            active={range === 'today'}
+            label="Hoy"
+          />
+          <RangePill
+            href="/dashboard/analytics?tab=inbound&range=7d"
+            active={range === '7d'}
+            label="7 días"
+          />
+          <RangePill
+            href="/dashboard/analytics?tab=inbound&range=30d"
+            active={range === '30d'}
+            label="30 días"
+          />
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         <BigStat
@@ -54,7 +121,11 @@ export default async function AnalyticsPage({
         <BigStat
           label="Citas creadas"
           value={String(data.booked)}
-          delta={data.total === 0 ? '—' : `${Math.round((data.booked / Math.max(1, data.total)) * 100)}% del total`}
+          delta={
+            data.total === 0
+              ? '—'
+              : `${Math.round((data.booked / Math.max(1, data.total)) * 100)}% del total`
+          }
           icon={<Calendar className="h-4 w-4" />}
         />
         <BigStat
@@ -76,15 +147,12 @@ export default async function AnalyticsPage({
         </Card>
       ) : (
         <div className="space-y-6">
-          {/* Tendencia diaria con Tremor */}
           {range !== 'today' && (
             <Card>
               <div className="flex items-center justify-between p-6 pb-2">
                 <div>
                   <h3 className="text-base font-semibold tracking-tight">Tendencia diaria</h3>
-                  <p className="text-sm text-zinc-500 mt-0.5">
-                    Llamadas apiladas por intención
-                  </p>
+                  <p className="text-sm text-zinc-500 mt-0.5">Llamadas apiladas por intención</p>
                 </div>
                 <Badge>{range === '7d' ? '7 días' : '30 días'}</Badge>
               </div>
@@ -101,7 +169,9 @@ export default async function AnalyticsPage({
                   <h3 className="text-base font-semibold tracking-tight">Llamadas por hora</h3>
                   <p className="text-sm text-zinc-500 mt-0.5">Distribución del período</p>
                 </div>
-                <Badge>{range === 'today' ? 'Hoy' : range === '7d' ? '7 días' : '30 días'}</Badge>
+                <Badge>
+                  {range === 'today' ? 'Hoy' : range === '7d' ? '7 días' : '30 días'}
+                </Badge>
               </div>
               <div className="px-6 pb-6 pt-4">
                 <div className="flex items-end gap-1.5 h-56">

@@ -1,6 +1,7 @@
 import 'server-only';
 import { resolveRetellAgentId } from '@/lib/data/agent-config';
 import { type OutboundCampaign, setCampaignStatus } from '@/lib/data/outbound-campaigns';
+import { getTenantTelephony } from '@/lib/data/tenant-telephony';
 import { db } from '@/lib/db/client';
 import { outboundTargets, phoneNumbers, tenants } from '@/lib/db/schema';
 import { getRetellClient } from '@/lib/retell/client';
@@ -65,6 +66,12 @@ export async function dispatchCampaign(
       error: 'No hay número Twilio activo para este tenant.',
     };
   }
+
+  // Caller ID override (BYOT). Idéntica lógica que triggerCallback singular:
+  // si el tenant verificó su número público, lo usamos como override_from_number.
+  const telephony = await getTenantTelephony(tenantId);
+  const callerIdOverride =
+    telephony?.callerIdE164 && telephony.callerIdVerifiedAt ? telephony.callerIdE164 : null;
 
   // Targets pendientes
   const targets = await db
@@ -154,6 +161,10 @@ export async function dispatchCampaign(
       tasks,
       override_agent_id: agentId,
     };
+    if (callerIdOverride) {
+      // BYOT: override_from_number → Twilio usa este número como caller ID.
+      payload.override_from_number = callerIdOverride;
+    }
     if (campaign.scheduledAt) {
       payload.scheduled_timestamp = campaign.scheduledAt.getTime();
     }

@@ -21,7 +21,8 @@ export type AuditEntity =
   | 'agent_prompt_version'
   | 'phone_number'
   | 'ghl_integration'
-  | 'membership';
+  | 'membership'
+  | 'tenant_telephony';
 
 export async function recordAudit(input: {
   tenantId: string;

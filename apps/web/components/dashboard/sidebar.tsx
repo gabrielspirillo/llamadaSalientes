@@ -10,6 +10,7 @@ import {
   HelpCircle,
   Home,
   MessageCircle,
+  Phone,
   PhoneCall,
   PhoneOutgoing,
   Settings,
@@ -31,6 +32,7 @@ const items = [
   { href: '/dashboard/faqs', label: 'FAQs', icon: HelpCircle },
   { href: '/dashboard/team', label: 'Equipo', icon: Users },
   { href: '/dashboard/settings', label: 'Clínica', icon: Building2 },
+  { href: '/dashboard/settings/telephony', label: 'Telefonía', icon: Phone },
 ] as const;
 
 export function DashboardSidebar() {

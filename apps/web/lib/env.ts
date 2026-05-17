@@ -87,6 +87,13 @@ const envSchema = z.object({
   WHATSAPP_GRAPH_API_VERSION: z.string().default('v21.0'),
   EVOLUTION_API_URL: z.string().optional(),
   EVOLUTION_API_KEY: z.string().optional(),
+
+  // Demo público de la landing (Hostinger / cliniq.futuradigital.es)
+  // Tenant que recibe las llamadas demo iniciadas desde el botón "Recibir llamada".
+  FUTURA_DEMO_TENANT_ID: z.string().uuid().optional(),
+  // Origen permitido para CORS del endpoint /api/public/demo-call.
+  // Acepta lista separada por comas. Ej: "https://cliniq.futuradigital.es,https://www.cliniq.futuradigital.es"
+  FUTURA_DEMO_ALLOWED_ORIGINS: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

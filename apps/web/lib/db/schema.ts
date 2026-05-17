@@ -186,6 +186,34 @@ export const ghlIntegrations = pgTable('ghl_integrations', {
   connectedAt: timestamp('connected_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+// Configuración Twilio por-tenant para llamadas (Caller ID saliente + número
+// entrante propio del tenant). Ver supabase/migrations/0006_tenant_telephony.sql
+// para el rationale.
+export const tenantTelephony = pgTable(
+  'tenant_telephony',
+  {
+    tenantId: uuid('tenant_id')
+      .primaryKey()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    twilioAccountSid: text('twilio_account_sid'),
+    twilioAuthTokenEnc: text('twilio_auth_token_enc'),
+    callerIdE164: text('caller_id_e164'),
+    callerIdSid: text('caller_id_sid'),
+    callerIdVerifiedAt: timestamp('caller_id_verified_at', { withTimezone: true }),
+    inboundNumberE164: text('inbound_number_e164'),
+    inboundNumberSid: text('inbound_number_sid'),
+    inboundConfiguredAt: timestamp('inbound_configured_at', { withTimezone: true }),
+    // 'agent' (Retell) | 'forward' (transferir a un humano sin pasar por el agente)
+    inboundRoute: text('inbound_route').notNull().default('agent'),
+    inboundForwardNumber: text('inbound_forward_number'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    inboundNumberIdx: index('tenant_telephony_inbound_number_idx').on(t.inboundNumberE164),
+  }),
+);
+
 export const phoneNumbers = pgTable(
   'phone_numbers',
   {

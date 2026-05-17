@@ -1,6 +1,7 @@
 import 'server-only';
 import { resolveRetellAgentId } from '@/lib/data/agent-config';
 import { getGhlIntegration } from '@/lib/data/ghl-integration';
+import { getTenantTelephony } from '@/lib/data/tenant-telephony';
 import { db } from '@/lib/db/client';
 import { phoneNumbers } from '@/lib/db/schema';
 import { createContact, lookupContactByPhone } from '@/lib/ghl/contacts-mutations';
@@ -80,6 +81,19 @@ export async function triggerCallback(input: TriggerCallbackInput): Promise<Trig
     };
   }
 
+  // Caller ID override: si el tenant verificó su número público en Twilio,
+  // lo usamos como "From" para que al destinatario le aparezca llamando la
+  // clínica en lugar del número Twilio. Sólo aplica si:
+  //   - hay un Verified Caller ID confirmado (callerIdVerifiedAt != null), Y
+  //   - el Twilio account asociado al Retell phone es el del tenant (BYOT).
+  // Si no se cumple lo segundo, Twilio rechaza la llamada con error 21210
+  // ("Caller ID Not Verified"). Por defecto pasamos el caller ID — si la
+  // cuenta no es BYOT, el fallo es ruidoso y orientativo.
+  const telephony = await getTenantTelephony(input.tenantId);
+  const fromForRetell = phoneRow.e164;
+  const callerIdOverride =
+    telephony?.callerIdE164 && telephony.callerIdVerifiedAt ? telephony.callerIdE164 : null;
+
   // 3. Asegurar contacto en GHL si tenemos integración
   let ghlContactId = input.ghlContactId ?? null;
   const ghl = await getGhlIntegration(input.tenantId);
@@ -106,7 +120,8 @@ export async function triggerCallback(input: TriggerCallbackInput): Promise<Trig
 
   // 5. Llamar a Retell
   console.log('[triggerCallback] createPhoneCall', {
-    from: phoneRow.e164,
+    from: fromForRetell,
+    callerIdOverride,
     to: phone,
     agentId,
     tenantId: input.tenantId,
@@ -116,8 +131,12 @@ export async function triggerCallback(input: TriggerCallbackInput): Promise<Trig
   let createdCall: { call_id: string; call_status?: string } | null = null;
   try {
     const retell = getRetellClient();
-    createdCall = await retell.call.createPhoneCall({
-      from_number: phoneRow.e164,
+    // Cast a any para poder pasar override_from_number (caller ID custom).
+    // El SDK Retell lo acepta cuando el phone está registrado como BYOT
+    // (cuenta Twilio del tenant). Cuando no hay override, no pasamos la prop.
+    // biome-ignore lint/suspicious/noExplicitAny: SDK params (override_from_number BYOT)
+    const callArgs: any = {
+      from_number: fromForRetell,
       to_number: phone,
       override_agent_id: agentId,
       metadata: {
@@ -127,6 +146,7 @@ export async function triggerCallback(input: TriggerCallbackInput): Promise<Trig
         source: input.source ?? 'manual',
         direction: 'outbound',
         use_case: input.useCase ?? 'custom',
+        caller_id_override: callerIdOverride,
       },
       retell_llm_dynamic_variables: {
         ...clinicVars,
@@ -137,7 +157,11 @@ export async function triggerCallback(input: TriggerCallbackInput): Promise<Trig
         use_case: input.useCase ?? 'custom',
         ...(input.dynamicVars ?? {}),
       },
-    });
+    };
+    if (callerIdOverride) {
+      callArgs.override_from_number = callerIdOverride;
+    }
+    createdCall = await retell.call.createPhoneCall(callArgs);
     console.log('[triggerCallback] Retell ACK:', {
       callId: createdCall.call_id,
       status: createdCall.call_status,
