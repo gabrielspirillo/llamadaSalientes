@@ -1,6 +1,6 @@
 import 'server-only';
 import { db } from '@/lib/db/client';
-import { appointmentsCache, schedulingOffers, treatments } from '@/lib/db/schema';
+import { appointmentsCache, cancelledSlots, schedulingOffers, treatments } from '@/lib/db/schema';
 import { and, desc, eq, gte, inArray, isNotNull, lte, sql } from 'drizzle-orm';
 import { daysAgo, startOfCurrentMonth, startOfToday, startOfTomorrow } from './shared';
 
@@ -162,10 +162,15 @@ export async function getCancellationRecoveryStats(
   const [row] = await db
     .select({
       total: sql<number>`count(*)::int`,
-      recovered: sql<number>`count(*) filter (where recovered_at is not null)::int`,
+      recovered: sql<number>`count(*) filter (where ${cancelledSlots.recoveredAt} is not null)::int`,
     })
-    .from(sql`cancelled_slots`)
-    .where(sql`tenant_id = ${tenantId} and cancelled_at >= ${since}`);
+    .from(cancelledSlots)
+    .where(
+      and(
+        eq(cancelledSlots.tenantId, tenantId),
+        gte(cancelledSlots.cancelledAt, since),
+      ),
+    );
 
   const total = row?.total ?? 0;
   const recovered = row?.recovered ?? 0;
