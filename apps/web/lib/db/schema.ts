@@ -702,6 +702,79 @@ export const whatsappQuickReplies = pgTable(
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
+// WhatsApp agent runs: audit trail de cada invocación del agente conversacional.
+// Un run por ventana del debouncer (5s). Sirve para observabilidad, debugging,
+// analytics e idempotencia (unique conversation_id + trigger_message_id).
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const agentIntentEnum = pgEnum('agent_intent', [
+  'SCHEDULING',
+  'FAQ',
+  'URGENT',
+  'HANDOFF',
+  'OTHER',
+]);
+
+export const whatsappAgentRuns = pgTable(
+  'whatsapp_agent_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    conversationId: uuid('conversation_id')
+      .references(() => whatsappConversations.id, { onDelete: 'cascade' })
+      .notNull(),
+    // Último mensaje inbound de la ráfaga que disparó el agente. La uniqueness
+    // (conversation_id, trigger_message_id) bloquea doble respuesta si Inngest
+    // reintenta el job o el webhook llega duplicado.
+    triggerMessageId: uuid('trigger_message_id').references(() => whatsappMessages.id, {
+      onDelete: 'set null',
+    }),
+    // Mensaje outbound generado por el agente. NULL si solo hizo handoff/silencio.
+    responseMessageId: uuid('response_message_id').references(() => whatsappMessages.id, {
+      onDelete: 'set null',
+    }),
+    // Identificador lógico del agente: por ahora 'main' (single agent + tools).
+    // Sin enum para poder agregar 'classifier', 'scheduling', etc. sin migrar.
+    agent: text('agent').notNull().default('main'),
+    // Modelo LLM final usado (post-fallback): ej. gemini-2.5-flash, gpt-4o.
+    model: text('model').notNull(),
+    intent: agentIntentEnum('intent'),
+    // 0.00..1.00. Si <0.7 forzamos handoff.
+    intentConfidence: numeric('intent_confidence', { precision: 3, scale: 2 }),
+    intentReasoning: text('intent_reasoning'),
+    handoff: boolean('handoff').notNull().default(false),
+    urgent: boolean('urgent').notNull().default(false),
+    tokensIn: integer('tokens_in').notNull().default(0),
+    tokensOut: integer('tokens_out').notNull().default(0),
+    latencyMs: integer('latency_ms').notNull().default(0),
+    // true si el provider primario (Gemini) falló y se usó OpenAI como fallback.
+    fallbackUsed: boolean('fallback_used').notNull().default(false),
+    // Array de tool-calls. Cada item:
+    // { name, args, ok, result, latencyMs, error? }
+    toolsCalled: jsonb('tools_called').notNull().default([]),
+    errorText: text('error_text'),
+    // Reservado para integración con tracing externo (Langfuse, Axiom, etc.).
+    traceId: text('trace_id'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    convTriggerUnique: unique('whatsapp_agent_runs_conv_trigger_unique').on(
+      t.conversationId,
+      t.triggerMessageId,
+    ),
+    tenantConvCreatedIdx: index('whatsapp_agent_runs_tenant_conv_created_idx').on(
+      t.tenantId,
+      t.conversationId,
+      t.createdAt,
+    ),
+    tenantIntentIdx: index('whatsapp_agent_runs_tenant_intent_idx').on(t.tenantId, t.intent),
+    triggerMessageIdx: index('whatsapp_agent_runs_trigger_message_idx').on(t.triggerMessageId),
+  }),
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Analytics: slot-fill attribution
 //
 // cancelled_slots: cola de citas canceladas (recovered_at IS NULL = pendiente).
