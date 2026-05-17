@@ -73,7 +73,7 @@ export function TopTreatmentsChart({ data }: { data: TopTreatment[] }) {
     <div className="relative">
       <ResponsiveContainer width="100%" height={224}>
         <PieChart>
-          <Tooltip contentStyle={tooltipStyle} />
+          <Tooltip contentStyle={tooltipStyle} wrapperStyle={{ zIndex: 50 }} />
           <Pie
             data={chartData}
             dataKey="value"

@@ -103,28 +103,30 @@ export function ConversationStatusChart({ data }: { data: ConversationStatusBrea
   ].filter((d) => d.value > 0);
 
   return (
-    <div className="relative">
-      <ResponsiveContainer width="100%" height={224}>
-        <PieChart>
-          <Tooltip contentStyle={tooltipStyle} />
-          <Pie
-            data={chartData}
-            dataKey="value"
-            nameKey="name"
-            innerRadius={62}
-            outerRadius={92}
-            paddingAngle={2}
-            stroke="none"
-          >
-            {chartData.map((d) => (
-              <Cell key={d.name} fill={STATUS_COLORS[d.name as keyof typeof STATUS_COLORS]} />
-            ))}
-          </Pie>
-        </PieChart>
-      </ResponsiveContainer>
-      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        <span className="text-2xl font-semibold tabular-nums">{total}</span>
-        <span className="text-[11px] text-zinc-500 uppercase tracking-wider">Total</span>
+    <div>
+      <div className="relative" style={{ height: 224 }}>
+        <ResponsiveContainer width="100%" height={224}>
+          <PieChart>
+            <Tooltip contentStyle={tooltipStyle} wrapperStyle={{ zIndex: 50 }} />
+            <Pie
+              data={chartData}
+              dataKey="value"
+              nameKey="name"
+              innerRadius={62}
+              outerRadius={92}
+              paddingAngle={2}
+              stroke="none"
+            >
+              {chartData.map((d) => (
+                <Cell key={d.name} fill={STATUS_COLORS[d.name as keyof typeof STATUS_COLORS]} />
+              ))}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <span className="text-2xl font-semibold tabular-nums">{total}</span>
+          <span className="text-[11px] text-zinc-500 uppercase tracking-wider">Total</span>
+        </div>
       </div>
       <ul className="mt-4 space-y-1.5 text-xs">
         {chartData.map((d) => (
