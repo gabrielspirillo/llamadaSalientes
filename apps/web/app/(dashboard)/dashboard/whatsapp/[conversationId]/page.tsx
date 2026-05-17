@@ -92,7 +92,7 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)]">
+    <div className="flex h-[calc(100vh-7.5rem)]">
       {/* Centro: cabecera + thread + composer */}
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center justify-between border-b border-zinc-200 bg-white px-4 py-3">

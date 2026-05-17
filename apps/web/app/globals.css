@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Tremor genera dinámicamente clases como `fill-indigo-500` / `stroke-rose-500`
+   dentro de su bundle compilado. Sin este @source Tailwind v4 las purga (los
+   charts salen en negro). */
+@source "../node_modules/@tremor/react/dist/**/*.{js,mjs}";
+
 @theme {
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue",
     Helvetica, Arial, sans-serif;

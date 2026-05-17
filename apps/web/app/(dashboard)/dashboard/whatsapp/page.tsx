@@ -69,8 +69,8 @@ export default async function WhatsappConversationsPage() {
   const previewMap = new Map(previews.map((p) => [p.id, p.last]));
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="flex h-[calc(100vh-7.5rem)] flex-col gap-6">
+      <div className="flex shrink-0 items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-zinc-900">WhatsApp</h1>
           <p className="text-sm text-zinc-500">
@@ -99,9 +99,10 @@ export default async function WhatsappConversationsPage() {
           </Link>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white">
+          <div className="min-h-0 flex-1 overflow-y-auto">
           <table className="w-full">
-            <thead className="border-b border-zinc-200 bg-zinc-50/60 text-left text-xs font-medium uppercase tracking-wide text-zinc-500">
+            <thead className="sticky top-0 z-10 border-b border-zinc-200 bg-zinc-50/95 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 backdrop-blur">
               <tr>
                 <th className="px-4 py-3">Contacto</th>
                 <th className="px-4 py-3">Último mensaje</th>
@@ -159,6 +160,7 @@ export default async function WhatsappConversationsPage() {
               })}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>
