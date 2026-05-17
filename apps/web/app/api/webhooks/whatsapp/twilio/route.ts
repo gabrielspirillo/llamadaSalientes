@@ -1,10 +1,11 @@
-import { type NextRequest, NextResponse } from 'next/server';
 import { and, eq } from 'drizzle-orm';
+import { type NextRequest, NextResponse } from 'next/server';
 
+import { decrypt } from '@/lib/crypto';
 import { db } from '@/lib/db/client';
 import { whatsappConnections } from '@/lib/db/schema';
-import { decrypt } from '@/lib/crypto';
 import { env } from '@/lib/env';
+import { sendInngestEvent } from '@/lib/inngest/client';
 import {
   TwilioConnector,
   normalizeTwilioMessage,
@@ -57,10 +58,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     .select()
     .from(whatsappConnections)
     .where(
-      and(
-        eq(whatsappConnections.mode, 'TWILIO'),
-        eq(whatsappConnections.twilioFromNumber, toRaw),
-      ),
+      and(eq(whatsappConnections.mode, 'TWILIO'), eq(whatsappConnections.twilioFromNumber, toRaw)),
     )
     .limit(1);
   const conn = conns[0];
@@ -96,7 +94,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const inbound = normalizeTwilioMessage(form, conn.tenantId);
   try {
-    await persistInboundMessage(inbound);
+    const persisted = await persistInboundMessage(inbound);
+    if (persisted.message) {
+      await sendInngestEvent('wa/message.received', {
+        data: {
+          tenantId: conn.tenantId,
+          conversationId: persisted.conversation.id,
+          messageId: persisted.message.id,
+          contactPhoneE164: persisted.contact.phoneE164,
+        },
+      });
+    }
   } catch (err) {
     console.error('[wa-twilio-webhook] persistInboundMessage failed', {
       err: (err as Error).message,

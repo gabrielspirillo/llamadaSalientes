@@ -1,6 +1,7 @@
-import { serve } from 'inngest/next';
 import { inngest } from '@/lib/inngest/client';
 import { processCall } from '@/lib/inngest/functions/process-call';
+import { whatsappProcess } from '@/lib/inngest/functions/whatsapp-process';
+import { serve } from 'inngest/next';
 
 export const runtime = 'nodejs';
 
@@ -8,5 +9,5 @@ export const runtime = 'nodejs';
 // usando INNGEST_SIGNING_KEY del env.
 export const { GET, POST, PUT } = serve({
   client: inngest,
-  functions: [processCall],
+  functions: [processCall, whatsappProcess],
 });
