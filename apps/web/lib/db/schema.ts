@@ -85,6 +85,8 @@ export const treatments = pgTable(
     durationMinutes: integer('duration_minutes').notNull(),
     priceMin: numeric('price_min'),
     priceMax: numeric('price_max'),
+    // Precio puntual en centavos para revenue de slots optimizados (analytics).
+    priceCents: integer('price_cents'),
     currency: text('currency').default('USD'),
     ghlCalendarId: text('ghl_calendar_id'),
     assignedDentists: jsonb('assigned_dentists').$type<string[]>().default([]),
@@ -608,6 +610,90 @@ export const whatsappMessages = pgTable(
       t.senderType,
       t.createdAt,
     ),
+  }),
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Analytics: slot-fill attribution
+//
+// cancelled_slots: cola de citas canceladas (recovered_at IS NULL = pendiente).
+// scheduling_offers: cita nueva que llenó un cancelled_slot, atribuida al
+// canal (outbound / inbound / whatsapp) que originó la recuperación.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const schedulingOfferSourceEnum = pgEnum('scheduling_offer_source', [
+  'outbound',
+  'inbound',
+  'whatsapp',
+]);
+
+export const cancelledSlots = pgTable(
+  'cancelled_slots',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    ghlAppointmentId: text('ghl_appointment_id').notNull(),
+    calendarId: text('calendar_id'),
+    treatmentId: uuid('treatment_id').references(() => treatments.id),
+    ghlContactId: text('ghl_contact_id'),
+    startTime: timestamp('start_time', { withTimezone: true }).notNull(),
+    endTime: timestamp('end_time', { withTimezone: true }),
+    cancelledAt: timestamp('cancelled_at', { withTimezone: true }).defaultNow().notNull(),
+    recoveredAt: timestamp('recovered_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantApptUnique: unique('cancelled_slots_tenant_appt_unique').on(
+      t.tenantId,
+      t.ghlAppointmentId,
+    ),
+    tenantRecoveredIdx: index('cancelled_slots_tenant_recovered_idx').on(
+      t.tenantId,
+      t.recoveredAt,
+      t.cancelledAt,
+    ),
+  }),
+);
+
+export const schedulingOffers = pgTable(
+  'scheduling_offers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    cancelledSlotId: uuid('cancelled_slot_id')
+      .references(() => cancelledSlots.id, { onDelete: 'cascade' })
+      .notNull(),
+    source: schedulingOfferSourceEnum('source').notNull(),
+    triggerCallId: uuid('trigger_call_id').references(() => calls.id, { onDelete: 'set null' }),
+    triggerWhatsappConversationId: uuid('trigger_whatsapp_conversation_id').references(
+      () => whatsappConversations.id,
+      { onDelete: 'set null' },
+    ),
+    triggerCampaignId: uuid('trigger_campaign_id').references(() => outboundCampaigns.id, {
+      onDelete: 'set null',
+    }),
+    treatmentId: uuid('treatment_id').references(() => treatments.id),
+    ghlAppointmentId: text('ghl_appointment_id').notNull(),
+    acceptedAt: timestamp('accepted_at', { withTimezone: true }).defaultNow().notNull(),
+    estimatedRevenueCents: integer('estimated_revenue_cents').notNull().default(0),
+    currency: text('currency').notNull().default('USD'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantApptUnique: unique('scheduling_offers_tenant_appt_unique').on(
+      t.tenantId,
+      t.ghlAppointmentId,
+    ),
+    tenantAcceptedIdx: index('scheduling_offers_tenant_accepted_idx').on(
+      t.tenantId,
+      t.acceptedAt,
+    ),
+    tenantSourceIdx: index('scheduling_offers_tenant_source_idx').on(t.tenantId, t.source),
+    cancelledSlotIdx: index('scheduling_offers_cancelled_slot_idx').on(t.cancelledSlotId),
   }),
 );
 
