@@ -7,6 +7,7 @@ import {
 import {
   type GhlAppointmentPayload,
   classifyEvent,
+  normalizeAppointment,
   parseDate,
 } from '@/lib/analytics/ghl-webhook-helpers';
 import { eq } from 'drizzle-orm';
@@ -35,7 +36,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const locationId = payload.locationId ?? locationFromQuery;
+  const { appointment: apt, locationId: locationFromPayload, type: eventType } =
+    normalizeAppointment(payload);
+  const locationId = locationFromPayload ?? locationFromQuery;
   if (!locationId) {
     return NextResponse.json({ error: 'Falta locationId' }, { status: 400 });
   }
@@ -58,21 +61,20 @@ export async function POST(req: NextRequest) {
     .values({
       tenantId: integration.tenantId,
       source: 'ghl',
-      event: payload.type ?? 'unknown',
+      event: eventType ?? apt.status ?? 'unknown',
       signatureValid: null,
       statusCode: 200,
       body: payload as Record<string, unknown>,
     })
     .catch(() => undefined);
 
-  const apt = payload.appointment;
-  if (!apt?.id) {
+  if (!apt.id) {
     return NextResponse.json({ ok: true, skipped: 'no-appointment-id' });
   }
 
   const event = classifyEvent(payload);
   if (!event) {
-    return NextResponse.json({ ok: true, ignored: payload.type ?? apt.status });
+    return NextResponse.json({ ok: true, ignored: eventType ?? apt.status });
   }
 
   const startTime = parseDate(apt.startTime);
