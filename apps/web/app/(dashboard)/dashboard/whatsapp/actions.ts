@@ -232,29 +232,6 @@ export async function takeoverConversation(input: unknown): Promise<ActionResult
 
 const conversationIdSchema = z.object({ conversationId: z.string().uuid() });
 
-export async function releaseConversation(input: unknown): Promise<ActionResult<null>> {
-  const parsed = conversationIdSchema.safeParse(input);
-  if (!parsed.success) return fail('Datos inválidos');
-  const { tenant } = await getCurrentTenant();
-  await db
-    .update(whatsappConversations)
-    .set({
-      status: 'ACTIVE',
-      assignedUserId: null,
-      humanTakeoverUntil: null,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(whatsappConversations.id, parsed.data.conversationId),
-        eq(whatsappConversations.tenantId, tenant.id),
-      ),
-    );
-  revalidatePath(`/dashboard/whatsapp/${parsed.data.conversationId}`);
-  revalidatePath('/dashboard/whatsapp');
-  return ok(null);
-}
-
 export async function closeConversation(input: unknown): Promise<ActionResult<null>> {
   const parsed = conversationIdSchema.safeParse(input);
   if (!parsed.success) return fail('Datos inválidos');

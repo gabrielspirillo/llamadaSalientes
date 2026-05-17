@@ -116,9 +116,22 @@ export async function setAiEnabled(input: unknown): Promise<ActionResult<null>> 
   const { tenant } = await getCurrentTenant();
   const actorUserId = await getInternalUserId();
 
+  // Al encender el bot, además sacamos la conversación del estado HANDOFF
+  // y limpiamos el takeover humano: el switch es el único control para
+  // devolver el control al agente.
+  const patch = parsed.data.enabled
+    ? {
+        aiEnabled: true,
+        status: 'ACTIVE' as const,
+        assignedUserId: null,
+        humanTakeoverUntil: null,
+        updatedAt: new Date(),
+      }
+    : { aiEnabled: false, updatedAt: new Date() };
+
   const updated = await db
     .update(whatsappConversations)
-    .set({ aiEnabled: parsed.data.enabled, updatedAt: new Date() })
+    .set(patch)
     .where(
       and(
         eq(whatsappConversations.id, parsed.data.conversationId),

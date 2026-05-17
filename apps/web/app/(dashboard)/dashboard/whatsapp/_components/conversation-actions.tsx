@@ -2,12 +2,7 @@
 
 import { useTransition } from 'react';
 
-import {
-  closeConversation,
-  releaseConversation,
-  takeoverConversation,
-  toggleUrgent,
-} from '../actions';
+import { closeConversation, takeoverConversation, toggleUrgent } from '../actions';
 
 interface Props {
   conversationId: string;
@@ -43,17 +38,6 @@ export function ConversationActions({ conversationId, status, urgentFlag }: Prop
           className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-600 disabled:opacity-50"
         >
           Tomar conversación (2 h)
-        </button>
-      )}
-
-      {status === 'HANDOFF' && (
-        <button
-          type="button"
-          onClick={run(() => releaseConversation({ conversationId }))}
-          disabled={pending}
-          className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
-        >
-          Liberar al bot
         </button>
       )}
 
