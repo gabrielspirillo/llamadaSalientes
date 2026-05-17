@@ -1,9 +1,10 @@
-import { type NextRequest, NextResponse } from 'next/server';
 import { and, eq } from 'drizzle-orm';
+import { type NextRequest, NextResponse } from 'next/server';
 
+import { decrypt } from '@/lib/crypto';
 import { db } from '@/lib/db/client';
 import { whatsappConnections } from '@/lib/db/schema';
-import { decrypt } from '@/lib/crypto';
+import { sendInngestEvent } from '@/lib/inngest/client';
 import {
   WhatsAppCloudConnector,
   cloudWebhookPayloadSchema,
@@ -102,12 +103,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       const contacts = change.value.contacts ?? [];
       for (const msg of messages) {
-        const contactName =
-          contacts.find((c) => c.wa_id === msg.from)?.profile?.name ?? null;
+        const contactName = contacts.find((c) => c.wa_id === msg.from)?.profile?.name ?? null;
         const inbound = normalizeCloudMessage(msg, conn.tenantId, contactName);
         try {
-          await persistInboundMessage(inbound);
+          const persisted = await persistInboundMessage(inbound);
           processed += 1;
+          // Disparar el agente IA solo si fue un mensaje nuevo (no retry de
+          // Meta). El gate fino — ai_enabled, status, takeover humano, flag
+          // global WHATSAPP_AGENT_ENABLED — corre dentro de la función
+          // Inngest (debounce 5s por conversación).
+          if (persisted.message) {
+            await sendInngestEvent('wa/message.received', {
+              data: {
+                tenantId: conn.tenantId,
+                conversationId: persisted.conversation.id,
+                messageId: persisted.message.id,
+                contactPhoneE164: persisted.contact.phoneE164,
+              },
+            });
+          }
         } catch (err) {
           console.error('[wa-cloud-webhook] persistInboundMessage failed', {
             err: (err as Error).message,

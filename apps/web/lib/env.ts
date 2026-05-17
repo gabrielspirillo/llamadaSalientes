@@ -95,6 +95,14 @@ const envSchema = z.object({
   WHATSAPP_GRAPH_API_VERSION: z.string().default('v21.0'),
   EVOLUTION_API_URL: z.string().optional(),
   EVOLUTION_API_KEY: z.string().optional(),
+  // Feature flag global del agente IA de WhatsApp. Por seguridad arranca
+  // apagado: los webhooks emiten el evento Inngest pero la función sale
+  // inmediatamente sin invocar al LLM. Para encender en producción setear
+  // WHATSAPP_AGENT_ENABLED=true y validar tenant por tenant.
+  WHATSAPP_AGENT_ENABLED: z
+    .string()
+    .optional()
+    .transform((v) => v === 'true'),
 
   // Demo público de la landing (Hostinger / cliniq.futuradigital.es)
   // Tenant que recibe las llamadas demo iniciadas desde el botón "Recibir llamada".

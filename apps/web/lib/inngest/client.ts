@@ -12,6 +12,17 @@ export type InngestEvents = {
       analysisSummary?: string | null;
     };
   };
+  // Disparado por los webhooks de WhatsApp (cloud/evolution/twilio) tras
+  // persistir un inbound. La función `whatsappProcess` aplica un debounce
+  // de 5s por `conversationId` antes de invocar al agente conversacional.
+  'wa/message.received': {
+    data: {
+      tenantId: string;
+      conversationId: string;
+      messageId: string;
+      contactPhoneE164: string;
+    };
+  };
 };
 
 export const inngest = new Inngest({

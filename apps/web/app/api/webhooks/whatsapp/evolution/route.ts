@@ -1,8 +1,9 @@
-import { type NextRequest, NextResponse } from 'next/server';
 import { and, eq } from 'drizzle-orm';
+import { type NextRequest, NextResponse } from 'next/server';
 
 import { db } from '@/lib/db/client';
 import { auditLogs, whatsappConnections } from '@/lib/db/schema';
+import { sendInngestEvent } from '@/lib/inngest/client';
 import {
   evolutionMessagesUpsertSchema,
   normalizeEvolutionMessage,
@@ -109,7 +110,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         if (parsed.data.data.key.fromMe) break;
         const inbound = normalizeEvolutionMessage(parsed.data, conn.tenantId);
         try {
-          await persistInboundMessage(inbound);
+          const persisted = await persistInboundMessage(inbound);
+          if (persisted.message) {
+            await sendInngestEvent('wa/message.received', {
+              data: {
+                tenantId: conn.tenantId,
+                conversationId: persisted.conversation.id,
+                messageId: persisted.message.id,
+                contactPhoneE164: persisted.contact.phoneE164,
+              },
+            });
+          }
         } catch (err) {
           console.error('[wa-evolution-webhook] persistInboundMessage failed', {
             err: (err as Error).message,
