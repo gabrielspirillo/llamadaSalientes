@@ -1,4 +1,5 @@
 import { BackfillButton } from '@/components/dashboard/backfill-button';
+import { GlobalAnalyticsBar } from '@/components/dashboard/global-analytics-bar';
 import { InsightsPanel } from '@/components/dashboard/insights-panel';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { RealtimeRefresh } from '@/components/dashboard/realtime-refresh';
@@ -66,6 +67,8 @@ export default async function DashboardOverview() {
       <div className="hidden">
         <RealtimeRefresh intervalMs={30_000} />
       </div>
+
+      <GlobalAnalyticsBar tenantId={tenant.id} />
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
