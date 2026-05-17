@@ -39,7 +39,7 @@ export function DashboardSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden lg:flex w-60 shrink-0 flex-col border-r border-zinc-200/70 bg-zinc-50/40">
+    <aside className="hidden lg:flex sticky top-0 h-screen w-60 shrink-0 flex-col border-r border-zinc-200/70 bg-zinc-50/40">
       <div className="flex h-14 items-center border-b border-zinc-200/70 px-5">
         <div className="flex items-center gap-1.5">
           <span className="text-[18px] font-extrabold tracking-tight text-[#0f1f2e] leading-none">
