@@ -178,11 +178,12 @@ export class TwilioConnector implements WhatsAppConnector {
     if (this.opts.statusCallbackUrl) {
       extra.StatusCallback = this.opts.statusCallbackUrl;
     }
-    const body = new URLSearchParams({
+    const fullParams: Record<string, string> = {
       From: toWhatsapp(this.opts.fromNumber),
       ...extra,
       ...params,
-    });
+    };
+    const body = new URLSearchParams(fullParams);
     const url = `${this.baseUrl}/${this.apiVersion}/Accounts/${encodeURIComponent(this.opts.accountSid)}/Messages.json`;
     const res = await fetch(url, {
       method: 'POST',
@@ -193,7 +194,17 @@ export class TwilioConnector implements WhatsAppConnector {
       body,
     });
     if (!res.ok) {
-      throw await this.toError(res, 'SEND_FAILED');
+      // Twilio devuelve 20001 genérico sin pistas; logueamos los params del
+      // request (sin auth) para diagnosticar en CloudWatch/Inngest events.
+      const safeParams = { ...fullParams };
+      if (safeParams.Body && safeParams.Body.length > 200) {
+        safeParams.Body = `${safeParams.Body.slice(0, 200)}…(${safeParams.Body.length} chars)`;
+      }
+      console.error('[twilio.sendMessage] request failed', {
+        status: res.status,
+        params: safeParams,
+      });
+      throw await this.toError(res, 'SEND_FAILED', safeParams);
     }
     const json = (await res.json()) as TwilioMessageResponse;
     if (!json.sid) {
@@ -215,7 +226,11 @@ export class TwilioConnector implements WhatsAppConnector {
     return { id: json.sid, channel: this.channel };
   }
 
-  private async toError(res: Response, code: string): Promise<WhatsAppConnectorError> {
+  private async toError(
+    res: Response,
+    code: string,
+    requestParams?: Record<string, string>,
+  ): Promise<WhatsAppConnectorError> {
     let body: unknown;
     try {
       body = await res.json();
@@ -223,8 +238,10 @@ export class TwilioConnector implements WhatsAppConnector {
       body = await res.text().catch(() => undefined);
     }
     const retryable = res.status === 429 || res.status >= 500;
+    const bodyText = typeof body === 'string' ? body : JSON.stringify(body);
+    const reqText = requestParams ? ` request=${JSON.stringify(requestParams)}` : '';
     return new WhatsAppConnectorError(
-      `Twilio ${res.status}: ${typeof body === 'string' ? body : JSON.stringify(body)}`,
+      `Twilio ${res.status}: ${bodyText}${reqText}`,
       code,
       res.status,
       retryable,
