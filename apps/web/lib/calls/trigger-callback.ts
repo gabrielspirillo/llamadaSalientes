@@ -25,6 +25,12 @@ export type TriggerCallbackInput = {
    * Default true.
    */
   createContactIfMissing?: boolean;
+  /**
+   * Si se pasa, ignora `resolveRetellAgentId(tenant, 'outbound')` y usa este
+   * agent_id como override. Útil para flows especiales (ej. demo público de
+   * la landing) que no deben afectar al agente configurado en el dashboard.
+   */
+  agentIdOverride?: string | null;
 };
 
 export type TriggerCallbackResult =
@@ -57,7 +63,10 @@ export async function triggerCallback(input: TriggerCallbackInput): Promise<Trig
 
   // Resolver agente outbound + número de origen. El callback reactivo siempre
   // usa el agente "outbound" (parametrizado por use_case en dynamic_vars).
-  const agentId = await resolveRetellAgentId(input.tenantId, 'outbound');
+  // Excepción: si vino agentIdOverride (ej. flow de demo público), lo usamos
+  // y saltamos la resolución por tenant — el dashboard sigue mostrando el
+  // agente configurado en agent_configs.
+  const agentId = input.agentIdOverride ?? (await resolveRetellAgentId(input.tenantId, 'outbound'));
   if (!agentId) {
     return {
       ok: false,

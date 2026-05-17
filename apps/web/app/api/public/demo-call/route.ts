@@ -115,19 +115,40 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const result = await triggerCallback({
-    tenantId,
-    toNumber: phone,
-    patientName: parsed.data.name ?? null,
-    useCase: 'info',
-    source: 'landing_demo',
-    dynamicVars: {
-      // Variables que el prompt del agente demo lee para personalizar:
-      lead_name: parsed.data.name ?? 'visitante',
-      // Marca explícita para que el LLM sepa que es la demo pública.
-      demo_flow: 'futura_landing',
-    },
-  });
+  let result;
+  try {
+    result = await triggerCallback({
+      tenantId,
+      toNumber: phone,
+      patientName: parsed.data.name ?? null,
+      useCase: 'info',
+      source: 'landing_demo',
+      // Override del agente: la landing usa SIEMPRE el agente Manuel ("FUTURA
+      // Demo Outbound"), independientemente de cuál tenga configurado el
+      // dashboard del tenant para outbound. Si la env var no está seteada,
+      // cae al agente outbound del tenant (legacy / desarrollo local).
+      agentIdOverride: env.FUTURA_DEMO_RETELL_AGENT_ID ?? null,
+      dynamicVars: {
+        // Variables que el prompt del agente demo lee para personalizar:
+        lead_name: parsed.data.name ?? 'visitante',
+        // Marca explícita para que el LLM sepa que es la demo pública.
+        demo_flow: 'futura_landing',
+      },
+    });
+  } catch (err) {
+    // Si triggerCallback (o algo aguas abajo) tira una excepción no controlada,
+    // queremos que el browser vea CORS headers + un mensaje legible — NO el
+    // 500 default de Next.js (sin headers, que hace que el browser bloquee la
+    // respuesta y reporte un falso "CORS error").
+    console.error('[demo-call] unhandled exception:', err);
+    return NextResponse.json(
+      {
+        error: 'Error interno disparando la llamada. Avisanos y lo revisamos.',
+        reason: 'internal_error',
+      },
+      { status: 500, headers },
+    );
+  }
 
   if (!result.ok) {
     const status =

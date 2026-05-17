@@ -759,12 +759,14 @@
 
 <script>
 /* ════════════════════════════════════════════════════════════════
-   ENDPOINT DE LLAMADAS — siempre apunta al deploy del Next.js en Vercel.
-   Funciona desde Hostinger (prod) y también desde cualquier static server
-   local (Live Server, python http.server, etc.) siempre que ese origen
-   esté agregado en FUTURA_DEMO_ALLOWED_ORIGINS en Vercel.
+   ENDPOINT DE LLAMADAS.
+   - Servido desde localhost (dev) → mismo origen → fetch relativo.
+   - Servido desde Hostinger (prod) → API en Vercel.
    ════════════════════════════════════════════════════════════════ */
-const FUTURA_API_BASE = 'https://llamada-salientes-web.vercel.app';
+const FUTURA_API_BASE =
+  (location.hostname === 'localhost' || location.hostname.startsWith('127.'))
+    ? ''
+    : 'https://llamada-salientes-web.vercel.app';
 
 // ── CURSOR GLOW ──
 const glow = document.getElementById('cursorGlow');

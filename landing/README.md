@@ -41,7 +41,15 @@ Esta carpeta contiene la landing estática (Hostinger) y la documentación para 
 | Número outbound | `+19706844968` (activo) |
 | GHL location | `q7VOAZDKoyJGYy6dva78` (conectado) |
 | Calendario demo | `cD23AIKuRsV2uLNrYkev` (mismo que el widget público de la landing) |
-| Agent outbound (Sofía) | `agent_b7c4de5748c40e118d193db2f6` (asociado al tenant en `agent_configs`) |
+| Agente dashboard (DentalVoice) | `agent_9ebc50a63af117488d369c9e90` (en `agent_configs(role='outbound')` — lo muestra `/dashboard/outbound`) |
+| Agente landing (Manuel) | `agent_b7c4de5748c40e118d193db2f6` (override aplicado SOLO en `/api/public/demo-call`) |
+
+### Separación de agentes — importante
+
+El endpoint `/api/public/demo-call` pasa `agentIdOverride` a `triggerCallback`. Eso evita usar el agente outbound que está cargado en la DB para ese tenant. Resultado:
+
+- **Dashboard → Outbound** sigue mostrando y usando `agent_9ebc50a63af117488d369c9e90` (DentalVoice).
+- **Form de la landing** dispara siempre Manuel (`agent_b7c4de5748c40e118d193db2f6`) independientemente de lo que esté configurado en el dashboard.
 
 ## Checklist de puesta en marcha
 
@@ -49,19 +57,40 @@ Esta carpeta contiene la landing estática (Hostinger) y la documentación para 
 En el dashboard de Vercel → Project Settings → Environment Variables, agregá:
 ```
 FUTURA_DEMO_TENANT_ID=523e195b-a417-45c1-b76c-ebe0f5d829f9
-FUTURA_DEMO_ALLOWED_ORIGINS=https://cliniq.futuradigital.es,https://www.cliniq.futuradigital.es
+FUTURA_DEMO_RETELL_AGENT_ID=agent_b7c4de5748c40e118d193db2f6
+FUTURA_DEMO_ALLOWED_ORIGINS=https://cliniq.futuradigital.es,https://www.cliniq.futuradigital.es,http://localhost:5500,http://127.0.0.1:5500,http://localhost:8000,http://127.0.0.1:8000,http://localhost:8080
 ```
+Los `localhost:*` permiten que puedas probar la landing desde tu PC (Live Server, `python -m http.server`, etc.) sin que Vercel rechace por CORS. Cuando estés conforme podés sacarlos.
+
 Redeploy para que tomen efecto.
 
 ### 2. Subir el HTML a Hostinger
 - Subir `landing/index.html` reemplazando el actual.
 - Si el dominio de la app no es `https://llamada-salientes-web.vercel.app`, editá la constante `FUTURA_API_BASE` al principio del `<script>` del HTML.
 
+### 3. Probar la landing desde tu PC contra Vercel
+Con `FUTURA_API_BASE` apuntando a Vercel, podés probar la landing sin redeployar. Servila estática desde tu máquina (usá UNO de estos):
+
+```bash
+# Opción VS Code Live Server (puerto 5500 por defecto)
+# Click derecho sobre landing/index.html → "Open with Live Server"
+
+# Opción Python
+cd landing && python3 -m http.server 8000
+
+# Opción Node
+npx serve landing -p 8080
+```
+
+Abrí en el browser la URL que te dé (ej. `http://127.0.0.1:5500/index.html` o `http://localhost:8000/`). Cargá tu número y dale "Recibir llamada" — el `fetch` va contra Vercel, Vercel dispara a Retell, te llama Manuel desde `+19706844968`.
+
+> Si el navegador te muestra "No pudimos conectar con el servidor" en la consola con un error de CORS, fijate qué puerto está usando tu static server y asegurate de que esté listado en `FUTURA_DEMO_ALLOWED_ORIGINS` en Vercel.
+
 ### Lo que ya está hecho (no toques)
 - ✅ Tenant Clínica Sonrisas tiene `phone_numbers` activo y `ghl_integrations` conectado.
-- ✅ Insertado `agent_configs(role='outbound')` apuntando al agente Sofía (`agent_b7c4de5748c40e118d193db2f6`).
-- ✅ Insertado `treatments` "Demo Futura" con `ghl_calendar_id='cD23AIKuRsV2uLNrYkev'` y duración 30 min — el agente lo resuelve por fuzzy match cuando llama a `book_appointment(treatment_name="Demo Futura")`.
-- ✅ Agente Retell Sofía creado con prompt "info → invitar a demo tras 2 preguntas → agendar en GHL".
+- ✅ `agent_configs(role='outbound')` apunta a `agent_9ebc50a63af117488d369c9e90` (DentalVoice). El dashboard outbound sigue funcionando como antes.
+- ✅ Insertado `treatments` "Demo Futura" con `ghl_calendar_id='cD23AIKuRsV2uLNrYkev'` y duración 30 min — el agente Manuel lo resuelve por fuzzy match cuando llama a `book_appointment(treatment_name="Demo Futura")`.
+- ✅ Agente Retell Manuel creado (`agent_b7c4de5748c40e118d193db2f6`) con prompt "info de la clínica + pitch de FUTURA + agendar demo + no inventar + horas en lenguaje natural".
 
 > **Aviso sobre el calendario:** asumí que `cD23AIKuRsV2uLNrYkev` (el ID del widget público de la landing) es también el `calendarId` interno en GHL. Si la primera prueba falla al agendar, verificá el ID exacto en GHL → Calendars y actualizá `treatments.ghl_calendar_id` para "Demo Futura".
 

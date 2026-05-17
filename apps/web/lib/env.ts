@@ -94,6 +94,11 @@ const envSchema = z.object({
   // Origen permitido para CORS del endpoint /api/public/demo-call.
   // Acepta lista separada por comas. Ej: "https://cliniq.futuradigital.es,https://www.cliniq.futuradigital.es"
   FUTURA_DEMO_ALLOWED_ORIGINS: z.string().optional(),
+  // Retell agent_id que atiende las llamadas demo (Manuel — FUTURA Demo Outbound).
+  // Se pasa como override en /api/public/demo-call para no interferir con el
+  // agente outbound configurado por tenant en agent_configs (que es lo que
+  // muestra /dashboard/outbound).
+  FUTURA_DEMO_RETELL_AGENT_ID: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
