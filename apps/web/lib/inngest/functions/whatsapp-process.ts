@@ -106,12 +106,11 @@ export const whatsappProcess = inngest.createFunction(
       return { ok: false, reason: 'already_processed' };
     }
 
-    // 3. Resolver connector. Sin conector activo no podemos descargar media
-    //    ni responder; aun así corremos el agente con connector=null para
-    //    persistir el intent (en handoff) y abrir conversación al humano.
-    const connector = await step.run('resolve-connector', async () => {
-      return resolveConnector(tenantId);
-    });
+    // 3. Resolver connector. NO envolver en step.run: Inngest serializa el
+    //    return value a JSON entre steps y eso destruye los métodos de la
+    //    instancia (sendText/sendButtons quedan undefined). Es un read-only
+    //    DB + new Class, idempotente, no necesita memoización.
+    const connector = await resolveConnector(tenantId);
 
     // 4. Multimodal preprocessing (Whisper/Vision + caching DB).
     const multimodal = await step.run('multimodal', async () => {
