@@ -50,13 +50,13 @@ export default async function DashboardOverview() {
         </TabsList>
 
         <TabsContent value="outbound">
-          <OutboundModule />
+          <OutboundModule tenantId={tenant.id} />
         </TabsContent>
         <TabsContent value="inbound">
           <InboundModule tenantId={tenant.id} />
         </TabsContent>
         <TabsContent value="whatsapp">
-          <WhatsappModule />
+          <WhatsappModule tenantId={tenant.id} />
         </TabsContent>
       </Tabs>
     </>
