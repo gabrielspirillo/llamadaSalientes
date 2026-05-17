@@ -8,7 +8,6 @@ import { z } from 'zod';
 import { db } from '@/lib/db/client';
 import {
   auditLogs,
-  tenantMemberships,
   users,
   whatsappConnections,
   whatsappContacts,
@@ -19,6 +18,7 @@ import {
   whatsappTags,
 } from '@/lib/db/schema';
 import { getCurrentTenant } from '@/lib/tenant';
+import { listTenantMembersSynced, userIsTenantMember } from '@/lib/tenant-members';
 import { auth } from '@clerk/nextjs/server';
 import { buildConnector } from '@/lib/whatsapp';
 import { buildWhatsappMediaPath, supabaseUpload } from '@/lib/supabase/storage';
@@ -159,17 +159,12 @@ export async function assignConversation(input: unknown): Promise<ActionResult<n
   const actorUserId = await getInternalUserId();
 
   if (parsed.data.userId) {
-    const memberRows = await db
-      .select({ userId: tenantMemberships.userId })
-      .from(tenantMemberships)
-      .where(
-        and(
-          eq(tenantMemberships.tenantId, tenant.id),
-          eq(tenantMemberships.userId, parsed.data.userId),
-        ),
-      )
-      .limit(1);
-    if (memberRows.length === 0) return fail('El usuario no pertenece al tenant');
+    const isMember = await userIsTenantMember(
+      tenant.id,
+      tenant.clerkOrganizationId,
+      parsed.data.userId,
+    );
+    if (!isMember) return fail('El usuario no pertenece al tenant');
   }
 
   const updated = await db
@@ -374,17 +369,48 @@ const MAX_BYTES: Record<MediaKind, number> = {
   document: 100 * 1024 * 1024,
 };
 
+// Whitelists alineados con lo que acepta WhatsApp (Cloud / Twilio / Evolution).
+// Fuente: https://developers.facebook.com/docs/whatsapp/cloud-api/reference/media
+// IMPORTANTE: webm NO está aceptado para audio; el MediaRecorder de Chrome
+// produce audio/webm por default — el cliente debe transcodificar a mp3
+// antes de subir.
+const AUDIO_MIMES = new Set([
+  'audio/aac',
+  'audio/amr',
+  'audio/mp4',
+  'audio/m4a',
+  'audio/mpeg',
+  'audio/mp3',
+  'audio/ogg',
+  'audio/ogg;codecs=opus',
+]);
+const IMAGE_MIMES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
+const VIDEO_MIMES = new Set(['video/mp4', 'video/3gpp']);
+const DOCUMENT_MIMES = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'text/plain',
+  'text/csv',
+]);
+
+function normalizeMime(mime: string): string {
+  // El charset (";boundary=...") y los codecs sufijo se conservan en el `;`.
+  // Comparamos sin parámetros para audio/ogg;codecs=opus, etc.
+  return mime.trim().toLowerCase();
+}
+
 function detectKind(mime: string): MediaKind | null {
-  if (mime.startsWith('image/')) return 'image';
-  if (mime.startsWith('audio/')) return 'audio';
-  if (mime.startsWith('video/')) return 'video';
-  if (
-    mime === 'application/pdf' ||
-    mime.startsWith('application/') ||
-    mime.startsWith('text/')
-  ) {
-    return 'document';
-  }
+  const m = normalizeMime(mime);
+  const base = m.split(';')[0] ?? m;
+  if (AUDIO_MIMES.has(m) || AUDIO_MIMES.has(base)) return 'audio';
+  if (IMAGE_MIMES.has(base)) return 'image';
+  if (VIDEO_MIMES.has(base)) return 'video';
+  if (DOCUMENT_MIMES.has(base)) return 'document';
   return null;
 }
 
@@ -401,7 +427,15 @@ export async function sendMediaMessage(formData: FormData): Promise<ActionResult
   }
   const mime = file.type || 'application/octet-stream';
   const kind = detectKind(mime);
-  if (!kind) return fail(`Tipo de archivo no soportado: ${mime}`);
+  if (!kind) {
+    // Mensaje extra-específico para el caso del MediaRecorder de Chrome.
+    if (mime.startsWith('audio/webm')) {
+      return fail(
+        'WhatsApp no acepta audio/webm. Tu navegador debió convertir el audio a MP3 antes de subir; recarga la página y reintenta.',
+      );
+    }
+    return fail(`Tipo de archivo no soportado: ${mime}`);
+  }
 
   if (file.size > MAX_BYTES[kind]) {
     const mb = Math.round(MAX_BYTES[kind] / (1024 * 1024));
@@ -519,17 +553,8 @@ export async function listTenantMembersForAssign(): Promise<
   ActionResult<Array<{ userId: string; email: string; role: string }>>
 > {
   const { tenant } = await getCurrentTenant();
-  const rows = await db
-    .select({
-      userId: users.id,
-      email: users.email,
-      role: tenantMemberships.role,
-    })
-    .from(tenantMemberships)
-    .innerJoin(users, eq(users.id, tenantMemberships.userId))
-    .where(eq(tenantMemberships.tenantId, tenant.id))
-    .orderBy(asc(users.email));
-  return ok(rows);
+  const members = await listTenantMembersSynced(tenant.id, tenant.clerkOrganizationId);
+  return ok(members.map(({ userId, email, role }) => ({ userId, email, role })));
 }
 
 export async function listTagsForTenant(): Promise<

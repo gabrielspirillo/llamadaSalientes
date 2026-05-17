@@ -4,7 +4,6 @@ import { and, asc, eq, inArray } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import {
-  tenantMemberships,
   users,
   whatsappContacts,
   whatsappConversations,
@@ -13,6 +12,7 @@ import {
   whatsappTags,
 } from '@/lib/db/schema';
 import { getCurrentTenant } from '@/lib/tenant';
+import { listTenantMembersSynced } from '@/lib/tenant-members';
 
 import { MessageComposer } from '../_components/message-composer';
 import { ConversationActions } from '../_components/conversation-actions';
@@ -61,16 +61,7 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
       .select({ tagId: whatsappConversationTags.tagId })
       .from(whatsappConversationTags)
       .where(eq(whatsappConversationTags.conversationId, row.conv.id)),
-    db
-      .select({
-        userId: users.id,
-        email: users.email,
-        role: tenantMemberships.role,
-      })
-      .from(tenantMemberships)
-      .innerJoin(users, eq(users.id, tenantMemberships.userId))
-      .where(eq(tenantMemberships.tenantId, tenant.id))
-      .orderBy(asc(users.email)),
+    listTenantMembersSynced(tenant.id, tenant.clerkOrganizationId),
   ]);
 
   const tagIdsOnConv = convTagRows.map((r) => r.tagId);

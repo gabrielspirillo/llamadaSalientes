@@ -204,10 +204,34 @@ export function MessageComposer({ conversationId, disabled }: Props) {
     setAudioBlob(null);
   }
 
-  function sendAudio() {
+  async function sendAudio() {
     if (!audioBlob) return;
-    const ext = audioBlob.type.includes('webm') ? 'webm' : audioBlob.type.includes('ogg') ? 'ogg' : 'mp3';
-    const file = new File([audioBlob], `audio-${Date.now()}.${ext}`, { type: audioBlob.type });
+    setError(null);
+    let blobToSend = audioBlob;
+    let mime = audioBlob.type;
+    let ext = 'mp3';
+
+    // WhatsApp no acepta audio/webm. Si el MediaRecorder grabó webm
+    // (Chrome/Edge default), transcodificamos a MP3 acá antes de subir.
+    if (mime.startsWith('audio/webm')) {
+      try {
+        setError('Convirtiendo audio a MP3…');
+        const { encodeBlobToMp3 } = await import('./audio-encode');
+        blobToSend = await encodeBlobToMp3(audioBlob);
+        mime = 'audio/mpeg';
+        ext = 'mp3';
+        setError(null);
+      } catch (err) {
+        setError(`No se pudo convertir el audio: ${(err as Error).message}`);
+        return;
+      }
+    } else if (mime.startsWith('audio/ogg')) {
+      ext = 'ogg';
+    } else if (mime.startsWith('audio/mp4')) {
+      ext = 'm4a';
+    }
+
+    const file = new File([blobToSend], `audio-${Date.now()}.${ext}`, { type: mime });
     onFileSelected(file);
     setAudioBlob(null);
   }
@@ -443,9 +467,16 @@ export function MessageComposer({ conversationId, disabled }: Props) {
 }
 
 function pickAudioMime(): string {
-  // Preferimos opus/webm (mejor compresión, ampliamente soportado).
+  // ORDEN IMPORTANTE: preferimos formatos que WhatsApp acepta nativamente
+  // para evitar transcodificación cliente. Firefox da ogg/opus, Safari da
+  // mp4. Chrome/Edge solo soporta webm → transcodificamos a mp3 al enviar.
   if (typeof MediaRecorder === 'undefined') return 'audio/webm';
-  const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+  const candidates = [
+    'audio/ogg;codecs=opus', // Firefox — aceptado por WhatsApp ✅
+    'audio/mp4', // Safari — aceptado por WhatsApp ✅
+    'audio/webm;codecs=opus', // Chrome/Edge — necesita transcode a mp3
+    'audio/webm',
+  ];
   for (const c of candidates) {
     if (MediaRecorder.isTypeSupported(c)) return c;
   }

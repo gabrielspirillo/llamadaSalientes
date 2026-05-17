@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1048.0",
+    "@breezystack/lamejs": "^1.2.7",
     "@clerk/nextjs": "^6.9.6",
     "@radix-ui/react-dialog": "^1.1.4",
     "@radix-ui/react-dropdown-menu": "^2.1.4",

@@ -1,8 +1,16 @@
 import { db } from '@/lib/db/client';
-import { clinicSettings, faqs, tenants, treatments, users, webhookLogs } from '@/lib/db/schema';
+import {
+  clinicSettings,
+  faqs,
+  tenantMemberships,
+  tenants,
+  treatments,
+  users,
+  webhookLogs,
+} from '@/lib/db/schema';
 import { env } from '@/lib/env';
 import { SEED_FAQS, SEED_TREATMENTS } from '@/lib/seed-data';
-import { eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { headers } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
 import { Webhook } from 'svix';
@@ -19,7 +27,19 @@ type ClerkUserEvent = {
   type: 'user.created' | 'user.updated';
   data: { id: string; email_addresses: { email_address: string }[] };
 };
-type ClerkEvent = ClerkOrgEvent | ClerkUserEvent;
+type ClerkMembershipEvent = {
+  type:
+    | 'organizationMembership.created'
+    | 'organizationMembership.updated'
+    | 'organizationMembership.deleted';
+  data: {
+    id: string;
+    role: string;
+    organization: { id: string };
+    public_user_data: { user_id: string; identifier?: string };
+  };
+};
+type ClerkEvent = ClerkOrgEvent | ClerkUserEvent | ClerkMembershipEvent;
 
 const DEFAULT_RECORDING_CONSENT =
   'Esta llamada se está grabando para mejorar la calidad del servicio. Si no querés que se grabe, podés colgar y nuestra recepción te llamará de vuelta.';
@@ -63,6 +83,13 @@ export async function POST(req: NextRequest) {
       case 'user.created':
       case 'user.updated':
         await handleUserUpsert(evt);
+        break;
+      case 'organizationMembership.created':
+      case 'organizationMembership.updated':
+        await handleMembershipUpsert(evt);
+        break;
+      case 'organizationMembership.deleted':
+        await handleMembershipDeleted(evt);
         break;
     }
 
@@ -140,6 +167,82 @@ async function handleOrgDeleted(evt: ClerkOrgEvent) {
     .update(tenants)
     .set({ status: 'suspended' })
     .where(eq(tenants.clerkOrganizationId, evt.data.id));
+}
+
+async function handleMembershipUpsert(evt: ClerkMembershipEvent) {
+  const clerkOrgId = evt.data.organization.id;
+  const clerkUserId = evt.data.public_user_data.user_id;
+  const role = (evt.data.role ?? 'org:member').replace(/^org:/, '');
+  const email = evt.data.public_user_data.identifier ?? null;
+
+  const tenant = await db
+    .select({ id: tenants.id })
+    .from(tenants)
+    .where(eq(tenants.clerkOrganizationId, clerkOrgId))
+    .limit(1)
+    .then((r) => r[0]);
+  if (!tenant) {
+    // Aún no se procesó el organization.created — es esperable que llegue
+    // antes; lo ignoramos en silencio y Clerk reintentará.
+    return;
+  }
+
+  // Asegurar fila en users (idempotente).
+  if (email) {
+    await db
+      .insert(users)
+      .values({ clerkUserId, email })
+      .onConflictDoUpdate({
+        target: users.clerkUserId,
+        set: { email: sql`EXCLUDED.email` },
+      });
+  } else {
+    await db
+      .insert(users)
+      .values({ clerkUserId, email: `${clerkUserId}@unknown.local` })
+      .onConflictDoNothing();
+  }
+
+  const user = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.clerkUserId, clerkUserId))
+    .limit(1)
+    .then((r) => r[0]);
+  if (!user) return;
+
+  await db
+    .insert(tenantMemberships)
+    .values({ tenantId: tenant.id, userId: user.id, role })
+    .onConflictDoUpdate({
+      target: [tenantMemberships.tenantId, tenantMemberships.userId],
+      set: { role: sql`EXCLUDED.role` },
+    });
+}
+
+async function handleMembershipDeleted(evt: ClerkMembershipEvent) {
+  const clerkOrgId = evt.data.organization.id;
+  const clerkUserId = evt.data.public_user_data.user_id;
+
+  const tenant = await db
+    .select({ id: tenants.id })
+    .from(tenants)
+    .where(eq(tenants.clerkOrganizationId, clerkOrgId))
+    .limit(1)
+    .then((r) => r[0]);
+  const user = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.clerkUserId, clerkUserId))
+    .limit(1)
+    .then((r) => r[0]);
+  if (!tenant || !user) return;
+
+  await db
+    .delete(tenantMemberships)
+    .where(
+      and(eq(tenantMemberships.tenantId, tenant.id), eq(tenantMemberships.userId, user.id)),
+    );
 }
 
 async function handleUserUpsert(evt: ClerkUserEvent) {

@@ -64,10 +64,14 @@ export function buildConnector(conn: WhatsAppConnectionRow): WhatsAppConnector {
         false,
       );
     }
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '');
     return new TwilioConnector({
       accountSid: conn.twilioAccountSid,
       authToken: decrypt(conn.twilioAuthTokenEnc),
       fromNumber: conn.twilioFromNumber,
+      statusCallbackUrl: appUrl
+        ? `${appUrl}/api/webhooks/whatsapp/twilio/status`
+        : undefined,
     });
   }
 

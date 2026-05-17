@@ -33,6 +33,13 @@ export interface TwilioConnectorOptions {
   apiVersion?: string;
   /** Rate limit por sender (Twilio default tier: ~1 msg/seg; subir según plan). */
   messagesPerSecond?: number;
+  /**
+   * URL pública donde Twilio POSTeará status callbacks (queued, sent, delivered,
+   * failed, undelivered, read). Es la única forma de detectar que WhatsApp
+   * rechazó el media después del ACK síncrono. Si no se pasa, no se pide
+   * callback y el delivery final queda como "SENT" en BD aunque haya fallado.
+   */
+  statusCallbackUrl?: string;
 }
 
 /**
@@ -167,8 +174,13 @@ export class TwilioConnector implements WhatsAppConnector {
 
   private async sendMessage(params: Record<string, string>): Promise<MessageId> {
     await this.bucket.take();
+    const extra: Record<string, string> = {};
+    if (this.opts.statusCallbackUrl) {
+      extra.StatusCallback = this.opts.statusCallbackUrl;
+    }
     const body = new URLSearchParams({
       From: toWhatsapp(this.opts.fromNumber),
+      ...extra,
       ...params,
     });
     const url = `${this.baseUrl}/${this.apiVersion}/Accounts/${encodeURIComponent(this.opts.accountSid)}/Messages.json`;
