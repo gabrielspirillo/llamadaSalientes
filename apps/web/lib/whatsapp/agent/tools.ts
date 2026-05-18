@@ -271,13 +271,14 @@ export function getAgentToolDefinitions(): AgentToolDefinition[] {
     {
       name: 'request_handoff',
       description:
-        'Marca la conversación para que la atienda una persona de recepción. Úsala cuando la consulta esté fuera de tu alcance (datos no cargados, queja, factura, doctor específico, asunto legal).',
+        'Marca la conversación para que la atienda una persona de recepción. Úsala para (a) interlocutores que no son pacientes — proveedores, mutuas, postulantes, prensa, administración, número equivocado, familiar de paciente preguntando por otro — y (b) consultas de paciente fuera de tu grounding (queja, factura, doctor específico, asunto legal).',
       parameters: {
         type: 'object',
         properties: {
           reason: {
             type: 'string',
-            description: 'Motivo breve del handoff (1-2 frases), para que recepción lo lea.',
+            description:
+              'Motivo del handoff con tag tipificado al inicio entre corchetes. Tags válidos: proveedor, profesional, mutua, postulante, prensa, administracion, equivocado, familiar, otro. Ejemplos: "[proveedor] Empresa XYZ ofrece insumos dentales, quiere hablar con compras", "[mutua] Adeslas pide confirmación de cobertura para paciente Juan García", "[otro] Paciente pregunta por factura de junio, no tengo acceso al sistema de facturación".',
           },
         },
         required: ['reason'],
