@@ -35,6 +35,12 @@ export interface LlmToolCallRequest {
   id: string;
   name: string;
   args: Record<string, unknown>;
+  /**
+   * Firma opaca que Gemini 2.5+ adjunta a cada functionCall cuando el modelo
+   * pensante está activo. Hay que devolverla intacta en el siguiente turno o
+   * el provider responde 400 ("missing thought_signature"). Vacío para OpenAI.
+   */
+  thoughtSignature?: string;
 }
 
 export type LlmMessage =
@@ -114,13 +120,17 @@ export async function callLLM(input: LlmCallInput): Promise<LlmCallResult> {
 // Gemini provider (REST generateContent)
 // ─────────────────────────────────────────────────────────────────────────────
 
+type GeminiPart =
+  | { text: string }
+  | {
+      functionCall: { name: string; args: Record<string, unknown> };
+      thoughtSignature?: string;
+    }
+  | { functionResponse: { name: string; response: { content: string } } };
+
 type GeminiContent = {
   role: 'user' | 'model' | 'function';
-  parts: Array<
-    | { text: string }
-    | { functionCall: { name: string; args: Record<string, unknown> } }
-    | { functionResponse: { name: string; response: { content: string } } }
-  >;
+  parts: GeminiPart[];
 };
 
 type GeminiResponse = {
@@ -213,6 +223,7 @@ async function callGemini(input: LlmCallInput): Promise<LlmCallResult> {
         id: `gemini-${started}-${toolCallCounter++}`,
         name: part.functionCall.name,
         args: (part.functionCall.args ?? {}) as Record<string, unknown>,
+        thoughtSignature: part.thoughtSignature,
       });
     } else if ('text' in part && part.text) {
       textChunks.push(part.text);
@@ -254,7 +265,11 @@ function toGeminiContents(messages: LlmMessage[]): {
       if (msg.content) parts.push({ text: msg.content });
       if (msg.toolCalls) {
         for (const tc of msg.toolCalls) {
-          parts.push({ functionCall: { name: tc.name, args: tc.args } });
+          const part: GeminiPart = {
+            functionCall: { name: tc.name, args: tc.args },
+          };
+          if (tc.thoughtSignature) part.thoughtSignature = tc.thoughtSignature;
+          parts.push(part);
         }
       }
       if (parts.length === 0) parts.push({ text: '' });
