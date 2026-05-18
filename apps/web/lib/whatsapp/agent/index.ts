@@ -5,6 +5,7 @@ import {
   HANDOFF_RESPONSE_TEXT,
   URGENT_RESPONSE_TEXT,
   buildSystemPrompt,
+  formatNowInClinicZone,
   loadGroundingForTenant,
 } from './prompt';
 import { type AgentToolName, executeAgentTool, getAgentToolDefinitions } from './tools';
@@ -37,7 +38,7 @@ export async function runWhatsappAgent(input: AgentInput): Promise<AgentOutput> 
     clinic: grounding.clinic,
     treatments: grounding.treatments,
     faqs: grounding.faqs,
-    nowIso: new Date().toISOString(),
+    now: formatNowInClinicZone(grounding.clinic.timezone),
   });
 
   const tools = getAgentToolDefinitions();

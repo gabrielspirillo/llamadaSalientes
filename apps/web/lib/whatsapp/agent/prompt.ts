@@ -54,8 +54,40 @@ export interface BuildSystemPromptInput {
   clinic: ClinicGrounding;
   treatments: TreatmentLine[];
   faqs: FaqLine[];
-  /** Hora actual del tenant para que el LLM resuelva "hoy", "mañana", etc. */
-  nowIso: string;
+  /**
+   * "Ahora" ya formateado en la zona horaria de la clínica, con día de la
+   * semana en castellano. Lo construye `formatNowInClinicZone`. Le pasamos al
+   * LLM una cadena que él pueda usar literal, en vez de un ISO UTC que tendría
+   * que convertir mentalmente — y que se equivoca a hacerlo.
+   */
+  now: string;
+}
+
+/**
+ * Construye la cadena "ahora" para el grounding: día de la semana, fecha y
+ * hora en la zona horaria de la clínica. Ej: "lunes 18 de mayo de 2026, 02:43
+ * (Europe/Madrid)".
+ */
+export function formatNowInClinicZone(timezone: string, instant: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('es-ES', {
+    timeZone: timezone,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(instant);
+  const get = (type: Intl.DateTimeFormatPartTypes): string =>
+    parts.find((p) => p.type === type)?.value ?? '';
+  const weekday = get('weekday');
+  const day = get('day');
+  const month = get('month');
+  const year = get('year');
+  const hour = get('hour');
+  const minute = get('minute');
+  return `${weekday} ${day} de ${month} de ${year}, ${hour}:${minute} (${timezone})`;
 }
 
 /**
@@ -151,7 +183,7 @@ function formatFaqs(faqs: FaqLine[]): string {
  *    estándar).
  */
 export function buildSystemPrompt(input: BuildSystemPromptInput): string {
-  const { clinic, treatments, faqs, nowIso } = input;
+  const { clinic, treatments, faqs, now } = input;
 
   return `Eres el asistente virtual de WhatsApp de la clínica dental "${clinic.name}".
 Atiendes TODO lo que llega a la clínica por WhatsApp: pacientes existentes, personas
@@ -216,7 +248,8 @@ D. **Urgencia clínica** — dolor intenso, sangrado, hinchazón con fiebre, inf
 5. Para identificar al paciente usa "get_patient_info(phone)" antes de "book_appointment".
    Si el paciente es nuevo, "register_patient" primero. NUNCA reserves sin contact_id real.
 6. Si no estás seguro de la fecha que pide el paciente, pregúntale. NO supongas.
-   Hoy es ${nowIso} en la zona ${clinic.timezone}.
+   Ahora es ${now}. Usa esta cadena tal cual — el día de la semana, la fecha y
+   la hora ya vienen en la zona local de la clínica, NO recalcules zonas.
 7. Confidencialidad: no repitas el teléfono completo del paciente ni datos médicos
    sensibles dentro del mensaje. Usa nombres cuando los tengas.
 
