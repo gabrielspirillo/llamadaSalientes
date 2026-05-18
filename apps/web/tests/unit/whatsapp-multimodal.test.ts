@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
   transcribeAudio: vi.fn(),
   describeImage: vi.fn(),
   describePdf: vi.fn(),
-  supabaseUpload: vi.fn(async ({ path }: { path: string }) => ({
+  mediaUpload: vi.fn(async ({ path }: { path: string }) => ({
     path,
     publicUrl: `https://cdn.test/${path}`,
   })),
@@ -33,10 +33,10 @@ vi.mock('@/lib/db/schema', () => ({
   whatsappMessages: { id: 'id-col' },
 }));
 
-vi.mock('@/lib/supabase/storage', () => ({
+vi.mock('@/lib/storage/media', () => ({
   buildWhatsappMediaPath: (tenantId: string, conversationId: string, ext: string) =>
     `tenants/${tenantId}/whatsapp/${conversationId}/mock.${ext}`,
-  supabaseUpload: mocks.supabaseUpload,
+  mediaUpload: mocks.mediaUpload,
 }));
 
 vi.mock('@/lib/whatsapp/agent/whisper', () => ({

@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 
 import { db } from '@/lib/db/client';
 import { auditLogs, whatsappConnections } from '@/lib/db/schema';
-import { sendInngestEvent } from '@/lib/inngest/client';
+import { sendQueueEvent } from '@/lib/queue/client';
 import {
   evolutionMessagesUpsertSchema,
   normalizeEvolutionMessage,
@@ -112,13 +112,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         try {
           const persisted = await persistInboundMessage(inbound);
           if (persisted.message) {
-            await sendInngestEvent('wa/message.received', {
-              data: {
-                tenantId: conn.tenantId,
-                conversationId: persisted.conversation.id,
-                messageId: persisted.message.id,
-                contactPhoneE164: persisted.contact.phoneE164,
-              },
+            await sendQueueEvent('wa-process', {
+              tenantId: conn.tenantId,
+              conversationId: persisted.conversation.id,
+              messageId: persisted.message.id,
+              contactPhoneE164: persisted.contact.phoneE164,
             });
           }
         } catch (err) {

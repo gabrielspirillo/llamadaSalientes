@@ -1,8 +1,15 @@
+import path from 'node:path';
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Build standalone para Docker: incluye node_modules trazados + server.js,
+  // permite imagen final de ~150MB en vez de >1GB. Necesario para Dokploy.
+  output: 'standalone',
+  // En monorepo con pnpm, Next necesita saber dónde está la raíz para que
+  // el output standalone copie las deps correctas (también las hoisted).
+  outputFileTracingRoot: path.join(__dirname, '../../'),
   experimental: {
     serverActions: {
       bodySizeLimit: '4mb',

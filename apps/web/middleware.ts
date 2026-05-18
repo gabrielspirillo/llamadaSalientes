@@ -10,7 +10,6 @@ const isPublicRoute = createRouteMatcher([
   '/api/retell/(.*)',
   '/api/ghl/webhook',
   '/api/stripe/webhook',
-  '/api/inngest(.*)',
   '/api/twilio/(.*)', // SMS passthrough u otros callbacks de Twilio — Twilio firma con auth_token
   '/api/public/(.*)', // Endpoints invocados desde la landing pública (CORS + rate-limit propios)
 ]);

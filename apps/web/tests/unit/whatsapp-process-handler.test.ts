@@ -2,24 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
 
-// Capturamos el handler (segundo arg de createFunction) y stubbeamos las
-// dependencias pesadas (DB, factory, agente, multimodal, outbound) para
-// poder ejercitar el control de flujo sin red ni Postgres.
+// Stubbeamos las dependencias pesadas (DB, factory, agente, multimodal,
+// outbound) para poder ejercitar el control de flujo sin red ni Postgres.
 const mocks = vi.hoisted(() => {
-  let capturedHandler:
-    | ((args: {
-        event: { data: unknown };
-        step: { run: <T>(id: string, fn: () => Promise<T>) => Promise<T> };
-      }) => Promise<unknown>)
-    | null = null;
   // Cola FIFO de respuestas para db.select(). Cada test inicia con
   // pushSelect(...) los shapes que devolverán las queries en orden.
   const selectQueue: unknown[][] = [];
   return {
-    capture: (handler: typeof capturedHandler) => {
-      capturedHandler = handler;
-    },
-    getHandler: () => capturedHandler,
     selectQueue,
     updateConv: vi.fn(),
     buildConnector: vi.fn(),
@@ -29,17 +18,6 @@ const mocks = vi.hoisted(() => {
     writeAgentRun: vi.fn(),
   };
 });
-
-// Mock inngest.createFunction: capturamos el handler para invocarlo a mano.
-vi.mock('@/lib/inngest/client', () => ({
-  inngest: {
-    createFunction: (_cfg: unknown, handler: never) => {
-      mocks.capture(handler as never);
-      return { id: 'wa-process' };
-    },
-  },
-  sendInngestEvent: vi.fn(),
-}));
 
 // Mock del db client con un router por tabla. El SUT hace varios queries
 // distintos; los devolvemos en orden según lo que pidan los step.run.
@@ -110,9 +88,8 @@ vi.mock('@/lib/whatsapp/outbound/send-response', () => ({
   sendAgentResponse: mocks.sendAgentResponse,
 }));
 
-// Importar después de los mocks. La importación dispara createFunction y
-// captura el handler.
-import '@/lib/inngest/functions/whatsapp-process';
+// Importar después de los mocks.
+import { processWhatsappJob } from '@/worker/jobs/whatsapp-process';
 
 const ENABLED_ENV = { ...process.env };
 
@@ -122,23 +99,16 @@ function pushSelect(rows: unknown[]) {
 
 function baseEvent() {
   return {
-    data: {
-      tenantId: 'tenant-1',
-      conversationId: 'conv-1',
-      messageId: 'msg-1',
-      contactPhoneE164: '+34699111222',
-    },
+    tenantId: 'tenant-1',
+    conversationId: 'conv-1',
+    messageId: 'msg-1',
+    contactPhoneE164: '+34699111222',
   };
 }
 
 function runHandler() {
-  const handler = mocks.getHandler();
-  if (!handler) throw new Error('handler no capturado');
-  return handler({
-    event: baseEvent(),
-    step: {
-      run: async <T>(_id: string, fn: () => Promise<T>): Promise<T> => fn(),
-    },
+  return processWhatsappJob(baseEvent(), {
+    run: async <T>(_id: string, fn: () => Promise<T>): Promise<T> => fn(),
   });
 }
 

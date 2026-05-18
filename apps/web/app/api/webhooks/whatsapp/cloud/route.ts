@@ -4,7 +4,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { decrypt } from '@/lib/crypto';
 import { db } from '@/lib/db/client';
 import { whatsappConnections } from '@/lib/db/schema';
-import { sendInngestEvent } from '@/lib/inngest/client';
+import { sendQueueEvent } from '@/lib/queue/client';
 import {
   WhatsAppCloudConnector,
   cloudWebhookPayloadSchema,
@@ -110,16 +110,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           processed += 1;
           // Disparar el agente IA solo si fue un mensaje nuevo (no retry de
           // Meta). El gate fino — ai_enabled, status, takeover humano, flag
-          // global WHATSAPP_AGENT_ENABLED — corre dentro de la función
-          // Inngest (debounce 5s por conversación).
+          // global WHATSAPP_AGENT_ENABLED — corre dentro del worker BullMQ
+          // (job se encola con delay 5s para coalescer ráfagas).
           if (persisted.message) {
-            await sendInngestEvent('wa/message.received', {
-              data: {
-                tenantId: conn.tenantId,
-                conversationId: persisted.conversation.id,
-                messageId: persisted.message.id,
-                contactPhoneE164: persisted.contact.phoneE164,
-              },
+            await sendQueueEvent('wa-process', {
+              tenantId: conn.tenantId,
+              conversationId: persisted.conversation.id,
+              messageId: persisted.message.id,
+              contactPhoneE164: persisted.contact.phoneE164,
             });
           }
         } catch (err) {

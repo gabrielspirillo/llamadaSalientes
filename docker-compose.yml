@@ -1,0 +1,144 @@
+# docker-compose para desarrollo local y como REFERENCIA del stack que
+# corre en Dokploy. En el server, cada uno de estos servicios se crea como
+# un "Service" individual de Dokploy (Postgres, Redis, MinIO, App, Worker) —
+# este compose existe para que puedas reproducir el stack en local con
+# `docker compose up -d`.
+#
+# Networking: todos los servicios comparten `appnet`. La app accede a Postgres
+# como `postgres:5432`, a Redis como `redis:6379` y a MinIO como `minio:9000`.
+
+name: futura-cliniq
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: cliniq-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cliniq
+      POSTGRES_USER: cliniq
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U cliniq -d cliniq']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [appnet]
+
+  redis:
+    image: redis:7-alpine
+    container_name: cliniq-redis
+    restart: unless-stopped
+    command: ['redis-server', '--save', '60', '1', '--appendonly', 'yes']
+    volumes:
+      - redis-data:/data
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [appnet]
+
+  minio:
+    image: minio/minio:latest
+    container_name: cliniq-minio
+    restart: unless-stopped
+    command: server /data --console-address ':9001'
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio-data:/data
+    ports:
+      - '9000:9000'   # API S3
+      - '9001:9001'   # Console UI
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [appnet]
+
+  # Crea el bucket whatsapp-media + lo deja con policy pública. Se ejecuta
+  # una vez y termina.
+  minio-init:
+    image: minio/mc:latest
+    container_name: cliniq-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    entrypoint: >-
+      /bin/sh -c "
+      mc alias set local http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD &&
+      mc mb --ignore-existing local/whatsapp-media &&
+      mc anonymous set download local/whatsapp-media &&
+      echo 'bucket whatsapp-media listo';
+      "
+    networks: [appnet]
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+        CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
+        CLERK_WEBHOOK_SIGNING_SECRET: ${CLERK_WEBHOOK_SIGNING_SECRET}
+        DATABASE_URL: ${DATABASE_URL:-postgres://cliniq:${POSTGRES_PASSWORD:-changeme}@postgres:5432/cliniq}
+        DIRECT_URL: ${DIRECT_URL:-postgres://cliniq:${POSTGRES_PASSWORD:-changeme}@postgres:5432/cliniq}
+        ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+        SENTRY_DSN: ${SENTRY_DSN:-}
+    container_name: cliniq-web
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    env_file:
+      - .env.local
+    environment:
+      DATABASE_URL: postgres://cliniq:${POSTGRES_PASSWORD:-changeme}@postgres:5432/cliniq
+      DIRECT_URL: postgres://cliniq:${POSTGRES_PASSWORD:-changeme}@postgres:5432/cliniq
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_BASE_URL: http://localhost:9000
+    ports:
+      - '3000:3000'
+    networks: [appnet]
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: cliniq-worker
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    env_file:
+      - .env.local
+    environment:
+      DATABASE_URL: postgres://cliniq:${POSTGRES_PASSWORD:-changeme}@postgres:5432/cliniq
+      DIRECT_URL: postgres://cliniq:${POSTGRES_PASSWORD:-changeme}@postgres:5432/cliniq
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_BASE_URL: http://localhost:9000
+    networks: [appnet]
+
+networks:
+  appnet:
+    driver: bridge
+
+volumes:
+  pg-data:
+  redis-data:
+  minio-data:

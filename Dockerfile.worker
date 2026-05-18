@@ -1,0 +1,50 @@
+# syntax=docker/dockerfile:1.7
+#
+# Imagen del worker BullMQ (consume jobs wa-process + process-call).
+# Build context: raíz del repo (Dokploy → "Dockerfile: Dockerfile.worker").
+#
+# No necesita `next build` — corre directamente TS con tsx. La imagen final
+# trae node_modules + source TS + tsx, listo para `tsx worker/index.ts`.
+
+ARG NODE_VERSION=20-alpine
+
+FROM node:${NODE_VERSION} AS base
+RUN apk add --no-cache libc6-compat tini
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+WORKDIR /repo
+
+# ───────────────────────────────────────────────────────────────────────────
+FROM base AS deps
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY apps/web/package.json apps/web/
+COPY packages/db-schema/package.json packages/db-schema/
+COPY packages/shared-types/package.json packages/shared-types/
+RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
+
+# ───────────────────────────────────────────────────────────────────────────
+FROM base AS runner
+ENV NODE_ENV=production
+WORKDIR /app
+
+RUN addgroup -g 1001 -S nodejs && adduser -S worker -u 1001 -G nodejs
+
+# Copiamos manifests + node_modules + source. El worker importa muchísimas
+# rutas de `apps/web/lib/...` así que necesita el source completo, no solo
+# `worker/`.
+COPY --from=deps --chown=worker:nodejs /repo/node_modules ./node_modules
+COPY --from=deps --chown=worker:nodejs /repo/apps/web/node_modules ./apps/web/node_modules
+COPY --chown=worker:nodejs pnpm-workspace.yaml package.json ./
+COPY --chown=worker:nodejs apps/web/package.json ./apps/web/
+COPY --chown=worker:nodejs apps/web/tsconfig.json ./apps/web/
+COPY --chown=worker:nodejs apps/web/lib ./apps/web/lib
+COPY --chown=worker:nodejs apps/web/worker ./apps/web/worker
+COPY --chown=worker:nodejs packages ./packages
+
+WORKDIR /app/apps/web
+USER worker
+
+ENTRYPOINT ["/sbin/tini", "--"]
+# Usa el binario tsx instalado en apps/web/node_modules/.bin. pnpm crea ese
+# directorio al instalar, y nuestro pnpm-workspace lo aloja en cada workspace.
+CMD ["./node_modules/.bin/tsx", "worker/index.ts"]

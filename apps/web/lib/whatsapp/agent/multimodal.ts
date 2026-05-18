@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import { whatsappMessages } from '@/lib/db/schema';
-import { buildWhatsappMediaPath, supabaseUpload } from '@/lib/supabase/storage';
+import { buildWhatsappMediaPath, mediaUpload } from '@/lib/storage/media';
 import type { WhatsAppConnector } from '@/lib/whatsapp/types';
 
 import type { MediaKind, MediaSummary, MultimodalOutput } from './types';
@@ -142,18 +142,19 @@ async function processOne(msg: DbMessage, input: ProcessMessagesInput): Promise<
     return { messageId: msg.id, kind, summary: MEDIA_PLACEHOLDER[kind] };
   }
 
-  // Persistimos el adjunto en Supabase Storage si no estaba ya. Esto deja el
-  // mediaUrl disponible para el inbox UI. Si Storage no está configurado
-  // (env vacío) cae al catch y seguimos sin URL — el LLM no lo necesita.
+  // Persistimos el adjunto en el bucket S3 (MinIO) si no estaba ya. Esto
+  // deja el mediaUrl disponible para el inbox UI. Si el storage no está
+  // configurado (env vacío) cae al catch y seguimos sin URL — el LLM no lo
+  // necesita.
   let mediaUrl: string | null = msg.mediaUrl ?? null;
   if (!mediaUrl) {
     try {
       const ext = extForMime(mimeType, kind);
       const path = buildWhatsappMediaPath(input.tenantId, input.conversationId, ext);
-      const uploaded = await supabaseUpload({ path, body: buffer, contentType: mimeType });
+      const uploaded = await mediaUpload({ path, body: buffer, contentType: mimeType });
       mediaUrl = uploaded.publicUrl;
     } catch (err) {
-      console.warn('[wa-multimodal] supabaseUpload falló (sigo sin URL)', {
+      console.warn('[wa-multimodal] mediaUpload falló (sigo sin URL)', {
         messageId: msg.id,
         err: (err as Error).message,
       });

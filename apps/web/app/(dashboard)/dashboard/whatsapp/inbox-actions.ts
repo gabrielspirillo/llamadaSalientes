@@ -21,7 +21,7 @@ import { getCurrentTenant } from '@/lib/tenant';
 import { listTenantMembersSynced, userIsTenantMember } from '@/lib/tenant-members';
 import { auth } from '@clerk/nextjs/server';
 import { buildConnector } from '@/lib/whatsapp';
-import { buildWhatsappMediaPath, supabaseUpload } from '@/lib/supabase/storage';
+import { buildWhatsappMediaPath, mediaUpload } from '@/lib/storage/media';
 
 export type ActionResult<T> =
   | { success: true; data: T }
@@ -490,11 +490,11 @@ export async function sendMediaMessage(formData: FormData): Promise<ActionResult
     return fail(`La conexión WhatsApp (${mode}) no está disponible`);
   }
 
-  // Subir a Supabase Storage (bucket público whatsapp-media).
+  // Subir al bucket S3/MinIO (bucket público whatsapp-media).
   const buf = Buffer.from(await file.arrayBuffer());
   const ext = (file.name?.split('.').pop() ?? '').toLowerCase() || 'bin';
   const path = buildWhatsappMediaPath(tenant.id, row.conv.id, ext);
-  const { publicUrl } = await supabaseUpload({ path, body: buf, contentType: mime });
+  const { publicUrl } = await mediaUpload({ path, body: buf, contentType: mime });
   const mediaUrl = publicUrl;
 
   const clientNonce = randomUUID();

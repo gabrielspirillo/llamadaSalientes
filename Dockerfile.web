@@ -1,0 +1,95 @@
+# syntax=docker/dockerfile:1.7
+#
+# Imagen de la app Next.js (web).
+# Build context: raíz del repo (Dokploy → "Build Path: ." y "Dockerfile: Dockerfile.web").
+#
+# Multi-stage para imagen final mínima (~150MB):
+#   1. base    → node + pnpm
+#   2. deps    → pnpm install --frozen-lockfile (cacheable layer)
+#   3. builder → pnpm build (genera .next/standalone)
+#   4. runner  → solo standalone + static + public, sin source ni dev deps
+
+# ───────────────────────────────────────────────────────────────────────────
+ARG NODE_VERSION=20-alpine
+
+FROM node:${NODE_VERSION} AS base
+RUN apk add --no-cache libc6-compat
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+WORKDIR /repo
+
+# ───────────────────────────────────────────────────────────────────────────
+FROM base AS deps
+# Copiamos manifests del monorepo. El --mount=cache mantiene el store de pnpm
+# entre builds, acelerando re-builds en Dokploy.
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY apps/web/package.json apps/web/
+COPY packages/db-schema/package.json packages/db-schema/
+COPY packages/shared-types/package.json packages/shared-types/
+RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
+
+# ───────────────────────────────────────────────────────────────────────────
+FROM base AS builder
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+
+COPY --from=deps /repo/node_modules ./node_modules
+COPY --from=deps /repo/apps/web/node_modules ./apps/web/node_modules
+COPY --from=deps /repo/packages ./packages
+COPY . .
+
+# El build de Next embebe en el bundle todas las vars `NEXT_PUBLIC_*` y valida
+# el shape de las claves de Clerk al prerenderizar las páginas estáticas.
+# Por eso pasamos los secretos vía --build-arg desde Dokploy (Build Arguments).
+# Las vars privadas (DATABASE_URL, etc.) NO se embeben pero el build de Next
+# las valida con el schema Zod de lib/env.ts, así que también las requerimos.
+ARG NEXT_PUBLIC_APP_URL
+ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+ARG NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+ARG NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+ARG CLERK_SECRET_KEY
+ARG CLERK_WEBHOOK_SIGNING_SECRET
+ARG DATABASE_URL
+ARG DIRECT_URL
+ARG ENCRYPTION_KEY
+ARG SENTRY_DSN
+
+ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+ENV NEXT_PUBLIC_CLERK_SIGN_IN_URL=${NEXT_PUBLIC_CLERK_SIGN_IN_URL}
+ENV NEXT_PUBLIC_CLERK_SIGN_UP_URL=${NEXT_PUBLIC_CLERK_SIGN_UP_URL}
+ENV CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+ENV CLERK_WEBHOOK_SIGNING_SECRET=${CLERK_WEBHOOK_SIGNING_SECRET}
+ENV DATABASE_URL=${DATABASE_URL}
+ENV DIRECT_URL=${DIRECT_URL}
+ENV ENCRYPTION_KEY=${ENCRYPTION_KEY}
+ENV SENTRY_DSN=${SENTRY_DSN}
+
+RUN pnpm --filter web build
+
+# ───────────────────────────────────────────────────────────────────────────
+FROM node:${NODE_VERSION} AS runner
+RUN apk add --no-cache libc6-compat tini
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+
+# Usuario no-root para defense in depth.
+RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001 -G nodejs
+
+# Output standalone de Next: trae server.js + node_modules trazados, todo lo
+# necesario para correr sin pnpm/yarn ni source.
+COPY --from=builder --chown=nextjs:nodejs /repo/apps/web/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /repo/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder --chown=nextjs:nodejs /repo/apps/web/public ./apps/web/public
+
+USER nextjs
+EXPOSE 3000
+
+# tini reapea zombies y propaga SIGTERM (graceful shutdown que Dokploy
+# espera para redeploys sin downtime).
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["node", "apps/web/server.js"]

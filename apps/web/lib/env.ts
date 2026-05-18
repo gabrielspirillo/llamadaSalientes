@@ -55,9 +55,9 @@ const envSchema = z.object({
   TWILIO_API_KEY: z.string().optional(),
   TWILIO_API_SECRET: z.string().optional(),
 
-  // Inngest — Fase 3
-  INNGEST_EVENT_KEY: z.string().optional(),
-  INNGEST_SIGNING_KEY: z.string().optional(),
+  // Queue (Redis / BullMQ). Self-hosted en Dokploy.
+  // Formato: redis://[:password]@host:port[/db]
+  REDIS_URL: z.string().optional(),
 
   // R2 — Fase 5 (recordings de Retell)
   R2_ACCOUNT_ID: z.string().optional(),
@@ -65,13 +65,23 @@ const envSchema = z.object({
   R2_SECRET_ACCESS_KEY: z.string().optional(),
   R2_BUCKET: z.string().optional(),
 
-  // Supabase Storage — adjuntos del inbox de WhatsApp.
-  // SUPABASE_URL = https://<project-ref>.supabase.co
-  // SUPABASE_SERVICE_ROLE_KEY = clave service_role (NUNCA exponer al cliente).
-  // Bucket público: whatsapp-media
-  SUPABASE_URL: z.string().optional(),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
-  SUPABASE_WHATSAPP_BUCKET: z.string().default('whatsapp-media'),
+  // S3-compatible storage para media de WhatsApp (MinIO self-hosted o R2).
+  // - S3_ENDPOINT: URL pública del bucket (ej. https://s3.futuradigital.es)
+  // - S3_REGION: arbitrario para MinIO (usa "us-east-1" por convención).
+  // - S3_BUCKET_WHATSAPP: nombre del bucket (debe existir, público).
+  // - S3_PUBLIC_BASE_URL: URL pública base para construir links (opcional;
+  //   si no se setea se asume `${S3_ENDPOINT}/${bucket}/${key}`).
+  S3_ENDPOINT: z.string().optional(),
+  S3_REGION: z.string().default('us-east-1'),
+  S3_ACCESS_KEY: z.string().optional(),
+  S3_SECRET_KEY: z.string().optional(),
+  S3_BUCKET_WHATSAPP: z.string().default('whatsapp-media'),
+  S3_PUBLIC_BASE_URL: z.string().optional(),
+  // Forzar path-style addressing (necesario para MinIO; R2 también lo acepta).
+  S3_FORCE_PATH_STYLE: z
+    .string()
+    .optional()
+    .transform((v) => (v ?? 'true') === 'true'),
 
   // Crypto — required desde Fase 3 (AES-256-GCM, 32 bytes base64)
   ENCRYPTION_KEY: z.string().min(1, 'ENCRYPTION_KEY es requerida (openssl rand -base64 32)'),

@@ -3,7 +3,7 @@ import { logCallEvent, upsertCall } from '@/lib/data/calls';
 import { resolveTenantId } from '@/lib/data/phone-tenant';
 import { db } from '@/lib/db/client';
 import { outboundTargets, webhookLogs } from '@/lib/db/schema';
-import { sendInngestEvent } from '@/lib/inngest/client';
+import { sendQueueEvent } from '@/lib/queue/client';
 import { verifyRetellSignature } from '@/lib/retell/verify';
 import { and, eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -176,14 +176,12 @@ export async function POST(req: NextRequest) {
         typeof (call as { recording_url?: unknown }).recording_url === 'string'
           ? ((call as { recording_url?: string }).recording_url ?? null)
           : null;
-      await sendInngestEvent('call/process.requested', {
-        data: {
-          tenantId,
-          retellCallId: call.call_id,
-          recordingUrl,
-          transcript: call.transcript ?? null,
-          analysisSummary: analysis?.call_summary ?? null,
-        },
+      await sendQueueEvent('process-call', {
+        tenantId,
+        retellCallId: call.call_id,
+        recordingUrl,
+        transcript: call.transcript ?? null,
+        analysisSummary: analysis?.call_summary ?? null,
       });
       break;
     }
