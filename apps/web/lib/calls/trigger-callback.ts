@@ -80,16 +80,28 @@ export async function triggerCallback(input: TriggerCallbackInput): Promise<Trig
     };
   }
 
-  // Resolver el provider activo del tenant. Si el tenant está en modo
-  // Zadarma, el dispatch outbound no pasa por Retell (Retell sólo soporta
-  // Twilio BYOT nativo). Usamos /v1/request/callback/ de Zadarma. Para una
-  // llamada con agente AI sobre Zadarma, el operador debe configurar un SIP
-  // trunk hacia Retell en el cabinet — esta función lo soporta vía el
-  // parámetro `sip` opcional.
+  // Resolver provider del tenant. Hay 3 caminos de dispatch outbound:
+  //   1. Twilio (BYOT) → Retell.createPhoneCall con phoneNumbers + caller_id
+  //      verificado. Path histórico.
+  //   2. Zadarma + SIP trunk en Retell → Retell.createPhoneCall directo con
+  //      from_number = inbound_number_e164 (el DID que el operador asoció
+  //      con el SIP trunk en el dashboard Retell). Retell rutea por el
+  //      trunk. Preferido si el operador configuró el trunk — no requiere
+  //      tocar Zadarma cabinet más allá de comprar el DID.
+  //   3. Zadarma sin Retell SIP trunk → /v1/request/callback/ de Zadarma.
+  //      Requiere SIP interno + External SIP → Retell + env
+  //      ZADARMA_SIP_INTERNAL_FOR_AGENT. Legacy path.
   const telephony = await getTenantTelephony(input.tenantId);
   const provider = telephony?.provider ?? 'twilio';
 
   if (provider === 'zadarma') {
+    // Path 2: si hay agent_id resolvable + inbound_number_e164, asumimos
+    // que está el SIP trunk Zadarma cargado en Retell y dispatcheamos
+    // directo via Retell. Más simple y consistente con el path Twilio.
+    if (telephony?.inboundNumberE164) {
+      return triggerCallbackZadarmaViaRetell(input, phone, agentId, telephony);
+    }
+    // Path 3 (legacy)
     return triggerCallbackZadarma(input, phone, telephony);
   }
 
@@ -360,6 +372,145 @@ async function triggerCallbackZadarma(
       ok: false,
       error: `Zadarma error: ${(err as Error).message}`,
       reason: 'retell_error',
+    };
+  }
+}
+
+/**
+ * Dispatch outbound vía Retell directamente cuando el tenant es Zadarma
+ * pero tiene el SIP trunk Zadarma cargado en Retell (Phone Numbers →
+ * Custom SIP Trunk con server sip.zadarma.com + user SIP + password).
+ *
+ * Flujo:
+ *   Nuestra app → Retell.createPhoneCall(from=DID, to=paciente)
+ *   Retell → INVITE al SIP trunk Zadarma → Zadarma rutea al paciente
+ *   El agent atiende vía SIP del trunk
+ *
+ * Diferencia con Twilio path: usa telephony.inboundNumberE164 como
+ * from_number (no hay tabla phoneNumbers para Zadarma).
+ */
+async function triggerCallbackZadarmaViaRetell(
+  input: TriggerCallbackInput,
+  phone: string,
+  agentId: string,
+  telephony: {
+    inboundNumberE164: string | null;
+    callerIdE164: string | null;
+    callerIdVerifiedAt: Date | null;
+  },
+): Promise<TriggerCallbackResult> {
+  const fromNumber = telephony.inboundNumberE164;
+  if (!fromNumber) {
+    return {
+      ok: false,
+      error: 'Falta inbound_number_e164 — configurá un DID Zadarma como entrante primero.',
+      reason: 'no_phone',
+    };
+  }
+
+  // GHL contact resolution (idempotente)
+  let ghlContactId = input.ghlContactId ?? null;
+  const ghl = await getGhlIntegration(input.tenantId);
+  if (ghl && !ghlContactId && input.createContactIfMissing !== false) {
+    const existing = await lookupContactByPhone(input.tenantId, phone);
+    if (existing) {
+      ghlContactId = existing.id;
+    } else if (input.patientName || input.email) {
+      const parts = (input.patientName ?? '').trim().split(/\s+/);
+      const first = parts[0] ?? '';
+      const last = parts.slice(1).join(' ');
+      const created = await createContact(input.tenantId, {
+        firstName: first || 'Contacto',
+        lastName: last,
+        phone,
+        email: input.email ?? undefined,
+      });
+      ghlContactId = created?.id ?? null;
+    }
+  }
+
+  const clinicVars = await buildClinicContextVars(input.tenantId);
+
+  console.log('[triggerCallback/zadarma-via-retell] createPhoneCall', {
+    from: fromNumber,
+    to: phone,
+    agentId,
+    tenantId: input.tenantId,
+  });
+
+  let createdCall: { call_id: string; call_status?: string } | null = null;
+  try {
+    const retell = getRetellClient();
+    // biome-ignore lint/suspicious/noExplicitAny: SDK params shape varies
+    const callArgs: any = {
+      from_number: fromNumber,
+      to_number: phone,
+      override_agent_id: agentId,
+      metadata: {
+        tenant_id: input.tenantId,
+        ghl_contact_id: ghlContactId,
+        patient_name: input.patientName ?? null,
+        source: input.source ?? 'manual',
+        direction: 'outbound',
+        use_case: input.useCase ?? 'custom',
+        telephony_provider: 'zadarma',
+      },
+      retell_llm_dynamic_variables: {
+        ...clinicVars,
+        patient_name: input.patientName ?? 'paciente',
+        current_date: new Date().toISOString().slice(0, 10),
+        direction: 'outbound',
+        lead_source: input.source ?? 'manual',
+        use_case: input.useCase ?? 'custom',
+        ...(input.dynamicVars ?? {}),
+      },
+    };
+    createdCall = await retell.call.createPhoneCall(callArgs);
+    console.log('[triggerCallback/zadarma-via-retell] Retell ACK:', {
+      callId: createdCall.call_id,
+      status: createdCall.call_status,
+    });
+  } catch (err) {
+    console.error('[triggerCallback/zadarma-via-retell] Retell fallo:', err);
+    const msg = err instanceof Error ? err.message : 'Error desconocido';
+    return { ok: false, error: `Retell rechazó la llamada: ${msg}`, reason: 'retell_error' };
+  }
+
+  // Follow-up: chequear estado en 3s (igual que path Twilio)
+  await new Promise((r) => setTimeout(r, 3000));
+  try {
+    const retell = getRetellClient();
+    const status = await retell.call.retrieve(createdCall.call_id);
+    const callStatus = (status as { call_status?: string }).call_status;
+    const disconnectionReason = (status as { disconnection_reason?: string }).disconnection_reason;
+    console.log('[triggerCallback/zadarma-via-retell] follow-up:', {
+      callStatus,
+      disconnectionReason,
+    });
+    if (callStatus === 'error' || callStatus === 'not_connected') {
+      const hint =
+        disconnectionReason === 'telephony_provider_permission_denied'
+          ? 'Zadarma bloqueó la llamada. Verificá que el SIP trunk en Retell esté Active y que el país de destino esté permitido en Zadarma.'
+          : disconnectionReason === 'dial_no_answer'
+            ? 'El paciente no atendió.'
+            : disconnectionReason === 'dial_busy'
+              ? 'El número está ocupado.'
+              : `Razón: ${disconnectionReason ?? 'desconocida'}.`;
+      return { ok: false, error: hint, reason: 'retell_error' };
+    }
+    return {
+      ok: true,
+      callId: createdCall.call_id,
+      status: callStatus ?? 'registered',
+      contactId: ghlContactId,
+    };
+  } catch (err) {
+    console.error('[triggerCallback/zadarma-via-retell] follow-up retrieve fallo:', err);
+    return {
+      ok: true,
+      callId: createdCall.call_id,
+      status: createdCall.call_status ?? 'registered',
+      contactId: ghlContactId,
     };
   }
 }
