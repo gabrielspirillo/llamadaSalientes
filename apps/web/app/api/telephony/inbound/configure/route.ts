@@ -1,12 +1,10 @@
 import {
   getTelephonyProvider,
   getTwilioClientFor,
-  getZadarmaClientFor,
   upsertTenantTelephony,
 } from '@/lib/data/tenant-telephony';
 import { recordAudit } from '@/lib/audit';
 import { TwilioApiError } from '@/lib/twilio/client';
-import { ZadarmaApiError } from '@/lib/zadarma/client';
 import { getCurrentTenant } from '@/lib/tenant';
 import { env } from '@/lib/env';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -27,16 +25,16 @@ const bodySchema = z.object({
 });
 
 /**
- * POST → marca un número como "entrada" del tenant y configura los webhooks
- * del provider activo para que apunten a nuestro endpoint correspondiente.
+ * POST → marca un número como "entrada" del tenant.
  *
  * Twilio:
- *   - Setea VoiceUrl/SmsUrl del IncomingPhoneNumber al webhook TwiML.
+ *   - Setea VoiceUrl/SmsUrl del IncomingPhoneNumber via Twilio REST API.
  * Zadarma:
- *   - Registra la URL de notificación NOTIFY_* (es a nivel cuenta, no por
- *     número — Zadarma sólo permite UN webhook por cuenta).
- *   - Persistimos `inbound_number_e164` para que `findTenantByInboundNumber`
- *     pueda enrutarnos.
+ *   - La API NO expone endpoint para registrar el webhook URL. La config
+ *     se hace manualmente en cabinet.zadarma.com → Configuración →
+ *     Integraciones → Notificaciones de eventos.
+ *   - Acá solo persistimos `inbound_number_e164` y devolvemos la URL que el
+ *     usuario tiene que pegar en el cabinet.
  */
 export async function POST(req: NextRequest) {
   const { tenant } = await getCurrentTenant().catch(() => ({ tenant: null }));
@@ -106,16 +104,15 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Zadarma
+    // Zadarma: no API call — solo persistir + decirle al user qué pegar
+    // manual en cabinet.zadarma.com.
     if (!/^\+[1-9]\d{6,14}$/.test(parsed.data.sid)) {
       return NextResponse.json(
         { error: 'Para Zadarma, el `sid` debe ser el número en E.164 (ej. +34911234567)' },
         { status: 422 },
       );
     }
-    const { client } = await getZadarmaClientFor(tenant.id);
     const voiceUrl = `${baseUrl}/api/zadarma/webhook`;
-    await client.setNotificationUrl(voiceUrl);
 
     const stored = await upsertTenantTelephony(tenant.id, {
       inboundNumberE164: parsed.data.sid,
@@ -146,9 +143,12 @@ export async function POST(req: NextRequest) {
       inboundNumberE164: stored.inboundNumberE164,
       voiceUrl,
       smsUrl: null,
+      manualWebhookConfigRequired: true,
+      manualWebhookConfigNote:
+        `Pegá ${voiceUrl} en cabinet.zadarma.com → Configuración → Integraciones → Notificaciones de eventos → "Sobre llamadas a la centralita". La API de Zadarma no expone endpoint para hacerlo automático.`,
     });
   } catch (err) {
-    if (err instanceof TwilioApiError || err instanceof ZadarmaApiError) {
+    if (err instanceof TwilioApiError) {
       return NextResponse.json({ error: err.message }, { status: err.status });
     }
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
