@@ -1,4 +1,5 @@
 import {
+  getTelephonyProvider,
   getTenantTelephony,
   getTwilioClientFor,
   upsertTenantTelephony,
@@ -11,7 +12,13 @@ import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/** DELETE → desvincula el Caller ID actual (local + Twilio). */
+/**
+ * DELETE → desvincula el Caller ID actual.
+ *
+ * Twilio: borra el OutgoingCallerId en Twilio (si quedó SID) + limpia DB.
+ * Zadarma: sólo limpia DB (Zadarma no expone API para revocar caller IDs;
+ *          el cabinet es el que los administra).
+ */
 export async function DELETE() {
   const { tenant } = await getCurrentTenant().catch(() => ({ tenant: null }));
   if (!tenant) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -21,7 +28,9 @@ export async function DELETE() {
     return NextResponse.json({ ok: true, noop: true });
   }
 
-  if (telephony?.callerIdSid) {
+  const provider = await getTelephonyProvider(tenant.id);
+
+  if (provider === 'twilio' && telephony?.callerIdSid) {
     try {
       const { client } = await getTwilioClientFor(tenant.id);
       await client.deleteVerifiedCallerId(telephony.callerIdSid);

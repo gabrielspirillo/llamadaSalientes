@@ -1,9 +1,12 @@
 import {
+  getTelephonyProvider,
   getTwilioClientFor,
+  getZadarmaClientFor,
   upsertTenantTelephony,
 } from '@/lib/data/tenant-telephony';
 import { recordAudit } from '@/lib/audit';
 import { TwilioApiError } from '@/lib/twilio/client';
+import { ZadarmaApiError } from '@/lib/zadarma/client';
 import { getCurrentTenant } from '@/lib/tenant';
 import { env } from '@/lib/env';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -13,22 +16,27 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const bodySchema = z.object({
-  sid: z.string().regex(/^PN[a-f0-9]{32}$/i, 'IncomingPhoneNumber SID inválido'),
-  /** 'agent' = atender con Retell. 'forward' = redirigir a un número humano. */
+  /**
+   * Identificador del número a configurar como entrante:
+   *   - Twilio: SID del IncomingPhoneNumber (PN[hex]{32}).
+   *   - Zadarma: número en E.164 con "+".
+   */
+  sid: z.string().min(3, 'sid requerido'),
   route: z.enum(['agent', 'forward']).default('agent'),
-  /** Solo si route='forward'. */
   forwardNumber: z.string().regex(/^\+[1-9]\d{6,14}$/).optional(),
 });
 
 /**
- * POST → marca un IncomingPhoneNumber como el "número de entrada" de este
- * tenant y configura su VoiceUrl + SmsUrl para que apunten a nuestros
- * webhooks. El tenant queda resoluble por el `To` del webhook.
+ * POST → marca un número como "entrada" del tenant y configura los webhooks
+ * del provider activo para que apunten a nuestro endpoint correspondiente.
  *
- * Requisitos:
- *   - El número debe pertenecer al Twilio account ya autorizado por el tenant.
- *   - NEXT_PUBLIC_APP_URL debe estar configurado y ser accesible desde Twilio
- *     (https público, ngrok en dev, etc.).
+ * Twilio:
+ *   - Setea VoiceUrl/SmsUrl del IncomingPhoneNumber al webhook TwiML.
+ * Zadarma:
+ *   - Registra la URL de notificación NOTIFY_* (es a nivel cuenta, no por
+ *     número — Zadarma sólo permite UN webhook por cuenta).
+ *   - Persistimos `inbound_number_e164` para que `findTenantByInboundNumber`
+ *     pueda enrutarnos.
  */
 export async function POST(req: NextRequest) {
   const { tenant } = await getCurrentTenant().catch(() => ({ tenant: null }));
@@ -45,58 +53,104 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let client;
-  try {
-    ({ client } = await getTwilioClientFor(tenant.id));
-  } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 400 });
-  }
-
+  const provider = await getTelephonyProvider(tenant.id);
   const baseUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
-  const voiceUrl = `${baseUrl}/api/twilio/inbound-voice`;
-  const smsUrl = `${baseUrl}/api/twilio/sms-passthrough`;
 
-  let updated;
   try {
-    updated = await client.updateIncomingPhoneNumber(parsed.data.sid, {
+    if (provider === 'twilio') {
+      if (!/^PN[a-f0-9]{32}$/i.test(parsed.data.sid)) {
+        return NextResponse.json(
+          { error: 'IncomingPhoneNumber SID inválido (PN + 32 hex)' },
+          { status: 422 },
+        );
+      }
+      const { client } = await getTwilioClientFor(tenant.id);
+      const voiceUrl = `${baseUrl}/api/twilio/inbound-voice`;
+      const smsUrl = `${baseUrl}/api/twilio/sms-passthrough`;
+      const updated = await client.updateIncomingPhoneNumber(parsed.data.sid, {
+        voiceUrl,
+        voiceMethod: 'POST',
+        smsUrl,
+        smsMethod: 'POST',
+        friendlyName: `Tenant ${tenant.slug}`,
+      });
+
+      const stored = await upsertTenantTelephony(tenant.id, {
+        inboundNumberE164: updated.phone_number,
+        inboundNumberSid: updated.sid,
+        inboundConfiguredAt: new Date(),
+        inboundRoute: parsed.data.route,
+        inboundForwardNumber: parsed.data.forwardNumber ?? null,
+      });
+
+      await recordAudit({
+        tenantId: tenant.id,
+        action: 'update',
+        entity: 'tenant_telephony',
+        entityId: tenant.id,
+        before: null,
+        after: {
+          provider,
+          inboundNumberE164: updated.phone_number,
+          inboundRoute: parsed.data.route,
+          voiceUrl,
+        },
+      });
+
+      return NextResponse.json({
+        ok: true,
+        provider,
+        inboundNumberE164: stored.inboundNumberE164,
+        voiceUrl,
+        smsUrl,
+      });
+    }
+
+    // Zadarma
+    if (!/^\+[1-9]\d{6,14}$/.test(parsed.data.sid)) {
+      return NextResponse.json(
+        { error: 'Para Zadarma, el `sid` debe ser el número en E.164 (ej. +34911234567)' },
+        { status: 422 },
+      );
+    }
+    const { client } = await getZadarmaClientFor(tenant.id);
+    const voiceUrl = `${baseUrl}/api/zadarma/webhook`;
+    await client.setNotificationUrl(voiceUrl);
+
+    const stored = await upsertTenantTelephony(tenant.id, {
+      inboundNumberE164: parsed.data.sid,
+      // Zadarma no tiene SID por número; lo dejamos null.
+      inboundNumberSid: null,
+      inboundConfiguredAt: new Date(),
+      inboundRoute: parsed.data.route,
+      inboundForwardNumber: parsed.data.forwardNumber ?? null,
+    });
+
+    await recordAudit({
+      tenantId: tenant.id,
+      action: 'update',
+      entity: 'tenant_telephony',
+      entityId: tenant.id,
+      before: null,
+      after: {
+        provider,
+        inboundNumberE164: stored.inboundNumberE164,
+        inboundRoute: parsed.data.route,
+        voiceUrl,
+      },
+    });
+
+    return NextResponse.json({
+      ok: true,
+      provider,
+      inboundNumberE164: stored.inboundNumberE164,
       voiceUrl,
-      voiceMethod: 'POST',
-      smsUrl,
-      smsMethod: 'POST',
-      friendlyName: `Tenant ${tenant.slug}`,
+      smsUrl: null,
     });
   } catch (err) {
-    if (err instanceof TwilioApiError) {
+    if (err instanceof TwilioApiError || err instanceof ZadarmaApiError) {
       return NextResponse.json({ error: err.message }, { status: err.status });
     }
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
-
-  const stored = await upsertTenantTelephony(tenant.id, {
-    inboundNumberE164: updated.phone_number,
-    inboundNumberSid: updated.sid,
-    inboundConfiguredAt: new Date(),
-    inboundRoute: parsed.data.route,
-    inboundForwardNumber: parsed.data.forwardNumber ?? null,
-  });
-
-  await recordAudit({
-    tenantId: tenant.id,
-    action: 'update',
-    entity: 'tenant_telephony',
-    entityId: tenant.id,
-    before: null,
-    after: {
-      inboundNumberE164: updated.phone_number,
-      inboundRoute: parsed.data.route,
-      voiceUrl,
-    },
-  });
-
-  return NextResponse.json({
-    ok: true,
-    inboundNumberE164: stored.inboundNumberE164,
-    voiceUrl,
-    smsUrl,
-  });
 }

@@ -1,12 +1,16 @@
 import 'server-only';
 import { resolveRetellAgentId } from '@/lib/data/agent-config';
 import { getGhlIntegration } from '@/lib/data/ghl-integration';
-import { getTenantTelephony } from '@/lib/data/tenant-telephony';
+import {
+  getTenantTelephony,
+  getZadarmaClientFor,
+} from '@/lib/data/tenant-telephony';
 import { db } from '@/lib/db/client';
 import { phoneNumbers } from '@/lib/db/schema';
 import { createContact, lookupContactByPhone } from '@/lib/ghl/contacts-mutations';
 import { getRetellClient } from '@/lib/retell/client';
 import { buildClinicContextVars } from '@/lib/retell/clinic-context';
+import { ZadarmaApiError } from '@/lib/zadarma/client';
 import { and, eq } from 'drizzle-orm';
 
 export type TriggerCallbackInput = {
@@ -76,6 +80,19 @@ export async function triggerCallback(input: TriggerCallbackInput): Promise<Trig
     };
   }
 
+  // Resolver el provider activo del tenant. Si el tenant está en modo
+  // Zadarma, el dispatch outbound no pasa por Retell (Retell sólo soporta
+  // Twilio BYOT nativo). Usamos /v1/request/callback/ de Zadarma. Para una
+  // llamada con agente AI sobre Zadarma, el operador debe configurar un SIP
+  // trunk hacia Retell en el cabinet — esta función lo soporta vía el
+  // parámetro `sip` opcional.
+  const telephony = await getTenantTelephony(input.tenantId);
+  const provider = telephony?.provider ?? 'twilio';
+
+  if (provider === 'zadarma') {
+    return triggerCallbackZadarma(input, phone, telephony);
+  }
+
   const [phoneRow] = await db
     .select()
     .from(phoneNumbers)
@@ -98,7 +115,6 @@ export async function triggerCallback(input: TriggerCallbackInput): Promise<Trig
   // Si no se cumple lo segundo, Twilio rechaza la llamada con error 21210
   // ("Caller ID Not Verified"). Por defecto pasamos el caller ID — si la
   // cuenta no es BYOT, el fallo es ruidoso y orientativo.
-  const telephony = await getTenantTelephony(input.tenantId);
   const fromForRetell = phoneRow.e164;
   const callerIdOverride =
     telephony?.callerIdE164 && telephony.callerIdVerifiedAt ? telephony.callerIdE164 : null;
@@ -245,6 +261,105 @@ export async function triggerCallback(input: TriggerCallbackInput): Promise<Trig
       callId: createdCall.call_id,
       status: createdCall.call_status ?? 'registered',
       contactId: ghlContactId,
+    };
+  }
+}
+
+/**
+ * Dispatch outbound vía Zadarma. Sin Retell BYOT — usamos el endpoint
+ * `/v1/request/callback/` que dispara una llamada bidireccional:
+ *   leg A → `from` (clínica o SIP interno con Retell trunk)
+ *   leg B → `to` (paciente)
+ *
+ * Para que el agente AI atienda en lugar de un humano, `from` debe ser un
+ * SIP interno del cabinet Zadarma con un "External SIP" configurado hacia
+ * Retell. Si el tenant no tiene SIP del agente cargado, usamos el número
+ * verificado de la clínica (modo human-to-human).
+ *
+ * Nota: la lifecycle de la llamada en Zadarma llega después por webhook
+ * NOTIFY_OUT_*; no esperamos sincrónicamente. Devolvemos `pbx_call_id`
+ * como callId para que aparezca en logs/calls table cuando se reconcile.
+ */
+async function triggerCallbackZadarma(
+  input: TriggerCallbackInput,
+  phone: string,
+  telephony: {
+    callerIdE164: string | null;
+    callerIdVerifiedAt: Date | null;
+    inboundNumberE164: string | null;
+  } | null,
+): Promise<TriggerCallbackResult> {
+  const from =
+    (telephony?.callerIdE164 && telephony.callerIdVerifiedAt ? telephony.callerIdE164 : null) ??
+    telephony?.inboundNumberE164 ??
+    null;
+
+  if (!from) {
+    return {
+      ok: false,
+      error:
+        'Zadarma requiere un Caller ID verificado o un número entrante configurado para dispatch outbound.',
+      reason: 'no_phone',
+    };
+  }
+
+  // Asegurar contacto en GHL si tenemos integración (mismo flujo que Twilio).
+  let ghlContactId = input.ghlContactId ?? null;
+  const ghl = await getGhlIntegration(input.tenantId);
+  if (ghl && !ghlContactId && input.createContactIfMissing !== false) {
+    const existing = await lookupContactByPhone(input.tenantId, phone);
+    if (existing) {
+      ghlContactId = existing.id;
+    } else if (input.patientName || input.email) {
+      const parts = (input.patientName ?? '').trim().split(/\s+/);
+      const first = parts[0] ?? '';
+      const last = parts.slice(1).join(' ');
+      const created = await createContact(input.tenantId, {
+        firstName: first || 'Contacto',
+        lastName: last,
+        phone,
+        email: input.email ?? undefined,
+      });
+      ghlContactId = created?.id ?? null;
+    }
+  }
+
+  // Si quisieras puentear al agente AI: ZADARMA_SIP_INTERNAL_FOR_AGENT
+  // apunta a una extensión SIP del cabinet con External SIP hacia Retell.
+  // Cuando está seteada, la usamos como leg A; sino, leg A = `from`.
+  const sipForAgent = process.env.ZADARMA_SIP_INTERNAL_FOR_AGENT;
+
+  try {
+    const { client } = await getZadarmaClientFor(input.tenantId);
+    const result = await client.createCallback({
+      from: from.replace(/^\+/, ''),
+      to: phone.replace(/^\+/, ''),
+      ...(sipForAgent ? { sip: sipForAgent } : {}),
+    });
+    console.log('[triggerCallback/zadarma] callback creado', {
+      pbx_call_id: result.pbx_call_id,
+      from,
+      to: phone,
+    });
+    return {
+      ok: true,
+      callId: result.pbx_call_id ?? `zadarma-${Date.now()}`,
+      status: 'registered',
+      contactId: ghlContactId,
+    };
+  } catch (err) {
+    console.error('[triggerCallback/zadarma] callback fallo:', err);
+    if (err instanceof ZadarmaApiError) {
+      return {
+        ok: false,
+        error: `Zadarma rechazó la llamada: ${err.message}`,
+        reason: 'retell_error',
+      };
+    }
+    return {
+      ok: false,
+      error: `Zadarma error: ${(err as Error).message}`,
+      reason: 'retell_error',
     };
   }
 }

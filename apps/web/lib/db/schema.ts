@@ -186,21 +186,34 @@ export const ghlIntegrations = pgTable('ghl_integrations', {
   connectedAt: timestamp('connected_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
-// Configuración Twilio por-tenant para llamadas (Caller ID saliente + número
-// entrante propio del tenant). Ver supabase/migrations/0006_tenant_telephony.sql
-// para el rationale.
+// Configuración de telefonía por-tenant (Caller ID saliente + número
+// entrante propio del tenant). Soporta dos providers: Twilio y Zadarma.
+// Ver supabase/migrations/0006_tenant_telephony.sql + 0010_telephony_zadarma.sql.
 export const tenantTelephony = pgTable(
   'tenant_telephony',
   {
     tenantId: uuid('tenant_id')
       .primaryKey()
       .references(() => tenants.id, { onDelete: 'cascade' }),
+    // 'twilio' | 'zadarma'. Default 'twilio' por compatibilidad con tenants
+    // pre-migración.
+    provider: text('provider').notNull().default('twilio'),
+    // Twilio creds (provider='twilio').
     twilioAccountSid: text('twilio_account_sid'),
     twilioAuthTokenEnc: text('twilio_auth_token_enc'),
+    // Zadarma creds (provider='zadarma').
+    zadarmaUserKey: text('zadarma_user_key'),
+    zadarmaSecretEnc: text('zadarma_secret_enc'),
+    zadarmaWebhookSecretEnc: text('zadarma_webhook_secret_enc'),
+    // Caller ID saliente. Compartido entre providers.
     callerIdE164: text('caller_id_e164'),
+    // Sólo Twilio: SID del OutgoingCallerId. Zadarma NO usa SIDs (los
+    // "verified personal numbers" se identifican por número).
     callerIdSid: text('caller_id_sid'),
     callerIdVerifiedAt: timestamp('caller_id_verified_at', { withTimezone: true }),
+    // Número entrante propio del tenant. Compartido entre providers.
     inboundNumberE164: text('inbound_number_e164'),
+    // Sólo Twilio: SID del IncomingPhoneNumber.
     inboundNumberSid: text('inbound_number_sid'),
     inboundConfiguredAt: timestamp('inbound_configured_at', { withTimezone: true }),
     // 'agent' (Retell) | 'forward' (transferir a un humano sin pasar por el agente)
@@ -211,6 +224,7 @@ export const tenantTelephony = pgTable(
   },
   (t) => ({
     inboundNumberIdx: index('tenant_telephony_inbound_number_idx').on(t.inboundNumberE164),
+    providerIdx: index('tenant_telephony_provider_idx').on(t.provider),
   }),
 );
 

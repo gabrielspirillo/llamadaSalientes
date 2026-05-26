@@ -1,5 +1,6 @@
 import { PageHeader } from '@/components/dashboard/page-header';
 import { getTenantTelephony } from '@/lib/data/tenant-telephony';
+import type { TelephonyProvider } from '@/lib/telephony/provider';
 import { getCurrentTenant } from '@/lib/tenant';
 import { headers } from 'next/headers';
 import { TelephonySettings } from './telephony-settings';
@@ -13,19 +14,21 @@ export default async function TelephonyPage() {
   const proto =
     hdrs.get('x-forwarded-proto') ?? (host.includes('localhost') ? 'http' : 'https');
   const baseUrl = `${proto}://${host}`;
-  const voiceWebhookUrl = `${baseUrl}/api/twilio/inbound-voice`;
-  const smsWebhookUrl = `${baseUrl}/api/twilio/sms-passthrough`;
 
   return (
     <>
       <PageHeader
         title="Telefonía"
-        description="Configurá las llamadas multi-tenant: caller ID saliente y número entrante propios."
+        description="Configurá las llamadas multi-tenant: provider, caller ID saliente y número entrante propios."
       />
       <TelephonySettings
         initial={{
-          configured: !!t?.twilioAccountSid,
-          accountSid: t?.twilioAccountSid ?? null,
+          provider: ((t?.provider as TelephonyProvider | undefined) ?? 'twilio'),
+          twilioConfigured: !!t?.twilioAccountSid,
+          twilioAccountSid: t?.twilioAccountSid ?? null,
+          zadarmaConfigured: !!t?.zadarmaUserKey,
+          zadarmaUserKey: t?.zadarmaUserKey ?? null,
+          zadarmaWebhookSecretSet: !!t?.zadarmaWebhookSecretEnc,
           callerIdE164: t?.callerIdE164 ?? null,
           callerIdVerifiedAt: t?.callerIdVerifiedAt
             ? t.callerIdVerifiedAt.toISOString()
@@ -37,7 +40,15 @@ export default async function TelephonyPage() {
           inboundRoute: (t?.inboundRoute ?? 'agent') as 'agent' | 'forward',
           inboundForwardNumber: t?.inboundForwardNumber ?? null,
         }}
-        webhookUrls={{ voice: voiceWebhookUrl, sms: smsWebhookUrl }}
+        webhookUrls={{
+          twilio: {
+            voice: `${baseUrl}/api/twilio/inbound-voice`,
+            sms: `${baseUrl}/api/twilio/sms-passthrough`,
+          },
+          zadarma: {
+            webhook: `${baseUrl}/api/zadarma/webhook`,
+          },
+        }}
       />
     </>
   );

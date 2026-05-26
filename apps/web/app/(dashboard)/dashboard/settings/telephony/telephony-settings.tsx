@@ -3,12 +3,24 @@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input, Label } from '@/components/ui/input';
-import { CheckCircle2, Copy, Loader2, PhoneIncoming, PhoneOutgoing, ShieldCheck } from 'lucide-react';
+import type { TelephonyProvider } from '@/lib/telephony/provider';
+import {
+  CheckCircle2,
+  Copy,
+  Loader2,
+  PhoneIncoming,
+  PhoneOutgoing,
+  ShieldCheck,
+} from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type TelephonyState = {
-  configured: boolean;
-  accountSid: string | null;
+  provider: TelephonyProvider;
+  twilioConfigured: boolean;
+  twilioAccountSid: string | null;
+  zadarmaConfigured: boolean;
+  zadarmaUserKey: string | null;
+  zadarmaWebhookSecretSet: boolean;
   callerIdE164: string | null;
   callerIdVerifiedAt: string | null;
   inboundNumberE164: string | null;
@@ -25,22 +37,119 @@ type IncomingNumber = {
   smsUrl: string | null;
 };
 
+export type WebhookUrls = {
+  twilio: { voice: string; sms: string };
+  zadarma: { webhook: string };
+};
+
 export function TelephonySettings({
   initial,
   webhookUrls,
 }: {
   initial: TelephonyState;
-  webhookUrls: { voice: string; sms: string };
+  webhookUrls: WebhookUrls;
 }) {
   const [state, setState] = useState<TelephonyState>(initial);
+  const isConfigured =
+    state.provider === 'twilio' ? state.twilioConfigured : state.zadarmaConfigured;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-      <CredentialsCard state={state} onChange={setState} />
-      <CallerIdCard state={state} onChange={setState} />
-      <InboundCard state={state} onChange={setState} webhookUrls={webhookUrls} />
-      <HelpCard webhookUrls={webhookUrls} />
+    <div className="space-y-4 sm:space-y-6">
+      <ProviderTabs state={state} onChange={setState} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <CredentialsCard state={state} onChange={setState} />
+        <CallerIdCard state={state} onChange={setState} isConfigured={isConfigured} />
+        <InboundCard
+          state={state}
+          onChange={setState}
+          isConfigured={isConfigured}
+        />
+        <HelpCard state={state} webhookUrls={webhookUrls} />
+      </div>
     </div>
+  );
+}
+
+// ─── Tabs por provider ───────────────────────────────────────────────────────
+
+function ProviderTabs({
+  state,
+  onChange,
+}: {
+  state: TelephonyState;
+  onChange: (s: TelephonyState) => void;
+}) {
+  const setProvider = (provider: TelephonyProvider) => {
+    if (provider === state.provider) return;
+    onChange({ ...state, provider });
+  };
+
+  const providers: { id: TelephonyProvider; label: string; sub: string; configured: boolean }[] = [
+    {
+      id: 'twilio',
+      label: 'Twilio',
+      sub: 'Mejor para US/Canadá y WhatsApp BSP. Caller ID verificado por DTMF.',
+      configured: state.twilioConfigured,
+    },
+    {
+      id: 'zadarma',
+      label: 'Zadarma',
+      sub: 'Mejor para LATAM/Europa. DIDs económicos. Verificación de caller ID via cabinet.',
+      configured: state.zadarmaConfigured,
+    },
+  ];
+
+  return (
+    <Card>
+      <div className="p-3 sm:p-4">
+        <div className="flex items-center gap-2 mb-3 px-1">
+          <ShieldCheck className="h-4 w-4 text-zinc-500" />
+          <span className="text-sm font-medium">Provider de telefonía</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {providers.map((p) => {
+            const active = state.provider === p.id;
+            return (
+              <button
+                type="button"
+                key={p.id}
+                onClick={() => setProvider(p.id)}
+                className={`text-left rounded-xl border p-3 transition ${
+                  active
+                    ? 'border-zinc-900 bg-zinc-900 text-white'
+                    : 'border-zinc-200 bg-white hover:border-zinc-400'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">{p.label}</span>
+                  {p.configured && (
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded-full ${
+                        active
+                          ? 'bg-white/20 text-white'
+                          : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      }`}
+                    >
+                      Configurado
+                    </span>
+                  )}
+                  {active && (
+                    <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-white/20 text-white">
+                      Activo
+                    </span>
+                  )}
+                </div>
+                <p
+                  className={`text-xs mt-1 ${active ? 'text-zinc-300' : 'text-zinc-500'}`}
+                >
+                  {p.sub}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -53,7 +162,20 @@ function CredentialsCard({
   state: TelephonyState;
   onChange: (s: TelephonyState) => void;
 }) {
-  const [sid, setSid] = useState(state.accountSid ?? '');
+  if (state.provider === 'twilio') {
+    return <TwilioCredentialsForm state={state} onChange={onChange} />;
+  }
+  return <ZadarmaCredentialsForm state={state} onChange={onChange} />;
+}
+
+function TwilioCredentialsForm({
+  state,
+  onChange,
+}: {
+  state: TelephonyState;
+  onChange: (s: TelephonyState) => void;
+}) {
+  const [sid, setSid] = useState(state.twilioAccountSid ?? '');
   const [token, setToken] = useState('');
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
@@ -65,7 +187,7 @@ function CredentialsCard({
       const res = await fetch('/api/telephony/credentials', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ accountSid: sid, authToken: token }),
+        body: JSON.stringify({ provider: 'twilio', accountSid: sid, authToken: token }),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -73,7 +195,7 @@ function CredentialsCard({
       }
       setMsg({ kind: 'ok', text: 'Credenciales guardadas y validadas con Twilio.' });
       setToken('');
-      onChange({ ...state, configured: true, accountSid: sid });
+      onChange({ ...state, twilioConfigured: true, twilioAccountSid: sid, provider: 'twilio' });
     } catch (err) {
       setMsg({ kind: 'error', text: (err as Error).message });
     } finally {
@@ -87,7 +209,7 @@ function CredentialsCard({
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-5 w-5 text-zinc-500" />
           <h3 className="text-base font-semibold tracking-tight">Credenciales Twilio</h3>
-          {state.configured && (
+          {state.twilioConfigured && (
             <span className="ml-auto text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-200">
               Configurado
             </span>
@@ -115,24 +237,140 @@ function CredentialsCard({
               type="password"
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              placeholder={state.configured ? '••••••••••••  (dejar vacío para no cambiar)' : ''}
+              placeholder={
+                state.twilioConfigured ? '••••••••••••  (dejar vacío para no cambiar)' : ''
+              }
               className="mt-2 font-mono"
             />
           </div>
         </div>
-        {msg && (
-          <div
-            className={`text-sm rounded-xl border px-3.5 py-2.5 ${
-              msg.kind === 'ok'
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                : 'bg-red-50 border-red-200 text-red-800'
-            }`}
-          >
-            {msg.text}
-          </div>
-        )}
+        <Banner msg={msg} />
         <div className="flex justify-end">
           <Button onClick={submit} disabled={loading || !sid || !token} size="sm">
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            Guardar y validar
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function ZadarmaCredentialsForm({
+  state,
+  onChange,
+}: {
+  state: TelephonyState;
+  onChange: (s: TelephonyState) => void;
+}) {
+  const [userKey, setUserKey] = useState(state.zadarmaUserKey ?? '');
+  const [secret, setSecret] = useState('');
+  const [webhookSecret, setWebhookSecret] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+
+  async function submit() {
+    setLoading(true);
+    setMsg(null);
+    try {
+      const res = await fetch('/api/telephony/credentials', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          provider: 'zadarma',
+          userKey,
+          secret,
+          webhookSecret: webhookSecret || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error ?? `HTTP ${res.status}`);
+      }
+      setMsg({ kind: 'ok', text: 'Credenciales guardadas y validadas con Zadarma.' });
+      setSecret('');
+      setWebhookSecret('');
+      onChange({
+        ...state,
+        zadarmaConfigured: true,
+        zadarmaUserKey: userKey,
+        zadarmaWebhookSecretSet: !!webhookSecret || state.zadarmaWebhookSecretSet,
+        provider: 'zadarma',
+      });
+    } catch (err) {
+      setMsg({ kind: 'error', text: (err as Error).message });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Card className="lg:col-span-2">
+      <div className="p-4 sm:p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-5 w-5 text-zinc-500" />
+          <h3 className="text-base font-semibold tracking-tight">Credenciales Zadarma</h3>
+          {state.zadarmaConfigured && (
+            <span className="ml-auto text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-200">
+              Configurado
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-zinc-500">
+          Generá las claves en cabinet.zadarma.com → Settings → API. El Secret y el
+          Webhook Secret se cifran (AES-256-GCM) antes de guardarse. Validamos con un
+          ping a /v1/info/balance/ antes de persistir.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="zd-key">User Key</Label>
+            <Input
+              id="zd-key"
+              value={userKey}
+              onChange={(e) => setUserKey(e.target.value)}
+              placeholder="3a8c…"
+              className="mt-2 font-mono"
+            />
+          </div>
+          <div>
+            <Label htmlFor="zd-secret">Secret</Label>
+            <Input
+              id="zd-secret"
+              type="password"
+              value={secret}
+              onChange={(e) => setSecret(e.target.value)}
+              placeholder={
+                state.zadarmaConfigured ? '••••••••••••  (dejar vacío para no cambiar)' : ''
+              }
+              className="mt-2 font-mono"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <Label htmlFor="zd-webhook">
+              Webhook Secret <span className="text-xs text-zinc-400">(opcional)</span>
+            </Label>
+            <Input
+              id="zd-webhook"
+              type="password"
+              value={webhookSecret}
+              onChange={(e) => setWebhookSecret(e.target.value)}
+              placeholder={
+                state.zadarmaWebhookSecretSet ? '•••• (ya configurado)' : 'Sólo si lo configuraste en cabinet'
+              }
+              className="mt-2 font-mono"
+            />
+            <p className="text-xs text-zinc-500 mt-1">
+              Si no lo configurás, verificamos las firmas NOTIFY_* con el Secret del API.
+            </p>
+          </div>
+        </div>
+        <Banner msg={msg} />
+        <div className="flex justify-end">
+          <Button
+            onClick={submit}
+            disabled={loading || !userKey || !secret}
+            size="sm"
+          >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Guardar y validar
           </Button>
@@ -147,9 +385,11 @@ function CredentialsCard({
 function CallerIdCard({
   state,
   onChange,
+  isConfigured,
 }: {
   state: TelephonyState;
   onChange: (s: TelephonyState) => void;
+  isConfigured: boolean;
 }) {
   const [phone, setPhone] = useState(state.callerIdE164 ?? '');
   const [validationCode, setValidationCode] = useState<string | null>(null);
@@ -158,7 +398,6 @@ function CallerIdCard({
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Stop polling on unmount.
   useEffect(() => {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
@@ -186,14 +425,26 @@ function CallerIdCard({
       const j = await res.json();
       if (!res.ok) throw new Error(j.error ?? `HTTP ${res.status}`);
       if (j.alreadyVerified) {
-        setMsg({ kind: 'ok', text: 'Este número ya estaba verificado en Twilio.' });
-        onChange({ ...state, callerIdE164: j.phoneNumber, callerIdVerifiedAt: new Date().toISOString() });
+        setMsg({
+          kind: 'ok',
+          text:
+            state.provider === 'zadarma'
+              ? 'Número detectado en tu cuenta Zadarma y verificado.'
+              : 'Este número ya estaba verificado en Twilio.',
+        });
+        onChange({
+          ...state,
+          callerIdE164: j.phoneNumber,
+          callerIdVerifiedAt: new Date().toISOString(),
+        });
         return;
       }
+      // Twilio: tenemos validation_code + polling.
       setValidationCode(j.validationCode);
       setMsg({
         kind: 'ok',
-        text: 'Twilio te va a llamar. Cuando escuches la voz, ingresá los 6 dígitos en el teclado del teléfono.',
+        text:
+          'Twilio te va a llamar. Cuando escuches la voz, ingresá los 6 dígitos en el teclado del teléfono.',
       });
       startPolling();
     } catch (err) {
@@ -223,7 +474,7 @@ function CallerIdCard({
         } else if (elapsed >= 240) {
           setMsg({
             kind: 'error',
-            text: 'Pasaron 4 minutos sin confirmación. Probá de nuevo o revisá Twilio Console.',
+            text: 'Pasaron 4 minutos sin confirmación. Probá de nuevo o revisá el panel del provider.',
           });
           stopPoll();
         }
@@ -234,7 +485,7 @@ function CallerIdCard({
   }
 
   async function unlink() {
-    if (!confirm('¿Quitar el Caller ID actual? Las próximas llamadas saldrán con el número Twilio.')) {
+    if (!confirm('¿Quitar el Caller ID actual? Las próximas llamadas usarán el número del provider.')) {
       return;
     }
     const res = await fetch('/api/telephony/caller-id', { method: 'DELETE' });
@@ -246,6 +497,7 @@ function CallerIdCard({
   }
 
   const verified = !!state.callerIdVerifiedAt;
+  const isZadarma = state.provider === 'zadarma';
 
   return (
     <Card>
@@ -256,8 +508,10 @@ function CallerIdCard({
           {verified && <CheckCircle2 className="h-4 w-4 text-emerald-600 ml-auto" />}
         </div>
         <p className="text-sm text-zinc-500">
-          Número público de la clínica que verá el destinatario cuando hagamos llamadas
-          salientes vía Twilio. Requiere verificación por DTMF.
+          Número público de la clínica que verá el destinatario en las llamadas salientes.{' '}
+          {isZadarma
+            ? 'En Zadarma se verifica desde cabinet.zadarma.com → My numbers; acá sólo confirmamos.'
+            : 'Twilio lo verifica por DTMF con un código de 6 dígitos.'}
         </p>
 
         {verified ? (
@@ -308,7 +562,7 @@ function CallerIdCard({
             {polling && (
               <div className="flex items-center gap-2 text-sm text-zinc-600">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Esperando confirmación de Twilio…
+                Esperando confirmación…
               </div>
             )}
 
@@ -316,26 +570,20 @@ function CallerIdCard({
               <Button
                 onClick={startVerification}
                 size="sm"
-                disabled={!state.configured || !phone || verifying || polling}
+                disabled={!isConfigured || !phone || verifying || polling}
               >
                 {verifying ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                {polling ? 'Esperando…' : 'Verificar número'}
+                {polling
+                  ? 'Esperando…'
+                  : isZadarma
+                  ? 'Confirmar número'
+                  : 'Verificar número'}
               </Button>
             </div>
           </>
         )}
 
-        {msg && (
-          <div
-            className={`text-sm rounded-xl border px-3.5 py-2.5 ${
-              msg.kind === 'ok'
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                : 'bg-red-50 border-red-200 text-red-800'
-            }`}
-          >
-            {msg.text}
-          </div>
-        )}
+        <Banner msg={msg} />
       </div>
     </Card>
   );
@@ -346,11 +594,11 @@ function CallerIdCard({
 function InboundCard({
   state,
   onChange,
-  webhookUrls,
+  isConfigured,
 }: {
   state: TelephonyState;
   onChange: (s: TelephonyState) => void;
-  webhookUrls: { voice: string; sms: string };
+  isConfigured: boolean;
 }) {
   const [numbers, setNumbers] = useState<IncomingNumber[]>([]);
   const [loading, setLoading] = useState(false);
@@ -360,8 +608,8 @@ function InboundCard({
   const [forwardNumber, setForwardNumber] = useState(state.inboundForwardNumber ?? '');
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
 
-  async function loadNumbers() {
-    if (!state.configured) return;
+  const loadNumbers = useCallback(async () => {
+    if (!isConfigured) return;
     setLoading(true);
     try {
       const res = await fetch('/api/telephony/inbound/numbers');
@@ -373,12 +621,11 @@ function InboundCard({
     } finally {
       setLoading(false);
     }
-  }
+  }, [isConfigured]);
 
   useEffect(() => {
-    if (state.configured) loadNumbers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.configured]);
+    loadNumbers();
+  }, [loadNumbers, state.provider]);
 
   async function configure() {
     setSubmitting(true);
@@ -414,6 +661,8 @@ function InboundCard({
     }
   }
 
+  const isZadarma = state.provider === 'zadarma';
+
   return (
     <Card>
       <div className="p-4 sm:p-6 space-y-4">
@@ -425,11 +674,12 @@ function InboundCard({
           )}
         </div>
         <p className="text-sm text-zinc-500">
-          Elegí qué número Twilio recibe las llamadas que la clínica desvía desde su operador.
-          Configuramos sus webhooks de voz/SMS automáticamente.
+          {isZadarma
+            ? 'Elegí qué DID Zadarma recibe las llamadas. Configuramos la URL de notificación de la cuenta automáticamente (Zadarma sólo permite una por cuenta).'
+            : 'Elegí qué número Twilio recibe las llamadas que la clínica desvía desde su operador. Configuramos sus webhooks de voz/SMS automáticamente.'}
         </p>
 
-        {!state.configured ? (
+        {!isConfigured ? (
           <div className="text-sm text-zinc-500 italic">
             Cargá las credenciales primero para listar los números disponibles.
           </div>
@@ -440,7 +690,9 @@ function InboundCard({
           </div>
         ) : numbers.length === 0 ? (
           <div className="text-sm text-zinc-500 italic">
-            No hay IncomingPhoneNumbers en esta cuenta Twilio. Comprá uno primero desde Twilio Console.
+            {isZadarma
+              ? 'No hay DIDs comprados en esta cuenta Zadarma. Comprá uno desde cabinet.zadarma.com → My numbers.'
+              : 'No hay IncomingPhoneNumbers en esta cuenta Twilio. Comprá uno primero desde Twilio Console.'}
           </div>
         ) : (
           <>
@@ -474,6 +726,7 @@ function InboundCard({
                     <span className="font-medium">Agente Retell</span>
                     <span className="text-zinc-500 block text-xs">
                       Atiende el agente AI; transfiere a humano si lo pide el paciente.
+                      {isZadarma && ' (Requiere SIP trunk Zadarma → Retell configurado en el cabinet.)'}
                     </span>
                   </span>
                 </label>
@@ -535,54 +788,84 @@ function InboundCard({
               .
             </div>
             <div className="text-xs text-emerald-700 mt-1">
-              Pedile a la clínica que active el desvío desde su operador hacia este número.
+              {isZadarma
+                ? 'Las entrantes llegan vía webhook NOTIFY_START y se redirigen según esta config.'
+                : 'Pedile a la clínica que active el desvío desde su operador hacia este número.'}
             </div>
           </div>
         )}
 
-        {msg && (
-          <div
-            className={`text-sm rounded-xl border px-3.5 py-2.5 ${
-              msg.kind === 'ok'
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                : 'bg-red-50 border-red-200 text-red-800'
-            }`}
-          >
-            {msg.text}
-          </div>
-        )}
+        <Banner msg={msg} />
       </div>
     </Card>
   );
 }
 
-// ─── Ayuda ───────────────────────────────────────────────────────────────────
+// ─── Ayuda + webhook URLs ────────────────────────────────────────────────────
 
-function HelpCard({ webhookUrls }: { webhookUrls: { voice: string; sms: string } }) {
+function HelpCard({
+  state,
+  webhookUrls,
+}: {
+  state: TelephonyState;
+  webhookUrls: WebhookUrls;
+}) {
+  const isZadarma = state.provider === 'zadarma';
   return (
     <Card>
       <div className="p-4 sm:p-6 space-y-3">
         <h3 className="text-base font-semibold tracking-tight">Cómo funciona</h3>
         <ul className="text-sm text-zinc-600 space-y-2 list-disc pl-5">
-          <li>
-            <span className="font-medium">Salientes:</span> Twilio coloca la llamada y muestra el
-            Caller ID verificado como número del que llama. Requiere subaccount Twilio del tenant
-            registrado en Retell (BYOT).
-          </li>
-          <li>
-            <span className="font-medium">Entrantes:</span> la clínica configura "desvío de
-            llamadas" en su operador hacia el número Twilio elegido aquí; el webhook recibe la
-            llamada y la enruta al agente o a un humano.
-          </li>
-          <li>
-            <span className="font-medium">Number porting</span> (largo plazo): si querés evitar el
-            desvío, podés portar el número de la clínica directo a Twilio.
-          </li>
+          {isZadarma ? (
+            <>
+              <li>
+                <span className="font-medium">Salientes:</span> Zadarma dispara la llamada vía
+                /v1/request/callback/. El paciente ve el caller ID configurado (DID o número
+                personal verificado en el cabinet).
+              </li>
+              <li>
+                <span className="font-medium">Entrantes:</span> Zadarma envía un POST
+                NOTIFY_START a nuestro webhook; respondemos con `{'{ redirect: ... }'}` para
+                enrutar al agente Retell (SIP) o a un humano.
+              </li>
+              <li>
+                <span className="font-medium">Agente AI:</span> requiere un trunk SIP externo
+                en cabinet.zadarma.com → Settings → External SIP, apuntando a Retell. Setear{' '}
+                <code className="bg-zinc-100 px-1 rounded">ZADARMA_SIP_INTERNAL_FOR_AGENT</code>{' '}
+                en env para usar esa extensión como leg A del callback.
+              </li>
+            </>
+          ) : (
+            <>
+              <li>
+                <span className="font-medium">Salientes:</span> Twilio coloca la llamada y muestra
+                el Caller ID verificado como número del que llama. Requiere subaccount Twilio del
+                tenant registrado en Retell (BYOT).
+              </li>
+              <li>
+                <span className="font-medium">Entrantes:</span> la clínica configura "desvío de
+                llamadas" en su operador hacia el número Twilio elegido aquí; el webhook recibe
+                la llamada y la enruta al agente o a un humano.
+              </li>
+              <li>
+                <span className="font-medium">Number porting</span> (largo plazo): podés portar
+                el número de la clínica directo a Twilio para evitar el desvío.
+              </li>
+            </>
+          )}
         </ul>
         <div className="pt-2 border-t border-zinc-100 space-y-2">
-          <div className="text-xs text-zinc-500">Webhook URLs configuradas automáticamente:</div>
-          <CopyRow label="VoiceUrl" value={webhookUrls.voice} />
-          <CopyRow label="SmsUrl" value={webhookUrls.sms} />
+          <div className="text-xs text-zinc-500">
+            Webhook URLs configuradas automáticamente:
+          </div>
+          {isZadarma ? (
+            <CopyRow label="Notification URL" value={webhookUrls.zadarma.webhook} />
+          ) : (
+            <>
+              <CopyRow label="VoiceUrl" value={webhookUrls.twilio.voice} />
+              <CopyRow label="SmsUrl" value={webhookUrls.twilio.sms} />
+            </>
+          )}
         </div>
       </div>
     </Card>
@@ -607,8 +890,31 @@ function CopyRow({ label, value }: { label: string; value: string }) {
         }}
         aria-label="Copiar"
       >
-        {copied ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+        {copied ? (
+          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+        ) : (
+          <Copy className="h-4 w-4" />
+        )}
       </button>
+    </div>
+  );
+}
+
+function Banner({
+  msg,
+}: {
+  msg: { kind: 'ok' | 'error'; text: string } | null;
+}) {
+  if (!msg) return null;
+  return (
+    <div
+      className={`text-sm rounded-xl border px-3.5 py-2.5 ${
+        msg.kind === 'ok'
+          ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+          : 'bg-red-50 border-red-200 text-red-800'
+      }`}
+    >
+      {msg.text}
     </div>
   );
 }
