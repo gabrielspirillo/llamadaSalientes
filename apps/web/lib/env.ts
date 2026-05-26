@@ -59,11 +59,17 @@ const envSchema = z.object({
   // Formato: redis://[:password]@host:port[/db]
   REDIS_URL: z.string().optional(),
 
-  // R2 — Fase 5 (recordings de Retell)
+  // Storage S3-compatible para recordings de Retell. Soporta R2 nativo
+  // (default si solo se setea R2_ACCOUNT_ID) o cualquier endpoint
+  // S3-compatible (MinIO self-hosted, AWS S3, Wasabi) seteando R2_ENDPOINT
+  // explícito + R2_FORCE_PATH_STYLE=true (MinIO).
   R2_ACCOUNT_ID: z.string().optional(),
   R2_ACCESS_KEY_ID: z.string().optional(),
   R2_SECRET_ACCESS_KEY: z.string().optional(),
   R2_BUCKET: z.string().optional(),
+  R2_ENDPOINT: z.string().optional(),
+  R2_REGION: z.string().optional(),
+  R2_FORCE_PATH_STYLE: z.string().optional(),
 
   // S3-compatible storage para media de WhatsApp (MinIO self-hosted o R2).
   // - S3_ENDPOINT: URL pública del bucket (ej. https://s3.futuradigital.es)

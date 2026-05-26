@@ -1,23 +1,48 @@
 import 'server-only';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 
-// Cloudflare R2 es S3-compatible. Endpoint = https://<account_id>.r2.cloudflarestorage.com
-// Bucket es el nombre exacto, NO va prefijado en la URL.
+// Storage S3-compatible para grabaciones de Retell. Soporta:
+//   - Cloudflare R2 (default si NO se setea R2_ENDPOINT): endpoint derivado
+//     de R2_ACCOUNT_ID con virtual-host style.
+//   - Cualquier S3-compatible self-hosted (MinIO en Dokploy, AWS S3, Wasabi):
+//     setear R2_ENDPOINT explícito + R2_FORCE_PATH_STYLE=true para MinIO.
+// El nombre del módulo se conserva ("r2") por compat con los callers, pero
+// internamente ya no asume el proveedor.
 
 let _client: S3Client | null = null;
 
 function getClient(): S3Client {
   if (_client) return _client;
-  const accountId = process.env.R2_ACCOUNT_ID;
   const accessKeyId = process.env.R2_ACCESS_KEY_ID;
   const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-  if (!accountId || !accessKeyId || !secretAccessKey) {
-    throw new Error('R2 credentials no configuradas (R2_ACCOUNT_ID/R2_ACCESS_KEY_ID/R2_SECRET_ACCESS_KEY)');
+  if (!accessKeyId || !secretAccessKey) {
+    throw new Error(
+      'Recordings storage no configurado: faltan R2_ACCESS_KEY_ID y/o R2_SECRET_ACCESS_KEY',
+    );
   }
+
+  // Endpoint: explícito (MinIO/otros) o derivado del account_id (R2 nativo).
+  const explicitEndpoint = process.env.R2_ENDPOINT;
+  const accountId = process.env.R2_ACCOUNT_ID;
+  const endpoint = explicitEndpoint
+    ? explicitEndpoint
+    : accountId
+      ? `https://${accountId}.r2.cloudflarestorage.com`
+      : null;
+  if (!endpoint) {
+    throw new Error(
+      'Recordings storage no configurado: setear R2_ENDPOINT (MinIO/S3) o R2_ACCOUNT_ID (R2 nativo)',
+    );
+  }
+
+  const region = process.env.R2_REGION ?? (explicitEndpoint ? 'us-east-1' : 'auto');
+  const forcePathStyle = (process.env.R2_FORCE_PATH_STYLE ?? '').toLowerCase() === 'true';
+
   _client = new S3Client({
-    region: 'auto',
-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+    region,
+    endpoint,
     credentials: { accessKeyId, secretAccessKey },
+    forcePathStyle,
   });
   return _client;
 }
