@@ -712,6 +712,38 @@ function InboundCard({
               </select>
             </div>
 
+            {isZadarma && (
+              <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900 space-y-2">
+                <div className="font-medium text-sm">
+                  💡 Modelos de inbound para Zadarma
+                </div>
+                <div>
+                  <span className="font-medium">Agente Retell (AI):</span> el número
+                  en Zadarma debe estar en la centralita —{' '}
+                  <span className="font-mono">cabinet.zadarma.com → Mis números → click el número → asegurate de que NO tenga desvío estático activado</span>.
+                  Nuestro webhook recibe NOTIFY_START y redirige a Retell.
+                </div>
+                <div>
+                  <span className="font-medium">Reenviar a humano:</span> dos vías
+                  equivalentes — elegí una sola:
+                  <ul className="list-disc ml-4 mt-1 space-y-0.5">
+                    <li>
+                      <span className="font-medium">Desde acá</span> (esta UI):
+                      cargás el número humano abajo y nuestra app redirige
+                      dinámicamente. Útil si vas a alternar entre AI y humano.
+                    </li>
+                    <li>
+                      <span className="font-medium">Desde Zadarma cabinet</span>
+                      :{' '}
+                      <span className="font-mono">Mis números → Reenviar a teléfono</span>.
+                      Más simple, sobrevive caídas del server, pero para
+                      cambiar destino hay que volver al cabinet.
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            )}
+
             <div>
               <Label>Cómo enrutar las entrantes</Label>
               <div className="mt-2 space-y-2">
@@ -726,7 +758,7 @@ function InboundCard({
                     <span className="font-medium">Agente Retell</span>
                     <span className="text-zinc-500 block text-xs">
                       Atiende el agente AI; transfiere a humano si lo pide el paciente.
-                      {isZadarma && ' (Requiere SIP trunk Zadarma → Retell configurado en el cabinet.)'}
+                      {isZadarma && ' (Requiere webhook configurado en cabinet.zadarma.com → Configuración → Integraciones → Notificaciones de eventos.)'}
                     </span>
                   </span>
                 </label>
