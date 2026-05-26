@@ -11,6 +11,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/ghl/webhook',
   '/api/stripe/webhook',
   '/api/twilio/(.*)', // SMS passthrough u otros callbacks de Twilio — Twilio firma con auth_token
+  '/api/zadarma/(.*)', // NOTIFY_* webhooks de Zadarma — el handler valida firma md5
   '/api/public/(.*)', // Endpoints invocados desde la landing pública (CORS + rate-limit propios)
 ]);
 

@@ -222,14 +222,16 @@ export class ZadarmaRestClient {
    * salientes, IVR, etc.). Sustituye al campo VoiceUrl/SmsUrl de Twilio
    * IncomingPhoneNumber pero a nivel cuenta (no por número).
    *
-   * Endpoint: POST /v1/webhook/notification/?webhook_url=...
+   * Endpoint: POST /v1/webhook/ con param webhook_url.
+   * (El path /v1/webhook/notification/ que aparecía antes en los docs de
+   * Zadarma fue retirado — devuelve "Wrong method name".)
    *
    * Importante: Zadarma sólo permite un único webhook por cuenta. Eso
    * significa que para multi-tenant necesitamos una cuenta Zadarma por
    * tenant (igual que Twilio: una subaccount por clínica).
    */
   async setNotificationUrl(webhookUrl: string): Promise<void> {
-    const res = await this.request('POST', '/v1/webhook/notification/', {
+    const res = await this.request('POST', '/v1/webhook/', {
       webhook_url: webhookUrl,
     });
     if (!res.ok) throw await this.toError(res);
