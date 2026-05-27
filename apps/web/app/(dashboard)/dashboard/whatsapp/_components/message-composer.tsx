@@ -211,9 +211,9 @@ export function MessageComposer({ conversationId, disabled }: Props) {
     let mime = audioBlob.type;
     let ext = 'mp3';
 
-    // WhatsApp no acepta audio/webm. Si el MediaRecorder grabó webm
-    // (Chrome/Edge default), transcodificamos a MP3 acá antes de subir.
-    if (mime.startsWith('audio/webm')) {
+    if (mime.startsWith('audio/ogg')) {
+      ext = 'ogg';
+    } else if (!mime.startsWith('audio/mpeg')) {
       try {
         setError('Convirtiendo audio a MP3…');
         const { encodeBlobToMp3 } = await import('./audio-encode');
@@ -225,10 +225,6 @@ export function MessageComposer({ conversationId, disabled }: Props) {
         setError(`No se pudo convertir el audio: ${(err as Error).message}`);
         return;
       }
-    } else if (mime.startsWith('audio/ogg')) {
-      ext = 'ogg';
-    } else if (mime.startsWith('audio/mp4')) {
-      ext = 'm4a';
     }
 
     const file = new File([blobToSend], `audio-${Date.now()}.${ext}`, { type: mime });
