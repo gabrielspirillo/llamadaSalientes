@@ -1,7 +1,7 @@
 import 'server-only';
 import { GhlApiError, ghlFetch } from '@/lib/ghl/client';
 import { getFreeSlots, resolveCalendarId } from '@/lib/ghl/calendars';
-import { createContact, lookupContactByPhone } from '@/lib/ghl/contacts-mutations';
+import { createContact, lookupContactByPhone, updateContact } from '@/lib/ghl/contacts-mutations';
 import { patchCallCustomData, setCallGhlContact } from '@/lib/data/calls';
 import { getGhlIntegration } from '@/lib/data/ghl-integration';
 import { listTreatmentsForTenant } from '@/lib/data/treatments';
@@ -459,6 +459,59 @@ export async function searchFaqs(
   return { result: lines.join('\n\n') };
 }
 
+// ─── set_lead_email ──────────────────────────────────────────────────────────
+
+export type SetLeadEmailArgs = {
+  email: string;
+  phone?: string;
+};
+
+export async function setLeadEmail(
+  tenantId: string,
+  args: SetLeadEmailArgs,
+  ctx: { retellCallId?: string } = {},
+): Promise<ToolResult> {
+  const integration = await getGhlIntegration(tenantId);
+  if (!integration) return ghlNotConnected();
+
+  if (!args.email?.trim()) {
+    return { result: 'Necesito el correo electrónico del lead.' };
+  }
+
+  const phone = args.phone?.trim();
+  if (!phone) {
+    return { result: 'Necesito el teléfono del lead para buscarlo en el CRM.' };
+  }
+
+  try {
+    const contact = await lookupContactByPhone(tenantId, phone);
+    if (!contact) {
+      return {
+        result: 'No encontré al contacto en el CRM. Usá register_patient primero con first_name, phone y email.',
+      };
+    }
+
+    const updated = await updateContact(tenantId, contact.id, { email: args.email.trim() });
+    if (!updated) {
+      return { result: 'No pude actualizar el email en el CRM. Tomá nota del correo para cargarlo manualmente.' };
+    }
+
+    console.log('[set_lead_email] ok:', { contactId: contact.id, email: args.email });
+
+    if (ctx.retellCallId) {
+      await patchCallCustomData(ctx.retellCallId, { lead_email: args.email.trim() }).catch(() => undefined);
+    }
+
+    return { result: `Email ${args.email} guardado correctamente en el CRM.` };
+  } catch (err) {
+    console.error('[set_lead_email]', err);
+    if (err instanceof GhlApiError) {
+      return { result: `No pude guardar el email (error ${err.status}). Tomá nota para cargarlo después.` };
+    }
+    throw err;
+  }
+}
+
 // ─── Dispatcher ───────────────────────────────────────────────────────────────
 
 export type KnownToolName =
@@ -467,6 +520,7 @@ export type KnownToolName =
   | 'cancel_appointment'
   | 'get_patient_info'
   | 'register_patient'
+  | 'set_lead_email'
   | 'list_treatments'
   | 'get_treatment_details'
   | 'search_faqs';
@@ -492,6 +546,8 @@ export async function dispatchTool(
       return getPatientInfo(tenantId, args as GetPatientInfoArgs, ctx);
     case 'register_patient':
       return registerPatient(tenantId, args as RegisterPatientArgs, ctx);
+    case 'set_lead_email':
+      return setLeadEmail(tenantId, args as SetLeadEmailArgs, ctx);
     case 'list_treatments':
       return listTreatments(tenantId);
     case 'get_treatment_details':

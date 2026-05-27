@@ -5,6 +5,7 @@ import type { GhlContact } from '@/lib/ghl/contacts';
 
 type SearchDuplicateResponse = { contact: GhlContact | null };
 type ContactCreateResponse = { contact: GhlContact };
+type ContactUpdateResponse = { contact: GhlContact };
 
 /**
  * Busca un contacto por teléfono en GHL. Devuelve null si no existe.
@@ -59,5 +60,30 @@ export async function createContact(
     console.error('[createContact] error, intentando lookup:', err);
     const existing = await lookupContactByPhone(tenantId, args.phone);
     return existing;
+  }
+}
+
+/**
+ * Actualiza campos de un contacto existente en GHL.
+ * Endpoint: PUT /contacts/:contactId
+ */
+export async function updateContact(
+  tenantId: string,
+  contactId: string,
+  fields: { email?: string; firstName?: string; lastName?: string },
+): Promise<GhlContact | null> {
+  const integration = await getGhlIntegration(tenantId);
+  if (!integration) return null;
+  try {
+    const data = await ghlFetch<ContactUpdateResponse>({
+      tenantId,
+      path: `/contacts/${contactId}`,
+      method: 'PUT',
+      body: fields,
+    });
+    return data.contact;
+  } catch (err) {
+    console.error('[updateContact]', err);
+    return null;
   }
 }
