@@ -2,6 +2,7 @@ import { triggerCallback } from '@/lib/calls/trigger-callback';
 import { db } from '@/lib/db/client';
 import { calls } from '@/lib/db/schema';
 import { env } from '@/lib/env';
+import { buildDemoOverrideFromEnv, withGhlOverride } from '@/lib/ghl/override-context';
 import { and, eq, gte } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -115,26 +116,34 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Override GHL scoped al request: cuando hay env vars seteadas, las llamadas
+  // GHL desde triggerCallback (lookup/create contact) usan el location y PIT
+  // dedicados de FUTURA en vez del GHL del tenant. El mismo override se aplica
+  // después en /api/retell/tools cuando el agente llame a sus tools.
+  const ghlOverride = buildDemoOverrideFromEnv();
+
   let result;
   try {
-    result = await triggerCallback({
-      tenantId,
-      toNumber: phone,
-      patientName: parsed.data.name ?? null,
-      useCase: 'info',
-      source: 'landing_demo',
-      // Override del agente: la landing usa SIEMPRE el agente Manuel ("FUTURA
-      // Demo Outbound"), independientemente de cuál tenga configurado el
-      // dashboard del tenant para outbound. Si la env var no está seteada,
-      // cae al agente outbound del tenant (legacy / desarrollo local).
-      agentIdOverride: env.FUTURA_DEMO_RETELL_AGENT_ID ?? null,
-      dynamicVars: {
-        // Variables que el prompt del agente demo lee para personalizar:
-        lead_name: parsed.data.name ?? 'visitante',
-        // Marca explícita para que el LLM sepa que es la demo pública.
-        demo_flow: 'futura_landing',
-      },
-    });
+    const run = () =>
+      triggerCallback({
+        tenantId,
+        toNumber: phone,
+        patientName: parsed.data.name ?? null,
+        useCase: 'info',
+        source: 'landing_demo',
+        // Override del agente: la landing usa SIEMPRE el agente Manuel ("FUTURA
+        // Demo Outbound"), independientemente de cuál tenga configurado el
+        // dashboard del tenant para outbound. Si la env var no está seteada,
+        // cae al agente outbound del tenant (legacy / desarrollo local).
+        agentIdOverride: env.FUTURA_DEMO_RETELL_AGENT_ID ?? null,
+        dynamicVars: {
+          // Variables que el prompt del agente demo lee para personalizar:
+          lead_name: parsed.data.name ?? 'visitante',
+          // Marca explícita para que el LLM sepa que es la demo pública.
+          demo_flow: 'futura_landing',
+        },
+      });
+    result = ghlOverride ? await withGhlOverride(ghlOverride, run) : await run();
   } catch (err) {
     // Si triggerCallback (o algo aguas abajo) tira una excepción no controlada,
     // queremos que el browser vea CORS headers + un mensaje legible — NO el

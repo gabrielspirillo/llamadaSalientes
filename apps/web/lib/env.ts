@@ -131,6 +131,14 @@ const envSchema = z.object({
   // agente outbound configurado por tenant en agent_configs (que es lo que
   // muestra /dashboard/outbound).
   FUTURA_DEMO_RETELL_AGENT_ID: z.string().optional(),
+  // Override de GHL para el flow de la landing demo. Cuando estos 3 están
+  // seteados, las llamadas con metadata.source='landing_demo' usan estas
+  // credenciales en vez de la integración GHL del tenant. Permite que la
+  // demo agende en un location/calendar dedicado de FUTURA sin tocar el
+  // GHL configurado para el tenant (que se usa para inbound u otros flows).
+  FUTURA_DEMO_GHL_PIT: z.string().startsWith('pit-').optional(),
+  FUTURA_DEMO_GHL_LOCATION_ID: z.string().optional(),
+  FUTURA_DEMO_GHL_CALENDAR_ID: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

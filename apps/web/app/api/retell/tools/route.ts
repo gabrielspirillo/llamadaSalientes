@@ -1,4 +1,5 @@
 import { resolveTenantId } from '@/lib/data/phone-tenant';
+import { buildDemoOverrideFromEnv, withGhlOverride } from '@/lib/ghl/override-context';
 import { verifyRetellSignature } from '@/lib/retell/verify';
 import { dispatchTool } from '@/lib/retell/tools';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -8,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 // Retell llama este endpoint cuando el agente invoca una tool durante la conversación.
 // Body shape (custom function call):
-// { name, args: {...}, call: { call_id, to_number, from_number, metadata: { tenant_id? } } }
+// { name, args: {...}, call: { call_id, to_number, from_number, metadata: { tenant_id?, source? } } }
 
 type RetellToolCallBody = {
   name: string;
@@ -18,7 +19,7 @@ type RetellToolCallBody = {
     call_id: string;
     to_number?: string;
     from_number?: string;
-    metadata?: { tenant_id?: string };
+    metadata?: { tenant_id?: string; source?: string };
   };
 };
 
@@ -51,9 +52,18 @@ export async function POST(req: NextRequest) {
   }
 
   const toolArgs = body.args ?? body.arguments ?? {};
-  const toolResult = await dispatchTool(tenantId, body.name, toolArgs, {
-    retellCallId: body.call.call_id,
-  });
+  const ctx = { retellCallId: body.call.call_id };
+
+  // Override GHL para el flow demo de la landing: si la llamada vino disparada
+  // por /api/public/demo-call (metadata.source='landing_demo') y las env vars
+  // del override están seteadas, todas las tools resuelven GHL contra el
+  // location/PIT/calendar dedicado. El GHL del tenant no se toca.
+  const isDemoCall = body.call.metadata?.source === 'landing_demo';
+  const ghlOverride = isDemoCall ? buildDemoOverrideFromEnv() : null;
+
+  const toolResult = ghlOverride
+    ? await withGhlOverride(ghlOverride, () => dispatchTool(tenantId, body.name, toolArgs, ctx))
+    : await dispatchTool(tenantId, body.name, toolArgs, ctx);
 
   // Retell espera { result: string } como respuesta del tool
   return NextResponse.json(toolResult);

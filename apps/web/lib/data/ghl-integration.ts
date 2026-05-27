@@ -2,6 +2,7 @@ import 'server-only';
 import { decrypt, encrypt } from '@/lib/crypto';
 import { db } from '@/lib/db/client';
 import { ghlIntegrations } from '@/lib/db/schema';
+import { getGhlOverride } from '@/lib/ghl/override-context';
 import type { GhlTokenResponse } from '@/lib/ghl/oauth';
 import { refreshAccessToken } from '@/lib/ghl/oauth';
 import { eq } from 'drizzle-orm';
@@ -15,7 +16,35 @@ const PIT_MARKER = '__PIT_NO_REFRESH__';
 
 export type GhlIntegration = typeof ghlIntegrations.$inferSelect;
 
+/**
+ * Cuando hay un GhlOverride activo en el AsyncLocalStorage del request,
+ * devolvemos una "fila sintética" que pinta como la real pero con los
+ * tokens del override. Esto permite que todas las funciones aguas abajo
+ * (lookupContactByPhone, createContact, etc.) sigan llamando
+ * `getGhlIntegration(tenantId)` sin saber que están en un flow override.
+ */
+function buildOverrideRow(tenantId: string): GhlIntegration | null {
+  const ov = getGhlOverride();
+  if (!ov) return null;
+  // Sintética: no se persiste, solo la usan helpers que leen locationId
+  // (y opcionalmente accessTokenEnc para isPitIntegration).
+  return {
+    tenantId,
+    locationId: ov.locationId,
+    companyId: null,
+    accessTokenEnc: encrypt(ov.pit),
+    refreshTokenEnc: encrypt(PIT_MARKER),
+    expiresAt: new Date('2099-12-31T00:00:00Z'),
+    scopes: 'pit',
+    connectedBy: null,
+    connectedAt: new Date(),
+  };
+}
+
 export async function getGhlIntegration(tenantId: string) {
+  const override = buildOverrideRow(tenantId);
+  if (override) return override;
+
   const rows = await db
     .select()
     .from(ghlIntegrations)
@@ -112,6 +141,10 @@ export function isPitIntegration(integration: GhlIntegration): boolean {
  *  - OAuth: refresca si está por expirar y persiste los nuevos tokens.
  */
 export async function getValidAccessToken(tenantId: string): Promise<string> {
+  // Override scoped por request: devuelve el PIT directamente sin tocar DB.
+  const ov = getGhlOverride();
+  if (ov) return ov.pit;
+
   const integration = await getGhlIntegration(tenantId);
   if (!integration) {
     throw new Error('GHL no está conectado para este tenant');

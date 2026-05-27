@@ -1,6 +1,7 @@
 import 'server-only';
 import { ghlFetch } from '@/lib/ghl/client';
 import { getGhlIntegration } from '@/lib/data/ghl-integration';
+import { getGhlOverride } from '@/lib/ghl/override-context';
 
 export type GhlCalendar = {
   id: string;
@@ -55,6 +56,14 @@ export async function resolveCalendarId(
 ): Promise<{ calendarId: string | null; reason: string }> {
   if (options.explicitCalendarId) {
     return { calendarId: options.explicitCalendarId, reason: 'explicit' };
+  }
+
+  // Override scoped (landing demo): hay un calendar dedicado seteado por env.
+  // Toma precedencia sobre el fuzzy match contra treatments — es el camino
+  // explícito para que el agente demo siempre agende ahí.
+  const ov = getGhlOverride();
+  if (ov) {
+    return { calendarId: ov.defaultCalendarId, reason: 'override-default' };
   }
 
   if (options.treatmentName) {
