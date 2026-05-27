@@ -187,6 +187,7 @@ export class TwilioConnector implements WhatsAppConnector {
       ...extra,
       ...params,
     };
+    console.log('[twilio.sendMessage] params', Object.keys(fullParams), fullParams.MediaUrl ? `MediaUrl=${fullParams.MediaUrl}` : '');
     const body = new URLSearchParams(fullParams);
     const url = `${this.baseUrl}/${this.apiVersion}/Accounts/${encodeURIComponent(this.opts.accountSid)}/Messages.json`;
     const res = await fetch(url, {
