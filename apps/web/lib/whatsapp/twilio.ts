@@ -114,7 +114,7 @@ export class TwilioConnector implements WhatsAppConnector {
 
   async sendMedia(
     to: string,
-    _kind: SendMediaKind,
+    kind: SendMediaKind,
     mediaUrl: string,
     options?: { caption?: string; filename?: string },
   ): Promise<MessageId> {
@@ -122,7 +122,11 @@ export class TwilioConnector implements WhatsAppConnector {
       To: toWhatsapp(to),
       MediaUrl: mediaUrl,
     };
-    if (options?.caption) params.Body = options.caption;
+    // WhatsApp solo soporta caption junto con imágenes.
+    // Audio, video, documento y location ignoran Body y puede interferir con PTT.
+    if (options?.caption && kind === 'image') {
+      params.Body = options.caption;
+    }
     return this.sendMessage(params);
   }
 

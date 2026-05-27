@@ -147,6 +147,8 @@ function mapStatus(
 ): { status: 'SENT' | 'DELIVERED' | 'READ' | 'FAILED'; failureReason?: string } | null {
   switch (raw) {
     case 'queued':
+    case 'accepted':
+    case 'sending':
     case 'sent':
       return { status: 'SENT' };
     case 'delivered':
