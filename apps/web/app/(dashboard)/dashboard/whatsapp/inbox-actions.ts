@@ -500,7 +500,7 @@ export async function sendMediaMessage(formData: FormData): Promise<ActionResult
     try {
       const { toVoiceNote } = await import('@/lib/audio/to-voice-note');
       buf = await toVoiceNote(buf, mime);
-      uploadMime = 'audio/ogg';
+      uploadMime = 'audio/ogg; codecs=opus';
       ext = 'ogg';
     } catch (err) {
       console.error('[sendMediaMessage] ffmpeg conversion failed, sending as-is', err);
@@ -531,7 +531,7 @@ export async function sendMediaMessage(formData: FormData): Promise<ActionResult
       deliveryStatus: 'PENDING',
       contentText: caption ?? null,
       mediaUrl,
-      mediaType: mime,
+      mediaType: uploadMime,
       clientNonce,
     })
     .returning();
