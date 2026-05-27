@@ -184,13 +184,18 @@ export class WhatsAppCloudConnector implements WhatsAppConnector {
     const mediaPayload: Record<string, unknown> = { link: mediaUrl };
     if (options?.caption) mediaPayload.caption = options.caption;
     if (options?.filename && kind === 'document') mediaPayload.filename = options.filename;
-    return this.send({
+    const type = kind === 'audio' ? 'audio' : kind;
+    const payload: Record<string, unknown> = {
       messaging_product: 'whatsapp',
       recipient_type: 'individual',
       to,
-      type: kind,
-      [kind]: mediaPayload,
-    });
+      type,
+      [type]: mediaPayload,
+    };
+    if (kind === 'audio') {
+      (payload[type] as Record<string, unknown>).ptt = true;
+    }
+    return this.send(payload);
   }
 
   async sendTyping(_to: string, _durationMs?: number): Promise<void> {

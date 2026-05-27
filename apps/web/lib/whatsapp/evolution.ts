@@ -131,6 +131,14 @@ export class EvolutionConnector implements WhatsAppConnector {
     mediaUrl: string,
     options?: { caption?: string; filename?: string },
   ): Promise<MessageId> {
+    if (kind === 'audio') {
+      const json = await this.post<EvolutionSendResponse>(
+        `/message/sendWhatsAppAudio/${encodeURIComponent(this.opts.instanceName)}`,
+        { number: to, audio: mediaUrl },
+        'SEND_MEDIA_FAILED',
+      );
+      return this.toMessageId(json);
+    }
     const mediatype = kind === 'sticker' ? 'image' : kind;
     const json = await this.post<EvolutionSendResponse>(
       `/message/sendMedia/${encodeURIComponent(this.opts.instanceName)}`,
