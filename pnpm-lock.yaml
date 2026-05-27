@@ -83,6 +83,9 @@ importers:
       retell-sdk:
         specifier: ^5.19.0
         version: 5.19.0
+      server-only:
+        specifier: ^0.0.1
+        version: 0.0.1
       svix:
         specifier: ^1.45.0
         version: 1.93.0
