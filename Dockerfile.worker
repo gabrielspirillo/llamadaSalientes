@@ -47,4 +47,4 @@ USER worker
 ENTRYPOINT ["/sbin/tini", "--"]
 # Usa el binario tsx instalado en apps/web/node_modules/.bin. pnpm crea ese
 # directorio al instalar, y nuestro pnpm-workspace lo aloja en cada workspace.
-CMD ["./node_modules/.bin/tsx", "worker/index.ts"]
+CMD ["./node_modules/.bin/tsx", "--import", "./worker/preload.ts", "worker/index.ts"]
