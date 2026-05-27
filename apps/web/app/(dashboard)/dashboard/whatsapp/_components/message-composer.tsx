@@ -207,27 +207,12 @@ export function MessageComposer({ conversationId, disabled }: Props) {
   async function sendAudio() {
     if (!audioBlob) return;
     setError(null);
-    let blobToSend = audioBlob;
-    let mime = audioBlob.type;
-    let ext = 'mp3';
-
-    if (mime.startsWith('audio/ogg')) {
-      ext = 'ogg';
-    } else if (!mime.startsWith('audio/mpeg')) {
-      try {
-        setError('Convirtiendo audio a MP3…');
-        const { encodeBlobToMp3 } = await import('./audio-encode');
-        blobToSend = await encodeBlobToMp3(audioBlob);
-        mime = 'audio/mpeg';
-        ext = 'mp3';
-        setError(null);
-      } catch (err) {
-        setError(`No se pudo convertir el audio: ${(err as Error).message}`);
-        return;
-      }
-    }
-
-    const file = new File([blobToSend], `audio-${Date.now()}.${ext}`, { type: mime });
+    const mime = audioBlob.type;
+    const ext = mime.startsWith('audio/ogg') ? 'ogg'
+      : mime.startsWith('audio/mp4') ? 'm4a'
+      : mime.startsWith('audio/mpeg') ? 'mp3'
+      : 'webm';
+    const file = new File([audioBlob], `audio-${Date.now()}.${ext}`, { type: mime });
     onFileSelected(file);
     setAudioBlob(null);
   }

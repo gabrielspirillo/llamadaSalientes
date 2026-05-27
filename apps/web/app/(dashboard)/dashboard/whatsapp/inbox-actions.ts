@@ -396,6 +396,11 @@ const AUDIO_MIMES = new Set([
   'audio/mp3',
   'audio/ogg',
   'audio/ogg;codecs=opus',
+  'audio/mp4',
+  'audio/webm',
+  'audio/webm;codecs=opus',
+  'audio/aac',
+  'audio/amr',
 ]);
 const IMAGE_MIMES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
 const VIDEO_MIMES = new Set(['video/mp4', 'video/3gpp']);
