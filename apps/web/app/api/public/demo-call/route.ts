@@ -17,7 +17,7 @@ const bodySchema = z.object({
 
 // Ventana mínima entre dos llamadas demo al mismo número. Evita spam y
 // re-trigger accidental cuando el usuario hace doble click.
-const RATE_LIMIT_SECONDS = 180;
+const RATE_LIMIT_SECONDS = 60;
 
 function resolveAllowedOrigin(req: NextRequest): string {
   const origin = req.headers.get('origin') ?? '';
@@ -107,9 +107,10 @@ export async function POST(req: NextRequest) {
     )
     .limit(1);
   if (recent) {
+    const mins = Math.max(1, Math.round(RATE_LIMIT_SECONDS / 60));
     return NextResponse.json(
       {
-        error: `Ya disparamos una llamada a ese número hace poco. Probá de nuevo en ${RATE_LIMIT_SECONDS / 60} minutos.`,
+        error: `Ya disparamos una llamada a ese número hace poco. Probá de nuevo en ${mins} ${mins === 1 ? 'minuto' : 'minutos'}.`,
         reason: 'rate_limited',
       },
       { status: 429, headers },
