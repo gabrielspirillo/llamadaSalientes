@@ -907,7 +907,11 @@ document.querySelectorAll('.faq-q').forEach(q => {
     nameInput.disabled = isLoading;
     if (isLoading) {
       btnLabel.textContent = 'Llamando...';
-      btn.insertAdjacentHTML('afterbegin', '<span class="spinner"></span>');
+      // Defensa: no apilar spinners si ya hay uno (puede pasar si el
+      // path de éxito re-habilitó el botón sin limpiar el DOM).
+      if (!btn.querySelector('.spinner')) {
+        btn.insertAdjacentHTML('afterbegin', '<span class="spinner"></span>');
+      }
       badge.textContent = 'Disparando llamada';
       quote.innerHTML = '"Marcando tu número ahora..."';
     } else {
@@ -996,12 +1000,11 @@ document.querySelectorAll('.faq-q').forEach(q => {
       badge.textContent = 'Llamada disparada';
       quote.innerHTML = '"Tu teléfono va a sonar en segundos..."';
       btnLabel.textContent = 'Llamada en curso';
-      // Cooldown corto antes de habilitar el form de nuevo
+      // Cooldown corto antes de habilitar el form de nuevo. Usamos
+      // setLoading(false) en vez de re-habilitar a mano para que también
+      // limpie el spinner del DOM — si no, en el próximo submit se apilan.
       setTimeout(() => {
-        phoneInput.disabled = false;
-        nameInput.disabled = false;
-        btn.disabled = false;
-        btnLabel.textContent = 'Recibir llamada';
+        setLoading(false);
         resetVisuals();
       }, 8000);
     } catch (err) {
