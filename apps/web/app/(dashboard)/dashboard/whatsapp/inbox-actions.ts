@@ -491,10 +491,24 @@ export async function sendMediaMessage(formData: FormData): Promise<ActionResult
   }
 
   // Subir al bucket S3/MinIO (bucket público whatsapp-media).
-  const buf = Buffer.from(await file.arrayBuffer());
-  const ext = (file.name?.split('.').pop() ?? '').toLowerCase() || 'bin';
+  let buf = Buffer.from(await file.arrayBuffer());
+  let uploadMime = mime;
+  let ext = (file.name?.split('.').pop() ?? '').toLowerCase() || 'bin';
+
+  // Convertir audio a OGG Opus para que WhatsApp lo muestre como nota de voz.
+  if (kind === 'audio') {
+    try {
+      const { toVoiceNote } = await import('@/lib/audio/to-voice-note');
+      buf = await toVoiceNote(buf, mime);
+      uploadMime = 'audio/ogg';
+      ext = 'ogg';
+    } catch (err) {
+      console.error('[sendMediaMessage] ffmpeg conversion failed, sending as-is', err);
+    }
+  }
+
   const path = buildWhatsappMediaPath(tenant.id, row.conv.id, ext);
-  const { publicUrl } = await mediaUpload({ path, body: buf, contentType: mime });
+  const { publicUrl } = await mediaUpload({ path, body: buf, contentType: uploadMime });
   const mediaUrl = publicUrl;
 
   const clientNonce = randomUUID();

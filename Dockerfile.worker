@@ -9,7 +9,7 @@
 ARG NODE_VERSION=20-alpine
 
 FROM node:${NODE_VERSION} AS base
-RUN apk add --no-cache libc6-compat tini
+RUN apk add --no-cache libc6-compat tini ffmpeg
 RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 WORKDIR /repo
 
