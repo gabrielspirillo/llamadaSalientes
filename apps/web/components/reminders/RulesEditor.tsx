@@ -128,18 +128,68 @@ export function RulesEditor(props: {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      if (res.ok) {
-        const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.template) {
         setTemplates((arr) => {
           const without = arr.filter((x) => x.id !== data.template.id);
           return [...without, data.template];
         });
+      } else {
+        alert(`No se pudo guardar la plantilla: ${data.error ?? 'error desconocido'}`);
+        console.error('[upsertTemplate] failed', { status: res.status, data });
       }
     });
   }
 
+  async function runBackfill() {
+    if (
+      !confirm(
+        'Esto va a programar recordatorios para TODAS las citas futuras que ya tengas cargadas en GHL. ¿Confirmás?',
+      )
+    )
+      return;
+    const res = await fetch('/api/reminders/backfill', { method: 'POST' });
+    const data = await res.json().catch(() => ({}));
+    console.debug('[reminders] backfill response', { status: res.status, data });
+    if (res.ok && data.ok) {
+      alert(
+        `✓ Backfill completo.\n\n` +
+          `Citas procesadas: ${data.appointmentsProcessed}\n` +
+          `Recordatorios programados: ${data.scheduled}\n` +
+          `Omitidos: ${data.skipped}\n` +
+          (data.errors ? `Errores: ${data.errors}\n` : ''),
+      );
+    } else {
+      alert(`No se pudo correr el backfill.\n\nMotivo: ${data.error ?? 'error desconocido'}`);
+    }
+  }
+
   return (
     <div className="space-y-8">
+      <section className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-zinc-700">
+              ¿Cómo funcionan los recordatorios?
+            </h2>
+            <p className="mt-1 text-xs text-zinc-600">
+              Una vez que configures las reglas y plantillas, el sistema programa los recordatorios
+              <b> automáticamente</b> cada vez que se crea o se modifica una cita en GoHighLevel.
+              Para las citas que <b>ya estaban</b> agendadas antes de configurar esto, usá el botón
+              de la derecha para programarlas en lote.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={runBackfill}
+            className="shrink-0"
+          >
+            Backfill citas existentes
+          </Button>
+        </div>
+      </section>
+
       <section>
         <h2 className="text-sm font-semibold text-zinc-700 mb-2">Reglas globales</h2>
         {global ? (
@@ -456,16 +506,19 @@ function TemplateEditor(props: {
   const [previewText, setPreviewText] = useState<string>('');
   const [testPhone, setTestPhone] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const lastDriver = useRef(selectedDriver);
+  const syncedKey = useRef<string>(`${selectedDriver}|${current?.id ?? ''}`);
 
-  // Cuando cambia el driver seleccionado, resetear el form con los valores
-  // del template existente para ese driver (si existe).
-  if (lastDriver.current !== selectedDriver) {
-    lastDriver.current = selectedDriver;
-    const next = props.templates.find((t) => t.driverScope === selectedDriver) ?? null;
-    setFreeText(next?.freeText ?? '');
-    setTemplateName(next?.templateName ?? '');
-    setVoicePrompt(next?.voicePromptOverride ?? '');
+  // Sincronizar el form con los valores del template guardado para el driver
+  // seleccionado, cuando cambia el driver O cuando los templates props cambian
+  // (ej: después de un guardado exitoso). Comparamos por una key que combina
+  // ambos para evitar pisar lo que el usuario está tipeando si solo cambia
+  // un campo no relacionado.
+  const nextKey = `${selectedDriver}|${current?.id ?? ''}`;
+  if (syncedKey.current !== nextKey) {
+    syncedKey.current = nextKey;
+    setFreeText(current?.freeText ?? '');
+    setTemplateName(current?.templateName ?? '');
+    setVoicePrompt(current?.voicePromptOverride ?? '');
   }
 
   function insertVariable(token: string) {
@@ -511,11 +564,18 @@ function TemplateEditor(props: {
       body: JSON.stringify({ ruleId: props.rule.id, toPhoneE164: testPhone }),
     });
     const data = await res.json().catch(() => ({}));
-    alert(
-      res.ok && data.ok !== false
-        ? `Test enviado: ${JSON.stringify(data)}`
-        : `Error: ${data.error ?? 'desconocido'}`,
-    );
+    console.debug('[reminders] test-send response', { status: res.status, data });
+    if (res.ok && data.ok !== false) {
+      if (data.callId) {
+        alert(`✓ Llamada de prueba iniciada a ${testPhone}.\nID Retell: ${data.callId}`);
+      } else {
+        alert(
+          `✓ Mensaje de prueba enviado a ${testPhone}.\nRevisá tu WhatsApp en unos segundos.`,
+        );
+      }
+    } else {
+      alert(`No se pudo enviar la prueba.\n\nMotivo: ${data.error ?? 'error desconocido'}`);
+    }
   }
 
   return (
