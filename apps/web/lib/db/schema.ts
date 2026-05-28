@@ -92,6 +92,9 @@ export const treatments = pgTable(
     ghlCalendarId: text('ghl_calendar_id'),
     assignedDentists: jsonb('assigned_dentists').$type<string[]>().default([]),
     active: boolean('active').default(true),
+    // Si true, este tratamiento entra al pool de waitlist (citas adelantadas).
+    // Ver migración 0014_waitlist.sql.
+    waitlistEligible: boolean('waitlist_eligible').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => ({
@@ -1154,6 +1157,185 @@ export const reminderSkipLog = pgTable(
   },
   (t) => ({
     tenantCreatedIdx: index('reminder_skip_log_tenant_created_idx').on(t.tenantId, t.createdAt),
+  }),
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Waitlist (citas adelantadas / FIFO de slots liberados)
+//
+// 4 tablas + 1 columna en treatments (waitlist_eligible).
+//   waitlist_settings        — 1 fila por tenant: canal, TTL, umbrales, filtros.
+//   waitlist_entries         — cola FIFO de pacientes con cita futura elegibles.
+//   waitlist_offers          — oferta puntual (entry × cancelled_slot) con TTL.
+//   waitlist_message_templates — paralela a reminder_message_templates.
+//
+// Reusa cancelled_slots (0005) como fuente de huecos a llenar y scheduling_offers
+// (0005) para atribuir revenue cuando una oferta cierra. Ver migración 0014_waitlist.sql.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const waitlistStatusEnum = pgEnum('waitlist_status', [
+  'ACTIVE',
+  'PAUSED',
+  'FULFILLED',
+  'REMOVED',
+]);
+export const waitlistOfferStatusEnum = pgEnum('waitlist_offer_status', [
+  'PENDING',
+  'SENT',
+  'ACCEPTED',
+  'DECLINED',
+  'EXPIRED',
+  'CANCELLED',
+  'SUPERSEDED',
+]);
+export const waitlistOfferChannelEnum = pgEnum('waitlist_offer_channel', ['WHATSAPP', 'VOICE']);
+export const waitlistChannelModeEnum = pgEnum('waitlist_channel_mode', [
+  'WHATSAPP_ONLY',
+  'VOICE_ONLY',
+  'WHATSAPP_THEN_VOICE',
+]);
+export const waitlistEntrySourceEnum = pgEnum('waitlist_entry_source', ['auto', 'manual']);
+export const waitlistOfferResponseViaEnum = pgEnum('waitlist_offer_response_via', [
+  'button',
+  'text',
+  'voice_tool',
+  'manual',
+]);
+
+// driver_scope se comparte con reminders. Re-export del tipo para callers de waitlist.
+export type WaitlistDriverScope = ReminderDriverScope;
+export type WaitlistButton = ReminderButton;
+export type WaitlistTemplateParam = ReminderTemplateParam;
+
+export const waitlistSettings = pgTable('waitlist_settings', {
+  tenantId: uuid('tenant_id')
+    .primaryKey()
+    .references(() => tenants.id, { onDelete: 'cascade' }),
+  enabled: boolean('enabled').notNull().default(true),
+  channelMode: waitlistChannelModeEnum('channel_mode').notNull().default('WHATSAPP_ONLY'),
+  ttlMinutesDefault: integer('ttl_minutes_default').notNull().default(240),
+  ttlMinutesNearSlot: integer('ttl_minutes_near_slot').notNull().default(60),
+  nearSlotHoursThreshold: integer('near_slot_hours_threshold').notNull().default(12),
+  minSkipHoursThreshold: integer('min_skip_hours_threshold').notNull().default(2),
+  whatsappToVoiceWindowMinutes: integer('whatsapp_to_voice_window_minutes').notNull().default(60),
+  minAppointmentDistanceDays: integer('min_appointment_distance_days').notNull().default(7),
+  minAdvanceDays: integer('min_advance_days').notNull().default(1),
+  requireSameDentist: boolean('require_same_dentist').notNull().default(false),
+  respectTimeWindow: boolean('respect_time_window').notNull().default(false),
+  updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const waitlistEntries = pgTable(
+  'waitlist_entries',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    ghlContactId: text('ghl_contact_id').notNull(),
+    ghlAppointmentId: text('ghl_appointment_id').notNull(),
+    treatmentId: uuid('treatment_id').references(() => treatments.id, { onDelete: 'set null' }),
+    calendarId: text('calendar_id'),
+    assignedDentistId: text('assigned_dentist_id'),
+    originalStartTime: timestamp('original_start_time', { withTimezone: true }).notNull(),
+    originalEndTime: timestamp('original_end_time', { withTimezone: true }),
+    preferredTimeWindowStart: text('preferred_time_window_start'),
+    preferredTimeWindowEnd: text('preferred_time_window_end'),
+    status: waitlistStatusEnum('status').notNull().default('ACTIVE'),
+    source: waitlistEntrySourceEnum('source').notNull().default('auto'),
+    notes: text('notes'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+    fulfilledAt: timestamp('fulfilled_at', { withTimezone: true }),
+    removedAt: timestamp('removed_at', { withTimezone: true }),
+  },
+  (t) => ({
+    tenantApptUnique: unique('waitlist_entries_tenant_appt_unique').on(
+      t.tenantId,
+      t.ghlAppointmentId,
+    ),
+    tenantStatusIdx: index('waitlist_entries_tenant_status_idx').on(
+      t.tenantId,
+      t.status,
+      t.createdAt,
+    ),
+    contactIdx: index('waitlist_entries_contact_idx').on(t.tenantId, t.ghlContactId),
+  }),
+);
+
+export const waitlistOffers = pgTable(
+  'waitlist_offers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    waitlistEntryId: uuid('waitlist_entry_id')
+      .references(() => waitlistEntries.id, { onDelete: 'cascade' })
+      .notNull(),
+    cancelledSlotId: uuid('cancelled_slot_id')
+      .references(() => cancelledSlots.id, { onDelete: 'cascade' })
+      .notNull(),
+    channel: waitlistOfferChannelEnum('channel').notNull(),
+    driverScope: text('driver_scope').notNull().$type<WaitlistDriverScope>(),
+    status: waitlistOfferStatusEnum('status').notNull().default('PENDING'),
+    sentAt: timestamp('sent_at', { withTimezone: true }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    respondedAt: timestamp('responded_at', { withTimezone: true }),
+    responseVia: waitlistOfferResponseViaEnum('response_via'),
+    externalMessageId: uuid('external_message_id'),
+    externalCallId: text('external_call_id'),
+    bullSendJobId: text('bull_send_job_id'),
+    bullExpireJobId: text('bull_expire_job_id'),
+    payloadSnapshot:
+      jsonb('payload_snapshot').$type<Record<string, unknown>>().notNull().default({}),
+    errorMessage: text('error_message'),
+    previousOfferId: uuid('previous_offer_id'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantStatusIdx: index('waitlist_offers_tenant_status_idx').on(
+      t.tenantId,
+      t.status,
+      t.expiresAt,
+    ),
+    cancelledSlotIdx: index('waitlist_offers_cancelled_slot_idx').on(t.cancelledSlotId, t.status),
+    entryIdx: index('waitlist_offers_entry_idx').on(t.waitlistEntryId, t.createdAt),
+  }),
+);
+
+export const waitlistMessageTemplates = pgTable(
+  'waitlist_message_templates',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    channel: waitlistOfferChannelEnum('channel').notNull(),
+    driverScope: text('driver_scope').notNull().$type<WaitlistDriverScope>(),
+    templateName: text('template_name'),
+    templateLanguage: text('template_language').notNull().default('es'),
+    templateParamsMap:
+      jsonb('template_params_map').$type<WaitlistTemplateParam[]>().notNull().default([]),
+    freeText: text('free_text'),
+    buttons: jsonb('buttons').$type<WaitlistButton[]>().notNull().default([]),
+    voicePromptOverride: text('voice_prompt_override'),
+    enabled: boolean('enabled').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantDriverUnique: unique('waitlist_message_templates_tenant_driver_unique').on(
+      t.tenantId,
+      t.driverScope,
+    ),
+    tenantChannelIdx: index('waitlist_message_templates_tenant_channel_idx').on(
+      t.tenantId,
+      t.channel,
+    ),
   }),
 );
 

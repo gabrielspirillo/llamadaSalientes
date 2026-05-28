@@ -5,6 +5,7 @@ import { db } from '@/lib/db/client';
 import { auditLogs, whatsappConnections } from '@/lib/db/schema';
 import { sendQueueEvent } from '@/lib/queue/client';
 import { tryHandleReminderInbound } from '@/lib/reminders/handle-button-reply';
+import { tryHandleWaitlistInbound } from '@/lib/waitlist/handle-button-reply';
 import {
   evolutionMessagesUpsertSchema,
   normalizeEvolutionMessage,
@@ -113,17 +114,28 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         try {
           const persisted = await persistInboundMessage(inbound);
           if (persisted.message) {
-            const reminderResult = await tryHandleReminderInbound({
+            const waitlistResult = await tryHandleWaitlistInbound({
               tenantId: conn.tenantId,
-              conversationId: persisted.conversation.id,
-              contactPhoneE164: persisted.contact.phoneE164,
-              inboundMessageId: persisted.message.id,
               rawMessage: parsed.data.data,
               channel: 'WHATSAPP_EVOLUTION',
             }).catch((err) => {
-              console.warn('[wa-evolution-webhook] reminder reply handler failed', err);
+              console.warn('[wa-evolution-webhook] waitlist reply handler failed', err);
               return { consumed: false } as const;
             });
+
+            const reminderResult = waitlistResult.consumed
+              ? ({ consumed: true } as const)
+              : await tryHandleReminderInbound({
+                  tenantId: conn.tenantId,
+                  conversationId: persisted.conversation.id,
+                  contactPhoneE164: persisted.contact.phoneE164,
+                  inboundMessageId: persisted.message.id,
+                  rawMessage: parsed.data.data,
+                  channel: 'WHATSAPP_EVOLUTION',
+                }).catch((err) => {
+                  console.warn('[wa-evolution-webhook] reminder reply handler failed', err);
+                  return { consumed: false } as const;
+                });
             if (!reminderResult.consumed) {
               await sendQueueEvent('wa-process', {
                 tenantId: conn.tenantId,

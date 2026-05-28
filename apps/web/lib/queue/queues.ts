@@ -28,6 +28,17 @@ export type QueueJobs = {
     tenantId: string;
     reminderId: string;
   };
+  // Waitlist: oferta de slot adelantado por WhatsApp o Voz. El delay = 0 (se
+  // dispara inmediato al detectar el cancelled_slot). expireOfferAndAdvance se
+  // ejecuta vía 'waitlist-offer-expire' con delay = TTL.
+  'waitlist-offer-send': {
+    tenantId: string;
+    offerId: string;
+  };
+  'waitlist-offer-expire': {
+    tenantId: string;
+    offerId: string;
+  };
 };
 
 export type QueueName = keyof QueueJobs;
@@ -37,4 +48,6 @@ export const QUEUE_NAMES = [
   'process-call',
   'reminder-send',
   'reminder-fallback-check',
+  'waitlist-offer-send',
+  'waitlist-offer-expire',
 ] as const satisfies readonly QueueName[];

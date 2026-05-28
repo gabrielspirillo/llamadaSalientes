@@ -43,6 +43,14 @@ export type RegisterPatientArgs = {
   email?: string;
 };
 
+export type AcceptWaitlistOfferArgs = {
+  offer_id: string;
+};
+
+export type DeclineWaitlistOfferArgs = {
+  offer_id: string;
+};
+
 // ─── GHL response shapes (mínimos) ───────────────────────────────────────────
 
 type GhlSlot = { startTime: string; endTime: string };
@@ -543,6 +551,45 @@ export async function setLeadEmail(
   }
 }
 
+// ─── Waitlist tools ──────────────────────────────────────────────────────────
+
+export async function acceptWaitlistOffer(
+  tenantId: string,
+  args: AcceptWaitlistOfferArgs,
+): Promise<ToolResult> {
+  if (!args.offer_id) return { result: 'Falta offer_id, no puedo confirmar la oferta.' };
+  const { markOfferAccepted } = await import('@/lib/waitlist/engine');
+  const res = await markOfferAccepted({ offerId: args.offer_id, via: 'voice_tool' });
+  if (!res.ok) {
+    if (res.reason === 'offer_not_found') {
+      return { result: 'No encontré esa oferta. Puede que ya esté cerrada.' };
+    }
+    if (res.reason.startsWith('already_')) {
+      return { result: 'Esa oferta ya fue procesada antes.' };
+    }
+    return { result: 'No pude confirmar la oferta ahora mismo. Disculpá, recepción te llama.' };
+  }
+  return {
+    result: 'Listo, dejé tu nueva cita reservada y cancelé la anterior. Te llega confirmación.',
+  };
+}
+
+export async function declineWaitlistOffer(
+  tenantId: string,
+  args: DeclineWaitlistOfferArgs,
+): Promise<ToolResult> {
+  if (!args.offer_id) return { result: 'Falta offer_id.' };
+  const { markOfferDeclined } = await import('@/lib/waitlist/engine');
+  const res = await markOfferDeclined({ offerId: args.offer_id, via: 'voice_tool' });
+  // markOfferDeclined devuelve EnqueueResult — el ok=false significa "no había
+  // siguiente en cola" (lo que NO es un error desde el paciente). Solo fallamos
+  // si la oferta no existe o ya está cerrada.
+  if (!res.ok && (res.reason === 'offer_not_found' || res.reason.startsWith('already_'))) {
+    return { result: 'No encontré esa oferta.' };
+  }
+  return { result: 'Sin problema, dejamos tu cita original tal cual. Gracias por avisar.' };
+}
+
 // ─── Dispatcher ───────────────────────────────────────────────────────────────
 
 export type KnownToolName =
@@ -554,7 +601,9 @@ export type KnownToolName =
   | 'set_lead_email'
   | 'list_treatments'
   | 'get_treatment_details'
-  | 'search_faqs';
+  | 'search_faqs'
+  | 'accept_waitlist_offer'
+  | 'decline_waitlist_offer';
 
 export type ToolContext = {
   retellCallId?: string;
@@ -585,6 +634,10 @@ export async function dispatchTool(
       return getTreatmentDetails(tenantId, args as GetTreatmentDetailsArgs);
     case 'search_faqs':
       return searchFaqs(tenantId, args as SearchFaqsArgs);
+    case 'accept_waitlist_offer':
+      return acceptWaitlistOffer(tenantId, args as AcceptWaitlistOfferArgs);
+    case 'decline_waitlist_offer':
+      return declineWaitlistOffer(tenantId, args as DeclineWaitlistOfferArgs);
     default:
       return { result: `Tool desconocida: ${toolName}` };
   }

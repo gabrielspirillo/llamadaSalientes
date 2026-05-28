@@ -46,6 +46,16 @@ export async function sendQueueEvent(
   data: QueueJobs['reminder-fallback-check'],
   opts?: { delayMs?: number },
 ): Promise<void>;
+export async function sendQueueEvent(
+  name: 'waitlist-offer-send',
+  data: QueueJobs['waitlist-offer-send'],
+  opts?: { delayMs?: number },
+): Promise<void>;
+export async function sendQueueEvent(
+  name: 'waitlist-offer-expire',
+  data: QueueJobs['waitlist-offer-expire'],
+  opts?: { delayMs?: number },
+): Promise<void>;
 export async function sendQueueEvent<K extends QueueName>(
   name: K,
   data: QueueJobs[K],
@@ -122,6 +132,34 @@ export async function sendQueueEvent<K extends QueueName>(
     return;
   }
 
+  if (name === 'waitlist-offer-send') {
+    const d = data as QueueJobs['waitlist-offer-send'];
+    const jobId = waitlistOfferSendJobId(d.offerId);
+    const queue = getQueue('waitlist-offer-send');
+    await queue.add('waitlist-offer-send', d, {
+      ...DEFAULT_OPTS,
+      jobId,
+      delay: Math.max(0, opts?.delayMs ?? 0),
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 10_000 },
+    });
+    return;
+  }
+
+  if (name === 'waitlist-offer-expire') {
+    const d = data as QueueJobs['waitlist-offer-expire'];
+    const jobId = waitlistOfferExpireJobId(d.offerId);
+    const queue = getQueue('waitlist-offer-expire');
+    await queue.add('waitlist-offer-expire', d, {
+      ...DEFAULT_OPTS,
+      jobId,
+      delay: Math.max(0, opts?.delayMs ?? 0),
+      attempts: 2,
+      backoff: { type: 'exponential', delay: 10_000 },
+    });
+    return;
+  }
+
   // Type-level guard: la exhaustividad la garantizan los overloads.
   const _exhaustive: never = name;
   throw new Error(`Queue desconocida: ${String(_exhaustive)}`);
@@ -150,4 +188,24 @@ export async function removeReminderFallbackJob(reminderId: string): Promise<voi
   if (!env.REDIS_URL) return;
   const queue = getQueue('reminder-fallback-check');
   await queue.remove(reminderFallbackJobId(reminderId)).catch(() => undefined);
+}
+
+export function waitlistOfferSendJobId(offerId: string): string {
+  return `wlo-send-${offerId}`;
+}
+
+export function waitlistOfferExpireJobId(offerId: string): string {
+  return `wlo-expire-${offerId}`;
+}
+
+export async function removeWaitlistOfferSendJob(offerId: string): Promise<void> {
+  if (!env.REDIS_URL) return;
+  const queue = getQueue('waitlist-offer-send');
+  await queue.remove(waitlistOfferSendJobId(offerId)).catch(() => undefined);
+}
+
+export async function removeWaitlistOfferExpireJob(offerId: string): Promise<void> {
+  if (!env.REDIS_URL) return;
+  const queue = getQueue('waitlist-offer-expire');
+  await queue.remove(waitlistOfferExpireJobId(offerId)).catch(() => undefined);
 }

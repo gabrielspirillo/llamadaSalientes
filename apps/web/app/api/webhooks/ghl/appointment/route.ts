@@ -14,6 +14,10 @@ import {
   deleteAppointmentCache,
   upsertAppointmentCache,
 } from '@/lib/appointments/cache';
+import {
+  autoEnqueueOnNewAppointment,
+  enqueueOfferForCancelledSlot,
+} from '@/lib/waitlist/engine';
 import { eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -121,7 +125,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (event === 'cancel') {
-    await recordCancelledSlot({
+    const cancelled = await recordCancelledSlot({
       tenantId: integration.tenantId,
       ghlAppointmentId: apt.id,
       calendarId: apt.calendarId ?? null,
@@ -130,7 +134,22 @@ export async function POST(req: NextRequest) {
       startTime,
       endTime: parseDate(apt.endTime),
     });
-    return NextResponse.json({ ok: true, action: 'cancelled-slot-recorded' });
+    // Waitlist: encolar oferta para el siguiente paciente elegible. No bloquea
+    // la respuesta del webhook si falla (es best-effort).
+    const offer = await enqueueOfferForCancelledSlot(integration.tenantId, cancelled.id).catch(
+      (err) => {
+        console.warn('[ghl-webhook] waitlist enqueue failed', err);
+        return { ok: false as const, reason: 'engine_error' };
+      },
+    );
+    return NextResponse.json({
+      ok: true,
+      action: 'cancelled-slot-recorded',
+      cancelledSlotId: cancelled.id,
+      waitlistOffer: offer.ok
+        ? { offerId: offer.offerId, channel: offer.channel, expiresAt: offer.expiresAt }
+        : { skipped: offer.reason },
+    });
   }
 
   // event === 'create'
@@ -145,11 +164,30 @@ export async function POST(req: NextRequest) {
     createdAt: parseDate(apt.dateAdded) ?? new Date(),
   });
 
+  // Waitlist: si el tratamiento es elegible y la cita cumple el umbral, anotar
+  // al paciente en la cola FIFO. Idempotente. assignedUserId puede venir en el
+  // payload bruto, no en la versión normalizada.
+  const rawApt = (payload as { appointment?: Record<string, unknown> }).appointment ?? {};
+  const autoEnqueue = await autoEnqueueOnNewAppointment({
+    tenantId: integration.tenantId,
+    ghlContactId: apt.contactId ?? null,
+    ghlAppointmentId: apt.id,
+    treatmentId: apt.treatmentId ?? null,
+    calendarId: apt.calendarId ?? null,
+    assignedUserId: (rawApt.assignedUserId as string | undefined) ?? null,
+    startTime,
+    endTime: parseDate(apt.endTime),
+  }).catch((err) => {
+    console.warn('[ghl-webhook] waitlist auto-enqueue failed', err);
+    return { ok: false as const, reason: 'engine_error' };
+  });
+
   return NextResponse.json({
     ok: true,
     action: 'create',
     attributed: attribution !== null,
     ...(attribution ? { attribution } : {}),
+    waitlist: autoEnqueue.ok ? { entryId: autoEnqueue.entryId } : { skipped: autoEnqueue.reason },
   });
 }
 

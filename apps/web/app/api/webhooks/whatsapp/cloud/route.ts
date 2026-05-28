@@ -12,6 +12,7 @@ import {
   persistInboundMessage,
 } from '@/lib/whatsapp';
 import { tryHandleReminderInbound } from '@/lib/reminders/handle-button-reply';
+import { tryHandleWaitlistInbound } from '@/lib/waitlist/handle-button-reply';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -114,22 +115,31 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           // global WHATSAPP_AGENT_ENABLED — corre dentro del worker BullMQ
           // (job se encola con delay 5s para coalescer ráfagas).
           if (persisted.message) {
-            // Si el inbound es un button reply de un reminder, lo consumimos
-            // acá y NO encolamos wa-process (el agente WA no debe responder).
-            // Excepción: reschedule encola wa-process internamente para que el
-            // agente continúe la negociación, y devuelve consumed=true para
-            // que no dupliquemos el encolado.
-            const reminderResult = await tryHandleReminderInbound({
+            // Si el inbound es un button reply de un reminder o de una oferta
+            // de waitlist, lo consumimos acá y NO encolamos wa-process. Para
+            // reminder reschedule el handler encola wa-process internamente.
+            const waitlistResult = await tryHandleWaitlistInbound({
               tenantId: conn.tenantId,
-              conversationId: persisted.conversation.id,
-              contactPhoneE164: persisted.contact.phoneE164,
-              inboundMessageId: persisted.message.id,
               rawMessage: msg,
               channel: 'WHATSAPP_CLOUD',
             }).catch((err) => {
-              console.warn('[wa-cloud-webhook] reminder reply handler failed', err);
+              console.warn('[wa-cloud-webhook] waitlist reply handler failed', err);
               return { consumed: false } as const;
             });
+
+            const reminderResult = waitlistResult.consumed
+              ? ({ consumed: true } as const)
+              : await tryHandleReminderInbound({
+                  tenantId: conn.tenantId,
+                  conversationId: persisted.conversation.id,
+                  contactPhoneE164: persisted.contact.phoneE164,
+                  inboundMessageId: persisted.message.id,
+                  rawMessage: msg,
+                  channel: 'WHATSAPP_CLOUD',
+                }).catch((err) => {
+                  console.warn('[wa-cloud-webhook] reminder reply handler failed', err);
+                  return { consumed: false } as const;
+                });
 
             if (!reminderResult.consumed) {
               await sendQueueEvent('wa-process', {

@@ -17,6 +17,8 @@ import { createStepRunner } from '@/lib/queue/step';
 import { processCallJob } from '@/worker/jobs/process-call';
 import { processReminderFallbackCheckJob } from '@/worker/jobs/reminder-fallback-check';
 import { processReminderSendJob } from '@/worker/jobs/reminder-send';
+import { processWaitlistOfferExpireJob } from '@/worker/jobs/waitlist-offer-expire';
+import { processWaitlistOfferSendJob } from '@/worker/jobs/waitlist-offer-send';
 import { processWhatsappJob } from '@/worker/jobs/whatsapp-process';
 
 function num(name: string, def: number): number {
@@ -33,6 +35,7 @@ function logStart(): void {
     waConcurrency: num('WORKER_CONCURRENCY_WA', 2),
     callConcurrency: num('WORKER_CONCURRENCY_CALL', 2),
     reminderConcurrency: num('WORKER_CONCURRENCY_REMINDER', 2),
+    waitlistConcurrency: num('WORKER_CONCURRENCY_WAITLIST', 2),
     waEnabled: process.env.WHATSAPP_AGENT_ENABLED === 'true',
   });
 }
@@ -133,6 +136,70 @@ function buildReminderSendWorker(): Worker<QueueJobs['reminder-send']> {
   return worker;
 }
 
+function buildWaitlistOfferSendWorker(): Worker<QueueJobs['waitlist-offer-send']> {
+  const worker = new Worker<QueueJobs['waitlist-offer-send']>(
+    'waitlist-offer-send',
+    async (job: Job<QueueJobs['waitlist-offer-send']>) => {
+      const step = createStepRunner(job.id ?? `wlo-send-${job.timestamp}`);
+      return processWaitlistOfferSendJob(job.data, step);
+    },
+    {
+      connection: getRedis(),
+      concurrency: num('WORKER_CONCURRENCY_WAITLIST', 2),
+    },
+  );
+
+  worker.on('completed', (job, result) => {
+    console.log('[worker:waitlist-offer-send] completed', {
+      jobId: job.id,
+      offerId: job.data.offerId,
+      result,
+    });
+  });
+  worker.on('failed', (job, err) => {
+    console.error('[worker:waitlist-offer-send] failed', {
+      jobId: job?.id,
+      offerId: job?.data.offerId,
+      attemptsMade: job?.attemptsMade,
+      err: err?.message,
+    });
+  });
+
+  return worker;
+}
+
+function buildWaitlistOfferExpireWorker(): Worker<QueueJobs['waitlist-offer-expire']> {
+  const worker = new Worker<QueueJobs['waitlist-offer-expire']>(
+    'waitlist-offer-expire',
+    async (job: Job<QueueJobs['waitlist-offer-expire']>) => {
+      const step = createStepRunner(job.id ?? `wlo-exp-${job.timestamp}`);
+      return processWaitlistOfferExpireJob(job.data, step);
+    },
+    {
+      connection: getRedis(),
+      concurrency: num('WORKER_CONCURRENCY_WAITLIST', 2),
+    },
+  );
+
+  worker.on('completed', (job, result) => {
+    console.log('[worker:waitlist-offer-expire] completed', {
+      jobId: job.id,
+      offerId: job.data.offerId,
+      result,
+    });
+  });
+  worker.on('failed', (job, err) => {
+    console.error('[worker:waitlist-offer-expire] failed', {
+      jobId: job?.id,
+      offerId: job?.data.offerId,
+      attemptsMade: job?.attemptsMade,
+      err: err?.message,
+    });
+  });
+
+  return worker;
+}
+
 function buildReminderFallbackCheckWorker(): Worker<QueueJobs['reminder-fallback-check']> {
   const worker = new Worker<QueueJobs['reminder-fallback-check']>(
     'reminder-fallback-check',
@@ -173,6 +240,8 @@ async function main(): Promise<void> {
     buildCallWorker(),
     buildReminderSendWorker(),
     buildReminderFallbackCheckWorker(),
+    buildWaitlistOfferSendWorker(),
+    buildWaitlistOfferExpireWorker(),
   ];
 
   const shutdown = async (signal: string) => {
