@@ -3,13 +3,14 @@ import Link from 'next/link';
 
 import { PageHeader } from '@/components/dashboard/page-header';
 import { RemindersPipeline } from '@/components/reminders/Pipeline';
-import { SkipList } from '@/components/reminders/SkipList';
 import { Button } from '@/components/ui/button';
 import { db } from '@/lib/db/client';
 import {
   appointmentReminders,
+  appointmentsCache,
   reminderRules,
   reminderSkipLog,
+  treatments,
 } from '@/lib/db/schema';
 import { getCurrentTenant } from '@/lib/tenant';
 import { Settings2 } from 'lucide-react';
@@ -56,8 +57,25 @@ export default async function RemindersPage() {
   const rulesById = Object.fromEntries(rulesByIdEntries);
 
   const skipped = await db
-    .select()
+    .select({
+      id: reminderSkipLog.id,
+      ghlAppointmentId: reminderSkipLog.ghlAppointmentId,
+      ruleId: reminderSkipLog.ruleId,
+      reason: reminderSkipLog.reason,
+      details: reminderSkipLog.details,
+      createdAt: reminderSkipLog.createdAt,
+      appointmentStart: appointmentsCache.startTime,
+      treatmentName: treatments.name,
+    })
     .from(reminderSkipLog)
+    .leftJoin(
+      appointmentsCache,
+      and(
+        eq(appointmentsCache.tenantId, reminderSkipLog.tenantId),
+        eq(appointmentsCache.ghlAppointmentId, reminderSkipLog.ghlAppointmentId),
+      ),
+    )
+    .leftJoin(treatments, eq(treatments.id, appointmentsCache.treatmentId))
     .where(eq(reminderSkipLog.tenantId, tenant.id))
     .orderBy(desc(reminderSkipLog.createdAt))
     .limit(100);
@@ -76,12 +94,11 @@ export default async function RemindersPage() {
         }
       />
 
-      <RemindersPipeline reminders={reminders} rulesById={rulesById} />
-
-      <div className="mt-8">
-        <h2 className="text-sm font-semibold text-zinc-700 mb-3">Omitidos ({skipped.length})</h2>
-        <SkipList skipped={skipped} />
-      </div>
+      <RemindersPipeline
+        initialReminders={reminders}
+        initialRulesById={rulesById}
+        initialSkipped={skipped}
+      />
     </>
   );
 }

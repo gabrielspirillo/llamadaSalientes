@@ -4,8 +4,10 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import {
   appointmentReminders,
+  appointmentsCache,
   reminderRules,
   reminderSkipLog,
+  treatments,
 } from '@/lib/db/schema';
 import { ReminderForbiddenError, requireReminderRole } from '@/lib/reminders/auth';
 
@@ -86,11 +88,40 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  let skipped: Array<typeof reminderSkipLog.$inferSelect> = [];
+  // Skips enriquecidos con info de la cita (fecha + tratamiento) via LEFT
+  // JOIN a appointments_cache + treatments. Si la cita ya no está en cache
+  // (borrada o GC), los campos quedan null y el frontend muestra fallback.
+  let skipped: Array<{
+    id: string;
+    ghlAppointmentId: string;
+    ruleId: string | null;
+    reason: string;
+    details: unknown;
+    createdAt: Date;
+    appointmentStart: Date | null;
+    treatmentName: string | null;
+  }> = [];
   if (include === 'skipped') {
     skipped = await db
-      .select()
+      .select({
+        id: reminderSkipLog.id,
+        ghlAppointmentId: reminderSkipLog.ghlAppointmentId,
+        ruleId: reminderSkipLog.ruleId,
+        reason: reminderSkipLog.reason,
+        details: reminderSkipLog.details,
+        createdAt: reminderSkipLog.createdAt,
+        appointmentStart: appointmentsCache.startTime,
+        treatmentName: treatments.name,
+      })
       .from(reminderSkipLog)
+      .leftJoin(
+        appointmentsCache,
+        and(
+          eq(appointmentsCache.tenantId, reminderSkipLog.tenantId),
+          eq(appointmentsCache.ghlAppointmentId, reminderSkipLog.ghlAppointmentId),
+        ),
+      )
+      .leftJoin(treatments, eq(treatments.id, appointmentsCache.treatmentId))
       .where(eq(reminderSkipLog.tenantId, tenantId))
       .orderBy(desc(reminderSkipLog.createdAt))
       .limit(200);

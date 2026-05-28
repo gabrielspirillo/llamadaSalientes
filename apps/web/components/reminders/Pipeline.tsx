@@ -1,9 +1,11 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { ReminderDetailDialog } from './ReminderDetailDialog';
+import { SkipList } from './SkipList';
 
 type ReminderStatus =
   | 'SCHEDULED'
@@ -16,7 +18,7 @@ type ReminderStatus =
   | 'SKIPPED'
   | 'FAILED';
 
-type Reminder = {
+export type Reminder = {
   id: string;
   ghlAppointmentId: string;
   ruleId: string;
@@ -30,9 +32,24 @@ type Reminder = {
   payloadSnapshot: unknown;
 };
 
-type Rule = { label: string | null; offsetMinutes: number };
+export type Rule = { label: string | null; offsetMinutes: number };
 
-const COLUMNS: { status: ReminderStatus; title: string; tone: 'neutral' | 'success' | 'warn' | 'danger' | 'info' }[] = [
+export type SkipRow = {
+  id: string;
+  ghlAppointmentId: string;
+  ruleId: string | null;
+  reason: string;
+  details: unknown;
+  createdAt: Date | string;
+  appointmentStart?: Date | string | null;
+  treatmentName?: string | null;
+};
+
+const COLUMNS: {
+  status: ReminderStatus;
+  title: string;
+  tone: 'neutral' | 'success' | 'warn' | 'danger' | 'info';
+}[] = [
   { status: 'SCHEDULED', title: 'Programado', tone: 'info' },
   { status: 'SENT', title: 'Enviado', tone: 'neutral' },
   { status: 'CONFIRMED', title: 'Confirmado', tone: 'success' },
@@ -47,7 +64,7 @@ function offsetToHuman(minutes: number): string {
   return `${minutes}m`;
 }
 
-function fmtDate(d: Date | string | null): string {
+function fmtDateShort(d: Date | string | null | undefined): string {
   if (!d) return '—';
   const date = typeof d === 'string' ? new Date(d) : d;
   return new Intl.DateTimeFormat('es-ES', {
@@ -64,30 +81,89 @@ function extractContactName(snapshot: unknown): string {
   return v?.contact?.fullName || v?.contact?.firstName || 'Paciente';
 }
 
-function extractAppointmentLine(snapshot: unknown): string {
-  if (!snapshot || typeof snapshot !== 'object') return '';
-  const v = (snapshot as { vars?: { appointment?: { treatment?: string; dateTime?: string } } }).vars;
-  const treatment = v?.appointment?.treatment ?? '';
-  const dt = v?.appointment?.dateTime ?? '';
-  return [treatment, dt].filter(Boolean).join(' · ');
+function extractAppointmentParts(snapshot: unknown): {
+  treatment: string;
+  date: string;
+  time: string;
+  dateTime: string;
+} {
+  if (!snapshot || typeof snapshot !== 'object')
+    return { treatment: '', date: '', time: '', dateTime: '' };
+  const v = (
+    snapshot as {
+      vars?: {
+        appointment?: { treatment?: string; date?: string; time?: string; dateTime?: string };
+      };
+    }
+  ).vars;
+  return {
+    treatment: v?.appointment?.treatment ?? '',
+    date: v?.appointment?.date ?? '',
+    time: v?.appointment?.time ?? '',
+    dateTime: v?.appointment?.dateTime ?? '',
+  };
 }
 
+// ─── Componente principal ────────────────────────────────────────────────────
+
 export function RemindersPipeline({
-  reminders,
-  rulesById,
+  initialReminders,
+  initialRulesById,
+  initialSkipped,
 }: {
-  reminders: Reminder[];
-  rulesById: Record<string, Rule>;
+  initialReminders: Reminder[];
+  initialRulesById: Record<string, Rule>;
+  initialSkipped: SkipRow[];
 }) {
+  const [reminders, setReminders] = useState<Reminder[]>(initialReminders);
+  const [rulesById, setRulesById] = useState<Record<string, Rule>>(initialRulesById);
+  const [skipped, setSkipped] = useState<SkipRow[]>(initialSkipped);
   const [search, setSearch] = useState('');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+
+  // Polling cada 15s para refrescar la lista sin recargar la página. Si la
+  // pestaña está en background no pollea (visibilityState).
+  useEffect(() => {
+    let cancelled = false;
+    async function refresh() {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const res = await fetch('/api/reminders?include=skipped', { cache: 'no-store' });
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        if (cancelled) return;
+        const nextRules: Record<string, Rule> = {};
+        for (const r of data.reminders ?? []) {
+          if (r.rule) nextRules[r.ruleId] = r.rule;
+        }
+        setReminders(data.reminders ?? []);
+        setRulesById(nextRules);
+        setSkipped(data.skipped ?? []);
+        setLastRefresh(new Date());
+      } catch (err) {
+        console.warn('[reminders-pipeline] poll failed', err);
+      }
+    }
+    const interval = window.setInterval(refresh, 15_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, []);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return reminders;
     const q = search.toLowerCase();
     return reminders.filter((r) => {
       const name = extractContactName(r.payloadSnapshot).toLowerCase();
-      const appt = extractAppointmentLine(r.payloadSnapshot).toLowerCase();
-      return name.includes(q) || appt.includes(q) || r.ghlAppointmentId.toLowerCase().includes(q);
+      const appt = extractAppointmentParts(r.payloadSnapshot);
+      return (
+        name.includes(q) ||
+        appt.treatment.toLowerCase().includes(q) ||
+        appt.dateTime.toLowerCase().includes(q) ||
+        r.ghlAppointmentId.toLowerCase().includes(q)
+      );
     });
   }, [reminders, search]);
 
@@ -100,9 +176,11 @@ export function RemindersPipeline({
     return map;
   }, [filtered]);
 
+  const selected = selectedId ? reminders.find((r) => r.id === selectedId) ?? null : null;
+
   return (
     <div>
-      <div className="mb-4 flex items-center gap-2">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         <input
           type="text"
           placeholder="Buscar paciente, tratamiento o cita…"
@@ -111,6 +189,13 @@ export function RemindersPipeline({
           className="w-full max-w-sm rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-sm placeholder:text-zinc-400 focus:border-zinc-300 focus:outline-none"
         />
         <span className="text-xs text-zinc-500">{filtered.length} reminders</span>
+        <span className="ml-auto text-[11px] text-zinc-400">
+          Actualizado{' '}
+          {new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' }).format(
+            lastRefresh,
+          )}
+          {' · '}auto cada 15s
+        </span>
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
@@ -122,47 +207,84 @@ export function RemindersPipeline({
                 <span className="text-xs font-medium text-zinc-700">{col.title}</span>
                 <Badge tone={col.tone}>{items.length}</Badge>
               </div>
-              <div className="flex flex-col gap-2">
+              {/* max-h ~ 4 cards visibles (cada card ~108px + gap 8px = ~480px).
+                  Scroll vertical interno por columna. */}
+              <div className="flex flex-col gap-2 overflow-y-auto pr-1" style={{ maxHeight: 480 }}>
                 {items.length === 0 ? (
                   <div className="rounded-md border border-dashed border-zinc-200 p-3 text-center text-xs text-zinc-400">
                     Vacío
                   </div>
                 ) : (
-                  items.map((r) => {
-                    const rule = rulesById[r.ruleId];
-                    return (
-                      <Card key={r.id} className="p-3 hover:shadow-sm transition-shadow">
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="text-sm font-medium text-zinc-800 truncate">
-                            {extractContactName(r.payloadSnapshot)}
-                          </span>
-                          <Badge tone={r.channelPlanned === 'VOICE' ? 'warn' : 'info'}>
-                            {r.channelPlanned === 'VOICE' ? 'Voz' : 'WA'}
-                          </Badge>
-                        </div>
-                        <p className="mt-1 text-xs text-zinc-500 truncate">
-                          {extractAppointmentLine(r.payloadSnapshot) || '—'}
-                        </p>
-                        <div className="mt-2 flex items-center justify-between text-[11px] text-zinc-400">
-                          <span>{fmtDate(r.scheduledFor)}</span>
-                          {rule && (
-                            <span>
-                              {rule.label ?? `−${offsetToHuman(rule.offsetMinutes)}`}
-                            </span>
-                          )}
-                        </div>
-                        {r.failureReason && (
-                          <p className="mt-1 truncate text-[11px] text-rose-500">{r.failureReason}</p>
-                        )}
-                      </Card>
-                    );
-                  })
+                  items.map((r) => (
+                    <ReminderCard
+                      key={r.id}
+                      reminder={r}
+                      rule={rulesById[r.ruleId] ?? null}
+                      onClick={() => setSelectedId(r.id)}
+                    />
+                  ))
                 )}
               </div>
             </div>
           );
         })}
       </div>
+
+      <div className="mt-8">
+        <h2 className="text-sm font-semibold text-zinc-700 mb-3">Omitidos ({skipped.length})</h2>
+        <SkipList skipped={skipped} />
+      </div>
+
+      {selected && (
+        <ReminderDetailDialog
+          reminder={selected}
+          rule={rulesById[selected.ruleId] ?? null}
+          onClose={() => setSelectedId(null)}
+        />
+      )}
     </div>
+  );
+}
+
+// ─── Card individual ─────────────────────────────────────────────────────────
+
+function ReminderCard({
+  reminder,
+  rule,
+  onClick,
+}: {
+  reminder: Reminder;
+  rule: Rule | null;
+  onClick: () => void;
+}) {
+  const name = extractContactName(reminder.payloadSnapshot);
+  const appt = extractAppointmentParts(reminder.payloadSnapshot);
+  return (
+    <Card
+      onClick={onClick}
+      className="cursor-pointer p-3 hover:shadow-md hover:border-zinc-300 transition-all"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-sm font-medium text-zinc-800 truncate">{name}</span>
+        <Badge tone={reminder.channelPlanned === 'VOICE' ? 'warn' : 'info'}>
+          {reminder.channelPlanned === 'VOICE' ? 'Voz' : 'WA'}
+        </Badge>
+      </div>
+      {appt.treatment && (
+        <p className="mt-1 text-xs text-zinc-600 truncate">{appt.treatment}</p>
+      )}
+      {appt.dateTime && (
+        <p className="mt-0.5 text-[11px] text-zinc-500 truncate">{appt.dateTime}</p>
+      )}
+      <div className="mt-2 flex items-center justify-between text-[11px] text-zinc-400">
+        <span>Envío: {fmtDateShort(reminder.scheduledFor)}</span>
+        {rule && <span>{rule.label ?? `−${offsetToHuman(rule.offsetMinutes)}`}</span>}
+      </div>
+      {reminder.failureReason && (
+        <p className="mt-1 truncate text-[11px] text-rose-500" title={reminder.failureReason}>
+          ⚠ {reminder.failureReason}
+        </p>
+      )}
+    </Card>
   );
 }
