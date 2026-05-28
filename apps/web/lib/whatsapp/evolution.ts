@@ -86,8 +86,11 @@ export class EvolutionConnector implements WhatsAppConnector {
         false,
       );
     }
-    // v2 espera: buttons: [{ title: 'reply'|'url'|'call', displayText, id }]
-    // `title: 'reply'` es el tipo de botón (no el texto visible).
+    // Evolution API v2.3.x espera por cada botón:
+    //   { type: 'reply'|'url'|'call', displayText, id }
+    // (versiones anteriores usaban `title: 'reply'` como discriminador; v2.3.4
+    // validó esto como `type` requerido, ver Evolution API error
+    // "buttons[N] requires property 'type'").
     const json = await this.post<EvolutionSendResponse>(
       `/message/sendButtons/${encodeURIComponent(this.opts.instanceName)}`,
       {
@@ -96,7 +99,7 @@ export class EvolutionConnector implements WhatsAppConnector {
         description: bodyText,
         footer: '',
         buttons: buttons.map((b) => ({
-          title: 'reply',
+          type: 'reply',
           displayText: b.title,
           id: b.id,
         })),
