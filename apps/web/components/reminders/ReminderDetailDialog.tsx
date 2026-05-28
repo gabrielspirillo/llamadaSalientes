@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -57,13 +57,17 @@ export function ReminderDetailDialog({
   reminder,
   rule,
   onClose,
+  onLocalPatch,
 }: {
   reminder: Reminder;
   rule: Rule | null;
   onClose: () => void;
+  /** Optional callback para aplicar un cambio inmediato al state del Pipeline. */
+  onLocalPatch?: (reminderId: string, patch: Partial<Reminder>) => void;
 }) {
   const vars = getVars(reminder.payloadSnapshot);
   const status = STATUS_LABEL[reminder.status] ?? { label: reminder.status, tone: 'neutral' as const };
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -89,14 +93,27 @@ export function ReminderDetailDialog({
       )
     )
       return;
+    setBusy(true);
     const res = await fetch(`/api/reminders/${reminder.id}/mark`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ action }),
     });
     const data = await res.json().catch(() => ({}));
+    setBusy(false);
     if (res.ok) {
-      alert(`✓ Marcado como ${action}.`);
+      // Optimistic update: aplicar el cambio al state del Pipeline ya mismo
+      // para que la card se mueva de columna sin esperar al próximo poll.
+      const newStatus =
+        action === 'confirm'
+          ? 'CONFIRMED'
+          : action === 'cancel'
+            ? 'CANCELLED'
+            : 'RESCHEDULE_REQUESTED';
+      onLocalPatch?.(reminder.id, {
+        status: newStatus as Reminder['status'],
+        respondedAt: new Date().toISOString(),
+      });
       onClose();
     } else {
       alert(`No se pudo marcar.\n\nMotivo: ${data.error ?? 'error desconocido'}`);
@@ -174,15 +191,16 @@ export function ReminderDetailDialog({
         )}
 
         <div className="flex flex-wrap items-center gap-2 border-t border-zinc-100 p-5">
-          <Button size="sm" onClick={() => mark('confirm')}>
+          <Button size="sm" onClick={() => mark('confirm')} disabled={busy}>
             Marcar como confirmado
           </Button>
-          <Button size="sm" variant="secondary" onClick={() => mark('reschedule')}>
+          <Button size="sm" variant="secondary" onClick={() => mark('reschedule')} disabled={busy}>
             Marcar reagendar
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => mark('cancel')}>
+          <Button size="sm" variant="ghost" onClick={() => mark('cancel')} disabled={busy}>
             Marcar cancelado
           </Button>
+          {busy && <span className="text-xs text-zinc-500">Guardando…</span>}
         </div>
       </div>
     </div>

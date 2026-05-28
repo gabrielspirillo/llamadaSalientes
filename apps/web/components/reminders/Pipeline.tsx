@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -122,35 +122,45 @@ export function RemindersPipeline({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
-  // Polling cada 15s para refrescar la lista sin recargar la página. Si la
-  // pestaña está en background no pollea (visibilityState).
-  useEffect(() => {
-    let cancelled = false;
-    async function refresh() {
-      if (document.visibilityState !== 'visible') return;
-      try {
-        const res = await fetch('/api/reminders?include=skipped', { cache: 'no-store' });
-        if (!res.ok || cancelled) return;
-        const data = await res.json();
-        if (cancelled) return;
-        const nextRules: Record<string, Rule> = {};
-        for (const r of data.reminders ?? []) {
-          if (r.rule) nextRules[r.ruleId] = r.rule;
-        }
-        setReminders(data.reminders ?? []);
-        setRulesById(nextRules);
-        setSkipped(data.skipped ?? []);
-        setLastRefresh(new Date());
-      } catch (err) {
-        console.warn('[reminders-pipeline] poll failed', err);
+  // Refresh manual (también lo usa el polling). Memorizado para poder
+  // pasarlo al detail dialog y dispararlo inmediatamente después de un
+  // mark manual sin esperar al próximo tick.
+  const refresh = useCallback(async () => {
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+    try {
+      const res = await fetch('/api/reminders?include=skipped', { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = await res.json();
+      const nextRules: Record<string, Rule> = {};
+      for (const r of data.reminders ?? []) {
+        if (r.rule) nextRules[r.ruleId] = r.rule;
       }
+      setReminders(data.reminders ?? []);
+      setRulesById(nextRules);
+      setSkipped(data.skipped ?? []);
+      setLastRefresh(new Date());
+    } catch (err) {
+      console.warn('[reminders-pipeline] refresh failed', err);
     }
-    const interval = window.setInterval(refresh, 15_000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-    };
   }, []);
+
+  // Polling cada 15s. Pausa cuando la pestaña está en background.
+  useEffect(() => {
+    const interval = window.setInterval(refresh, 15_000);
+    return () => window.clearInterval(interval);
+  }, [refresh]);
+
+  // Optimistic update: aplica un cambio al state local inmediatamente y
+  // dispara un refresh para reconciliar con BD. El dialog lo invoca cuando
+  // el usuario marca confirmar/reagendar/cancelar manualmente.
+  const applyLocalReminderPatch = useCallback(
+    (reminderId: string, patch: Partial<Reminder>) => {
+      setReminders((arr) => arr.map((r) => (r.id === reminderId ? { ...r, ...patch } : r)));
+      // Reconciliar con BD en background.
+      void refresh();
+    },
+    [refresh],
+  );
 
   const filtered = useMemo(() => {
     if (!search.trim()) return reminders;
@@ -240,6 +250,7 @@ export function RemindersPipeline({
           reminder={selected}
           rule={rulesById[selected.ruleId] ?? null}
           onClose={() => setSelectedId(null)}
+          onLocalPatch={applyLocalReminderPatch}
         />
       )}
     </div>
