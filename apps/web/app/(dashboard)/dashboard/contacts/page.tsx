@@ -28,7 +28,7 @@ export default async function ContactsPage() {
               Para ver tus contactos necesitamos la integración con GHL configurada.
             </p>
             <Link
-              href="/dashboard/settings"
+              href="/dashboard/configuration?tab=integrations"
               className="inline-block mt-5 rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 transition-colors"
             >
               Ir a configuración

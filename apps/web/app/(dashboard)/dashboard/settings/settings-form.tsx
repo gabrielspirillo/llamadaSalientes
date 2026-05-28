@@ -48,7 +48,7 @@ export function SettingsForm({
   autoCallbackSlot,
 }: {
   initial: Settings;
-  ghlSlot: React.ReactNode;
+  ghlSlot?: React.ReactNode;
   autoCallbackSlot?: React.ReactNode;
 }) {
   const [hours, setHours] = useState<WorkingHours>(initial.workingHours ?? DEFAULT_HOURS);

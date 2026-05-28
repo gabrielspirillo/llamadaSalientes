@@ -12,7 +12,6 @@ import {
   Home,
   ListChecks,
   MessageCircle,
-  Phone,
   PhoneCall,
   PhoneOutgoing,
   Settings,
@@ -38,7 +37,6 @@ const items = [
   { href: '/dashboard/faqs', label: 'FAQs', icon: HelpCircle },
   { href: '/dashboard/team', label: 'Equipo', icon: Users },
   { href: '/dashboard/settings', label: 'Clínica', icon: Building2 },
-  { href: '/dashboard/settings/telephony', label: 'Telefonía', icon: Phone },
 ] as const;
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
@@ -105,9 +103,14 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 
       <div className="px-3 pb-4">
         <Link
-          href="/dashboard/settings"
+          href="/dashboard/configuration"
           onClick={onNavigate}
-          className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-zinc-600 hover:bg-white/60 hover:text-zinc-900 transition-colors"
+          className={cn(
+            'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors',
+            pathname.startsWith('/dashboard/configuration')
+              ? 'bg-white text-zinc-900 shadow-sm border border-zinc-200/70 font-medium'
+              : 'text-zinc-600 hover:bg-white/60 hover:text-zinc-900',
+          )}
         >
           <Settings className="h-4 w-4" />
           Configuración

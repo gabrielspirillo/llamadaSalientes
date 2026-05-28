@@ -119,7 +119,7 @@ export default async function DashboardOverview() {
                 label="Ver analytics por módulo"
               />
               <QuickAction
-                href="/dashboard/settings/telephony"
+                href="/dashboard/configuration?tab=telephony"
                 icon={<Phone className="h-4 w-4" />}
                 label="Configurar telefonía"
               />

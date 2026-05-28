@@ -28,7 +28,7 @@ export async function disconnectGhlAction(): Promise<ActionResult> {
     before: { locationId: before.locationId, scopes: before.scopes },
   });
 
-  revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/configuration');
   return { ok: true };
 }
 
@@ -69,7 +69,7 @@ export async function connectGhlPitAction(input: {
   } catch (err) {
     // Mantenemos lo que guardamos pero avisamos
     const msg = err instanceof Error ? err.message : 'Verificación falló';
-    revalidatePath('/dashboard/settings');
+    revalidatePath('/dashboard/configuration');
     return {
       ok: false,
       error: `Guardado, pero la verificación falló: ${msg}. Revisá que el token y Location ID sean correctos.`,
@@ -84,6 +84,6 @@ export async function connectGhlPitAction(input: {
     after: { locationId, method: 'pit' },
   });
 
-  revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/configuration');
   return { ok: true };
 }

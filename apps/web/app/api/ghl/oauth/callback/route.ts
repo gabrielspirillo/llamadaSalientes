@@ -46,7 +46,9 @@ export async function GET(req: NextRequest) {
       entityId: tokens.locationId ?? null,
       after: { locationId: tokens.locationId, scopes: tokens.scope },
     });
-    return NextResponse.redirect(`${env.NEXT_PUBLIC_APP_URL}/dashboard/settings?ghl=connected`);
+    return NextResponse.redirect(
+      `${env.NEXT_PUBLIC_APP_URL}/dashboard/configuration?tab=integrations&ghl=connected`,
+    );
   } catch (err) {
     console.error('ghl_oauth_callback_failed', err);
     return redirectError(env.NEXT_PUBLIC_APP_URL, 'token_exchange_failed');
@@ -54,5 +56,7 @@ export async function GET(req: NextRequest) {
 }
 
 function redirectError(base: string, code: string) {
-  return NextResponse.redirect(`${base}/dashboard/settings?ghl_error=${encodeURIComponent(code)}`);
+  return NextResponse.redirect(
+    `${base}/dashboard/configuration?tab=integrations&ghl_error=${encodeURIComponent(code)}`,
+  );
 }

@@ -107,7 +107,7 @@ export async function connectCloud(input: unknown): Promise<ActionResult<{ statu
     console.error('audit_failed', auditErr);
   }
 
-  revalidatePath('/dashboard/whatsapp/integrations');
+  revalidatePath('/dashboard/configuration');
   return ok({ status: 'CONNECTED' });
 }
 
@@ -186,7 +186,7 @@ export async function connectTwilio(input: unknown): Promise<ActionResult<{ stat
     console.error('audit_failed', auditErr);
   }
 
-  revalidatePath('/dashboard/whatsapp/integrations');
+  revalidatePath('/dashboard/configuration');
   return ok({ status: 'CONNECTED' });
 }
 
@@ -327,7 +327,7 @@ export async function connectEvolution(): Promise<
             updatedAt: new Date(),
           })
           .where(eq(whatsappConnections.id, conn.id));
-        revalidatePath('/dashboard/whatsapp/integrations');
+        revalidatePath('/dashboard/configuration');
         return ok({
           qrBase64: refreshed.qrBase64,
           pairingCode: refreshed.pairingCode,
@@ -393,7 +393,7 @@ export async function connectEvolution(): Promise<
     console.error('audit_failed', auditErr);
   }
 
-  revalidatePath('/dashboard/whatsapp/integrations');
+  revalidatePath('/dashboard/configuration');
   return ok({ qrBase64, pairingCode, instanceName });
 }
 
@@ -466,7 +466,7 @@ export async function refreshEvolutionQr(): Promise<
       updatedAt: new Date(),
     })
     .where(eq(whatsappConnections.id, conn.id));
-  revalidatePath('/dashboard/whatsapp/integrations');
+  revalidatePath('/dashboard/configuration');
   return ok({ qrBase64: r.qrBase64, pairingCode: r.pairingCode, state: r.state });
 }
 
@@ -515,7 +515,7 @@ export async function getEvolutionConnectionState(): Promise<
       })
       .where(eq(whatsappConnections.id, conn.id));
     if (status !== conn.status) {
-      revalidatePath('/dashboard/whatsapp/integrations');
+      revalidatePath('/dashboard/configuration');
     }
     return ok({ state, status });
   } catch (err) {
@@ -609,7 +609,7 @@ export async function setChatwoot(input: unknown): Promise<ActionResult<null>> {
   } catch (auditErr) {
     console.error('audit_failed', auditErr);
   }
-  revalidatePath('/dashboard/whatsapp/integrations');
+  revalidatePath('/dashboard/configuration');
   return ok(null);
 }
 
@@ -640,7 +640,7 @@ export async function disconnectChatwoot(): Promise<ActionResult<null>> {
   } catch (err) {
     return fail(`No pude desconectar Chatwoot: ${(err as Error).message}`);
   }
-  revalidatePath('/dashboard/whatsapp/integrations');
+  revalidatePath('/dashboard/configuration');
   return ok(null);
 }
 
@@ -759,6 +759,6 @@ export async function disconnect(input: unknown): Promise<ActionResult<null>> {
     console.error('audit_failed', auditErr);
   }
 
-  revalidatePath('/dashboard/whatsapp/integrations');
+  revalidatePath('/dashboard/configuration');
   return ok(null);
 }
