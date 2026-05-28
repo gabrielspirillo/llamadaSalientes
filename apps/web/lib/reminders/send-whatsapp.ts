@@ -150,6 +150,7 @@ export async function sendWhatsAppDirect(args: {
     if (!body.trim()) return { ok: false, reason: 'empty_body' };
 
     const connector = buildConnector(conn);
+    // Intento 1: con botones interactivos (sendButtons).
     try {
       const sent = await sendAgentResponse({
         tenantId,
@@ -166,8 +167,34 @@ export async function sendWhatsAppDirect(args: {
         kind: sent.kind,
       };
     } catch (err) {
-      console.error('[send-whatsapp] evolution send failed', err);
-      return { ok: false, reason: 'send_failed' };
+      const errMsg = (err as Error)?.message ?? String(err);
+      console.error('[send-whatsapp] evolution sendButtons failed', errMsg);
+      // Intento 2: fallback a sendText sin botones. Muchas instancias de
+      // Evolution API v2 ya no soportan sendButtons interactivos (Meta lo
+      // deprecó en Baileys upstream). Si pasa, mandamos texto plano para que
+      // al menos llegue el mensaje, y le pedimos al paciente que responda
+      // "Sí" / "Reagendar" / "Cancelar" como fallback.
+      try {
+        const bodyWithHints = `${body}\n\nResponde:\n• "Confirmo" para confirmar\n• "Reagendar" para cambiar\n• "Cancelar" para cancelar`;
+        const sent = await sendAgentResponse({
+          tenantId,
+          conversationId: conversation.id,
+          toPhoneE164,
+          text: bodyWithHints,
+          buttons: null,
+          connector,
+        });
+        return {
+          ok: true,
+          externalMessageId: sent.messageId,
+          conversationId: conversation.id,
+          kind: sent.kind,
+        };
+      } catch (err2) {
+        const err2Msg = (err2 as Error)?.message ?? String(err2);
+        console.error('[send-whatsapp] evolution sendText fallback failed', err2Msg);
+        return { ok: false, reason: `evolution: ${err2Msg}` };
+      }
     }
   }
 
@@ -227,8 +254,9 @@ export async function sendWhatsAppDirect(args: {
         kind: 'template',
       };
     } catch (err) {
-      console.error('[send-whatsapp] template send failed', err);
-      return { ok: false, reason: 'send_failed' };
+      const errMsg = (err as Error)?.message ?? String(err);
+      console.error('[send-whatsapp] template send failed', errMsg);
+      return { ok: false, reason: `template: ${errMsg}` };
     }
   }
 
