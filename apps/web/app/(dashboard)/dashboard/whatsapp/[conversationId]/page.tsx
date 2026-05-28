@@ -4,6 +4,8 @@ import { and, asc, eq, inArray } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import {
+  appointmentsCache,
+  treatments,
   users,
   whatsappContacts,
   whatsappConversations,
@@ -46,7 +48,28 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
   const row = convRows[0];
   if (!row) notFound();
 
-  const [messages, allTags, convTagRows, membersRows] = await Promise.all([
+  // Citas del contacto: lectura optimista del cache local. Si el contact aún
+  // no tiene ghl_contact_id (sync GHL no corrió todavía) devolvemos []
+  // sin tocar la BD.
+  const apptsPromise = row.contact.ghlContactId
+    ? db
+        .select({
+          appt: appointmentsCache,
+          treatmentName: treatments.name,
+        })
+        .from(appointmentsCache)
+        .leftJoin(treatments, eq(appointmentsCache.treatmentId, treatments.id))
+        .where(
+          and(
+            eq(appointmentsCache.tenantId, tenant.id),
+            eq(appointmentsCache.contactId, row.contact.ghlContactId),
+          ),
+        )
+        .orderBy(asc(appointmentsCache.startTime))
+        .limit(10)
+    : Promise.resolve([] as Array<{ appt: typeof appointmentsCache.$inferSelect; treatmentName: string | null }>);
+
+  const [messages, allTags, convTagRows, membersRows, apptRows] = await Promise.all([
     db
       .select()
       .from(whatsappMessages)
@@ -63,6 +86,7 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
       .from(whatsappConversationTags)
       .where(eq(whatsappConversationTags.conversationId, row.conv.id)),
     listTenantMembersSynced(tenant.id, tenant.clerkOrganizationId),
+    apptsPromise,
   ]);
 
   const tagIdsOnConv = convTagRows.map((r) => r.tagId);
@@ -149,9 +173,11 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
       <ContactSidebar
         conversationId={row.conv.id}
         contact={{
+          id: row.contact.id,
           name: row.contact.name,
           phoneE164: row.contact.phoneE164,
           ghlContactId: row.contact.ghlContactId,
+          avatarUrl: row.contact.avatarUrl,
           createdAt: row.contact.createdAt,
         }}
         conversation={{
@@ -162,6 +188,12 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
           lastMsgAt: row.conv.lastMsgAt,
           humanTakeoverUntil: row.conv.humanTakeoverUntil,
         }}
+        appointments={apptRows.map((r) => ({
+          id: r.appt.ghlAppointmentId,
+          startTime: r.appt.startTime ? r.appt.startTime.toISOString() : null,
+          status: r.appt.status,
+          treatment: r.treatmentName,
+        }))}
         tagsAll={allTags}
         tagsOnConversation={tagsOnConversation}
         members={membersRows}

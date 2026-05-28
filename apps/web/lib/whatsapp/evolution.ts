@@ -192,6 +192,28 @@ export class EvolutionConnector implements WhatsAppConnector {
     });
   }
 
+  /**
+   * Obtiene la URL de la foto de perfil de un contacto de WhatsApp.
+   * Evolution endpoint: POST /chat/fetchProfilePictureUrl/{instance} con
+   * body { number: '<E.164 sin +>' }. Devuelve null si:
+   *   - El contacto tiene el privacy setting "Nadie" para foto de perfil.
+   *   - El endpoint responde 404 / sin profilePictureUrl.
+   *   - Algún error de red.
+   * Esto es estrictamente best-effort.
+   */
+  async fetchProfilePictureUrl(toE164: string): Promise<string | null> {
+    try {
+      const json = await this.post<{ wuid?: string; profilePictureUrl?: string | null }>(
+        `/chat/fetchProfilePictureUrl/${encodeURIComponent(this.opts.instanceName)}`,
+        { number: stripPlus(toE164) },
+        'FETCH_PROFILE_PIC_FAILED',
+      );
+      return json.profilePictureUrl ?? null;
+    } catch {
+      return null;
+    }
+  }
+
   /** Marca uno o varios mensajes inbound como leídos. Best-effort. */
   async markAsRead(
     items: Array<{ remoteJid: string; fromMe: boolean; id: string }>,

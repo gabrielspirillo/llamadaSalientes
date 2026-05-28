@@ -14,6 +14,7 @@ import { runWhatsappAgent } from '@/lib/whatsapp/agent';
 import { processInboundMessages } from '@/lib/whatsapp/agent/multimodal';
 import { writeAgentRun } from '@/lib/whatsapp/agent/persist-run';
 import type { AgentInput, AgentOutput, HistoryTurn } from '@/lib/whatsapp/agent/types';
+import { syncWhatsappContactAvatar } from '@/lib/whatsapp/contacts/sync-avatar';
 import { syncWhatsappContactWithGhl } from '@/lib/whatsapp/contacts/sync-ghl';
 import { buildConnector } from '@/lib/whatsapp/factory';
 import { sendAgentResponse } from '@/lib/whatsapp/outbound/send-response';
@@ -112,6 +113,17 @@ export async function processWhatsappJob(
   // 3. Resolver connector. NO envolver en step.run: el caché de step.run
   //    serializa a JSON y destruye los métodos de la instancia.
   const connector = await resolveConnector(tenantId);
+
+  // 3.5. Asegurar avatar del contacto (solo Evolution implementa fetch).
+  // Idempotente: si ya hay avatar_url o el channel no lo soporta, sale.
+  await step.run('sync-avatar', async () => {
+    const result = await syncWhatsappContactAvatar({
+      contactId: gate.contactId,
+      phoneE164: contactPhoneE164,
+      connector,
+    });
+    return result;
+  });
 
   // 4. Multimodal preprocessing (Whisper/Vision + caching DB).
   //    Se ejecuta SIEMPRE — incluso en HANDOFF — para que el media se

@@ -5,13 +5,22 @@ import postgres from 'postgres';
 
 config({ path: path.resolve(__dirname, '../.env.local') });
 
+// Uso:
+//   pnpm tsx scripts/apply-migration.ts                     → corre 0000_init.sql (legacy)
+//   pnpm tsx scripts/apply-migration.ts 0011_xxx.sql        → corre el archivo indicado
+//   pnpm tsx scripts/apply-migration.ts /ruta/abs.sql       → corre la ruta absoluta
 async function main() {
   const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
   if (!url) {
     console.error('❌ DIRECT_URL or DATABASE_URL must be set');
     process.exit(1);
   }
-  const file = path.resolve(__dirname, '../../../supabase/migrations/0000_init.sql');
+  const arg = process.argv[2];
+  const file = arg
+    ? (path.isAbsolute(arg)
+        ? arg
+        : path.resolve(__dirname, '../../../supabase/migrations', arg))
+    : path.resolve(__dirname, '../../../supabase/migrations/0000_init.sql');
   const sqlText = fs.readFileSync(file, 'utf8');
   console.log(`→ applying ${path.basename(file)} (${sqlText.length} bytes)`);
 

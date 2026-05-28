@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useTransition } from 'react';
 
 import {
@@ -22,12 +23,21 @@ interface Member {
   role: string;
 }
 
+interface Appointment {
+  id: string;
+  startTime: string | null;
+  status: string | null;
+  treatment: string | null;
+}
+
 interface Props {
   conversationId: string;
   contact: {
+    id: string;
     name: string | null;
     phoneE164: string;
     ghlContactId: string | null;
+    avatarUrl: string | null;
     createdAt: Date;
   };
   conversation: {
@@ -38,6 +48,7 @@ interface Props {
     lastMsgAt: Date | null;
     humanTakeoverUntil: Date | null;
   };
+  appointments: Appointment[];
   tagsAll: Tag[];
   tagsOnConversation: Tag[];
   members: Member[];
@@ -50,6 +61,7 @@ export function ContactSidebar({
   conversationId,
   contact,
   conversation,
+  appointments,
   tagsAll,
   tagsOnConversation,
   members,
@@ -153,9 +165,18 @@ export function ContactSidebar({
       {/* Contacto */}
       <div className="rounded-xl border border-zinc-200 bg-white p-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-base font-semibold text-emerald-700">
-            {(contact.name ?? contact.phoneE164).slice(0, 2).toUpperCase()}
-          </div>
+          {contact.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={contact.avatarUrl}
+              alt="avatar"
+              className="h-12 w-12 rounded-full object-cover"
+            />
+          ) : (
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-base font-semibold text-emerald-700">
+              {(contact.name ?? contact.phoneE164).slice(0, 2).toUpperCase()}
+            </div>
+          )}
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-zinc-900">
               {contact.name ?? 'Sin nombre'}
@@ -163,6 +184,12 @@ export function ContactSidebar({
             <p className="text-xs text-zinc-500">{contact.phoneE164}</p>
           </div>
         </div>
+        <Link
+          href={`/dashboard/whatsapp/contacts/${contact.id}`}
+          className="mt-3 inline-flex w-full items-center justify-center rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+        >
+          Ver detalles del contacto
+        </Link>
         <dl className="mt-4 space-y-2 text-xs">
           <div className="flex justify-between">
             <dt className="text-zinc-500">Canal</dt>
@@ -197,6 +224,48 @@ export function ContactSidebar({
             </div>
           )}
         </dl>
+      </div>
+
+      {/* Citas */}
+      <div className="rounded-xl border border-zinc-200 bg-white p-4">
+        <p className="text-sm font-semibold text-zinc-900">Citas</p>
+        {appointments.length === 0 ? (
+          <p className="mt-2 text-xs text-zinc-500">
+            {contact.ghlContactId
+              ? 'Sin citas registradas.'
+              : 'Aún no hay link con el CRM.'}
+          </p>
+        ) : (
+          <ul className="mt-2 space-y-2">
+            {appointments.slice(0, 5).map((a) => (
+              <li key={a.id} className="rounded-lg bg-zinc-50 px-2 py-1.5 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate font-medium text-zinc-800">
+                    {a.treatment ?? 'Cita'}
+                  </span>
+                  {a.status && (
+                    <span
+                      className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase ${apptStatusClass(a.status)}`}
+                    >
+                      {a.status}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-0.5 text-[10px] text-zinc-500">
+                  {a.startTime ? new Date(a.startTime).toLocaleString() : 'Sin fecha'}
+                </p>
+              </li>
+            ))}
+            {appointments.length > 5 && (
+              <Link
+                href={`/dashboard/whatsapp/contacts/${contact.id}`}
+                className="inline-block text-[11px] text-emerald-600 hover:text-emerald-700"
+              >
+                Ver todas ({appointments.length})
+              </Link>
+            )}
+          </ul>
+        )}
       </div>
 
       {/* Agente IA */}
@@ -355,4 +424,13 @@ export function ContactSidebar({
       </div>
     </aside>
   );
+}
+
+function apptStatusClass(status: string): string {
+  const s = status.toLowerCase();
+  if (s.includes('confirm')) return 'bg-emerald-100 text-emerald-700';
+  if (s.includes('show') && !s.includes('no')) return 'bg-blue-100 text-blue-700';
+  if (s.includes('no')) return 'bg-red-100 text-red-700';
+  if (s.includes('cancel')) return 'bg-zinc-200 text-zinc-700';
+  return 'bg-zinc-100 text-zinc-700';
 }
