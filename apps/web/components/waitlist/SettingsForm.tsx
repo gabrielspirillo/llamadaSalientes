@@ -14,6 +14,7 @@ type Settings = {
   minSkipHoursThreshold: number;
   whatsappToVoiceWindowMinutes: number;
   minAppointmentDistanceDays: number;
+  maxAppointmentDistanceDays: number | null;
   minAdvanceDays: number;
   requireSameDentist: boolean;
   respectTimeWindow: boolean;
@@ -114,6 +115,17 @@ export function WaitlistSettingsForm({ initial }: { initial: Settings }) {
       </Row>
 
       <Row
+        label="Cita actual no debe estar a más de (días)"
+        hint="Tope de lejanía. Citas más lejanas no entran a la cola — evita ofrecer adelantos sobre agendas muy futuras. Vacío = sin tope."
+      >
+        <NullableNumInput
+          value={s.maxAppointmentDistanceDays}
+          onChange={(v) => setS({ ...s, maxAppointmentDistanceDays: v })}
+          placeholder="sin tope"
+        />
+      </Row>
+
+      <Row
         label="Slot debe adelantar al menos (días)"
         hint="Solo ofrecemos slots que adelanten significativamente la cita actual."
       >
@@ -195,6 +207,31 @@ function NumInput({ value, onChange }: { value: number; onChange: (v: number) =>
       value={value}
       onChange={(e) => {
         const n = Number.parseInt(e.target.value, 10);
+        if (Number.isFinite(n)) onChange(n);
+      }}
+    />
+  );
+}
+
+function NullableNumInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: number | null;
+  onChange: (v: number | null) => void;
+  placeholder?: string;
+}) {
+  return (
+    <input
+      type="number"
+      className="w-28 rounded-md border border-zinc-200 px-3 py-1.5 text-sm bg-white text-right"
+      value={value ?? ''}
+      placeholder={placeholder}
+      onChange={(e) => {
+        const raw = e.target.value.trim();
+        if (raw === '') return onChange(null);
+        const n = Number.parseInt(raw, 10);
         if (Number.isFinite(n)) onChange(n);
       }}
     />

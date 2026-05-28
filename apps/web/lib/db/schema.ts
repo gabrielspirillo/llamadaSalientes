@@ -1219,6 +1219,9 @@ export const waitlistSettings = pgTable('waitlist_settings', {
   minSkipHoursThreshold: integer('min_skip_hours_threshold').notNull().default(2),
   whatsappToVoiceWindowMinutes: integer('whatsapp_to_voice_window_minutes').notNull().default(60),
   minAppointmentDistanceDays: integer('min_appointment_distance_days').notNull().default(7),
+  // NULL = sin límite. Si está seteado, citas con start_time > now + N días
+  // no entran a la waitlist automática.
+  maxAppointmentDistanceDays: integer('max_appointment_distance_days'),
   minAdvanceDays: integer('min_advance_days').notNull().default(1),
   requireSameDentist: boolean('require_same_dentist').notNull().default(false),
   respectTimeWindow: boolean('respect_time_window').notNull().default(false),

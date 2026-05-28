@@ -92,6 +92,7 @@ export default async function WaitlistSettingsPage() {
             minSkipHoursThreshold: settings.minSkipHoursThreshold,
             whatsappToVoiceWindowMinutes: settings.whatsappToVoiceWindowMinutes,
             minAppointmentDistanceDays: settings.minAppointmentDistanceDays,
+            maxAppointmentDistanceDays: settings.maxAppointmentDistanceDays,
             minAdvanceDays: settings.minAdvanceDays,
             requireSameDentist: settings.requireSameDentist,
             respectTimeWindow: settings.respectTimeWindow,

@@ -615,6 +615,13 @@ export async function autoEnqueueOnNewAppointment(input: {
   if (daysAway < settings.minAppointmentDistanceDays) {
     return { ok: false, reason: 'appointment_too_close' };
   }
+  // Tope máximo de lejanía (opcional). NULL = sin límite.
+  if (
+    settings.maxAppointmentDistanceDays != null &&
+    daysAway > settings.maxAppointmentDistanceDays
+  ) {
+    return { ok: false, reason: 'appointment_too_far' };
+  }
 
   const [row] = await db
     .insert(waitlistEntries)
