@@ -14,6 +14,7 @@ import { runWhatsappAgent } from '@/lib/whatsapp/agent';
 import { processInboundMessages } from '@/lib/whatsapp/agent/multimodal';
 import { writeAgentRun } from '@/lib/whatsapp/agent/persist-run';
 import type { AgentInput, AgentOutput, HistoryTurn } from '@/lib/whatsapp/agent/types';
+import { syncWhatsappContactWithGhl } from '@/lib/whatsapp/contacts/sync-ghl';
 import { buildConnector } from '@/lib/whatsapp/factory';
 import { sendAgentResponse } from '@/lib/whatsapp/outbound/send-response';
 import {
@@ -85,6 +86,17 @@ export async function processWhatsappJob(
     };
   });
   if (!gate.ok) return { ok: false, reason: gate.reason };
+
+  // 1.5. Sincronizar el contacto con GHL (CRM externo). Corre siempre que
+  // exista la conv — incluso si el agente está bloqueado (HANDOFF, AI
+  // disabled) — para que el sidebar muestre el match en el inbox. La
+  // función es idempotente: si el contact ya tiene ghl_contact_id sale en
+  // O(1) sin tocar la API. Si GHL no está conectado o falla, devuelve
+  // null y seguimos sin romper el job.
+  await step.run('sync-ghl-contact', async () => {
+    const result = await syncWhatsappContactWithGhl(tenantId, gate.contactId);
+    return result ? { ghlContactId: result.ghlContactId, created: result.created } : null;
+  });
 
   // 2. Cargar mensajes inbound a procesar (desde el último run de la conv).
   const batch = await step.run('load-inbound-batch', async () => {
