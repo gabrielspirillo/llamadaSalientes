@@ -133,6 +133,17 @@ export interface AgentInput {
    * el UNIQUE de la tabla.
    */
   triggerMessageId: string;
+  /**
+   * Si la conversación tiene un context.remindersResume activo (el paciente
+   * tocó "Reagendar" en un reminder reciente), pasamos esa metadata al
+   * agente para que arranque proactivamente proponiendo slots.
+   */
+  remindersResume?: {
+    reminderId: string;
+    action: 'reschedule';
+    ghlAppointmentId: string;
+    expiresAt: string;
+  } | null;
 }
 
 /**

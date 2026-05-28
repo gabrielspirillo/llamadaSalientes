@@ -1,10 +1,27 @@
 import 'server-only';
+import { and, eq } from 'drizzle-orm';
+
 import { encrypt } from '@/lib/crypto';
 import { upsertCall } from '@/lib/data/calls';
+import { db } from '@/lib/db/client';
+import {
+  appointmentReminders,
+  reminderConfirmations,
+  whatsappContacts,
+  whatsappConversations,
+} from '@/lib/db/schema';
 import { summarizeCall } from '@/lib/openai/client';
 import { buildRecordingKey, fetchAsBuffer, r2Upload } from '@/lib/r2/client';
 import type { QueueJobs } from '@/lib/queue/queues';
+import {
+  removeReminderFallbackJob,
+  removeReminderSendJob,
+  sendQueueEvent,
+} from '@/lib/queue/client';
 import type { StepRunner } from '@/lib/queue/step';
+import { cancelFollowingReminders } from '@/lib/reminders/cancel';
+import { parseReminderVoiceIntent } from '@/lib/reminders/parse-voice-intent';
+import { cancelAppointment } from '@/lib/retell/tools';
 
 type SummaryShape = {
   intent: string;
@@ -86,10 +103,183 @@ export async function processCallJob(
     }
   });
 
+  // Paso opcional: si esta llamada corresponde a un recordatorio (matchea
+  // por external_call_id), parsear intent del transcript y aplicar acción.
+  if (transcript) {
+    await step.run('match-reminder-intent', async () => {
+      return matchReminderIntent({ tenantId, retellCallId, transcript });
+    });
+  }
+
   return {
     tenantId,
     retellCallId,
     recordingR2Key,
     summarized: summary !== null,
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Detección + aplicación de intent en llamadas de recordatorio.
+//
+// Si la llamada fue disparada por un reminder (lib/reminders/send-voice ya
+// guardó el callId en appointment_reminders.external_call_id), parseamos el
+// transcript con OpenAI y aplicamos la acción.
+//
+// Confidence threshold: 0.7 — bajo de eso solo se loguea, no se transiciona.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CONFIDENCE_THRESHOLD = 0.7;
+
+async function matchReminderIntent(args: {
+  tenantId: string;
+  retellCallId: string;
+  transcript: string;
+}): Promise<{ matched: boolean; action?: string; confidence?: number }> {
+  const [rem] = await db
+    .select()
+    .from(appointmentReminders)
+    .where(
+      and(
+        eq(appointmentReminders.tenantId, args.tenantId),
+        eq(appointmentReminders.externalCallId, args.retellCallId),
+      ),
+    )
+    .limit(1);
+
+  if (!rem) return { matched: false };
+
+  const intent = await parseReminderVoiceIntent(args.transcript);
+  if (intent.action === 'none' || intent.confidence < CONFIDENCE_THRESHOLD) {
+    // Loguear en metadata para revisión pero no transicionar.
+    await db.insert(reminderConfirmations).values({
+      tenantId: args.tenantId,
+      reminderId: rem.id,
+      action: 'confirm', // placeholder; el caller no actúa con confidence baja.
+      source: 'voice',
+      metadata: {
+        skipped: true,
+        reason: 'low_confidence_or_none',
+        intent,
+      },
+    }).catch(() => undefined);
+    return { matched: true, action: 'none', confidence: intent.confidence };
+  }
+
+  // Insertar confirmation real.
+  await db.insert(reminderConfirmations).values({
+    tenantId: args.tenantId,
+    reminderId: rem.id,
+    action: intent.action,
+    source: 'voice',
+    metadata: {
+      confidence: intent.confidence,
+      reasoning: intent.reasoning,
+      snippet: intent.snippet,
+    },
+  });
+
+  if (intent.action === 'confirm') {
+    await db
+      .update(appointmentReminders)
+      .set({ status: 'CONFIRMED', respondedAt: new Date(), updatedAt: new Date() })
+      .where(eq(appointmentReminders.id, rem.id));
+    await Promise.all([
+      removeReminderFallbackJob(rem.id),
+      cancelFollowingReminders({
+        tenantId: args.tenantId,
+        ghlAppointmentId: rem.ghlAppointmentId,
+        excludeReminderId: rem.id,
+      }),
+    ]);
+  } else if (intent.action === 'cancel') {
+    await db
+      .update(appointmentReminders)
+      .set({ status: 'CANCELLED', respondedAt: new Date(), updatedAt: new Date() })
+      .where(eq(appointmentReminders.id, rem.id));
+    await Promise.all([
+      removeReminderFallbackJob(rem.id),
+      cancelFollowingReminders({
+        tenantId: args.tenantId,
+        ghlAppointmentId: rem.ghlAppointmentId,
+        excludeReminderId: rem.id,
+      }),
+    ]);
+    try {
+      await cancelAppointment(args.tenantId, { appointment_id: rem.ghlAppointmentId });
+    } catch (err) {
+      console.warn('[reminder-voice] cancelAppointment GHL failed', err);
+    }
+  } else if (intent.action === 'reschedule') {
+    await db
+      .update(appointmentReminders)
+      .set({
+        status: 'RESCHEDULE_REQUESTED',
+        respondedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(appointmentReminders.id, rem.id));
+    await removeReminderFallbackJob(rem.id);
+
+    // Buscar conversación WA del contacto para encolar handoff con remindersResume.
+    // Si no hay conversación, no podemos seguir vía WA — staff verá el status
+    // en pipeline y actuará manualmente.
+    const snapshot = (rem.payloadSnapshot ?? {}) as { vars?: { contact?: { phone?: string } } };
+    const phone = snapshot.vars?.contact?.phone;
+    if (phone) {
+      const [contact] = await db
+        .select({ id: whatsappContacts.id })
+        .from(whatsappContacts)
+        .where(
+          and(
+            eq(whatsappContacts.tenantId, args.tenantId),
+            eq(whatsappContacts.phoneE164, phone),
+          ),
+        )
+        .limit(1);
+
+      if (contact) {
+        const [conv] = await db
+          .select()
+          .from(whatsappConversations)
+          .where(
+            and(
+              eq(whatsappConversations.tenantId, args.tenantId),
+              eq(whatsappConversations.contactId, contact.id),
+            ),
+          )
+          .limit(1);
+
+        if (conv) {
+          const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+          await db
+            .update(whatsappConversations)
+            .set({
+              status: 'ACTIVE',
+              aiEnabled: true,
+              context: {
+                remindersResume: {
+                  reminderId: rem.id,
+                  action: 'reschedule',
+                  ghlAppointmentId: rem.ghlAppointmentId,
+                  expiresAt: expiresAt.toISOString(),
+                },
+              } as Record<string, unknown>,
+              updatedAt: new Date(),
+            })
+            .where(eq(whatsappConversations.id, conv.id));
+          // Encolar wa-process para que el agente arranque la negociación.
+          // No tenemos un messageId real — usamos un UUID derivado.
+          await sendQueueEvent('wa-process', {
+            tenantId: args.tenantId,
+            conversationId: conv.id,
+            messageId: rem.id, // placeholder único
+            contactPhoneE164: phone,
+          });
+        }
+      }
+    }
+  }
+
+  return { matched: true, action: intent.action, confidence: intent.confidence };
 }

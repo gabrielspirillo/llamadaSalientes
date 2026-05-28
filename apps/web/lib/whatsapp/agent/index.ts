@@ -39,6 +39,7 @@ export async function runWhatsappAgent(input: AgentInput): Promise<AgentOutput> 
     treatments: grounding.treatments,
     faqs: grounding.faqs,
     now: formatNowInClinicZone(grounding.clinic.timezone),
+    remindersResume: input.remindersResume ?? null,
   });
 
   const tools = getAgentToolDefinitions();

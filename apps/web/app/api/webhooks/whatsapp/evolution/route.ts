@@ -4,6 +4,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import { auditLogs, whatsappConnections } from '@/lib/db/schema';
 import { sendQueueEvent } from '@/lib/queue/client';
+import { tryHandleReminderInbound } from '@/lib/reminders/handle-button-reply';
 import {
   evolutionMessagesUpsertSchema,
   normalizeEvolutionMessage,
@@ -112,12 +113,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         try {
           const persisted = await persistInboundMessage(inbound);
           if (persisted.message) {
-            await sendQueueEvent('wa-process', {
+            const reminderResult = await tryHandleReminderInbound({
               tenantId: conn.tenantId,
               conversationId: persisted.conversation.id,
-              messageId: persisted.message.id,
               contactPhoneE164: persisted.contact.phoneE164,
+              inboundMessageId: persisted.message.id,
+              rawMessage: parsed.data.data,
+              channel: 'WHATSAPP_EVOLUTION',
+            }).catch((err) => {
+              console.warn('[wa-evolution-webhook] reminder reply handler failed', err);
+              return { consumed: false } as const;
             });
+            if (!reminderResult.consumed) {
+              await sendQueueEvent('wa-process', {
+                tenantId: conn.tenantId,
+                conversationId: persisted.conversation.id,
+                messageId: persisted.message.id,
+                contactPhoneE164: persisted.contact.phoneE164,
+              });
+            }
           }
         } catch (err) {
           console.error('[wa-evolution-webhook] persistInboundMessage failed', {

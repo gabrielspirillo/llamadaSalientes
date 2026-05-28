@@ -61,6 +61,18 @@ export interface BuildSystemPromptInput {
    * que convertir mentalmente — y que se equivoca a hacerlo.
    */
   now: string;
+  /**
+   * Si el paciente tocó "Reagendar" en un recordatorio reciente, le inyectamos
+   * al agente una instrucción para arrancar la negociación de slots de forma
+   * proactiva (con sus tools `check_availability` + `book_appointment` +
+   * `cancel_appointment` ya existentes).
+   */
+  remindersResume?: {
+    reminderId: string;
+    action: 'reschedule';
+    ghlAppointmentId: string;
+    expiresAt: string;
+  } | null;
 }
 
 /**
@@ -183,9 +195,24 @@ function formatFaqs(faqs: FaqLine[]): string {
  *    estándar).
  */
 export function buildSystemPrompt(input: BuildSystemPromptInput): string {
-  const { clinic, treatments, faqs, now } = input;
+  const { clinic, treatments, faqs, now, remindersResume } = input;
+  const resumeSection = remindersResume
+    ? `
 
-  return `Eres el asistente virtual de WhatsApp de la clínica dental "${clinic.name}".
+# Contexto especial — Reagendamiento desde recordatorio
+El paciente acaba de tocar "Reagendar" en un recordatorio que le mandamos. No
+tienes que preguntarle si quiere reagendar — ya lo pidió. Tu trabajo:
+1. Confirma amablemente que vas a buscar otro hueco (ej: "Claro, te busco otra hora").
+2. Llama a check_availability(...) con su preferencia de día/franja (si no la dio,
+   pregunta antes con UNA frase: "¿Te viene mejor mañana por la mañana o por la tarde?").
+3. Cuando el paciente acepte un slot, llama a book_appointment(...) y luego a
+   cancel_appointment(appointment_id="${remindersResume.ghlAppointmentId}") para
+   liberar la cita vieja. No menciones el id al paciente.
+4. Si el paciente prefiere mantener la cita original, cierra sin hacer nada.
+`
+    : '';
+
+  return `Eres el asistente virtual de WhatsApp de la clínica dental "${clinic.name}".${resumeSection}
 Atiendes TODO lo que llega a la clínica por WhatsApp: pacientes existentes, personas
 interesadas, y también proveedores, profesionales, mutuas, postulantes, prensa, etc.
 Hablas español de España.

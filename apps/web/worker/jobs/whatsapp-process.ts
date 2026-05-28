@@ -84,6 +84,7 @@ export async function processWhatsappJob(
       reason: agentBlocked ? reason : undefined,
       contactId: conv.contactId,
       channel: conv.channel,
+      context: (conv.context ?? {}) as Record<string, unknown>,
     };
   });
   if (!gate.ok) return { ok: false, reason: gate.reason };
@@ -153,6 +154,7 @@ export async function processWhatsappJob(
   });
 
   const triggerMessageId = batch.lastMessageId;
+  const remindersResume = readRemindersResume(gate.context);
   const agentInput: AgentInput = {
     tenantId,
     conversationId,
@@ -161,6 +163,7 @@ export async function processWhatsappJob(
     userText: multimodal.combinedText,
     history,
     triggerMessageId,
+    remindersResume,
   };
 
   // Indicador "escribiendo…" para el inbox del operador: emitimos desde el
@@ -361,4 +364,32 @@ async function applyHandoffFlags(conversationId: string, urgent: boolean): Promi
       updatedAt: new Date(),
     })
     .where(eq(whatsappConversations.id, conversationId));
+}
+
+// Lee el flag remindersResume del context de la conversación. Si está
+// expirado, devuelve null. Si el shape no matchea, devuelve null.
+function readRemindersResume(
+  context: Record<string, unknown>,
+): AgentInput['remindersResume'] {
+  const raw = context.remindersResume;
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Partial<NonNullable<AgentInput['remindersResume']>>;
+  if (
+    typeof r.reminderId !== 'string' ||
+    typeof r.ghlAppointmentId !== 'string' ||
+    typeof r.expiresAt !== 'string' ||
+    r.action !== 'reschedule'
+  ) {
+    return null;
+  }
+  const expiresAt = new Date(r.expiresAt);
+  if (Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() < Date.now()) {
+    return null;
+  }
+  return {
+    reminderId: r.reminderId,
+    action: 'reschedule',
+    ghlAppointmentId: r.ghlAppointmentId,
+    expiresAt: r.expiresAt,
+  };
 }

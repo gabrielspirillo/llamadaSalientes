@@ -4,6 +4,7 @@ import { cn } from '@/lib/cn';
 import { OrganizationSwitcher } from '@clerk/nextjs';
 import {
   BarChart3,
+  BellRing,
   Bot,
   Building2,
   Contact,
@@ -26,6 +27,7 @@ const items = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: '/dashboard/calls', label: 'Llamadas', icon: PhoneCall },
   { href: '/dashboard/outbound', label: 'Salientes', icon: PhoneOutgoing },
+  { href: '/dashboard/reminders', label: 'Recordatorios', icon: BellRing },
   { href: '/dashboard/whatsapp', label: 'WhatsApp', icon: MessageCircle },
   { href: '/dashboard/contacts', label: 'Contactos', icon: Contact },
   { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
