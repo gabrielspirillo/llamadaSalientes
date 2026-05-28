@@ -54,7 +54,7 @@ export async function processWhatsappJob(
 
   const { tenantId, conversationId, contactPhoneE164 } = data;
 
-  // 1. Cargar conversación + verificar gates.
+  // 1. Cargar conversación.
   const gate = await step.run('gate-check', async () => {
     const rows = await db
       .select()
@@ -62,13 +62,23 @@ export async function processWhatsappJob(
       .where(eq(whatsappConversations.id, conversationId))
       .limit(1);
     const conv = rows[0];
-    if (!conv) return { ok: false as const, reason: 'conversation_not_found' };
-    if (conv.status !== 'ACTIVE') return { ok: false as const, reason: `status_${conv.status}` };
-    if (!conv.aiEnabled) return { ok: false as const, reason: 'ai_disabled' };
-    if (conv.humanTakeoverUntil && new Date(conv.humanTakeoverUntil) > new Date()) {
-      return { ok: false as const, reason: 'human_takeover_active' };
-    }
-    return { ok: true as const, contactId: conv.contactId, channel: conv.channel };
+    if (!conv) return { ok: false as const, skipAgent: true, reason: 'conversation_not_found' };
+    const agentBlocked =
+      conv.status !== 'ACTIVE' ||
+      !conv.aiEnabled ||
+      (conv.humanTakeoverUntil && new Date(conv.humanTakeoverUntil) > new Date());
+    const reason = conv.status !== 'ACTIVE'
+      ? `status_${conv.status}`
+      : !conv.aiEnabled
+        ? 'ai_disabled'
+        : 'human_takeover_active';
+    return {
+      ok: true as const,
+      skipAgent: !!agentBlocked,
+      reason: agentBlocked ? reason : undefined,
+      contactId: conv.contactId,
+      channel: conv.channel,
+    };
   });
   if (!gate.ok) return { ok: false, reason: gate.reason };
 
@@ -88,6 +98,8 @@ export async function processWhatsappJob(
   const connector = await resolveConnector(tenantId);
 
   // 4. Multimodal preprocessing (Whisper/Vision + caching DB).
+  //    Se ejecuta SIEMPRE — incluso en HANDOFF — para que el media se
+  //    descargue, suba a MinIO y se muestre en la UI del dashboard.
   const multimodal = await step.run('multimodal', async () => {
     const output = await processInboundMessages({
       tenantId,
@@ -100,6 +112,12 @@ export async function processWhatsappJob(
       totalLatencyMs: output.totalLatencyMs,
     };
   });
+
+  // Si el agente está bloqueado (HANDOFF, AI disabled, etc.), salimos
+  // después de procesar media para que el contenido sea visible en la UI.
+  if (gate.skipAgent) {
+    return { ok: false, reason: gate.reason };
+  }
 
   // 5. Historial breve para contexto del LLM.
   const history = await step.run('load-history', async () => {
