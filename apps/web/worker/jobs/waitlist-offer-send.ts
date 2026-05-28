@@ -69,6 +69,21 @@ export async function processWaitlistOfferSendJob(
       }
       externalMessageId = res.externalMessageId;
     } else if (offer.channel === 'VOICE') {
+      // Cargar voice_prompt_override de la plantilla VOICE del tenant, si existe.
+      const { db: dbInner } = await import('@/lib/db/client');
+      const { waitlistMessageTemplates } = await import('@/lib/db/schema');
+      const { and: andOp, eq: eqOp } = await import('drizzle-orm');
+      const [tpl] = await dbInner
+        .select({ voicePromptOverride: waitlistMessageTemplates.voicePromptOverride })
+        .from(waitlistMessageTemplates)
+        .where(
+          andOp(
+            eqOp(waitlistMessageTemplates.tenantId, tenantId),
+            eqOp(waitlistMessageTemplates.channel, 'VOICE'),
+            eqOp(waitlistMessageTemplates.driverScope, 'voice_retell'),
+          ),
+        )
+        .limit(1);
       const res = await sendWaitlistVoice({
         tenantId,
         offerId,
@@ -76,6 +91,7 @@ export async function processWaitlistOfferSendJob(
         vars,
         contactDisplayName: displayName,
         ghlContactId: built.entry.ghlContactId,
+        extraPromptInstructions: tpl?.voicePromptOverride ?? null,
       });
       if (!res.ok) {
         await markStatus(offerId, 'CANCELLED', res.reason);

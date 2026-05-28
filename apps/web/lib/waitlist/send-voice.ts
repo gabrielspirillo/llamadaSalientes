@@ -3,9 +3,16 @@ import { triggerCallback } from '@/lib/calls/trigger-callback';
 import type { WaitlistVars } from '@/lib/waitlist/types';
 
 // Llama al paciente con use_case='waitlist_offer'. El LLM outbound de Retell
-// (DentalVoice — Outbound) lee las dynamicVars y propone el slot adelantado.
-// Cuando el paciente acepta, el agente llama a la tool `accept_waitlist_offer`
-// con offerId.
+// (DentalVoice — Outbound) tiene un branch específico para este use_case que
+// usa las dynamic vars de la oferta. Si extraPromptInstructions tiene valor,
+// se inyecta como guidance adicional ({{waitlist_extra_instructions}}).
+//
+// Nombres de dynamic vars alineados con los que ya consume el prompt:
+//   patient_name, clinic_name, clinic_phones, clinic_timezone, current_date
+//     (los pone triggerCallback / buildClinicContextVars).
+//   offer_id, old_appointment_{date,time,datetime},
+//   new_slot_{date,time,datetime,duration_minutes}, treatment_name,
+//   waitlist_extra_instructions.
 
 export async function sendWaitlistVoice(args: {
   tenantId: string;
@@ -14,8 +21,19 @@ export async function sendWaitlistVoice(args: {
   vars: WaitlistVars;
   contactDisplayName: string | null;
   ghlContactId: string | null;
+  /** Texto adicional del operador (voice_prompt_override) que se pasa al
+   * agente como `waitlist_extra_instructions`. Opcional. */
+  extraPromptInstructions?: string | null;
 }): Promise<{ ok: true; callId: string } | { ok: false; reason: string }> {
-  const { tenantId, offerId, toPhoneE164, vars, contactDisplayName, ghlContactId } = args;
+  const {
+    tenantId,
+    offerId,
+    toPhoneE164,
+    vars,
+    contactDisplayName,
+    ghlContactId,
+    extraPromptInstructions,
+  } = args;
 
   const result = await triggerCallback({
     tenantId,
@@ -27,13 +45,15 @@ export async function sendWaitlistVoice(args: {
     createContactIfMissing: false,
     dynamicVars: {
       offer_id: offerId,
-      fecha_cita_vieja: vars.oldAppointment.dateTime,
-      fecha_cita_nueva: vars.newSlot.dateTime,
-      hora_cita_nueva: vars.newSlot.time,
-      tratamiento: vars.treatment,
-      paciente_nombre: vars.contact.firstName || vars.contact.fullName,
-      clinica_nombre: vars.clinic.name,
-      clinica_telefono: vars.clinic.phone,
+      old_appointment_date: vars.oldAppointment.date,
+      old_appointment_time: vars.oldAppointment.time,
+      old_appointment_datetime: vars.oldAppointment.dateTime,
+      new_slot_date: vars.newSlot.date,
+      new_slot_time: vars.newSlot.time,
+      new_slot_datetime: vars.newSlot.dateTime,
+      new_slot_duration_minutes: vars.newSlot.durationMinutes,
+      treatment_name: vars.treatment,
+      waitlist_extra_instructions: (extraPromptInstructions ?? '').trim(),
     },
   });
 

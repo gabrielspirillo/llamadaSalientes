@@ -108,15 +108,22 @@ export async function sendWaitlistWhatsAppDirect(args: {
   if (conn.mode === 'EVOLUTION') {
     const body = template.freeText ? interpolateWaitlist(template.freeText, vars) : '';
     if (!body.trim()) return { ok: false, reason: 'empty_body' };
+    void buttons;
 
+    // OJO: NO usamos sendButtons. Evolution + Baileys lo enruta como
+    // viewOnceMessage que no se entrega a muchos clientes WhatsApp (queda
+    // PENDING). En su lugar mandamos texto plano con hints; el handler de
+    // inbound (handle-text-reply) reconoce "acepto" / "no puedo" / "sí" / "no"
+    // y resuelve la oferta.
+    const bodyWithHints = `${body}\n\nResponde:\n• *Acepto* para tomar el hueco\n• *No puedo* si no te sirve`;
     const connector = buildConnector(conn);
     try {
       const sent = await sendAgentResponse({
         tenantId,
         conversationId: conversation.id,
         toPhoneE164,
-        text: body,
-        buttons,
+        text: bodyWithHints,
+        buttons: null,
         connector,
       });
       return {
@@ -127,28 +134,8 @@ export async function sendWaitlistWhatsAppDirect(args: {
       };
     } catch (err) {
       const errMsg = (err as Error)?.message ?? String(err);
-      console.error('[waitlist-send-wa] evolution sendButtons failed', errMsg);
-      try {
-        const bodyHints = `${body}\n\nResponde:\n• "Acepto" para tomar el hueco\n• "No puedo" si no te sirve`;
-        const sent = await sendAgentResponse({
-          tenantId,
-          conversationId: conversation.id,
-          toPhoneE164,
-          text: bodyHints,
-          buttons: null,
-          connector,
-        });
-        return {
-          ok: true,
-          externalMessageId: sent.messageId,
-          conversationId: conversation.id,
-          kind: sent.kind,
-        };
-      } catch (err2) {
-        const err2Msg = (err2 as Error)?.message ?? String(err2);
-        console.error('[waitlist-send-wa] evolution sendText fallback failed', err2Msg);
-        return { ok: false, reason: `evolution: ${err2Msg}` };
-      }
+      console.error('[waitlist-send-wa] evolution sendText failed', errMsg);
+      return { ok: false, reason: `evolution: ${errMsg}` };
     }
   }
 

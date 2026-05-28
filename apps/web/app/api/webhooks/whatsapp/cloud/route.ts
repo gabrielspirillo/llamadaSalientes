@@ -13,6 +13,7 @@ import {
 } from '@/lib/whatsapp';
 import { tryHandleReminderInbound } from '@/lib/reminders/handle-button-reply';
 import { tryHandleWaitlistInbound } from '@/lib/waitlist/handle-button-reply';
+import { tryHandleWaitlistTextReply } from '@/lib/waitlist/handle-text-reply';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -115,17 +116,33 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           // global WHATSAPP_AGENT_ENABLED — corre dentro del worker BullMQ
           // (job se encola con delay 5s para coalescer ráfagas).
           if (persisted.message) {
-            // Si el inbound es un button reply de un reminder o de una oferta
-            // de waitlist, lo consumimos acá y NO encolamos wa-process. Para
+            // Si el inbound es un button reply (reminder o waitlist) o un texto
+            // tipo "acepto"/"no puedo" que matchea una oferta de waitlist
+            // activa, lo consumimos acá y NO encolamos wa-process. Para
             // reminder reschedule el handler encola wa-process internamente.
-            const waitlistResult = await tryHandleWaitlistInbound({
+            const waitlistButtonResult = await tryHandleWaitlistInbound({
               tenantId: conn.tenantId,
               rawMessage: msg,
               channel: 'WHATSAPP_CLOUD',
             }).catch((err) => {
-              console.warn('[wa-cloud-webhook] waitlist reply handler failed', err);
+              console.warn('[wa-cloud-webhook] waitlist button handler failed', err);
               return { consumed: false } as const;
             });
+
+            const waitlistTextResult = waitlistButtonResult.consumed
+              ? ({ consumed: true } as const)
+              : await tryHandleWaitlistTextReply({
+                  tenantId: conn.tenantId,
+                  contactPhoneE164: persisted.contact.phoneE164,
+                  text: persisted.message.contentText,
+                }).catch((err) => {
+                  console.warn('[wa-cloud-webhook] waitlist text handler failed', err);
+                  return { consumed: false } as const;
+                });
+
+            const waitlistResult = {
+              consumed: waitlistButtonResult.consumed || waitlistTextResult.consumed,
+            };
 
             const reminderResult = waitlistResult.consumed
               ? ({ consumed: true } as const)

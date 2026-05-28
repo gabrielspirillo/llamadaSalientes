@@ -6,6 +6,7 @@ import { auditLogs, whatsappConnections } from '@/lib/db/schema';
 import { sendQueueEvent } from '@/lib/queue/client';
 import { tryHandleReminderInbound } from '@/lib/reminders/handle-button-reply';
 import { tryHandleWaitlistInbound } from '@/lib/waitlist/handle-button-reply';
+import { tryHandleWaitlistTextReply } from '@/lib/waitlist/handle-text-reply';
 import {
   evolutionMessagesUpsertSchema,
   normalizeEvolutionMessage,
@@ -114,14 +115,29 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         try {
           const persisted = await persistInboundMessage(inbound);
           if (persisted.message) {
-            const waitlistResult = await tryHandleWaitlistInbound({
+            const waitlistButtonResult = await tryHandleWaitlistInbound({
               tenantId: conn.tenantId,
               rawMessage: parsed.data.data,
               channel: 'WHATSAPP_EVOLUTION',
             }).catch((err) => {
-              console.warn('[wa-evolution-webhook] waitlist reply handler failed', err);
+              console.warn('[wa-evolution-webhook] waitlist button handler failed', err);
               return { consumed: false } as const;
             });
+
+            const waitlistTextResult = waitlistButtonResult.consumed
+              ? ({ consumed: true } as const)
+              : await tryHandleWaitlistTextReply({
+                  tenantId: conn.tenantId,
+                  contactPhoneE164: persisted.contact.phoneE164,
+                  text: persisted.message.contentText,
+                }).catch((err) => {
+                  console.warn('[wa-evolution-webhook] waitlist text handler failed', err);
+                  return { consumed: false } as const;
+                });
+
+            const waitlistResult = {
+              consumed: waitlistButtonResult.consumed || waitlistTextResult.consumed,
+            };
 
             const reminderResult = waitlistResult.consumed
               ? ({ consumed: true } as const)

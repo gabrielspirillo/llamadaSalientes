@@ -184,6 +184,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       vars,
       contactDisplayName: deriveContactDisplayNameFromWaitlistVars(vars),
       ghlContactId: null,
+      extraPromptInstructions: template.voicePromptOverride ?? null,
     });
     if (!res.ok) {
       return NextResponse.json({ ok: false, error: res.reason }, { status: 502 });
