@@ -36,9 +36,20 @@ export async function sendQueueEvent(
   name: 'process-call',
   data: QueueJobs['process-call'],
 ): Promise<void>;
+export async function sendQueueEvent(
+  name: 'reminder-send',
+  data: QueueJobs['reminder-send'],
+  opts?: { delayMs?: number },
+): Promise<void>;
+export async function sendQueueEvent(
+  name: 'reminder-fallback-check',
+  data: QueueJobs['reminder-fallback-check'],
+  opts?: { delayMs?: number },
+): Promise<void>;
 export async function sendQueueEvent<K extends QueueName>(
   name: K,
   data: QueueJobs[K],
+  opts?: { delayMs?: number },
 ): Promise<void> {
   if (!env.REDIS_URL) {
     if (env.NODE_ENV === 'production') {
@@ -83,7 +94,60 @@ export async function sendQueueEvent<K extends QueueName>(
     return;
   }
 
+  if (name === 'reminder-send') {
+    const d = data as QueueJobs['reminder-send'];
+    const jobId = reminderSendJobId(d.reminderId);
+    const queue = getQueue('reminder-send');
+    await queue.add('reminder-send', d, {
+      ...DEFAULT_OPTS,
+      jobId,
+      delay: Math.max(0, opts?.delayMs ?? 0),
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 10_000 },
+    });
+    return;
+  }
+
+  if (name === 'reminder-fallback-check') {
+    const d = data as QueueJobs['reminder-fallback-check'];
+    const jobId = reminderFallbackJobId(d.reminderId);
+    const queue = getQueue('reminder-fallback-check');
+    await queue.add('reminder-fallback-check', d, {
+      ...DEFAULT_OPTS,
+      jobId,
+      delay: Math.max(0, opts?.delayMs ?? 0),
+      attempts: 2,
+      backoff: { type: 'exponential', delay: 10_000 },
+    });
+    return;
+  }
+
   // Type-level guard: la exhaustividad la garantizan los overloads.
   const _exhaustive: never = name;
   throw new Error(`Queue desconocida: ${String(_exhaustive)}`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers de jobId y remove. Se exportan para que el scheduler/materializador
+// pueda cancelar/re-encolar jobs delayed cuando una cita cambia o se cancela.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function reminderSendJobId(reminderId: string): string {
+  return `rem-send-${reminderId}`;
+}
+
+export function reminderFallbackJobId(reminderId: string): string {
+  return `rem-fb-${reminderId}`;
+}
+
+export async function removeReminderSendJob(reminderId: string): Promise<void> {
+  if (!env.REDIS_URL) return;
+  const queue = getQueue('reminder-send');
+  await queue.remove(reminderSendJobId(reminderId)).catch(() => undefined);
+}
+
+export async function removeReminderFallbackJob(reminderId: string): Promise<void> {
+  if (!env.REDIS_URL) return;
+  const queue = getQueue('reminder-fallback-check');
+  await queue.remove(reminderFallbackJobId(reminderId)).catch(() => undefined);
 }

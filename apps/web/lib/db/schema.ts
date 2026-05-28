@@ -70,6 +70,7 @@ export const clinicSettings = pgTable('clinic_settings', {
   afterHoursMessage: text('after_hours_message'),
   recordingConsentText: text('recording_consent_text').notNull(),
   transferNumber: text('transfer_number'),
+  optOutMessage: text('opt_out_message'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -604,6 +605,13 @@ export const whatsappConversations = pgTable(
     humanTakeoverAt: timestamp('human_takeover_at', { withTimezone: true }),
     humanTakeoverUntil: timestamp('human_takeover_until', { withTimezone: true }),
     lastHumanMsgAt: timestamp('last_human_msg_at', { withTimezone: true }),
+    // Estado libre para handoff específicos (ej: { remindersResume: { reminderId,
+    // action: 'reschedule', expiresAt } }). El agente WA lo lee para arrancar
+    // reagendado proactivamente con sus tools check_availability / book_appointment.
+    context: jsonb('context')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
@@ -879,6 +887,249 @@ export const schedulingOffers = pgTable(
     ),
     tenantSourceIdx: index('scheduling_offers_tenant_source_idx').on(t.tenantId, t.source),
     cancelledSlotIdx: index('scheduling_offers_cancelled_slot_idx').on(t.cancelledSlotId),
+  }),
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Recordatorios de citas
+//
+// 6 tablas:
+//   reminder_rule_sets       — 1 GLOBAL por tenant + N por tratamiento (override).
+//   reminder_rules           — N reglas por set (offset + canal primario + fallback).
+//   reminder_message_templates — 1 template por (regla, driverScope).
+//   appointment_reminders    — instancia materializada (1 por cita+regla).
+//   reminder_confirmations   — respuestas (botón, voz, manual).
+//   reminder_skip_log        — citas no recordables con motivo.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const reminderChannelEnum = pgEnum('reminder_channel', ['WHATSAPP', 'VOICE']);
+export const reminderRuleScopeEnum = pgEnum('reminder_rule_scope', ['GLOBAL', 'TREATMENT']);
+export const reminderStatusEnum = pgEnum('reminder_status', [
+  'SCHEDULED',
+  'SENT',
+  'DELIVERED',
+  'CONFIRMED',
+  'RESCHEDULE_REQUESTED',
+  'CANCELLED',
+  'NO_RESPONSE',
+  'SKIPPED',
+  'FAILED',
+]);
+export const reminderSkipReasonEnum = pgEnum('reminder_skip_reason', [
+  'no_phone',
+  'past_due',
+  'no_rules',
+  'no_whatsapp',
+  'no_voice_agent',
+  'no_template',
+  'quiet_hours_full_day',
+  'opt_out',
+  'appointment_cancelled',
+  'duplicate',
+]);
+export const reminderConfirmationActionEnum = pgEnum('reminder_confirmation_action', [
+  'confirm',
+  'reschedule',
+  'cancel',
+]);
+export const reminderConfirmationSourceEnum = pgEnum('reminder_confirmation_source', [
+  'button',
+  'voice',
+  'manual',
+  'inbound_text',
+]);
+export const reminderQuietModeEnum = pgEnum('reminder_quiet_mode', [
+  'SHIFT_INTO_HOURS',
+  'SKIP',
+]);
+
+// driver_scope va como text (no enum) para permitir agregar nuevos drivers
+// sin migración (futuro: 'sms_twilio', 'voice_telnyx', etc.).
+export type ReminderDriverScope =
+  | 'whatsapp_cloud'
+  | 'whatsapp_twilio'
+  | 'whatsapp_evolution'
+  | 'voice_retell';
+
+export type ReminderButton = { id: string; title: string };
+
+export type ReminderTemplateParam =
+  | { source: string } // path en vars: 'contact.first_name', 'appointment.date'
+  | { literal: string }; // valor fijo
+
+export const reminderRuleSets = pgTable(
+  'reminder_rule_sets',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    scope: reminderRuleScopeEnum('scope').notNull(),
+    treatmentId: uuid('treatment_id').references(() => treatments.id, { onDelete: 'cascade' }),
+    enabled: boolean('enabled').notNull().default(true),
+    quietMode: reminderQuietModeEnum('quiet_mode').notNull().default('SHIFT_INTO_HOURS'),
+    updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantEnabledIdx: index('reminder_rule_sets_tenant_enabled_idx').on(t.tenantId, t.enabled),
+  }),
+);
+
+export const reminderRules = pgTable(
+  'reminder_rules',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    ruleSetId: uuid('rule_set_id')
+      .references(() => reminderRuleSets.id, { onDelete: 'cascade' })
+      .notNull(),
+    // Minutos antes de la cita (positivo). 1440 = 24h, 4320 = 72h.
+    offsetMinutes: integer('offset_minutes').notNull(),
+    primaryChannel: reminderChannelEnum('primary_channel').notNull(),
+    fallbackChannel: reminderChannelEnum('fallback_channel'),
+    // Horas a esperar antes de disparar el fallback (1..72).
+    fallbackWindowHours: integer('fallback_window_hours'),
+    label: text('label'),
+    order: integer('order').notNull().default(0),
+    enabled: boolean('enabled').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    setOrderIdx: index('reminder_rules_set_order_idx').on(t.ruleSetId, t.order),
+    tenantEnabledIdx: index('reminder_rules_tenant_enabled_idx').on(t.tenantId, t.enabled),
+  }),
+);
+
+export const reminderMessageTemplates = pgTable(
+  'reminder_message_templates',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    ruleId: uuid('rule_id')
+      .references(() => reminderRules.id, { onDelete: 'cascade' })
+      .notNull(),
+    channel: reminderChannelEnum('channel').notNull(),
+    driverScope: text('driver_scope').notNull().$type<ReminderDriverScope>(),
+    templateName: text('template_name'),
+    templateLanguage: text('template_language').notNull().default('es'),
+    templateParamsMap:
+      jsonb('template_params_map').$type<ReminderTemplateParam[]>().notNull().default([]),
+    freeText: text('free_text'),
+    buttons: jsonb('buttons').$type<ReminderButton[]>().notNull().default([]),
+    voicePromptOverride: text('voice_prompt_override'),
+    enabled: boolean('enabled').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    ruleDriverUnique: unique('reminder_message_templates_rule_driver_unique').on(
+      t.ruleId,
+      t.driverScope,
+    ),
+    tenantChannelIdx: index('reminder_message_templates_tenant_channel_idx').on(
+      t.tenantId,
+      t.channel,
+    ),
+  }),
+);
+
+export const appointmentReminders = pgTable(
+  'appointment_reminders',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    // text sin FK directa a appointments_cache (la cache puede rebuildearse
+    // y queremos preservar el histórico de reminders).
+    ghlAppointmentId: text('ghl_appointment_id').notNull(),
+    ruleId: uuid('rule_id')
+      .references(() => reminderRules.id, { onDelete: 'restrict' })
+      .notNull(),
+    ruleSetId: uuid('rule_set_id')
+      .references(() => reminderRuleSets.id, { onDelete: 'restrict' })
+      .notNull(),
+    scheduledFor: timestamp('scheduled_for', { withTimezone: true }).notNull(),
+    channelPlanned: reminderChannelEnum('channel_planned').notNull(),
+    channelUsed: reminderChannelEnum('channel_used'),
+    status: reminderStatusEnum('status').notNull().default('SCHEDULED'),
+    sentAt: timestamp('sent_at', { withTimezone: true }),
+    deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+    respondedAt: timestamp('responded_at', { withTimezone: true }),
+    bullJobId: text('bull_job_id'),
+    bullFallbackJobId: text('bull_fallback_job_id'),
+    externalCallId: text('external_call_id'),
+    externalMessageId: uuid('external_message_id'),
+    failureReason: text('failure_reason'),
+    // Snapshot de variables al programar (firstName, fecha, etc.). Sobrevive
+    // a cambios en appointments_cache para retry/debugging.
+    payloadSnapshot:
+      jsonb('payload_snapshot').$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantApptRuleUnique: unique('appointment_reminders_tenant_appt_rule_unique').on(
+      t.tenantId,
+      t.ghlAppointmentId,
+      t.ruleId,
+    ),
+    tenantStatusSchedIdx: index('appointment_reminders_tenant_status_sched_idx').on(
+      t.tenantId,
+      t.status,
+      t.scheduledFor,
+    ),
+    tenantApptIdx: index('appointment_reminders_tenant_appt_idx').on(t.tenantId, t.ghlAppointmentId),
+    externalCallIdx: index('appointment_reminders_external_call_idx').on(t.externalCallId),
+  }),
+);
+
+export const reminderConfirmations = pgTable(
+  'reminder_confirmations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    reminderId: uuid('reminder_id')
+      .references(() => appointmentReminders.id, { onDelete: 'cascade' })
+      .notNull(),
+    action: reminderConfirmationActionEnum('action').notNull(),
+    source: reminderConfirmationSourceEnum('source').notNull(),
+    receivedAt: timestamp('received_at', { withTimezone: true }).defaultNow().notNull(),
+    actorUserId: uuid('actor_user_id').references(() => users.id, { onDelete: 'set null' }),
+    metadata: jsonb('metadata').$type<Record<string, unknown>>().notNull().default({}),
+  },
+  (t) => ({
+    tenantReminderIdx: index('reminder_confirmations_tenant_reminder_idx').on(
+      t.tenantId,
+      t.reminderId,
+    ),
+  }),
+);
+
+export const reminderSkipLog = pgTable(
+  'reminder_skip_log',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    ghlAppointmentId: text('ghl_appointment_id').notNull(),
+    ruleId: uuid('rule_id').references(() => reminderRules.id, { onDelete: 'set null' }),
+    reason: reminderSkipReasonEnum('reason').notNull(),
+    details: jsonb('details').$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantCreatedIdx: index('reminder_skip_log_tenant_created_idx').on(t.tenantId, t.createdAt),
   }),
 );
 

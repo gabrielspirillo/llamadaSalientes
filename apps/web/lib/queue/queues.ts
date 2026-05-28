@@ -18,8 +18,23 @@ export type QueueJobs = {
     transcript?: string | null;
     analysisSummary?: string | null;
   };
+  // Reminders: el delay sale del cálculo scheduledFor - now. Si la regla tiene
+  // fallback, el handler de send encola un 'reminder-fallback-check' al terminar.
+  'reminder-send': {
+    tenantId: string;
+    reminderId: string;
+  };
+  'reminder-fallback-check': {
+    tenantId: string;
+    reminderId: string;
+  };
 };
 
 export type QueueName = keyof QueueJobs;
 
-export const QUEUE_NAMES = ['wa-process', 'process-call'] as const satisfies readonly QueueName[];
+export const QUEUE_NAMES = [
+  'wa-process',
+  'process-call',
+  'reminder-send',
+  'reminder-fallback-check',
+] as const satisfies readonly QueueName[];

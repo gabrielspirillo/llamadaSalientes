@@ -15,6 +15,8 @@ import { getRedis } from '@/lib/queue/connection';
 import type { QueueJobs } from '@/lib/queue/queues';
 import { createStepRunner } from '@/lib/queue/step';
 import { processCallJob } from '@/worker/jobs/process-call';
+import { processReminderFallbackCheckJob } from '@/worker/jobs/reminder-fallback-check';
+import { processReminderSendJob } from '@/worker/jobs/reminder-send';
 import { processWhatsappJob } from '@/worker/jobs/whatsapp-process';
 
 function num(name: string, def: number): number {
@@ -30,6 +32,7 @@ function logStart(): void {
     redis: env.REDIS_URL ? 'configured' : 'MISSING',
     waConcurrency: num('WORKER_CONCURRENCY_WA', 2),
     callConcurrency: num('WORKER_CONCURRENCY_CALL', 2),
+    reminderConcurrency: num('WORKER_CONCURRENCY_REMINDER', 2),
     waEnabled: process.env.WHATSAPP_AGENT_ENABLED === 'true',
   });
 }
@@ -98,10 +101,79 @@ function buildCallWorker(): Worker<QueueJobs['process-call']> {
   return worker;
 }
 
+function buildReminderSendWorker(): Worker<QueueJobs['reminder-send']> {
+  const worker = new Worker<QueueJobs['reminder-send']>(
+    'reminder-send',
+    async (job: Job<QueueJobs['reminder-send']>) => {
+      const step = createStepRunner(job.id ?? `rem-${job.timestamp}`);
+      return processReminderSendJob(job.data, step);
+    },
+    {
+      connection: getRedis(),
+      concurrency: num('WORKER_CONCURRENCY_REMINDER', 2),
+    },
+  );
+
+  worker.on('completed', (job, result) => {
+    console.log('[worker:reminder-send] completed', {
+      jobId: job.id,
+      reminderId: job.data.reminderId,
+      result,
+    });
+  });
+  worker.on('failed', (job, err) => {
+    console.error('[worker:reminder-send] failed', {
+      jobId: job?.id,
+      reminderId: job?.data.reminderId,
+      attemptsMade: job?.attemptsMade,
+      err: err?.message,
+    });
+  });
+
+  return worker;
+}
+
+function buildReminderFallbackCheckWorker(): Worker<QueueJobs['reminder-fallback-check']> {
+  const worker = new Worker<QueueJobs['reminder-fallback-check']>(
+    'reminder-fallback-check',
+    async (job: Job<QueueJobs['reminder-fallback-check']>) => {
+      const step = createStepRunner(job.id ?? `rem-fb-${job.timestamp}`);
+      return processReminderFallbackCheckJob(job.data, step);
+    },
+    {
+      connection: getRedis(),
+      concurrency: num('WORKER_CONCURRENCY_REMINDER', 2),
+    },
+  );
+
+  worker.on('completed', (job, result) => {
+    console.log('[worker:reminder-fallback-check] completed', {
+      jobId: job.id,
+      reminderId: job.data.reminderId,
+      result,
+    });
+  });
+  worker.on('failed', (job, err) => {
+    console.error('[worker:reminder-fallback-check] failed', {
+      jobId: job?.id,
+      reminderId: job?.data.reminderId,
+      attemptsMade: job?.attemptsMade,
+      err: err?.message,
+    });
+  });
+
+  return worker;
+}
+
 async function main(): Promise<void> {
   logStart();
 
-  const workers = [buildWaWorker(), buildCallWorker()];
+  const workers = [
+    buildWaWorker(),
+    buildCallWorker(),
+    buildReminderSendWorker(),
+    buildReminderFallbackCheckWorker(),
+  ];
 
   const shutdown = async (signal: string) => {
     console.log(`[worker] received ${signal}, draining...`);
