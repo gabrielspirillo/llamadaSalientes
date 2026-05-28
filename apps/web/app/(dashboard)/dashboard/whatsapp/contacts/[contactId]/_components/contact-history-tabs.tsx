@@ -1,25 +1,27 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
+
+import {
+  addContactNote,
+  deleteContactNote,
+  mergeContacts,
+  searchContactsForMerge,
+} from '../../actions';
 
 type Tab = 'atributos' | 'historial' | 'notas' | 'combinar';
 
-interface MessageItem {
+interface ConversationEntry {
   id: string;
-  conversationId: string;
-  direction: string;
-  type: string;
-  senderType: string;
-  contentText: string | null;
-  createdAt: string;
+  channel: string;
+  status: string;
+  lastMsgAt: string | null;
+  lastMessagePreview: string | null;
+  lastMessageDirection: string | null;
+  lastMessageSenderType: string | null;
 }
-interface NoteItem {
-  id: string;
-  conversationId: string;
-  contentText: string | null;
-  createdAt: string;
-}
+
 interface CallItem {
   id: string;
   startedAt: string | null;
@@ -28,6 +30,7 @@ interface CallItem {
   intent: string | null;
   summary: string | null;
 }
+
 interface AppointmentItem {
   id: string;
   startTime: string | null;
@@ -35,31 +38,32 @@ interface AppointmentItem {
   status: string | null;
   treatment: string | null;
 }
-interface ConversationMeta {
-  channel: string;
-  status: string;
+
+interface NoteItem {
+  id: string;
+  body: string;
+  authorEmail: string | null;
+  createdAt: string;
 }
 
 interface Props {
+  contactId: string;
   ghlContactId: string | null;
-  messages: MessageItem[];
-  internalNotes: NoteItem[];
+  conversations: ConversationEntry[];
   calls: CallItem[];
   appointments: AppointmentItem[];
-  conversationsById: Record<string, ConversationMeta>;
+  notes: NoteItem[];
 }
 
 export function ContactHistoryTabs({
+  contactId,
   ghlContactId,
-  messages,
-  internalNotes,
+  conversations,
   calls,
   appointments,
-  conversationsById,
+  notes,
 }: Props) {
-  const [tab, setTab] = useState<Tab>('historial');
-
-  const history = useMemo(() => mergeHistory(messages, calls), [messages, calls]);
+  const [tab, setTab] = useState<Tab>('atributos');
 
   return (
     <div className="rounded-2xl border border-zinc-200 bg-white">
@@ -75,34 +79,24 @@ export function ContactHistoryTabs({
                 : 'text-zinc-500 hover:text-zinc-700'
             }`}
           >
-            {t === 'atributos'
-              ? 'Atributos'
-              : t === 'historial'
-                ? 'Historial'
-                : t === 'notas'
-                  ? 'Notas'
-                  : 'Combinar'}
+            {t}
           </button>
         ))}
       </div>
 
       <div className="p-4">
-        {tab === 'atributos' && <Atributos ghlContactId={ghlContactId} appointments={appointments} />}
-        {tab === 'historial' && (
-          <Historial history={history} conversationsById={conversationsById} />
+        {tab === 'atributos' && (
+          <Atributos ghlContactId={ghlContactId} appointments={appointments} />
         )}
-        {tab === 'notas' && (
-          <Notas notes={internalNotes} conversationsById={conversationsById} />
-        )}
-        {tab === 'combinar' && (
-          <p className="text-sm text-zinc-500">
-            Próximamente: combinar este contacto con otro existente.
-          </p>
-        )}
+        {tab === 'historial' && <Historial conversations={conversations} calls={calls} />}
+        {tab === 'notas' && <Notas contactId={contactId} notes={notes} />}
+        {tab === 'combinar' && <Combinar contactId={contactId} />}
       </div>
     </div>
   );
 }
+
+// ─── Atributos ────────────────────────────────────────────────────────────
 
 function Atributos({
   ghlContactId,
@@ -136,9 +130,7 @@ function Atributos({
                 className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2 text-sm"
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-zinc-900">
-                    {a.treatment ?? 'Cita'}
-                  </span>
+                  <span className="font-medium text-zinc-900">{a.treatment ?? 'Cita'}</span>
                   {a.status && (
                     <span
                       className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${appointmentStatusClass(a.status)}`}
@@ -159,170 +151,378 @@ function Atributos({
   );
 }
 
-type HistoryEntry =
-  | {
-      kind: 'message';
-      id: string;
-      conversationId: string;
-      direction: string;
-      senderType: string;
-      contentText: string | null;
-      timestamp: string;
-    }
-  | {
-      kind: 'call';
-      id: string;
-      timestamp: string | null;
-      durationSeconds: number | null;
-      status: string | null;
-      intent: string | null;
-      summary: string | null;
-    };
-
-function mergeHistory(messages: MessageItem[], calls: CallItem[]): HistoryEntry[] {
-  const all: HistoryEntry[] = [
-    ...messages.map<HistoryEntry>((m) => ({
-      kind: 'message',
-      id: m.id,
-      conversationId: m.conversationId,
-      direction: m.direction,
-      senderType: m.senderType,
-      contentText: m.contentText,
-      timestamp: m.createdAt,
-    })),
-    ...calls.map<HistoryEntry>((c) => ({
-      kind: 'call',
-      id: c.id,
-      timestamp: c.startedAt,
-      durationSeconds: c.durationSeconds,
-      status: c.status,
-      intent: c.intent,
-      summary: c.summary,
-    })),
-  ];
-  return all.sort((a, b) => {
-    const ta = a.timestamp ?? '';
-    const tb = b.timestamp ?? '';
-    return tb.localeCompare(ta);
-  });
-}
+// ─── Historial (una línea por conversación + llamadas) ────────────────────
 
 function Historial({
-  history,
-  conversationsById,
+  conversations,
+  calls,
 }: {
-  history: HistoryEntry[];
-  conversationsById: Record<string, ConversationMeta>;
+  conversations: ConversationEntry[];
+  calls: CallItem[];
 }) {
-  if (history.length === 0) {
-    return <p className="text-sm text-zinc-500">Sin actividad registrada.</p>;
-  }
+  const empty = conversations.length === 0 && calls.length === 0;
+  if (empty) return <p className="text-sm text-zinc-500">Sin actividad registrada.</p>;
+
   return (
-    <ul className="space-y-3">
-      {history.map((h) =>
-        h.kind === 'message' ? (
-          <MessageRow
-            key={`m-${h.id}`}
-            entry={h}
-            channel={conversationsById[h.conversationId]?.channel}
-          />
-        ) : (
-          <CallRow key={`c-${h.id}`} entry={h} />
-        ),
+    <div className="space-y-4">
+      {conversations.length > 0 && (
+        <div>
+          <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+            Conversaciones
+          </h3>
+          <ul className="space-y-1">
+            {conversations.map((c) => (
+              <li key={c.id}>
+                <Link
+                  href={`/dashboard/whatsapp/${c.id}`}
+                  className="flex items-start gap-2 rounded-lg p-2 hover:bg-zinc-50"
+                >
+                  <div
+                    className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${
+                      c.lastMessageDirection === 'OUTBOUND' ? 'bg-emerald-500' : 'bg-blue-500'
+                    }`}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between text-[11px] text-zinc-500">
+                      <span className="uppercase">
+                        {channelShort(c.channel)} ·{' '}
+                        {c.lastMessageDirection === 'OUTBOUND'
+                          ? c.lastMessageSenderType === 'AGENT'
+                            ? 'Agente'
+                            : 'Operador'
+                          : 'Contacto'}
+                      </span>
+                      <span>{c.lastMsgAt ? formatShort(c.lastMsgAt) : ''}</span>
+                    </div>
+                    <p className="mt-0.5 line-clamp-1 text-sm text-zinc-700">
+                      {c.lastMessagePreview ?? <em className="text-zinc-400">(sin mensajes)</em>}
+                    </p>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
-    </ul>
-  );
-}
 
-function MessageRow({
-  entry,
-  channel,
-}: {
-  entry: Extract<HistoryEntry, { kind: 'message' }>;
-  channel?: string;
-}) {
-  const isOutbound = entry.direction === 'OUTBOUND';
-  return (
-    <li>
-      <Link
-        href={`/dashboard/whatsapp/${entry.conversationId}`}
-        className="flex items-start gap-2 rounded-lg p-2 hover:bg-zinc-50"
-      >
-        <div
-          className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${isOutbound ? 'bg-emerald-500' : 'bg-blue-500'}`}
-        />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between text-[11px] text-zinc-500">
-            <span className="uppercase">
-              {channel ? channelShort(channel) : 'WhatsApp'} ·{' '}
-              {isOutbound ? (entry.senderType === 'AGENT' ? 'Agente' : 'Operador') : 'Contacto'}
-            </span>
-            <span>{formatShort(entry.timestamp)}</span>
-          </div>
-          <p className="mt-0.5 line-clamp-2 text-sm text-zinc-700">
-            {entry.contentText ?? <em className="text-zinc-400">(adjunto sin texto)</em>}
-          </p>
+      {calls.length > 0 && (
+        <div>
+          <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+            Llamadas
+          </h3>
+          <ul className="space-y-1">
+            {calls.map((c) => (
+              <li key={c.id}>
+                <Link
+                  href={`/dashboard/llamadas/${c.id}`}
+                  className="flex items-start gap-2 rounded-lg p-2 hover:bg-zinc-50"
+                >
+                  <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-purple-500" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between text-[11px] text-zinc-500">
+                      <span className="uppercase">
+                        Llamada
+                        {c.durationSeconds != null && ` · ${formatDuration(c.durationSeconds)}`}
+                        {c.intent && ` · ${c.intent}`}
+                      </span>
+                      <span>{c.startedAt ? formatShort(c.startedAt) : ''}</span>
+                    </div>
+                    <p className="mt-0.5 line-clamp-1 text-sm text-zinc-700">
+                      {c.summary ?? <em className="text-zinc-400">(sin resumen)</em>}
+                    </p>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
         </div>
-      </Link>
-    </li>
+      )}
+    </div>
   );
 }
 
-function CallRow({ entry }: { entry: Extract<HistoryEntry, { kind: 'call' }> }) {
-  return (
-    <li>
-      <Link
-        href={`/dashboard/llamadas/${entry.id}`}
-        className="flex items-start gap-2 rounded-lg p-2 hover:bg-zinc-50"
-      >
-        <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-purple-500" />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between text-[11px] text-zinc-500">
-            <span className="uppercase">
-              Llamada
-              {entry.durationSeconds != null && ` · ${formatDuration(entry.durationSeconds)}`}
-              {entry.intent && ` · ${entry.intent}`}
-            </span>
-            <span>{entry.timestamp ? formatShort(entry.timestamp) : ''}</span>
-          </div>
-          <p className="mt-0.5 line-clamp-2 text-sm text-zinc-700">
-            {entry.summary ?? <em className="text-zinc-400">(sin resumen)</em>}
-          </p>
-        </div>
-      </Link>
-    </li>
-  );
-}
+// ─── Notas ────────────────────────────────────────────────────────────────
 
-function Notas({
-  notes,
-  conversationsById: _conversationsById,
-}: {
-  notes: NoteItem[];
-  conversationsById: Record<string, ConversationMeta>;
-}) {
-  if (notes.length === 0) {
-    return <p className="text-sm text-zinc-500">Sin notas internas.</p>;
+function Notas({ contactId, notes }: { contactId: string; notes: NoteItem[] }) {
+  const [body, setBody] = useState('');
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function handleAdd() {
+    const trimmed = body.trim();
+    if (!trimmed) return;
+    setError(null);
+    startTransition(async () => {
+      const res = await addContactNote({ contactId, body: trimmed });
+      if (res.success) {
+        setBody('');
+      } else {
+        setError(res.error);
+      }
+    });
   }
+
+  function handleDelete(noteId: string) {
+    startTransition(async () => {
+      await deleteContactNote({ id: noteId, contactId });
+    });
+  }
+
+  function applyWrap(left: string, right: string = left) {
+    const ta = document.getElementById('contact-note-textarea') as HTMLTextAreaElement | null;
+    if (!ta) {
+      setBody((prev) => prev + left + right);
+      return;
+    }
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const selected = body.slice(start, end);
+    const next = body.slice(0, start) + left + selected + right + body.slice(end);
+    setBody(next);
+    requestAnimationFrame(() => {
+      ta.focus();
+      const cursor = start + left.length + selected.length;
+      ta.setSelectionRange(cursor, cursor);
+    });
+  }
+
   return (
-    <ul className="space-y-2">
-      {notes.map((n) => (
-        <li
-          key={n.id}
-          className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm"
-        >
-          <p className="whitespace-pre-wrap text-zinc-800">{n.contentText}</p>
-          <Link
-            href={`/dashboard/whatsapp/${n.conversationId}`}
-            className="mt-1 inline-block text-[10px] uppercase text-amber-700 hover:text-amber-900"
+    <div className="space-y-4">
+      <div className="rounded-xl bg-zinc-50 p-3">
+        <div className="mb-2 flex items-center gap-1 border-b border-zinc-200 pb-2">
+          <ToolbarButton onClick={() => applyWrap('**')} title="Negrita">
+            <span className="font-bold">B</span>
+          </ToolbarButton>
+          <ToolbarButton onClick={() => applyWrap('_')} title="Itálica">
+            <span className="italic">I</span>
+          </ToolbarButton>
+          <ToolbarButton onClick={() => applyWrap('[', '](https://)')} title="Link">
+            🔗
+          </ToolbarButton>
+          <div className="mx-1 h-4 w-px bg-zinc-300" />
+          <ToolbarButton
+            onClick={() => setBody((p) => (p ? `${p}\n- ` : '- '))}
+            title="Lista"
           >
-            {formatShort(n.createdAt)} · Ver conversación
-          </Link>
-        </li>
-      ))}
-    </ul>
+            •
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => setBody((p) => (p ? `${p}\n1. ` : '1. '))}
+            title="Lista numerada"
+          >
+            1.
+          </ToolbarButton>
+          <ToolbarButton onClick={() => applyWrap('`')} title="Código">
+            {'</>'}
+          </ToolbarButton>
+        </div>
+        <textarea
+          id="contact-note-textarea"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="Añadir nota"
+          rows={4}
+          className="w-full resize-none bg-transparent text-sm focus:outline-none"
+          disabled={pending}
+        />
+        <div className="mt-2 flex items-center justify-between">
+          {error ? (
+            <span className="text-xs text-red-700">{error}</span>
+          ) : (
+            <span className="text-[10px] text-zinc-400">Markdown soportado</span>
+          )}
+          <button
+            type="button"
+            onClick={handleAdd}
+            disabled={pending || body.trim().length === 0}
+            className="text-sm font-medium text-emerald-600 hover:text-emerald-700 disabled:text-zinc-400"
+          >
+            {pending ? 'Guardando…' : 'Guardar nota'}
+          </button>
+        </div>
+      </div>
+
+      {notes.length === 0 ? (
+        <p className="text-center text-sm text-zinc-500">
+          No hay notas asociadas a este contacto. Puede añadir una nota escribiendo en el recuadro
+          superior.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {notes.map((n) => (
+            <li
+              key={n.id}
+              className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm"
+            >
+              <div className="flex items-center justify-between text-[10px] uppercase text-amber-700">
+                <span>{n.authorEmail ?? 'Anónimo'}</span>
+                <div className="flex items-center gap-2">
+                  <span>{formatShort(n.createdAt)}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(n.id)}
+                    disabled={pending}
+                    className="text-amber-700 hover:text-red-700 disabled:text-amber-300"
+                    aria-label="Eliminar nota"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+              <p className="mt-1 whitespace-pre-wrap text-zinc-800">{n.body}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
+
+function ToolbarButton({
+  onClick,
+  title,
+  children,
+}: {
+  onClick: () => void;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className="flex h-7 w-7 items-center justify-center rounded text-xs text-zinc-600 hover:bg-zinc-200"
+    >
+      {children}
+    </button>
+  );
+}
+
+// ─── Combinar ─────────────────────────────────────────────────────────────
+
+interface SearchResult {
+  id: string;
+  name: string | null;
+  phoneE164: string;
+  ghlContactId: string | null;
+}
+
+function Combinar({ contactId }: { contactId: string }) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [selected, setSelected] = useState<SearchResult | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) {
+      setResults([]);
+      return;
+    }
+    let cancelled = false;
+    setSearching(true);
+    void (async () => {
+      const res = await searchContactsForMerge({ query: q, excludeId: contactId });
+      if (cancelled) return;
+      setSearching(false);
+      if (res.success) setResults(res.data);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [query, contactId]);
+
+  function handleMerge() {
+    if (!selected) return;
+    setError(null);
+    const confirmed = window.confirm(
+      `¿Combinar este contacto con "${selected.name ?? selected.phoneE164}"? El contacto seleccionado se borrará y todas sus conversaciones, notas y citas pasarán al actual.`,
+    );
+    if (!confirmed) return;
+    startTransition(async () => {
+      const res = await mergeContacts({ targetId: contactId, sourceId: selected.id });
+      if (res.success) {
+        setSelected(null);
+        setQuery('');
+        setResults([]);
+        window.location.reload();
+      } else {
+        setError(res.error);
+      }
+    });
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-zinc-500">
+        Buscá el contacto duplicado a combinar. Sus conversaciones, notas y citas pasarán al
+        contacto actual y luego será eliminado.
+      </p>
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setSelected(null);
+        }}
+        placeholder="Buscar por nombre o teléfono…"
+        className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+      />
+      {searching && <p className="text-[11px] text-zinc-400">Buscando…</p>}
+      {!searching && query.trim().length >= 2 && results.length === 0 && (
+        <p className="text-[11px] text-zinc-400">Sin resultados.</p>
+      )}
+      <ul className="space-y-1">
+        {results.map((r) => {
+          const isSelected = selected?.id === r.id;
+          return (
+            <li key={r.id}>
+              <button
+                type="button"
+                onClick={() => setSelected(r)}
+                className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                  isSelected
+                    ? 'border border-emerald-300 bg-emerald-50'
+                    : 'border border-transparent hover:bg-zinc-50'
+                }`}
+              >
+                <div className="font-medium text-zinc-900">{r.name ?? '(sin nombre)'}</div>
+                <div className="text-xs text-zinc-500">{r.phoneE164}</div>
+                {r.ghlContactId && (
+                  <div className="mt-0.5 text-[10px] text-zinc-400">
+                    GHL · {r.ghlContactId.slice(0, 12)}…
+                  </div>
+                )}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      {selected && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+          <p className="text-xs text-amber-800">
+            Vas a mergear <strong>{selected.name ?? selected.phoneE164}</strong> en este contacto.
+            Esta acción no se puede deshacer.
+          </p>
+          {error && <p className="mt-1 text-xs text-red-700">{error}</p>}
+          <button
+            type="button"
+            onClick={handleMerge}
+            disabled={pending}
+            className="mt-2 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+          >
+            {pending ? 'Combinando…' : 'Combinar contactos'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────
 
 function appointmentStatusClass(status: string): string {
   const s = status.toLowerCase();

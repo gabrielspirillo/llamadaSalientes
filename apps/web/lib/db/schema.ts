@@ -586,6 +586,30 @@ export const whatsappContacts = pgTable(
   }),
 );
 
+export const whatsappContactNotes = pgTable(
+  'whatsapp_contact_notes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    contactId: uuid('contact_id')
+      .references(() => whatsappContacts.id, { onDelete: 'cascade' })
+      .notNull(),
+    body: text('body').notNull(),
+    authorUserId: uuid('author_user_id').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    contactIdx: index('whatsapp_contact_notes_tenant_contact_idx').on(
+      t.tenantId,
+      t.contactId,
+      t.createdAt,
+    ),
+  }),
+);
+
 export const whatsappConversations = pgTable(
   'whatsapp_conversations',
   {

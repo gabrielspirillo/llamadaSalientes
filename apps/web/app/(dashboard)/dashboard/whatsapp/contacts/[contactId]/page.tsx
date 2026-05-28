@@ -7,6 +7,8 @@ import {
   appointmentsCache,
   calls,
   treatments,
+  users,
+  whatsappContactNotes,
   whatsappContacts,
   whatsappConversations,
   whatsappMessages,
@@ -36,7 +38,7 @@ export default async function ContactDetailPage({ params }: Props) {
   const contact = contactRows[0];
   if (!contact) notFound();
 
-  // Conversaciones del contacto (para listar y para joinear mensajes).
+  // Conversaciones del contacto (una entrada por conversación).
   const conversations = await db
     .select({
       id: whatsappConversations.id,
@@ -49,17 +51,19 @@ export default async function ContactDetailPage({ params }: Props) {
     .orderBy(desc(whatsappConversations.lastMsgAt));
   const conversationIds = conversations.map((c) => c.id);
 
-  // Historial: mensajes (no internal_note) + llamadas + notas internas.
-  const [messageRows, internalNoteRows, callRows, treatmentRows] = await Promise.all([
+  // Para la pestaña "Historial" queremos UNA entrada por conversación con el
+  // último mensaje no interno. Bajamos los últimos N mensajes y agrupamos en
+  // memoria — alcanza para los típicos <10 conversaciones por contacto.
+  const lastMessagesRaw =
     conversationIds.length > 0
-      ? db
+      ? await db
           .select({
             id: whatsappMessages.id,
             conversationId: whatsappMessages.conversationId,
             direction: whatsappMessages.direction,
-            type: whatsappMessages.type,
             senderType: whatsappMessages.senderType,
             contentText: whatsappMessages.contentText,
+            type: whatsappMessages.type,
             createdAt: whatsappMessages.createdAt,
           })
           .from(whatsappMessages)
@@ -70,26 +74,14 @@ export default async function ContactDetailPage({ params }: Props) {
             ),
           )
           .orderBy(desc(whatsappMessages.createdAt))
-          .limit(50)
-      : Promise.resolve([]),
-    conversationIds.length > 0
-      ? db
-          .select({
-            id: whatsappMessages.id,
-            conversationId: whatsappMessages.conversationId,
-            contentText: whatsappMessages.contentText,
-            createdAt: whatsappMessages.createdAt,
-          })
-          .from(whatsappMessages)
-          .where(
-            and(
-              inArray(whatsappMessages.conversationId, conversationIds),
-              eq(whatsappMessages.internalNote, true),
-            ),
-          )
-          .orderBy(desc(whatsappMessages.createdAt))
-          .limit(50)
-      : Promise.resolve([]),
+          .limit(200)
+      : [];
+  const lastByConv = new Map<string, (typeof lastMessagesRaw)[number]>();
+  for (const m of lastMessagesRaw) {
+    if (!lastByConv.has(m.conversationId)) lastByConv.set(m.conversationId, m);
+  }
+
+  const [callRows, treatmentRows, noteRows] = await Promise.all([
     contact.ghlContactId
       ? db
           .select({
@@ -102,10 +94,7 @@ export default async function ContactDetailPage({ params }: Props) {
           })
           .from(calls)
           .where(
-            and(
-              eq(calls.tenantId, tenant.id),
-              eq(calls.ghlContactId, contact.ghlContactId),
-            ),
+            and(eq(calls.tenantId, tenant.id), eq(calls.ghlContactId, contact.ghlContactId)),
           )
           .orderBy(desc(calls.startedAt))
           .limit(50)
@@ -114,9 +103,36 @@ export default async function ContactDetailPage({ params }: Props) {
       .select({ id: treatments.id, label: treatments.name })
       .from(treatments)
       .where(eq(treatments.tenantId, tenant.id)),
+    db
+      .select({
+        id: whatsappContactNotes.id,
+        body: whatsappContactNotes.body,
+        authorUserId: whatsappContactNotes.authorUserId,
+        createdAt: whatsappContactNotes.createdAt,
+      })
+      .from(whatsappContactNotes)
+      .where(
+        and(
+          eq(whatsappContactNotes.tenantId, tenant.id),
+          eq(whatsappContactNotes.contactId, contact.id),
+        ),
+      )
+      .orderBy(desc(whatsappContactNotes.createdAt)),
   ]);
 
-  // Citas del contacto via ghl_contact_id.
+  // Emails de los autores de notas para mostrar quién escribió.
+  const noteAuthorIds = Array.from(
+    new Set(noteRows.map((n) => n.authorUserId).filter((x): x is string => Boolean(x))),
+  );
+  const noteAuthorMap = new Map<string, string>();
+  if (noteAuthorIds.length > 0) {
+    const senders = await db
+      .select({ id: users.id, email: users.email })
+      .from(users)
+      .where(inArray(users.id, noteAuthorIds));
+    for (const u of senders) noteAuthorMap.set(u.id, u.email);
+  }
+
   const appointmentRows = contact.ghlContactId
     ? await db
         .select()
@@ -139,10 +155,12 @@ export default async function ContactDetailPage({ params }: Props) {
   const initials = computeInitials(contact.firstName, contact.lastName, contact.phoneE164);
 
   return (
-    <div className="-mx-4 flex h-[calc(100vh-7.5rem)] sm:mx-0">
-      <div className="flex w-full min-w-0 flex-col gap-6 overflow-y-auto bg-zinc-50 p-6 lg:flex-row">
-        {/* Columna izquierda: header + form */}
-        <div className="flex min-w-0 flex-1 flex-col gap-4">
+    // Outer: ocupa toda la altura visible. NO scrollea.
+    <div className="-mx-4 flex h-[calc(100vh-7.5rem)] gap-4 overflow-hidden sm:mx-0">
+      {/* COLUMNA IZQUIERDA: contenedor flex-col con header fijo + form scrollable. */}
+      <div className="flex min-w-0 flex-1 flex-col bg-zinc-50">
+        {/* Header fijo: breadcrumb + acción. No scrollea. */}
+        <div className="shrink-0 px-6 pt-4">
           <div className="flex items-center justify-between">
             <nav className="flex items-center gap-1 text-sm text-zinc-500">
               <Link href="/dashboard/whatsapp" className="hover:text-zinc-700">
@@ -151,18 +169,19 @@ export default async function ContactDetailPage({ params }: Props) {
               <span>›</span>
               <span className="font-medium text-zinc-700">{fullName}</span>
             </nav>
-            <div className="flex items-center gap-2">
-              {conversations[0] && (
-                <Link
-                  href={`/dashboard/whatsapp/${conversations[0].id}`}
-                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
-                >
-                  Enviar mensaje
-                </Link>
-              )}
-            </div>
+            {conversations[0] && (
+              <Link
+                href={`/dashboard/whatsapp/${conversations[0].id}`}
+                className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
+              >
+                Enviar mensaje
+              </Link>
+            )}
           </div>
+        </div>
 
+        {/* Hero card fija. No scrollea. */}
+        <div className="shrink-0 px-6 pt-4">
           <div className="flex items-center gap-4 rounded-2xl border border-zinc-200 bg-white p-5">
             <Avatar avatarUrl={contact.avatarUrl} initials={initials} size={64} />
             <div className="min-w-0">
@@ -176,7 +195,10 @@ export default async function ContactDetailPage({ params }: Props) {
               </p>
             </div>
           </div>
+        </div>
 
+        {/* Formulario scrollable. Solo este bloque scrollea. */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-4">
           <ContactDetailForm
             contact={{
               id: contact.id,
@@ -192,35 +214,43 @@ export default async function ContactDetailPage({ params }: Props) {
             }}
           />
         </div>
+      </div>
 
-        {/* Columna derecha: tabs */}
-        <div className="w-full shrink-0 lg:w-[420px]">
-          <ContactHistoryTabs
-            ghlContactId={contact.ghlContactId}
-            messages={messageRows.map((m) => ({
-              ...m,
-              createdAt: m.createdAt.toISOString(),
-            }))}
-            internalNotes={internalNoteRows.map((m) => ({
-              ...m,
-              createdAt: m.createdAt.toISOString(),
-            }))}
-            calls={callRows.map((c) => ({
-              ...c,
-              startedAt: c.startedAt ? c.startedAt.toISOString() : null,
-            }))}
-            appointments={appointmentRows.map((a) => ({
-              id: a.ghlAppointmentId,
-              startTime: a.startTime ? a.startTime.toISOString() : null,
-              endTime: a.endTime ? a.endTime.toISOString() : null,
-              status: a.status,
-              treatment: a.treatmentId ? treatmentMap.get(a.treatmentId) ?? null : null,
-            }))}
-            conversationsById={Object.fromEntries(
-              conversations.map((c) => [c.id, { channel: c.channel, status: c.status }]),
-            )}
-          />
-        </div>
+      {/* COLUMNA DERECHA: independiente, scroll propio. */}
+      <div className="hidden w-[420px] shrink-0 overflow-y-auto pr-4 pt-4 lg:block">
+        <ContactHistoryTabs
+          contactId={contact.id}
+          ghlContactId={contact.ghlContactId}
+          conversations={conversations.map((c) => {
+            const last = lastByConv.get(c.id) ?? null;
+            return {
+              id: c.id,
+              channel: c.channel,
+              status: c.status,
+              lastMsgAt: c.lastMsgAt ? c.lastMsgAt.toISOString() : null,
+              lastMessagePreview: last?.contentText ?? null,
+              lastMessageDirection: last?.direction ?? null,
+              lastMessageSenderType: last?.senderType ?? null,
+            };
+          })}
+          calls={callRows.map((c) => ({
+            ...c,
+            startedAt: c.startedAt ? c.startedAt.toISOString() : null,
+          }))}
+          appointments={appointmentRows.map((a) => ({
+            id: a.ghlAppointmentId,
+            startTime: a.startTime ? a.startTime.toISOString() : null,
+            endTime: a.endTime ? a.endTime.toISOString() : null,
+            status: a.status,
+            treatment: a.treatmentId ? treatmentMap.get(a.treatmentId) ?? null : null,
+          }))}
+          notes={noteRows.map((n) => ({
+            id: n.id,
+            body: n.body,
+            authorEmail: n.authorUserId ? noteAuthorMap.get(n.authorUserId) ?? null : null,
+            createdAt: n.createdAt.toISOString(),
+          }))}
+        />
       </div>
     </div>
   );
