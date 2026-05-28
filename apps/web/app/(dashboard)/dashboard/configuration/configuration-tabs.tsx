@@ -2,17 +2,30 @@
 
 import { cn } from '@/lib/cn';
 import Link from 'next/link';
-import { MessageCircle, Phone, Plug } from 'lucide-react';
+import { MessageCircle, Phone, Plug, ToggleRight } from 'lucide-react';
 
-export type ConfigTab = 'whatsapp' | 'telephony' | 'integrations';
+export type ConfigTab = 'whatsapp' | 'telephony' | 'integrations' | 'modules';
 
-const TABS: { key: ConfigTab; label: string; icon: typeof MessageCircle }[] = [
+const BASE_TABS: { key: ConfigTab; label: string; icon: typeof MessageCircle }[] = [
   { key: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
   { key: 'telephony', label: 'Telefonía', icon: Phone },
   { key: 'integrations', label: 'Integraciones', icon: Plug },
 ];
 
-export function ConfigurationTabs({ active }: { active: ConfigTab }) {
+const MODULES_TAB: { key: ConfigTab; label: string; icon: typeof MessageCircle } = {
+  key: 'modules',
+  label: 'Módulos',
+  icon: ToggleRight,
+};
+
+export function ConfigurationTabs({
+  active,
+  showModulesTab,
+}: {
+  active: ConfigTab;
+  showModulesTab: boolean;
+}) {
+  const TABS = showModulesTab ? [...BASE_TABS, MODULES_TAB] : BASE_TABS;
   return (
     <div className="mb-6 border-b border-zinc-200">
       <nav className="-mb-px flex flex-wrap gap-1">

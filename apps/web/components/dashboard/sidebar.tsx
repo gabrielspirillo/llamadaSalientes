@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/cn';
+import { type EnabledModules, isModuleEnabled, moduleForRoute } from '@/lib/modules';
 import { OrganizationSwitcher } from '@clerk/nextjs';
 import {
   BarChart3,
@@ -11,6 +12,7 @@ import {
   HelpCircle,
   Home,
   ListChecks,
+  Lock,
   MessageCircle,
   PhoneCall,
   PhoneOutgoing,
@@ -39,7 +41,13 @@ const items = [
   { href: '/dashboard/settings', label: 'Clínica', icon: Building2 },
 ] as const;
 
-function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+function SidebarNav({
+  onNavigate,
+  enabledModules,
+}: {
+  onNavigate?: () => void;
+  enabledModules: EnabledModules;
+}) {
   const pathname = usePathname();
   return (
     <>
@@ -82,6 +90,8 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           const Icon = it.icon;
           const active =
             it.href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(it.href);
+          const moduleKey = moduleForRoute(it.href);
+          const locked = moduleKey !== null && !isModuleEnabled(enabledModules, moduleKey);
           return (
             <Link
               key={it.href}
@@ -95,7 +105,13 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
               )}
             >
               <Icon className="h-4 w-4 shrink-0" />
-              <span>{it.label}</span>
+              <span className="flex-1">{it.label}</span>
+              {locked && (
+                <Lock
+                  className="h-3 w-3 shrink-0 text-zinc-400"
+                  aria-label="Módulo no contratado"
+                />
+              )}
             </Link>
           );
         })}
@@ -120,10 +136,10 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export function DashboardSidebar() {
+export function DashboardSidebar({ enabledModules }: { enabledModules: EnabledModules }) {
   return (
     <aside className="hidden lg:flex sticky top-0 h-screen w-60 shrink-0 flex-col border-r border-zinc-200/70 bg-zinc-50/40">
-      <SidebarNav />
+      <SidebarNav enabledModules={enabledModules} />
     </aside>
   );
 }
@@ -131,9 +147,11 @@ export function DashboardSidebar() {
 export function DashboardSidebarMobile({
   open,
   onClose,
+  enabledModules,
 }: {
   open: boolean;
   onClose: () => void;
+  enabledModules: EnabledModules;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -167,7 +185,7 @@ export function DashboardSidebarMobile({
           open ? 'translate-x-0' : '-translate-x-full',
         )}
       >
-        <SidebarNav onNavigate={onClose} />
+        <SidebarNav onNavigate={onClose} enabledModules={enabledModules} />
       </aside>
     </div>
   );

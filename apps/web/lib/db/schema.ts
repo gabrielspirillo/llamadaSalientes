@@ -25,6 +25,10 @@ export const tenants = pgTable('tenants', {
   plan: text('plan').notNull().default('starter'),
   status: text('status').notNull().default('active'), // active|suspended|trial
   clerkOrganizationId: text('clerk_organization_id').notNull().unique(),
+  enabledModules: jsonb('enabled_modules')
+    .$type<{ whatsapp: boolean; outbound: boolean; inbound: boolean }>()
+    .notNull()
+    .default({ whatsapp: false, outbound: false, inbound: false }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 

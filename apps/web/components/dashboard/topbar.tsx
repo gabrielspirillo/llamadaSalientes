@@ -1,6 +1,7 @@
 'use client';
 
 import { DashboardSidebarMobile } from '@/components/dashboard/sidebar';
+import type { EnabledModules } from '@/lib/modules';
 import { UserButton } from '@clerk/nextjs';
 import {
   ArrowRight,
@@ -42,7 +43,7 @@ const KIND_DOT: Record<Notification['kind'], string> = {
   otro: 'bg-zinc-400',
 };
 
-export function DashboardTopbar() {
+export function DashboardTopbar({ enabledModules }: { enabledModules: EnabledModules }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -116,7 +117,11 @@ export function DashboardTopbar() {
         </div>
       </header>
 
-      <DashboardSidebarMobile open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
+      <DashboardSidebarMobile
+        open={mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
+        enabledModules={enabledModules}
+      />
       {searchOpen && <SearchPalette onClose={() => setSearchOpen(false)} />}
     </>
   );

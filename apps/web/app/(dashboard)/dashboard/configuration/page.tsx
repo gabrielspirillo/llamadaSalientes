@@ -1,12 +1,15 @@
 import { PageHeader } from '@/components/dashboard/page-header';
+import { isSuperAdminTenant } from '@/lib/modules';
+import { getCurrentTenant } from '@/lib/tenant';
 import { ConfigurationTabs, type ConfigTab } from './configuration-tabs';
 import { IntegrationsPanel } from './_panels/integrations-panel';
+import { ModulesPanel } from './_panels/modules-panel';
 import { TelephonyPanel } from './_panels/telephony-panel';
 import { WhatsappPanel } from './_panels/whatsapp-panel';
 
 export const dynamic = 'force-dynamic';
 
-const VALID_TABS = new Set<ConfigTab>(['whatsapp', 'telephony', 'integrations']);
+const PUBLIC_TABS = new Set<ConfigTab>(['whatsapp', 'telephony', 'integrations']);
 
 export default async function ConfigurationPage({
   searchParams,
@@ -14,8 +17,13 @@ export default async function ConfigurationPage({
   searchParams: Promise<{ tab?: string; ghl?: string; ghl_error?: string }>;
 }) {
   const sp = await searchParams;
+  const { tenant } = await getCurrentTenant();
+  const isSuperAdmin = isSuperAdminTenant(tenant.id);
+
   const raw = (sp.tab ?? 'whatsapp') as ConfigTab;
-  const tab: ConfigTab = VALID_TABS.has(raw) ? raw : 'whatsapp';
+  // Tab "modules" solo accesible para super-admin; resto fallback a whatsapp.
+  const isModulesTab = raw === 'modules' && isSuperAdmin;
+  const tab: ConfigTab = isModulesTab ? 'modules' : PUBLIC_TABS.has(raw) ? raw : 'whatsapp';
 
   return (
     <>
@@ -23,12 +31,13 @@ export default async function ConfigurationPage({
         title="Configuración"
         description="Conexiones técnicas: WhatsApp, telefonía y CRM. Equipo técnico únicamente."
       />
-      <ConfigurationTabs active={tab} />
+      <ConfigurationTabs active={tab} showModulesTab={isSuperAdmin} />
       {tab === 'whatsapp' && <WhatsappPanel />}
       {tab === 'telephony' && <TelephonyPanel />}
       {tab === 'integrations' && (
         <IntegrationsPanel flash={{ ghl: sp.ghl, ghl_error: sp.ghl_error }} />
       )}
+      {tab === 'modules' && <ModulesPanel />}
     </>
   );
 }
