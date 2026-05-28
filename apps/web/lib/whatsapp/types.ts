@@ -92,10 +92,13 @@ export interface WhatsAppConnector {
     to: string,
     kind: SendMediaKind,
     mediaUrl: string,
-    options?: { caption?: string; filename?: string },
+    options?: { caption?: string; filename?: string; mimeType?: string },
   ): Promise<MessageId>;
 
-  downloadMedia(mediaId: string): Promise<MediaResult>;
+  downloadMedia(
+    mediaId: string,
+    context?: { remoteJid?: string; fromMe?: boolean },
+  ): Promise<MediaResult>;
 
   sendTyping(to: string, durationMs?: number): Promise<void>;
 }
