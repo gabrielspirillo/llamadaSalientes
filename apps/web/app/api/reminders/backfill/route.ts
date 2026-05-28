@@ -1,8 +1,7 @@
-import { and, eq, gt, isNotNull } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
-import { db } from '@/lib/db/client';
-import { appointmentsCache } from '@/lib/db/schema';
+import { upsertAppointmentCache } from '@/lib/appointments/cache';
+import { listAppointmentsInRange } from '@/lib/ghl/appointments';
 import { ReminderForbiddenError, requireReminderRole } from '@/lib/reminders/auth';
 import { materializeReminders } from '@/lib/reminders/materialize';
 
@@ -11,14 +10,21 @@ export const dynamic = 'force-dynamic';
 
 // POST /api/reminders/backfill (admin)
 //
-// Para citas que ya estaban en `appointments_cache` ANTES de configurar
-// los recordatorios, este endpoint corre `materializeReminders` para cada
-// una y devuelve un resumen. Procesa solo citas futuras (startTime > now).
+// Flujo:
+//   1. Lista TODOS los appointments del location en GHL para el rango
+//      [now, now + N días] (default 90 días, max 180).
+//   2. Upsert cada uno a `appointments_cache` (idempotente por PK
+//      compuesta).
+//   3. Llama materializeReminders('sync') por cada cita. Si ya tiene su
+//      reminder programado, la unique (tenant, appt, rule) lo dedupea.
 //
-// Es idempotente: si una cita ya tiene su reminder programado, el upsert
-// con ON CONFLICT no duplica.
+// Devuelve resumen { appointmentsProcessed, scheduled, skipped, errors }.
 
-export async function POST(_req: NextRequest): Promise<NextResponse> {
+const DEFAULT_DAYS_AHEAD = 90;
+const MAX_DAYS_AHEAD = 180;
+const MAX_TIMEOUT_MS = 60_000;
+
+export async function POST(req: NextRequest): Promise<NextResponse> {
   let auth;
   try {
     auth = await requireReminderRole('admin');
@@ -34,27 +40,69 @@ export async function POST(_req: NextRequest): Promise<NextResponse> {
   }
   const { tenantId } = auth;
 
-  const rows = await db
-    .select({ ghlAppointmentId: appointmentsCache.ghlAppointmentId })
-    .from(appointmentsCache)
-    .where(
-      and(
-        eq(appointmentsCache.tenantId, tenantId),
-        isNotNull(appointmentsCache.startTime),
-        gt(appointmentsCache.startTime, new Date()),
-      ),
-    );
+  const url = new URL(req.url);
+  const daysAheadRaw = Number.parseInt(url.searchParams.get('days') ?? '', 10);
+  const daysAhead =
+    Number.isFinite(daysAheadRaw) && daysAheadRaw > 0
+      ? Math.min(daysAheadRaw, MAX_DAYS_AHEAD)
+      : DEFAULT_DAYS_AHEAD;
+
+  const startTimeMs = Date.now();
+  const endTimeMs = startTimeMs + daysAhead * 24 * 60 * 60 * 1000;
+
+  // 1. Listar citas en GHL.
+  const appointments = await listAppointmentsInRange(tenantId, startTimeMs, endTimeMs).catch(
+    (err) => {
+      console.error('[reminders-backfill] listAppointmentsInRange failed', err);
+      return [];
+    },
+  );
+
+  if (appointments.length === 0) {
+    return NextResponse.json({
+      ok: true,
+      appointmentsProcessed: 0,
+      scheduled: 0,
+      skipped: 0,
+      errors: 0,
+      message:
+        'No se encontraron citas futuras en GHL. Verificá que el location tenga calendars con eventos en los próximos ' +
+        `${daysAhead} días, o que la integración GHL del tenant esté activa.`,
+      daysAhead,
+    });
+  }
 
   let scheduled = 0;
   let skipped = 0;
   let errors = 0;
   const skipReasons = new Map<string, number>();
+  const startedAt = Date.now();
 
-  for (const row of rows) {
+  for (const appt of appointments) {
+    if (!appt.id) continue;
+    // Cortar si pasamos del timeout del request (60s) para devolver un parcial.
+    if (Date.now() - startedAt > MAX_TIMEOUT_MS) {
+      console.warn('[reminders-backfill] timeout reached, returning partial result');
+      break;
+    }
+
+    // 2. Upsert cache.
+    try {
+      await upsertAppointmentCache({ tenantId, appt });
+    } catch (err) {
+      errors++;
+      console.warn('[reminders-backfill] cache upsert failed', {
+        appointmentId: appt.id,
+        err: (err as Error).message,
+      });
+      continue;
+    }
+
+    // 3. Materialize reminders.
     try {
       const result = await materializeReminders({
         tenantId,
-        ghlAppointmentId: row.ghlAppointmentId,
+        ghlAppointmentId: appt.id,
         reason: 'sync',
       });
       scheduled += result.scheduled;
@@ -65,7 +113,7 @@ export async function POST(_req: NextRequest): Promise<NextResponse> {
     } catch (err) {
       errors++;
       console.warn('[reminders-backfill] materialize failed', {
-        ghlAppointmentId: row.ghlAppointmentId,
+        appointmentId: appt.id,
         err: (err as Error).message,
       });
     }
@@ -73,10 +121,11 @@ export async function POST(_req: NextRequest): Promise<NextResponse> {
 
   return NextResponse.json({
     ok: true,
-    appointmentsProcessed: rows.length,
+    appointmentsProcessed: appointments.length,
     scheduled,
     skipped,
     errors,
     skipReasons: Object.fromEntries(skipReasons),
+    daysAhead,
   });
 }
