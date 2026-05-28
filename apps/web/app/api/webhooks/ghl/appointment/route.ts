@@ -10,6 +10,10 @@ import {
   normalizeAppointment,
   parseDate,
 } from '@/lib/analytics/ghl-webhook-helpers';
+import {
+  deleteAppointmentCache,
+  upsertAppointmentCache,
+} from '@/lib/appointments/cache';
 import { eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -72,14 +76,48 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, skipped: 'no-appointment-id' });
   }
 
+  // Mantener `appointments_cache` al día con la cita en GHL. El cache lo
+  // consume el inbox WhatsApp (sidebar + página de detalle del contacto).
+  // El upsert NO depende de `classifyEvent`: queremos reflejar también
+  // updates de status (showed / no-show / confirmado) que no son ni create
+  // ni cancel para el módulo de analytics.
+  const isCancel = isCancelType(eventType, apt.status);
+  if (isCancel) {
+    await deleteAppointmentCache({
+      tenantId: integration.tenantId,
+      ghlAppointmentId: apt.id,
+    }).catch((err) =>
+      console.warn('[ghl-webhook] cache delete failed', err),
+    );
+  } else {
+    // Algunos shapes traen extras (title, assignedUserId) sólo en el payload
+    // bruto, no en la versión normalizada — los leemos directo de payload.
+    const rawApt = (payload as { appointment?: Record<string, unknown> }).appointment ?? {};
+    await upsertAppointmentCache({
+      tenantId: integration.tenantId,
+      appt: {
+        id: apt.id,
+        contactId: apt.contactId ?? null,
+        calendarId: apt.calendarId ?? null,
+        appointmentStatus: apt.status ?? null,
+        assignedUserId: (rawApt.assignedUserId as string | undefined) ?? null,
+        title: (rawApt.title as string | undefined) ?? null,
+        startTime: apt.startTime ?? null,
+        endTime: apt.endTime ?? null,
+      },
+    }).catch((err) =>
+      console.warn('[ghl-webhook] cache upsert failed', err),
+    );
+  }
+
   const event = classifyEvent(payload);
   if (!event) {
-    return NextResponse.json({ ok: true, ignored: eventType ?? apt.status });
+    return NextResponse.json({ ok: true, cached: true, ignored: eventType ?? apt.status });
   }
 
   const startTime = parseDate(apt.startTime);
   if (!startTime) {
-    return NextResponse.json({ ok: true, skipped: 'no-start-time' });
+    return NextResponse.json({ ok: true, cached: true, skipped: 'no-start-time' });
   }
 
   if (event === 'cancel') {
@@ -113,4 +151,11 @@ export async function POST(req: NextRequest) {
     attributed: attribution !== null,
     ...(attribution ? { attribution } : {}),
   });
+}
+
+function isCancelType(eventType: string | undefined, status: string | undefined): boolean {
+  const t = (eventType ?? '').toLowerCase();
+  if (/appointment\.?delete/.test(t)) return true;
+  const s = (status ?? '').toLowerCase();
+  return s === 'cancelled' || s === 'canceled';
 }

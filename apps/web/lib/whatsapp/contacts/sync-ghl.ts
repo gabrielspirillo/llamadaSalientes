@@ -71,6 +71,19 @@ export async function syncWhatsappContactWithGhl(
       })
       .where(eq(whatsappContacts.id, contactId));
 
+    // Primera vez que linkeamos: hidratar appointments_cache con las citas
+    // existentes en GHL para este contacto. Best-effort, no rompe el sync.
+    // El webhook AppointmentCreate/Update va a mantener el cache fresh de
+    // ahora en adelante.
+    await hydrateAppointmentsForContact(tenantId, ghlContact.id).catch((err) => {
+      console.warn('[wa-ghl-sync] hydrate appointments failed', {
+        tenantId,
+        contactId,
+        ghlContactId: ghlContact!.id,
+        err: (err as Error).message,
+      });
+    });
+
     return { ghlContactId: ghlContact.id, created };
   } catch (err) {
     console.warn('[wa-ghl-sync] failed', {
@@ -107,4 +120,20 @@ function composeName(
   if (f.startsWith('WhatsApp +')) return null;
   const joined = [f, l].filter(Boolean).join(' ');
   return joined || null;
+}
+
+async function hydrateAppointmentsForContact(
+  tenantId: string,
+  ghlContactId: string,
+): Promise<void> {
+  // Dynamic imports por la misma razón que arriba: evitar arrastrar env.ts
+  // en módulos cargados desde tests.
+  const [{ listAppointmentsForContact }, { upsertAppointmentCacheMany }] =
+    await Promise.all([
+      import('@/lib/ghl/appointments'),
+      import('@/lib/appointments/cache'),
+    ]);
+  const appts = await listAppointmentsForContact(tenantId, ghlContactId);
+  if (appts.length === 0) return;
+  await upsertAppointmentCacheMany({ tenantId, appts });
 }

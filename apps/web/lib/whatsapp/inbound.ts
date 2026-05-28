@@ -193,8 +193,13 @@ export function normalizeEvolutionMessage(
 ): NormalizedInboundMessage {
   const { key, pushName, messageTimestamp } = payload.data;
   const remoteJid = key.remoteJid;
-  // remoteJid suele venir como "5491155555555@s.whatsapp.net"
-  const phone = remoteJid.split('@')[0] ?? remoteJid;
+  // remoteJid puede venir como:
+  //   "5491155555555@s.whatsapp.net"            (clásico)
+  //   "5491155555555:17@s.whatsapp.net"         (Multi-Device, ":NN" es el lid)
+  //   "5491155555555@lid"                       (grupo / lid id)
+  // Para el contacto solo nos interesa el número crudo: quitamos lo de después
+  // de "@" y el sufijo ":NN" si está. ensureE164 después le pone el "+".
+  const phone = stripJidSuffix(remoteJid.split('@')[0] ?? remoteJid);
   const ts =
     typeof messageTimestamp === 'number'
       ? messageTimestamp
@@ -218,11 +223,21 @@ export function normalizeEvolutionMessage(
 }
 
 function ensureE164(raw: string): string {
-  const trimmed = raw.trim();
+  const trimmed = stripJidSuffix(raw.trim());
   if (trimmed.startsWith('+')) return trimmed;
   // Heurística mínima: si solo viene el número con dígitos, prefijamos '+'.
   if (/^\d{6,15}$/.test(trimmed)) return `+${trimmed}`;
   return trimmed;
+}
+
+/**
+ * Quita el sufijo ":NN" que Evolution / Baileys agregan en los JIDs Multi-
+ * Device (ej. "5499:17" → "5499"). El número es siempre la primera parte;
+ * el ":NN" identifica al dispositivo y no debe formar parte del E.164.
+ */
+function stripJidSuffix(raw: string): string {
+  const idx = raw.indexOf(':');
+  return idx === -1 ? raw : raw.slice(0, idx);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

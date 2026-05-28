@@ -1,4 +1,5 @@
 import 'server-only';
+import { upsertAppointmentCache } from '@/lib/appointments/cache';
 import { GhlApiError, ghlFetch } from '@/lib/ghl/client';
 import { getFreeSlots, resolveCalendarId } from '@/lib/ghl/calendars';
 import { createContact, lookupContactByPhone, updateContact } from '@/lib/ghl/contacts-mutations';
@@ -45,7 +46,16 @@ export type RegisterPatientArgs = {
 // ─── GHL response shapes (mínimos) ───────────────────────────────────────────
 
 type GhlSlot = { startTime: string; endTime: string };
-type GhlAppointment = { id: string };
+type GhlAppointment = {
+  id: string;
+  contactId?: string;
+  calendarId?: string;
+  appointmentStatus?: string;
+  assignedUserId?: string;
+  title?: string;
+  startTime?: string;
+  endTime?: string;
+};
 
 // Heurística: GHL contact IDs son alfanuméricos de 20 chars sin espacios
 // (ej. W5CUSlYRHfeubqP8j29P). Si el agente nos pasa basura ("Gabriel/+542..."),
@@ -217,6 +227,27 @@ export async function bookAppointment(
     });
 
     console.log('[book_appointment] ok:', appointment.id);
+
+    // Persistir en cache local para que el inbox/contact detail muestre la
+    // cita al instante, sin esperar al webhook AppointmentCreate. Idempotente
+    // por (tenant_id, ghl_appointment_id).
+    await upsertAppointmentCache({
+      tenantId,
+      appt: {
+        id: appointment.id,
+        contactId: appointment.contactId ?? contactId,
+        calendarId: appointment.calendarId ?? resolved.calendarId,
+        appointmentStatus: appointment.appointmentStatus ?? 'confirmed',
+        assignedUserId: appointment.assignedUserId ?? null,
+        title: appointment.title ?? args.treatment_name,
+        startTime: appointment.startTime ?? startDate.toISOString(),
+        endTime: appointment.endTime ?? null,
+      },
+    }).catch((err) => {
+      // No rompemos el booking por un fallo de cache: el webhook va a
+      // upsertear cuando GHL nos avise.
+      console.warn('[book_appointment] cache upsert failed', err);
+    });
 
     // Enriquecer fila call: marcar intent=agendar, ghlContactId, appointmentId
     if (ctx.retellCallId) {
