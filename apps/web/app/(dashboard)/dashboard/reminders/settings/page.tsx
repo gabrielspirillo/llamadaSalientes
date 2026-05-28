@@ -1,4 +1,5 @@
 import { and, asc, desc, eq } from 'drizzle-orm';
+import Link from 'next/link';
 
 import { PageHeader } from '@/components/dashboard/page-header';
 import { RulesEditor } from '@/components/reminders/RulesEditor';
@@ -12,6 +13,7 @@ import {
   whatsappConnections,
 } from '@/lib/db/schema';
 import { getCurrentTenant } from '@/lib/tenant';
+import { ChevronLeft } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,6 +56,14 @@ export default async function RemindersSettingsPage() {
 
   return (
     <>
+      <Link
+        href="/dashboard/reminders"
+        className="mb-4 inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-800 transition-colors"
+      >
+        <ChevronLeft className="h-4 w-4" />
+        Volver al pipeline
+      </Link>
+
       <PageHeader
         title="Configuración de recordatorios"
         description="Define cuándo y por qué canal mandar cada recordatorio, con plantillas multi-canal."

@@ -358,11 +358,11 @@ function RuleRow(props: {
         <div className="flex items-center gap-2 ml-auto">
           <Button
             size="sm"
-            variant="ghost"
+            variant={showTemplates ? 'secondary' : 'ghost'}
             onClick={() => setShowTemplates((v) => !v)}
             disabled={props.pending}
           >
-            Plantillas ({props.templates.length})
+            Plantillas ({props.templates.length}) {showTemplates ? '▴' : '▾'}
           </Button>
           <Button size="sm" variant="ghost" onClick={props.onDelete} disabled={props.pending}>
             Borrar
@@ -372,6 +372,16 @@ function RuleRow(props: {
 
       {showTemplates && (
         <div className="mt-3 border-t border-zinc-100 pt-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-zinc-600">Plantillas de esta regla</span>
+            <button
+              type="button"
+              onClick={() => setShowTemplates(false)}
+              className="rounded-md px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 transition-colors"
+            >
+              ✕ Cerrar
+            </button>
+          </div>
           <TemplateEditor
             rule={props.rule}
             templates={props.templates}
