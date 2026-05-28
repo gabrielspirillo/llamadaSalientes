@@ -86,16 +86,19 @@ export class EvolutionConnector implements WhatsAppConnector {
         false,
       );
     }
-    // Evolution API v2.3.x espera por cada botón:
-    //   { type: 'reply'|'url'|'call', displayText, id }
-    // (versiones anteriores usaban `title: 'reply'` como discriminador; v2.3.4
-    // validó esto como `type` requerido, ver Evolution API error
-    // "buttons[N] requires property 'type'").
+    // Schema según Evolution API v2.3.4 (DTO + Baileys handler verificados):
+    //   - top-level: { number, title, description?, footer?, buttons: Button[] }
+    //   - title se renderiza como `*<title>*` en bold encima del body — si va
+    //     vacío queda `**` en el mensaje, por eso usamos un título corto.
+    //   - cada Button reply: { type: 'reply', displayText, id }
+    //     `type` es la única propiedad obligatoria.
+    // Ref: https://github.com/evolution-foundation/evolution-api/blob/2.3.4/src/api/dto/sendMessage.dto.ts
+    //      https://github.com/evolution-foundation/evolution-api/blob/2.3.4/src/api/integrations/channel/whatsapp/whatsapp.baileys.service.ts#L3055
     const json = await this.post<EvolutionSendResponse>(
       `/message/sendButtons/${encodeURIComponent(this.opts.instanceName)}`,
       {
         number: stripPlus(to),
-        title: '',
+        title: 'Recordatorio',
         description: bodyText,
         footer: '',
         buttons: buttons.map((b) => ({
