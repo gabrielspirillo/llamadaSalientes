@@ -251,17 +251,11 @@ function RuleRow(props: {
           onBlur={(e) => props.onPatch({ label: e.target.value || null })}
           className="rounded-md border border-zinc-200 px-3 py-1.5 text-sm w-full md:w-44"
         />
-        <div className="flex items-center gap-2">
-          <input
-            type="number"
-            defaultValue={props.rule.offsetMinutes}
-            onBlur={(e) =>
-              props.onPatch({ offsetMinutes: Math.max(1, Number.parseInt(e.target.value, 10) || 1) })
-            }
-            className="w-20 rounded-md border border-zinc-200 px-2 py-1.5 text-sm"
-          />
-          <span className="text-xs text-zinc-500">minutos antes</span>
-        </div>
+        <OffsetPicker
+          totalMinutes={props.rule.offsetMinutes}
+          onChange={(m) => props.onPatch({ offsetMinutes: m })}
+          disabled={props.pending}
+        />
         <select
           defaultValue={props.rule.primaryChannel}
           onChange={(e) =>
@@ -330,6 +324,61 @@ function RuleRow(props: {
         </div>
       )}
     </Card>
+  );
+}
+
+// Selector de offset: días + horas combinables. Internamente se guarda en
+// minutos (1 día = 1440 min, 1 hora = 60 min). Se puede usar solo días, solo
+// horas, o ambos. El total debe ser ≥ 1 minuto.
+function OffsetPicker({
+  totalMinutes,
+  onChange,
+  disabled,
+}: {
+  totalMinutes: number;
+  onChange: (minutes: number) => void;
+  disabled?: boolean;
+}) {
+  const initialDays = Math.floor(totalMinutes / 1440);
+  const initialHours = Math.floor((totalMinutes % 1440) / 60);
+  const [days, setDays] = useState<number>(initialDays);
+  const [hours, setHours] = useState<number>(initialHours);
+
+  function commit(nextDays: number, nextHours: number) {
+    const safeDays = Math.max(0, Math.min(60, nextDays || 0));
+    const safeHours = Math.max(0, Math.min(23, nextHours || 0));
+    const total = safeDays * 1440 + safeHours * 60;
+    if (total < 1) return;
+    setDays(safeDays);
+    setHours(safeHours);
+    if (total !== totalMinutes) onChange(total);
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <input
+        type="number"
+        value={days}
+        min={0}
+        max={60}
+        onChange={(e) => setDays(Number.parseInt(e.target.value, 10) || 0)}
+        onBlur={() => commit(days, hours)}
+        disabled={disabled}
+        className="w-14 rounded-md border border-zinc-200 px-2 py-1.5 text-sm text-right"
+      />
+      <span className="text-xs text-zinc-500">d</span>
+      <input
+        type="number"
+        value={hours}
+        min={0}
+        max={23}
+        onChange={(e) => setHours(Number.parseInt(e.target.value, 10) || 0)}
+        onBlur={() => commit(days, hours)}
+        disabled={disabled}
+        className="w-14 rounded-md border border-zinc-200 px-2 py-1.5 text-sm text-right"
+      />
+      <span className="text-xs text-zinc-500">h antes</span>
+    </div>
   );
 }
 
