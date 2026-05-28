@@ -6,7 +6,6 @@ import {
   appointmentReminders,
   reminderMessageTemplates,
   whatsappConnections,
-  whatsappContacts,
   whatsappMessages,
 } from '@/lib/db/schema';
 import { publishMessageEvent } from '@/lib/whatsapp/realtime/publisher';
@@ -22,19 +21,19 @@ import {
 import { interpolate, type ReminderVars } from '@/lib/reminders/variables';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Envío de un recordatorio por WhatsApp.
+// Envío de un recordatorio por WhatsApp (multi-driver).
 //
-// Multi-driver:
-//   - EVOLUTION → free-text interpolado + 3 botones quick-reply (reusa
-//     sendAgentResponse para persistencia + idempotencia).
-//   - CLOUD/TWILIO → plantilla aprobada Meta con params posicional + buttons
-//     embedded en el template. Se persiste manualmente como type=TEMPLATE.
-//     (Esta rama se implementa en PR-6; por ahora si no hay template
-//     CLOUD/TWILIO devuelve error con reason='no_template').
+//   - EVOLUTION → free-text interpolado + botones quick-reply (sendAgentResponse).
+//   - CLOUD/TWILIO → template aprobado Meta con params posicional + buttons del
+//     template. Se persiste manualmente como type=TEMPLATE.
 //
-// El persistido en `whatsapp_messages` permite que el recordatorio aparezca
-// en el inbox como cualquier otro mensaje saliente.
+// Dos puntos de entrada:
+//   - sendWhatsAppReminder: producción, resuelve template desde DB por reminderId.
+//   - sendWhatsAppDirect:   bajo nivel para test-send / preview real; recibe
+//                           el template ya resuelto.
 // ─────────────────────────────────────────────────────────────────────────────
+
+type WaConnRow = typeof whatsappConnections.$inferSelect;
 
 export type SendWhatsAppReminderResult =
   | {
@@ -54,24 +53,12 @@ export async function sendWhatsAppReminder(args: {
 }): Promise<SendWhatsAppReminderResult> {
   const { tenantId, reminderId, toPhoneE164, vars, contactDisplayName } = args;
 
-  // Resolver conexión activa del tenant.
-  const [conn] = await db
-    .select()
-    .from(whatsappConnections)
-    .where(
-      and(
-        eq(whatsappConnections.tenantId, tenantId),
-        eq(whatsappConnections.status, 'CONNECTED'),
-      ),
-    )
-    .orderBy(desc(whatsappConnections.updatedAt))
-    .limit(1);
-
+  const conn = await resolveActiveConnection(tenantId);
   if (!conn) return { ok: false, reason: 'no_whatsapp_connection' };
 
   const driverScope = driverScopeForWhatsAppMode(conn.mode);
 
-  // Cargar el reminder para saber qué rule + canal.
+  // Cargar el reminder para saber qué rule.
   const [rem] = await db
     .select({ ruleId: appointmentReminders.ruleId })
     .from(appointmentReminders)
@@ -97,7 +84,48 @@ export async function sendWhatsAppReminder(args: {
   );
   if (!template) return { ok: false, reason: 'no_template' };
 
-  // Asegurar contact + conversation.
+  return sendWhatsAppDirect({
+    tenantId,
+    conn,
+    template,
+    vars,
+    toPhoneE164,
+    contactDisplayName,
+    reminderId,
+  });
+}
+
+// Resuelve el connector activo del tenant (la conexión CONNECTED más reciente).
+export async function resolveActiveConnection(tenantId: string): Promise<WaConnRow | null> {
+  const [conn] = await db
+    .select()
+    .from(whatsappConnections)
+    .where(
+      and(
+        eq(whatsappConnections.tenantId, tenantId),
+        eq(whatsappConnections.status, 'CONNECTED'),
+      ),
+    )
+    .orderBy(desc(whatsappConnections.updatedAt))
+    .limit(1);
+  return conn ?? null;
+}
+
+// Envío "bajo nivel": recibe template + conn ya resueltos. Útil para test-send
+// (no requiere reminder en BD) y para sendWhatsAppReminder.
+export async function sendWhatsAppDirect(args: {
+  tenantId: string;
+  conn: WaConnRow;
+  template: ReminderTemplateRow;
+  vars: ReminderVars;
+  toPhoneE164: string;
+  contactDisplayName: string | null;
+  /** ID que se inyecta en los botones (`rem:<action>:<id>`). Para tests usar un id ad-hoc. */
+  reminderId: string;
+}): Promise<SendWhatsAppReminderResult> {
+  const { tenantId, conn, template, vars, toPhoneE164, contactDisplayName, reminderId } = args;
+
+  // Contact + conversation.
   const contact = await upsertWhatsappContact({
     tenantId,
     phoneE164: toPhoneE164,
@@ -118,7 +146,6 @@ export async function sendWhatsAppReminder(args: {
     template.buttons.length > 0 ? template.buttons : defaultReminderButtons(reminderId);
 
   if (conn.mode === 'EVOLUTION') {
-    // Free-text con botones interactivos.
     const body = template.freeText ? interpolate(template.freeText, vars) : '';
     if (!body.trim()) return { ok: false, reason: 'empty_body' };
 
@@ -139,17 +166,15 @@ export async function sendWhatsAppReminder(args: {
         kind: sent.kind,
       };
     } catch (err) {
-      console.error('[send-whatsapp-reminder] evolution send failed', err);
+      console.error('[send-whatsapp] evolution send failed', err);
       return { ok: false, reason: 'send_failed' };
     }
   }
 
   if (conn.mode === 'CLOUD' || conn.mode === 'TWILIO') {
-    // Template Meta/Twilio: el envío se implementa en PR-6.
     if (!template.templateName) return { ok: false, reason: 'no_template' };
     try {
       const connector = buildConnector(conn);
-      // mapParamsToValues: cada item del map referencia un path en vars o un literal.
       const params = template.templateParamsMap.map((p) => {
         if ('source' in p) return resolveOrEmpty(p.source, vars);
         if ('literal' in p) return p.literal;
@@ -159,7 +184,6 @@ export async function sendWhatsAppReminder(args: {
         language: template.templateLanguage,
         body: params.map((v) => ({ type: 'text' as const, value: v })),
       });
-      // Persistir manualmente (sendAgentResponse no soporta type=TEMPLATE).
       const [inserted] = await db
         .insert(whatsappMessages)
         .values({
@@ -203,7 +227,7 @@ export async function sendWhatsAppReminder(args: {
         kind: 'template',
       };
     } catch (err) {
-      console.error('[send-whatsapp-reminder] template send failed', err);
+      console.error('[send-whatsapp] template send failed', err);
       return { ok: false, reason: 'send_failed' };
     }
   }
@@ -212,9 +236,6 @@ export async function sendWhatsAppReminder(args: {
 }
 
 function resolveOrEmpty(path: string, vars: ReminderVars): string {
-  // Usa el mismo resolver de variables.ts pero sin re-importar el path
-  // explícito (lo replica para no exportar resolveVar dos veces; igual está
-  // bien duplicar 4 líneas).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let cur: any = vars;
   for (const raw of path.split('.')) {
@@ -225,7 +246,6 @@ function resolveOrEmpty(path: string, vars: ReminderVars): string {
   return cur == null ? '' : String(cur);
 }
 
-// Contact display name helper (usado por el worker para pasar al sender).
 export function deriveContactDisplayName(vars: ReminderVars): string | null {
   const full = vars.contact.fullName;
   if (full && full !== 'paciente') return full;

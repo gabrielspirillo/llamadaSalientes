@@ -1,4 +1,4 @@
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq } from 'drizzle-orm';
 
 import { PageHeader } from '@/components/dashboard/page-header';
 import { RulesEditor } from '@/components/reminders/RulesEditor';
@@ -9,6 +9,7 @@ import {
   reminderRuleSets,
   reminderRules,
   treatments,
+  whatsappConnections,
 } from '@/lib/db/schema';
 import { getCurrentTenant } from '@/lib/tenant';
 
@@ -38,6 +39,19 @@ export default async function RemindersSettingsPage() {
     .from(treatments)
     .where(and(eq(treatments.tenantId, tenant.id), eq(treatments.active, true)));
 
+  // Detectar el driver activo del tenant (la conexión CONNECTED más reciente).
+  // El RulesEditor lo usa para filtrar plantillas WhatsApp y mostrar solo el
+  // driver que corresponde, en lugar de listar los 3.
+  const [waConn] = await db
+    .select({ mode: whatsappConnections.mode })
+    .from(whatsappConnections)
+    .where(
+      and(eq(whatsappConnections.tenantId, tenant.id), eq(whatsappConnections.status, 'CONNECTED')),
+    )
+    .orderBy(desc(whatsappConnections.updatedAt))
+    .limit(1);
+  const activeWhatsAppMode = waConn?.mode ?? null;
+
   return (
     <>
       <PageHeader
@@ -51,6 +65,7 @@ export default async function RemindersSettingsPage() {
           initialRules={rules}
           initialTemplates={templates}
           treatments={treatmentRows}
+          activeWhatsAppMode={activeWhatsAppMode}
         />
       </Card>
     </>

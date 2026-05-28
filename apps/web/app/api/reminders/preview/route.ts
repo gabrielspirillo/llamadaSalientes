@@ -156,19 +156,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
   }
 
-  // 6. Renderizar.
+  // 6. Renderizar. Priorizamos el shape del template GUARDADO sobre el driver
+  // activo del tenant: si tiene freeText (Evolution), interpolamos; si tiene
+  // templateName (Cloud/Twilio), mostramos el formato Meta; si es voice, el
+  // voicePromptOverride.
   const buttons = template.buttons.length > 0 ? template.buttons : defaultReminderButtons('preview');
 
   let renderedText: string;
-  if (rule.primaryChannel === 'VOICE') {
+  if (rule.primaryChannel === 'VOICE' || template.driverScope === 'voice_retell') {
     renderedText =
       template.voicePromptOverride ??
       `Hola ${vars.contact.firstName || vars.contact.fullName}, te recuerdo tu cita de ${vars.appointment.treatment} ${vars.appointment.dateTime}.`;
-  } else if (driverScope === 'whatsapp_evolution') {
-    renderedText = template.freeText
-      ? interpolate(template.freeText, vars)
-      : `Hola ${vars.contact.firstName}, tu cita de ${vars.appointment.treatment} es ${vars.appointment.dateTime}.`;
-  } else {
+  } else if (template.freeText) {
+    // Evolution u otro driver con free-text guardado.
+    renderedText = interpolate(template.freeText, vars);
+  } else if (template.templateName) {
     // Cloud / Twilio templates: render aproximado con params mapeados.
     const params = template.templateParamsMap.map((p) => {
       if ('source' in p) {
@@ -187,7 +189,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       if ('literal' in p) return p.literal;
       return '';
     });
-    renderedText = `[Plantilla Meta: ${template.templateName ?? '(sin nombre)'}]\n${params.join(' · ')}`;
+    renderedText = `[Plantilla Meta: ${template.templateName}]\n${params.join(' · ')}`;
+  } else {
+    renderedText = `(plantilla vacía — agregá texto o nombre de template para ${template.driverScope})`;
   }
 
   return NextResponse.json({

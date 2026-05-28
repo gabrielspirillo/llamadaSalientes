@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -41,12 +41,14 @@ type TemplateRow = {
 };
 
 type Treatment = { id: string; name: string };
+type WaMode = 'CLOUD' | 'EVOLUTION' | 'TWILIO';
 
 export function RulesEditor(props: {
   initialRuleSets: RuleSet[];
   initialRules: Rule[];
   initialTemplates: TemplateRow[];
   treatments: Treatment[];
+  activeWhatsAppMode: WaMode | null;
 }) {
   const [ruleSets, setRuleSets] = useState(props.initialRuleSets);
   const [rules, setRules] = useState(props.initialRules);
@@ -150,6 +152,7 @@ export function RulesEditor(props: {
             onDeleteRule={deleteRule}
             onUpsertTemplate={upsertTemplate}
             pending={pending}
+            activeWhatsAppMode={props.activeWhatsAppMode}
           />
         ) : (
           <div className="rounded-lg border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">
@@ -172,6 +175,7 @@ export function RulesEditor(props: {
           rules={rules}
           templates={templates}
           treatments={props.treatments}
+          activeWhatsAppMode={props.activeWhatsAppMode}
           onCreateSet={(treatmentId) => {
             startTransition(async () => {
               const res = await fetch('/api/reminders/rule-sets', {
@@ -205,6 +209,7 @@ function RuleSetSection(props: {
   onDeleteRule: (id: string) => void;
   onUpsertTemplate: (ruleId: string, body: Partial<TemplateRow>) => void;
   pending: boolean;
+  activeWhatsAppMode: WaMode | null;
 }) {
   return (
     <div className="space-y-3">
@@ -222,6 +227,7 @@ function RuleSetSection(props: {
             onDelete={() => props.onDeleteRule(r.id)}
             onUpsertTemplate={(body) => props.onUpsertTemplate(r.id, body)}
             pending={props.pending}
+            activeWhatsAppMode={props.activeWhatsAppMode}
           />
         ))
       )}
@@ -239,6 +245,7 @@ function RuleRow(props: {
   onDelete: () => void;
   onUpsertTemplate: (body: Partial<TemplateRow>) => void;
   pending: boolean;
+  activeWhatsAppMode: WaMode | null;
 }) {
   const [showTemplates, setShowTemplates] = useState(false);
   return (
@@ -320,6 +327,7 @@ function RuleRow(props: {
             templates={props.templates}
             onUpsert={props.onUpsertTemplate}
             pending={props.pending}
+            activeWhatsAppMode={props.activeWhatsAppMode}
           />
         </div>
       )}
@@ -389,21 +397,96 @@ const DRIVERS: { value: string; label: string; channel: 'WHATSAPP' | 'VOICE' }[]
   { value: 'voice_retell', label: 'Voz Retell', channel: 'VOICE' },
 ];
 
+// Variables disponibles para interpolar en plantillas. Se muestran siempre
+// visibles para que el operador pueda insertarlas sin memorizarlas.
+const REMINDER_VARIABLES: Array<{ token: string; description: string }> = [
+  { token: '{{contact.firstName}}', description: 'Nombre del paciente' },
+  { token: '{{contact.fullName}}', description: 'Nombre completo del paciente' },
+  { token: '{{contact.phone}}', description: 'Teléfono del paciente' },
+  { token: '{{appointment.date}}', description: 'Fecha (ej: "lunes, 25 de mayo de 2026")' },
+  { token: '{{appointment.time}}', description: 'Hora (ej: "10:30")' },
+  { token: '{{appointment.dateTime}}', description: 'Fecha + hora completa' },
+  { token: '{{appointment.treatment}}', description: 'Tratamiento (ej: "Limpieza dental")' },
+  { token: '{{appointment.durationMinutes}}', description: 'Duración en minutos' },
+  { token: '{{clinic.name}}', description: 'Nombre de la clínica' },
+  { token: '{{clinic.address}}', description: 'Dirección de la clínica' },
+  { token: '{{clinic.phone}}', description: 'Teléfono de la clínica' },
+];
+
+function driversAvailableForRule(
+  rule: Rule,
+  activeWaMode: WaMode | null,
+): { value: string; label: string; channel: 'WHATSAPP' | 'VOICE' }[] {
+  const channels = new Set<'WHATSAPP' | 'VOICE'>();
+  channels.add(rule.primaryChannel);
+  if (rule.fallbackChannel) channels.add(rule.fallbackChannel);
+
+  const result: { value: string; label: string; channel: 'WHATSAPP' | 'VOICE' }[] = [];
+  if (channels.has('WHATSAPP') && activeWaMode) {
+    const map: Record<WaMode, { value: string; label: string }> = {
+      CLOUD: { value: 'whatsapp_cloud', label: 'WhatsApp Cloud (Meta)' },
+      EVOLUTION: { value: 'whatsapp_evolution', label: 'WhatsApp Evolution' },
+      TWILIO: { value: 'whatsapp_twilio', label: 'WhatsApp Twilio' },
+    };
+    const entry = map[activeWaMode];
+    result.push({ ...entry, channel: 'WHATSAPP' });
+  }
+  if (channels.has('VOICE')) {
+    result.push({ value: 'voice_retell', label: 'Voz Retell', channel: 'VOICE' });
+  }
+  return result;
+}
+
 function TemplateEditor(props: {
   rule: Rule;
   templates: TemplateRow[];
   onUpsert: (body: Partial<TemplateRow>) => void;
   pending: boolean;
+  activeWhatsAppMode: WaMode | null;
 }) {
-  const available = DRIVERS.filter((d) => d.channel === props.rule.primaryChannel || d.channel === props.rule.fallbackChannel);
-  const [selectedDriver, setSelectedDriver] = useState<string>(available[0]?.value ?? 'whatsapp_evolution');
+  const available = driversAvailableForRule(props.rule, props.activeWhatsAppMode);
+  const [selectedDriver, setSelectedDriver] = useState<string>(
+    available[0]?.value ?? 'whatsapp_evolution',
+  );
+  const driverChannel = available.find((d) => d.value === selectedDriver)?.channel ?? 'WHATSAPP';
   const current = props.templates.find((t) => t.driverScope === selectedDriver) ?? null;
-  const driverChannel = DRIVERS.find((d) => d.value === selectedDriver)?.channel ?? 'WHATSAPP';
   const [freeText, setFreeText] = useState(current?.freeText ?? '');
   const [templateName, setTemplateName] = useState(current?.templateName ?? '');
   const [voicePrompt, setVoicePrompt] = useState(current?.voicePromptOverride ?? '');
   const [previewText, setPreviewText] = useState<string>('');
   const [testPhone, setTestPhone] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const lastDriver = useRef(selectedDriver);
+
+  // Cuando cambia el driver seleccionado, resetear el form con los valores
+  // del template existente para ese driver (si existe).
+  if (lastDriver.current !== selectedDriver) {
+    lastDriver.current = selectedDriver;
+    const next = props.templates.find((t) => t.driverScope === selectedDriver) ?? null;
+    setFreeText(next?.freeText ?? '');
+    setTemplateName(next?.templateName ?? '');
+    setVoicePrompt(next?.voicePromptOverride ?? '');
+  }
+
+  function insertVariable(token: string) {
+    const target =
+      driverChannel === 'VOICE'
+        ? { value: voicePrompt, setter: setVoicePrompt }
+        : { value: freeText, setter: setFreeText };
+    const ta = textareaRef.current;
+    if (!ta) {
+      target.setter((v) => `${v}${token}`);
+      return;
+    }
+    const start = ta.selectionStart ?? target.value.length;
+    const end = ta.selectionEnd ?? target.value.length;
+    const next = target.value.slice(0, start) + token + target.value.slice(end);
+    target.setter(next);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(start + token.length, start + token.length);
+    });
+  }
 
   async function loadPreview() {
     const res = await fetch('/api/reminders/preview', {
@@ -415,7 +498,8 @@ function TemplateEditor(props: {
       const data = await res.json();
       setPreviewText(data.renderedText ?? '(sin contenido)');
     } else {
-      setPreviewText('(error)');
+      const data = await res.json().catch(() => ({}));
+      setPreviewText(`(error: ${data.error ?? 'desconocido'})`);
     }
   }
 
@@ -427,30 +511,68 @@ function TemplateEditor(props: {
       body: JSON.stringify({ ruleId: props.rule.id, toPhoneE164: testPhone }),
     });
     const data = await res.json().catch(() => ({}));
-    alert(res.ok ? `Test enviado: ${JSON.stringify(data)}` : `Error: ${data.error ?? 'desconocido'}`);
+    alert(
+      res.ok && data.ok !== false
+        ? `Test enviado: ${JSON.stringify(data)}`
+        : `Error: ${data.error ?? 'desconocido'}`,
+    );
   }
 
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <select
-          value={selectedDriver}
-          onChange={(e) => setSelectedDriver(e.target.value)}
-          className="rounded-md border border-zinc-200 px-2 py-1.5 text-sm"
-        >
-          {available.map((d) => (
-            <option key={d.value} value={d.value}>
-              {d.label}
-            </option>
+        {available.length > 1 ? (
+          <select
+            value={selectedDriver}
+            onChange={(e) => setSelectedDriver(e.target.value)}
+            className="rounded-md border border-zinc-200 px-2 py-1.5 text-sm"
+          >
+            {available.map((d) => (
+              <option key={d.value} value={d.value}>
+                {d.label}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-sm text-zinc-700">
+            {available[0]?.label ?? 'Sin driver disponible'}
+          </span>
+        )}
+        <Badge tone={current ? 'success' : 'neutral'}>
+          {current ? 'Configurada' : 'No configurada'}
+        </Badge>
+        {!props.activeWhatsAppMode && driverChannel === 'WHATSAPP' && (
+          <span className="text-xs text-amber-600">
+            ⚠ Conecta WhatsApp en /dashboard/whatsapp para habilitar esta plantilla.
+          </span>
+        )}
+      </div>
+
+      {/* Panel de variables siempre visible */}
+      <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
+        <p className="mb-2 text-xs font-medium text-zinc-700">
+          Variables disponibles{' '}
+          <span className="font-normal text-zinc-500">(click para insertar)</span>
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {REMINDER_VARIABLES.map((v) => (
+            <button
+              key={v.token}
+              type="button"
+              onClick={() => insertVariable(v.token)}
+              title={v.description}
+              className="rounded-md border border-zinc-200 bg-white px-2 py-1 font-mono text-[11px] text-zinc-700 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+            >
+              {v.token}
+            </button>
           ))}
-        </select>
-        <Badge tone={current ? 'success' : 'neutral'}>{current ? 'Configurada' : 'No configurada'}</Badge>
+        </div>
       </div>
 
       {driverChannel === 'WHATSAPP' && selectedDriver !== 'whatsapp_evolution' && (
         <input
           type="text"
-          placeholder="Nombre de plantilla Meta/Twilio aprobada (ej: dental_reminder_24h)"
+          placeholder="Nombre de plantilla aprobada (ej: dental_reminder_24h)"
           value={templateName}
           onChange={(e) => setTemplateName(e.target.value)}
           className="w-full rounded-md border border-zinc-200 px-3 py-1.5 text-sm"
@@ -459,20 +581,22 @@ function TemplateEditor(props: {
 
       {driverChannel === 'WHATSAPP' && selectedDriver === 'whatsapp_evolution' && (
         <textarea
+          ref={textareaRef}
           value={freeText}
           onChange={(e) => setFreeText(e.target.value)}
           rows={4}
-          placeholder="Hola {{contact.first_name}}, te recordamos tu cita de {{appointment.treatment}} {{appointment.dateTime}}."
+          placeholder="Hola {{contact.firstName}}, te recordamos tu cita de {{appointment.treatment}} {{appointment.dateTime}}."
           className="w-full rounded-md border border-zinc-200 px-3 py-2 text-sm font-mono"
         />
       )}
 
       {driverChannel === 'VOICE' && (
         <textarea
+          ref={textareaRef}
           value={voicePrompt}
           onChange={(e) => setVoicePrompt(e.target.value)}
           rows={3}
-          placeholder="Mensaje inicial del agente (opcional). Si está vacío, usa el prompt outbound por defecto."
+          placeholder="Mensaje inicial del agente (opcional)."
           className="w-full rounded-md border border-zinc-200 px-3 py-2 text-sm"
         />
       )}
@@ -531,6 +655,7 @@ function TreatmentOverridesSection(props: {
   onDeleteRule: (id: string) => void;
   onUpsertTemplate: (ruleId: string, body: Partial<TemplateRow>) => void;
   pending: boolean;
+  activeWhatsAppMode: WaMode | null;
 }) {
   const treatmentSets = props.ruleSets.filter((r) => r.scope === 'TREATMENT');
   const usedTreatmentIds = new Set(treatmentSets.map((r) => r.treatmentId));
@@ -554,6 +679,7 @@ function TreatmentOverridesSection(props: {
               onDeleteRule={props.onDeleteRule}
               onUpsertTemplate={props.onUpsertTemplate}
               pending={props.pending}
+              activeWhatsAppMode={props.activeWhatsAppMode}
             />
           </div>
         );

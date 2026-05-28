@@ -6,6 +6,7 @@ import { db } from '@/lib/db/client';
 import {
   appointmentsCache,
   clinicSettings,
+  reminderMessageTemplates,
   reminderRules,
   tenants,
   treatments,
@@ -13,7 +14,15 @@ import {
 import { getContact } from '@/lib/ghl/contacts';
 import { ReminderForbiddenError, requireReminderRole } from '@/lib/reminders/auth';
 import { sendVoiceReminder } from '@/lib/reminders/send-voice';
-import { sendWhatsAppReminder } from '@/lib/reminders/send-whatsapp';
+import {
+  resolveActiveConnection,
+  sendWhatsAppDirect,
+} from '@/lib/reminders/send-whatsapp';
+import {
+  driverScopeForWhatsAppMode,
+  resolveTemplate,
+  type ReminderTemplateRow,
+} from '@/lib/reminders/template-resolver';
 import { buildReminderVars } from '@/lib/reminders/variables';
 
 export const runtime = 'nodejs';
@@ -112,31 +121,60 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
   }
 
-  // Para test-send NO insertamos appointment_reminders — usamos un id ad-hoc.
-  // El sender espera tener un reminder real en BD, así que para no romper, en
-  // test-send delegamos a una versión más liviana. Hacemos un INSERT temporal
-  // sólo si hace falta — más simple es llamar a los connectors directamente.
+  // Para test-send NO insertamos appointment_reminders — usamos un id ad-hoc
+  // en los botones. La función sendWhatsAppDirect acepta template + conn ya
+  // resueltos sin necesidad de buscar un reminder en BD.
+  const testReminderId = `test-${Date.now()}`;
 
   if (rule.primaryChannel === 'WHATSAPP') {
-    // Truco: crear un fake reminderId. El sender necesita un reminder real
-    // para resolver el template (lee por rule_id). Aquí pasamos un id ficticio
-    // y el sender va a fallar al cargar el reminder. Mejor inyectamos el
-    // ruleId directamente — pero el sender no soporta eso. Solución pragmática:
-    // hacer un INSERT temporal y borrar después.
-    // Por simplicidad v1: devolver mensaje informando que test-send requiere
-    // una regla con plantilla pre-configurada (el flujo principal igual la
-    // requiere) y que usaremos un reminder transitorio.
+    const conn = await resolveActiveConnection(tenantId);
+    if (!conn) {
+      return NextResponse.json(
+        { ok: false, error: 'No hay conexión de WhatsApp activa para este tenant.' },
+        { status: 400 },
+      );
+    }
+    const driverScope = driverScopeForWhatsAppMode(conn.mode);
+    const templates = await db
+      .select()
+      .from(reminderMessageTemplates)
+      .where(eq(reminderMessageTemplates.ruleId, rule.id));
+    const template = resolveTemplate(
+      templates as ReminderTemplateRow[],
+      'WHATSAPP',
+      driverScope,
+    );
+    if (!template) {
+      return NextResponse.json(
+        { ok: false, error: 'No hay plantilla configurada para esta regla y driver activo.' },
+        { status: 400 },
+      );
+    }
+
+    const result = await sendWhatsAppDirect({
+      tenantId,
+      conn,
+      template,
+      vars,
+      toPhoneE164: parsed.data.toPhoneE164,
+      contactDisplayName: vars.contact.fullName,
+      reminderId: testReminderId,
+    });
+    if (!result.ok) {
+      return NextResponse.json({ ok: false, error: result.reason }, { status: 502 });
+    }
     return NextResponse.json({
-      ok: false,
-      error:
-        'Test-send WhatsApp todavía no implementado v1. Usá un reminder real desde el pipeline para probar.',
-    }, { status: 501 });
+      ok: true,
+      externalMessageId: result.externalMessageId,
+      conversationId: result.conversationId,
+      kind: result.kind,
+    });
   }
 
   if (rule.primaryChannel === 'VOICE') {
     const result = await sendVoiceReminder({
       tenantId,
-      reminderId: `test-${Date.now()}`,
+      reminderId: testReminderId,
       toPhoneE164: parsed.data.toPhoneE164,
       vars,
       contactDisplayName: vars.contact.fullName,
