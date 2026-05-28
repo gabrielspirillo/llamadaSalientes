@@ -16,6 +16,7 @@ import {
 } from '@/lib/db/schema';
 import { getCurrentTenant } from '@/lib/tenant';
 import { buildConnector } from '@/lib/whatsapp';
+import { publishMessageEvent } from '@/lib/whatsapp/realtime/publisher';
 import { auth } from '@clerk/nextjs/server';
 
 export type ActionResult<T> =
@@ -146,6 +147,11 @@ export async function sendManualMessage(input: unknown): Promise<ActionResult<{ 
         externalId: result.id,
       })
       .where(eq(whatsappMessages.id, messageRow.id));
+    await publishMessageEvent({
+      ...messageRow,
+      deliveryStatus: 'SENT',
+      externalId: result.id,
+    });
   } catch (err) {
     const msg = (err as Error).message;
     await db

@@ -17,6 +17,7 @@ import { listTenantMembersSynced } from '@/lib/tenant-members';
 import { MessageComposer } from '../_components/message-composer';
 import { ConversationActions } from '../_components/conversation-actions';
 import { ContactSidebar } from '../_components/contact-sidebar';
+import { MessagesStream } from '../_components/messages-stream';
 
 export const dynamic = 'force-dynamic';
 
@@ -118,80 +119,24 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
           />
         </div>
 
-        <div className="flex-1 overflow-y-auto bg-zinc-50 p-4">
-          {messages.length === 0 ? (
-            <p className="text-center text-sm text-zinc-500">Sin mensajes aún.</p>
-          ) : (
-            <ul className="space-y-2">
-              {messages.map((m) => {
-                const isOutbound = m.direction === 'OUTBOUND';
-                const isInternal = m.internalNote;
-                const containerCls = isInternal
-                  ? 'mx-auto bg-amber-50 border border-amber-200'
-                  : isOutbound
-                    ? 'ml-auto bg-emerald-500 text-white'
-                    : 'mr-auto bg-white border border-zinc-200';
-                const authorEmail = m.senderUserId ? senderUserMap.get(m.senderUserId) : null;
-                return (
-                  <li
-                    key={m.id}
-                    className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-3 py-2 text-sm ${containerCls}`}
-                  >
-                    {isInternal && (
-                      <div className="mb-1 text-[10px] font-semibold uppercase text-amber-700">
-                        Nota interna{authorEmail ? ` · ${authorEmail}` : ''}
-                      </div>
-                    )}
-                    {!isInternal && isOutbound && authorEmail && (
-                      <div className="mb-0.5 text-[10px] font-medium text-emerald-100">
-                        {authorEmail}
-                      </div>
-                    )}
-                    {m.mediaUrl && m.type === 'IMAGE' && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={m.mediaUrl}
-                        alt="adjunto"
-                        className="mb-1 max-h-72 rounded-lg"
-                      />
-                    )}
-                    {m.mediaUrl && m.type === 'AUDIO' && (
-                      <audio src={m.mediaUrl} controls className="mb-1 w-full" />
-                    )}
-                    {m.mediaUrl && m.type === 'VIDEO' && (
-                      <video src={m.mediaUrl} controls className="mb-1 max-h-72 rounded-lg" />
-                    )}
-                    {m.mediaUrl && m.type === 'PDF' && (
-                      <a
-                        href={m.mediaUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className={`mb-1 inline-flex items-center gap-1 underline ${
-                          isOutbound ? 'text-emerald-50' : 'text-emerald-700'
-                        }`}
-                      >
-                        📎 Ver documento
-                      </a>
-                    )}
-                    <div className="whitespace-pre-wrap">
-                      {m.contentText ?? (m.mediaUrl ? '' : `[${m.type}]`)}
-                    </div>
-                    <div
-                      className={`mt-1 flex items-center gap-2 text-[10px] ${
-                        isOutbound && !isInternal ? 'text-emerald-100' : 'text-zinc-500'
-                      }`}
-                    >
-                      <span>{new Date(m.createdAt).toLocaleString()}</span>
-                      {isOutbound && m.deliveryStatus && (
-                        <span className="uppercase">{m.deliveryStatus}</span>
-                      )}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
+        <MessagesStream
+          conversationId={row.conv.id}
+          initialMessages={messages.map((m) => ({
+            id: m.id,
+            conversationId: m.conversationId,
+            direction: m.direction as 'INBOUND' | 'OUTBOUND',
+            type: m.type,
+            senderType: m.senderType,
+            senderUserId: m.senderUserId,
+            internalNote: m.internalNote,
+            contentText: m.contentText,
+            mediaUrl: m.mediaUrl,
+            mediaType: m.mediaType,
+            deliveryStatus: m.deliveryStatus,
+            createdAt: m.createdAt.toISOString(),
+          }))}
+          senderUserEmails={Object.fromEntries(senderUserMap)}
+        />
 
         <div className="border-t border-zinc-200 bg-white p-3">
           <MessageComposer

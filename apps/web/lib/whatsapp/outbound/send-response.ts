@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import { whatsappConversations, whatsappMessages } from '@/lib/db/schema';
+import { publishMessageEvent } from '@/lib/whatsapp/realtime/publisher';
 import type { MessageId, WhatsAppConnector } from '@/lib/whatsapp/types';
 
 /**
@@ -81,7 +82,7 @@ export async function sendAgentResponse(
     .onConflictDoNothing({
       target: [whatsappMessages.conversationId, whatsappMessages.externalId],
     })
-    .returning({ id: whatsappMessages.id });
+    .returning();
 
   // onConflictDoNothing devuelve [] si ya existía (retry del job). En ese
   // caso buscamos la fila existente para devolver su id.
@@ -103,6 +104,11 @@ export async function sendAgentResponse(
     .update(whatsappConversations)
     .set({ lastMsgAt: new Date(), updatedAt: new Date() })
     .where(eq(whatsappConversations.id, input.conversationId));
+
+  // Solo publicamos si el INSERT realmente creó una fila (no es retry).
+  if (inserted) {
+    await publishMessageEvent(inserted);
+  }
 
   return {
     messageId: messageRow.id,

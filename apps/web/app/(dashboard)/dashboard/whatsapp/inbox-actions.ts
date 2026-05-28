@@ -21,6 +21,7 @@ import { getCurrentTenant } from '@/lib/tenant';
 import { listTenantMembersSynced, userIsTenantMember } from '@/lib/tenant-members';
 import { auth } from '@clerk/nextjs/server';
 import { buildConnector } from '@/lib/whatsapp';
+import { publishMessageEvent } from '@/lib/whatsapp/realtime/publisher';
 import { buildWhatsappMediaPath, mediaUpload } from '@/lib/storage/media';
 
 export type ActionResult<T> =
@@ -92,12 +93,14 @@ export async function addInternalNote(input: unknown): Promise<ActionResult<{ id
       contentText: parsed.data.text,
       clientNonce: randomUUID(),
     })
-    .returning({ id: whatsappMessages.id });
+    .returning();
 
   await db
     .update(whatsappConversations)
     .set({ updatedAt: new Date() })
     .where(eq(whatsappConversations.id, parsed.data.conversationId));
+
+  if (row) await publishMessageEvent(row);
 
   revalidate(parsed.data.conversationId);
   return ok({ id: row!.id });
@@ -552,6 +555,11 @@ export async function sendMediaMessage(formData: FormData): Promise<ActionResult
       .update(whatsappMessages)
       .set({ deliveryStatus: 'SENT', externalId: result.id })
       .where(eq(whatsappMessages.id, pending.id));
+    await publishMessageEvent({
+      ...pending,
+      deliveryStatus: 'SENT',
+      externalId: result.id,
+    });
   } catch (err) {
     const msg = (err as Error).message;
     await db

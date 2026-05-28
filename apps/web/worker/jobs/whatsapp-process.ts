@@ -16,6 +16,10 @@ import { writeAgentRun } from '@/lib/whatsapp/agent/persist-run';
 import type { AgentInput, AgentOutput, HistoryTurn } from '@/lib/whatsapp/agent/types';
 import { buildConnector } from '@/lib/whatsapp/factory';
 import { sendAgentResponse } from '@/lib/whatsapp/outbound/send-response';
+import {
+  publishTypingStart,
+  publishTypingStop,
+} from '@/lib/whatsapp/realtime/publisher';
 import type { WhatsAppConnector } from '@/lib/whatsapp/types';
 
 /**
@@ -135,65 +139,73 @@ export async function processWhatsappJob(
     triggerMessageId,
   };
 
-  // 6. Correr el agente (LLM + loop tools + intent derivation).
-  const agentOutput: AgentOutput = await step.run('run-agent', async () => {
-    return runWhatsappAgent(agentInput);
-  });
-
-  // 7. Aplicar flags handoff/urgent ANTES de enviar outbound.
-  if (agentOutput.handoff || agentOutput.urgent) {
-    await step.run('apply-handoff-flags', async () => {
-      await applyHandoffFlags(conversationId, agentOutput.urgent);
+  // Indicador "escribiendo…" para el inbox del operador: emitimos desde el
+  // momento que el LLM empieza a pensar hasta que terminamos de enviar el
+  // outbound. El finally garantiza que se apague incluso si el agente falla.
+  await publishTypingStart(conversationId);
+  try {
+    // 6. Correr el agente (LLM + loop tools + intent derivation).
+    const agentOutput: AgentOutput = await step.run('run-agent', async () => {
+      return runWhatsappAgent(agentInput);
     });
-  }
 
-  // 8. Enviar outbound (si hay connector y respuesta).
-  let responseMessageId: string | null = null;
-  const responseText = agentOutput.responseText;
-  if (connector && responseText) {
-    responseMessageId = await step.run('send-outbound', async () => {
-      const sent = await sendAgentResponse({
+    // 7. Aplicar flags handoff/urgent ANTES de enviar outbound.
+    if (agentOutput.handoff || agentOutput.urgent) {
+      await step.run('apply-handoff-flags', async () => {
+        await applyHandoffFlags(conversationId, agentOutput.urgent);
+      });
+    }
+
+    // 8. Enviar outbound (si hay connector y respuesta).
+    let responseMessageId: string | null = null;
+    const responseText = agentOutput.responseText;
+    if (connector && responseText) {
+      responseMessageId = await step.run('send-outbound', async () => {
+        const sent = await sendAgentResponse({
+          tenantId,
+          conversationId,
+          toPhoneE164: contactPhoneE164,
+          text: responseText,
+          buttons: agentOutput.responseButtons?.buttons ?? null,
+          connector,
+        });
+        return sent.messageId;
+      });
+    }
+
+    // 9. Persistir el run completo.
+    await step.run('persist-agent-run', async () => {
+      await writeAgentRun({
         tenantId,
         conversationId,
-        toPhoneE164: contactPhoneE164,
-        text: responseText,
-        buttons: agentOutput.responseButtons?.buttons ?? null,
-        connector,
+        triggerMessageId,
+        responseMessageId,
+        agent: 'main',
+        model: agentOutput.model,
+        intent: agentOutput.intent,
+        intentConfidence: agentOutput.intentConfidence,
+        intentReasoning: agentOutput.intentReasoning,
+        handoff: agentOutput.handoff,
+        urgent: agentOutput.urgent,
+        tokensIn: agentOutput.tokensIn,
+        tokensOut: agentOutput.tokensOut,
+        latencyMs: agentOutput.latencyMs,
+        fallbackUsed: agentOutput.fallbackUsed,
+        toolsCalled: agentOutput.toolsCalled,
+        errorText: agentOutput.errorText,
+        traceId: agentOutput.traceId,
       });
-      return sent.messageId;
     });
-  }
 
-  // 9. Persistir el run completo.
-  await step.run('persist-agent-run', async () => {
-    await writeAgentRun({
-      tenantId,
-      conversationId,
-      triggerMessageId,
-      responseMessageId,
-      agent: 'main',
-      model: agentOutput.model,
+    return {
+      ok: true,
       intent: agentOutput.intent,
-      intentConfidence: agentOutput.intentConfidence,
-      intentReasoning: agentOutput.intentReasoning,
       handoff: agentOutput.handoff,
       urgent: agentOutput.urgent,
-      tokensIn: agentOutput.tokensIn,
-      tokensOut: agentOutput.tokensOut,
-      latencyMs: agentOutput.latencyMs,
-      fallbackUsed: agentOutput.fallbackUsed,
-      toolsCalled: agentOutput.toolsCalled,
-      errorText: agentOutput.errorText,
-      traceId: agentOutput.traceId,
-    });
-  });
-
-  return {
-    ok: true,
-    intent: agentOutput.intent,
-    handoff: agentOutput.handoff,
-    urgent: agentOutput.urgent,
-  };
+    };
+  } finally {
+    await publishTypingStop(conversationId);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

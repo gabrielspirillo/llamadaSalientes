@@ -8,6 +8,7 @@ import {
   whatsappMessages,
 } from '@/lib/db/schema';
 
+import { publishMessageEvent } from './realtime/publisher';
 import type { NormalizedInboundMessage } from './types';
 
 /**
@@ -121,6 +122,11 @@ export async function persistInboundMessage(msg: NormalizedInboundMessage) {
     .update(whatsappConversations)
     .set({ lastMsgAt: msg.timestamp, updatedAt: new Date() })
     .where(eq(whatsappConversations.id, conversation.id));
+
+  // Notificar realtime solo si insertamos fila nueva (no duplicado).
+  if (inserted) {
+    await publishMessageEvent(inserted);
+  }
 
   return { contact, conversation, message: inserted ?? null };
 }
