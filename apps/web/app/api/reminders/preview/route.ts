@@ -203,5 +203,9 @@ function errResp(err: unknown): NextResponse {
   if (err instanceof ReminderForbiddenError) {
     return NextResponse.json({ error: err.message }, { status: 403 });
   }
-  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  console.error('[reminders-api] auth error', err);
+  return NextResponse.json(
+    { error: (err as Error)?.message ?? 'Unauthorized' },
+    { status: 401 },
+  );
 }
