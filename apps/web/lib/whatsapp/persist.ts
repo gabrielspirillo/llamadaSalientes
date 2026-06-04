@@ -117,10 +117,18 @@ export async function persistInboundMessage(msg: NormalizedInboundMessage) {
     })
     .returning();
 
-  // Actualizar lastMsgAt en la conversación.
+  // Actualizar lastMsgAt en la conversación. Solo incrementamos el contador
+  // de no leídos si realmente insertamos un mensaje nuevo (no en reintentos
+  // del webhook que caen en onConflictDoNothing).
   await db
     .update(whatsappConversations)
-    .set({ lastMsgAt: msg.timestamp, updatedAt: new Date() })
+    .set({
+      lastMsgAt: msg.timestamp,
+      updatedAt: new Date(),
+      ...(inserted
+        ? { unreadCount: sql`${whatsappConversations.unreadCount} + 1` }
+        : {}),
+    })
     .where(eq(whatsappConversations.id, conversation.id));
 
   // Notificar realtime solo si insertamos fila nueva (no duplicado).

@@ -69,15 +69,20 @@ export async function processWhatsappJob(
       .limit(1);
     const conv = rows[0];
     if (!conv) return { ok: false as const, skipAgent: true, reason: 'conversation_not_found' };
-    const agentBlocked =
-      conv.status !== 'ACTIVE' ||
-      !conv.aiEnabled ||
-      (conv.humanTakeoverUntil && new Date(conv.humanTakeoverUntil) > new Date());
-    const reason = conv.status !== 'ACTIVE'
-      ? `status_${conv.status}`
-      : !conv.aiEnabled
-        ? 'ai_disabled'
-        : 'human_takeover_active';
+    // AI-first: el agente responde SIEMPRE salvo que (a) la conversación
+    // esté cerrada, (b) el operador haya pausado la IA (aiEnabled=false — lo
+    // setea también un handoff pedido por la propia IA), o (c) haya una
+    // ventana de takeover humano vigente (la IA retoma sola al expirar).
+    // El status HANDOFF "pegado" ya NO bloquea para siempre.
+    const takeoverActive =
+      !!conv.humanTakeoverUntil && new Date(conv.humanTakeoverUntil) > new Date();
+    const agentBlocked = conv.status === 'CLOSED' || !conv.aiEnabled || takeoverActive;
+    const reason =
+      conv.status === 'CLOSED'
+        ? 'status_CLOSED'
+        : !conv.aiEnabled
+          ? 'ai_disabled'
+          : 'human_takeover_active';
     return {
       ok: true as const,
       skipAgent: !!agentBlocked,
@@ -356,10 +361,14 @@ async function resolveConnector(tenantId: string): Promise<WhatsAppConnector | n
 }
 
 async function applyHandoffFlags(conversationId: string, urgent: boolean): Promise<void> {
+  // La IA escaló a un humano: la pausamos (aiEnabled=false) para que pare de
+  // responder — con el nuevo gate AI-first, status por sí solo ya no frena.
+  // El operador la reactiva desde el toggle "Agente Virtual".
   await db
     .update(whatsappConversations)
     .set({
       status: 'HANDOFF',
+      aiEnabled: false,
       urgentFlag: urgent,
       updatedAt: new Date(),
     })

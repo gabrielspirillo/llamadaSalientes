@@ -569,11 +569,11 @@ export async function sendMediaMessage(formData: FormData): Promise<ActionResult
     return fail(`Error al enviar: ${msg}`);
   }
 
-  // Auto-handoff 2 h (igual que mensajes de texto).
+  // Takeover temporal 2 h (igual que mensajes de texto): la IA se pausa por la
+  // ventana y retoma sola al expirar. Sin status=HANDOFF pegado.
   await db
     .update(whatsappConversations)
     .set({
-      status: 'HANDOFF',
       assignedUserId: senderUserId,
       humanTakeoverAt: row.conv.humanTakeoverAt ?? new Date(),
       humanTakeoverUntil: new Date(Date.now() + 2 * 3600_000),

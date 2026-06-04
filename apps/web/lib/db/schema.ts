@@ -631,6 +631,9 @@ export const whatsappConversations = pgTable(
     status: conversationStatusEnum('status').notNull().default('ACTIVE'),
     urgentFlag: boolean('urgent_flag').notNull().default(false),
     aiEnabled: boolean('ai_enabled').notNull().default(true),
+    // Mensajes entrantes sin leer (se incrementa al recibir inbound, se
+    // resetea a 0 al abrir la conversación en el inbox).
+    unreadCount: integer('unread_count').notNull().default(0),
     lastMsgAt: timestamp('last_msg_at', { withTimezone: true }),
     assignedUserId: uuid('assigned_user_id').references(() => users.id, { onDelete: 'set null' }),
     humanTakeoverAt: timestamp('human_takeover_at', { withTimezone: true }),

@@ -1,9 +1,11 @@
 import Link from 'next/link';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import { whatsappContacts, whatsappConversations, whatsappMessages } from '@/lib/db/schema';
 import { getCurrentTenant } from '@/lib/tenant';
+
+import { AutoRefresh } from './_components/auto-refresh';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,15 +21,23 @@ function relativeTime(d: Date | null | undefined): string {
   return `hace ${day} d`;
 }
 
-function statusBadge(status: 'ACTIVE' | 'HANDOFF' | 'CLOSED'): { label: string; cls: string } {
-  switch (status) {
-    case 'ACTIVE':
-      return { label: 'Activa', cls: 'bg-emerald-100 text-emerald-800' };
-    case 'HANDOFF':
-      return { label: 'En manos del operador', cls: 'bg-amber-100 text-amber-800' };
-    case 'CLOSED':
-      return { label: 'Cerrada', cls: 'bg-zinc-100 text-zinc-600' };
+// Badge calculado del estado EFECTIVO (coincide con el toggle "Agente
+// Virtual" del detalle): la IA está activa salvo que esté pausada
+// (aiEnabled=false) o haya una ventana de takeover del operador vigente.
+function statusBadge(conv: {
+  status: 'ACTIVE' | 'HANDOFF' | 'CLOSED';
+  aiEnabled: boolean;
+  humanTakeoverUntil: Date | null;
+}): { label: string; cls: string } {
+  if (conv.status === 'CLOSED') {
+    return { label: 'Cerrada', cls: 'bg-zinc-100 text-zinc-600' };
   }
+  const takeoverActive =
+    !!conv.humanTakeoverUntil && conv.humanTakeoverUntil.getTime() > Date.now();
+  if (!conv.aiEnabled || takeoverActive) {
+    return { label: 'En manos del operador', cls: 'bg-amber-100 text-amber-800' };
+  }
+  return { label: 'Activa', cls: 'bg-emerald-100 text-emerald-800' };
 }
 
 export default async function WhatsappConversationsPage() {
@@ -40,13 +50,21 @@ export default async function WhatsappConversationsPage() {
       channel: whatsappConversations.channel,
       lastMsgAt: whatsappConversations.lastMsgAt,
       urgentFlag: whatsappConversations.urgentFlag,
+      aiEnabled: whatsappConversations.aiEnabled,
+      humanTakeoverUntil: whatsappConversations.humanTakeoverUntil,
+      unreadCount: whatsappConversations.unreadCount,
       contactName: whatsappContacts.name,
       contactPhone: whatsappContacts.phoneE164,
     })
     .from(whatsappConversations)
     .innerJoin(whatsappContacts, eq(whatsappContacts.id, whatsappConversations.contactId))
     .where(eq(whatsappConversations.tenantId, tenant.id))
-    .orderBy(desc(whatsappConversations.lastMsgAt))
+    // Orden por última actividad. Usamos coalesce(lastMsgAt, createdAt) para
+    // que las conversaciones sin lastMsgAt no queden arriba (Postgres pone
+    // NULLS FIRST en DESC por default → ese era el bug del orden).
+    .orderBy(
+      desc(sql`coalesce(${whatsappConversations.lastMsgAt}, ${whatsappConversations.createdAt})`),
+    )
     .limit(100);
 
   // Para preview: traer último mensaje de cada conversación. Versión simple,
@@ -70,21 +88,9 @@ export default async function WhatsappConversationsPage() {
 
   return (
     <div className="flex min-h-[calc(100vh-7.5rem)] flex-col gap-4 sm:gap-6">
-      <div className="flex shrink-0 flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-zinc-900">WhatsApp</h1>
-          <p className="text-sm text-zinc-500">
-            Conversaciones entrantes de Meta Cloud API, Twilio y Evolution.
-          </p>
-        </div>
-        <Link
-          href="/dashboard/configuration?tab=whatsapp"
-          className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 self-start sm:self-auto"
-        >
-          Integraciones
-        </Link>
-      </div>
-
+      {/* Refresca la lista periódicamente para reordenar y mostrar mensajes
+          nuevos sin recargar a mano (la página es server-render). */}
+      <AutoRefresh intervalMs={8000} />
       {rows.length === 0 ? (
         <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/50 p-10 text-center">
           <p className="text-sm text-zinc-600">
@@ -103,7 +109,7 @@ export default async function WhatsappConversationsPage() {
           {/* Mobile: cards */}
           <ul className="md:hidden divide-y divide-zinc-100">
             {rows.map((r) => {
-              const badge = statusBadge(r.status);
+              const badge = statusBadge(r);
               const preview = previewMap.get(r.id);
               return (
                 <li key={r.id}>
@@ -113,7 +119,13 @@ export default async function WhatsappConversationsPage() {
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <p className="text-sm font-medium text-zinc-900 truncate">
+                        <p
+                          className={`text-sm truncate ${
+                            r.unreadCount > 0
+                              ? 'font-semibold text-zinc-900'
+                              : 'font-medium text-zinc-900'
+                          }`}
+                        >
                           {r.contactName ?? r.contactPhone}
                         </p>
                         {r.urgentFlag && (
@@ -122,9 +134,16 @@ export default async function WhatsappConversationsPage() {
                           </span>
                         )}
                       </div>
-                      <span className="text-[11px] text-zinc-400 shrink-0">
-                        {relativeTime(r.lastMsgAt)}
-                      </span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {r.unreadCount > 0 && (
+                          <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-emerald-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                            {r.unreadCount > 99 ? '99+' : r.unreadCount}
+                          </span>
+                        )}
+                        <span className="text-[11px] text-zinc-400">
+                          {relativeTime(r.lastMsgAt)}
+                        </span>
+                      </div>
                     </div>
                     <p className="text-xs text-zinc-500 line-clamp-2">
                       {preview?.direction === 'OUTBOUND' && (
@@ -164,16 +183,27 @@ export default async function WhatsappConversationsPage() {
             </thead>
             <tbody className="divide-y divide-zinc-100 text-sm text-zinc-700">
               {rows.map((r) => {
-                const badge = statusBadge(r.status);
+                const badge = statusBadge(r);
                 const preview = previewMap.get(r.id);
                 return (
                   <tr key={r.id} className="hover:bg-zinc-50/50">
                     <td className="px-4 py-3">
                       <Link href={`/dashboard/whatsapp/${r.id}`} className="block">
-                        <div className="font-medium text-zinc-900">
-                          {r.contactName ?? r.contactPhone}
+                        <div
+                          className={`flex items-center gap-2 ${
+                            r.unreadCount > 0
+                              ? 'font-semibold text-zinc-900'
+                              : 'font-medium text-zinc-900'
+                          }`}
+                        >
+                          <span>{r.contactName ?? r.contactPhone}</span>
+                          {r.unreadCount > 0 && (
+                            <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-emerald-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                              {r.unreadCount > 99 ? '99+' : r.unreadCount}
+                            </span>
+                          )}
                           {r.urgentFlag && (
-                            <span className="ml-2 inline-flex items-center rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
+                            <span className="inline-flex items-center rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
                               URGENTE
                             </span>
                           )}

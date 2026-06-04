@@ -161,13 +161,15 @@ export async function sendManualMessage(input: unknown): Promise<ActionResult<{ 
     return fail(`Error al enviar: ${msg}`);
   }
 
-  // Takeover automático: si el operador escribe, marcamos HANDOFF por N horas.
+  // Takeover automático TEMPORAL: si el operador escribe, la IA se pausa por
+  // N horas (ventana humanTakeoverUntil) y retoma sola al expirar. No dejamos
+  // status=HANDOFF pegado: el principio es "todos los mensajes van a la IA
+  // primero" salvo durante la ventana del operador.
   if (parsed.data.takeoverHours > 0) {
     const until = new Date(Date.now() + parsed.data.takeoverHours * 3600_000);
     await db
       .update(whatsappConversations)
       .set({
-        status: 'HANDOFF',
         assignedUserId: senderUserId,
         humanTakeoverAt: row.conv.humanTakeoverAt ?? new Date(),
         humanTakeoverUntil: until,

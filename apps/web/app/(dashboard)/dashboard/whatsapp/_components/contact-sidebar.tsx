@@ -69,9 +69,17 @@ export function ContactSidebar({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  // Estado local optimista para los tags y AI.
+  // ¿Hay una ventana de takeover del operador vigente? Durante esa ventana la
+  // IA está pausada aunque aiEnabled siga en true (retoma sola al expirar).
+  const takeoverActive =
+    !!conversation.humanTakeoverUntil &&
+    new Date(conversation.humanTakeoverUntil).getTime() > Date.now();
+
+  // Estado local optimista para los tags y AI. El toggle refleja el estado
+  // EFECTIVO (si la IA realmente va a responder), no solo el flag aiEnabled,
+  // para que coincida con la badge "Activa / En manos del operador".
   const [localTags, setLocalTags] = useState<Tag[]>(tagsOnConversation);
-  const [aiOn, setAiOn] = useState(conversation.aiEnabled);
+  const [aiOn, setAiOn] = useState(conversation.aiEnabled && !takeoverActive);
   const [assignedUserId, setAssignedUserId] = useState<string | null>(
     conversation.assignedUserId,
   );
@@ -275,8 +283,10 @@ export function ContactSidebar({
             <p className="text-sm font-semibold text-zinc-900">Agente Virtual</p>
             <p className="mt-0.5 text-xs text-zinc-500">
               {aiOn
-                ? 'El agente IA puede responder.'
-                : 'El agente IA está pausado.'}
+                ? 'El agente IA responde a todos los mensajes.'
+                : takeoverActive
+                  ? 'En manos del operador. La IA retoma sola al terminar la ventana, o activala ahora.'
+                  : 'El agente IA está pausado.'}
             </p>
           </div>
           <button

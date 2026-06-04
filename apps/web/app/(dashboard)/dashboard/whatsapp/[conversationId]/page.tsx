@@ -48,6 +48,15 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
   const row = convRows[0];
   if (!row) notFound();
 
+  // Marcar como leída al abrir: reseteamos el contador de no leídos. Solo
+  // escribimos si hay algo que resetear, para no generar writes en cada render.
+  if (row.conv.unreadCount > 0) {
+    await db
+      .update(whatsappConversations)
+      .set({ unreadCount: 0 })
+      .where(eq(whatsappConversations.id, row.conv.id));
+  }
+
   // Citas del contacto: lectura optimista del cache local. Si el contact aún
   // no tiene ghl_contact_id (sync GHL no corrió todavía) devolvemos []
   // sin tocar la BD.
