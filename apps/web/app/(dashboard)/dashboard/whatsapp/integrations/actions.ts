@@ -226,6 +226,40 @@ function evolutionWebhookUrl(): string {
   return `${appUrl}/api/webhooks/whatsapp/evolution`;
 }
 
+function evolutionCreateBody(instanceName: string): string {
+  // v2 admite anidar la config del webhook en /instance/create. Lo hacemos
+  // para que la creación + alta de webhook sea atómica. Si Evolution (alguna
+  // versión) ignora el campo `webhook`, hacemos un /webhook/set best-effort.
+  return JSON.stringify({
+    instanceName,
+    qrcode: true,
+    integration: 'WHATSAPP-BAILEYS',
+    rejectCall: false,
+    groupsIgnore: true,
+    alwaysOnline: false,
+    readMessages: false,
+    readStatus: false,
+    webhook: {
+      url: evolutionWebhookUrl(),
+      byEvents: false,
+      base64: false,
+      events: [...EVOLUTION_WEBHOOK_EVENTS],
+    },
+  });
+}
+
+async function createEvolutionInstanceRequest(
+  baseUrl: string,
+  adminApiKey: string,
+  instanceName: string,
+): Promise<Response> {
+  return fetch(`${baseUrl}/instance/create`, {
+    method: 'POST',
+    headers: { apikey: adminApiKey, 'content-type': 'application/json' },
+    body: evolutionCreateBody(instanceName),
+  });
+}
+
 async function setEvolutionWebhook(
   baseUrl: string,
   instanceName: string,
@@ -266,81 +300,66 @@ export async function connectEvolution(): Promise<
 
   const { tenant } = await getCurrentTenant();
   const senderUserId = await getInternalUserId();
-  const instanceName = evolutionInstanceName(tenant.slug);
 
-  // v2 admite anidar la config del webhook en /instance/create. Lo hacemos
-  // para que la creación + alta de webhook sea atómica. Si Evolution
-  // (alguna versión) ignora el campo `webhook`, hacemos un /webhook/set
-  // best-effort después.
+  // Nombre de instancia: el ya guardado en BD (si existe) o el derivado del
+  // slug. Preferimos el de BD para no "perder" una instancia si cambió el slug.
+  const existingRows = await db
+    .select()
+    .from(whatsappConnections)
+    .where(
+      and(eq(whatsappConnections.tenantId, tenant.id), eq(whatsappConnections.mode, 'EVOLUTION')),
+    )
+    .limit(1);
+  const instanceName = existingRows[0]?.evolutionInstance ?? evolutionInstanceName(tenant.slug);
+
+  // 1. Re-pedir el QR de la instancia EXISTENTE (sin recrearla) con la admin
+  //    key global. /instance/connect re-envía el QR y reusa la sesión. Usamos
+  //    la admin key (no el token por-instancia) para que funcione aunque el
+  //    token local se haya borrado — p.ej. tras "Desconectar". Esto hace que
+  //    "Pedir QR" reuse la misma instancia en vez de crear una nueva.
+  const existing = await refreshEvolutionQrInternal({
+    baseUrl: cfg.baseUrl,
+    instanceName,
+    apiKey: cfg.adminApiKey,
+  });
+  if (existing.ok) {
+    const status: 'CONNECTED' | 'PENDING' = existing.state === 'open' ? 'CONNECTED' : 'PENDING';
+    await db
+      .insert(whatsappConnections)
+      .values({
+        tenantId: tenant.id,
+        mode: 'EVOLUTION',
+        evolutionInstance: instanceName,
+        qrB64: existing.qrBase64,
+        status,
+      })
+      .onConflictDoUpdate({
+        // No tocamos evolutionTokenEnc: preservamos el hash si ya estaba.
+        target: [whatsappConnections.tenantId, whatsappConnections.mode],
+        set: {
+          evolutionInstance: instanceName,
+          qrB64: existing.qrBase64,
+          status,
+          updatedAt: new Date(),
+        },
+      });
+    revalidatePath('/dashboard/configuration');
+    return ok({ qrBase64: existing.qrBase64, pairingCode: existing.pairingCode, instanceName });
+  }
+
+  // 2. Solo si la instancia NO existe en el server la creamos de cero. Para
+  //    cualquier otro error de /connect reportamos (no creamos a ciegas, así no
+  //    duplicamos instancias).
+  if (!/\b404\b|not.?found|does not exist|no encontrad/i.test(existing.error)) {
+    return fail(`No pude pedir el QR de la instancia: ${existing.error}`);
+  }
+
   let createRes: Response;
   try {
-    createRes = await fetch(`${cfg.baseUrl}/instance/create`, {
-      method: 'POST',
-      headers: { apikey: cfg.adminApiKey, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        instanceName,
-        qrcode: true,
-        integration: 'WHATSAPP-BAILEYS',
-        rejectCall: false,
-        groupsIgnore: true,
-        alwaysOnline: false,
-        readMessages: false,
-        readStatus: false,
-        webhook: {
-          url: evolutionWebhookUrl(),
-          byEvents: false,
-          base64: false,
-          events: [...EVOLUTION_WEBHOOK_EVENTS],
-        },
-      }),
-    });
+    createRes = await createEvolutionInstanceRequest(cfg.baseUrl, cfg.adminApiKey, instanceName);
   } catch (probeErr) {
     return fail(`No pude alcanzar Evolution: ${(probeErr as Error).message}`);
   }
-
-  // Evolution v2 devuelve 403 con "instance already exists" cuando ya existe.
-  // En ese caso, fetch del hash via el DB local + pedimos QR nuevo via /connect.
-  if (createRes.status === 403) {
-    const existing = await db
-      .select()
-      .from(whatsappConnections)
-      .where(
-        and(
-          eq(whatsappConnections.tenantId, tenant.id),
-          eq(whatsappConnections.mode, 'EVOLUTION'),
-        ),
-      )
-      .limit(1);
-    const conn = existing[0];
-    if (conn?.evolutionTokenEnc && conn.evolutionInstance) {
-      const refreshed = await refreshEvolutionQrInternal({
-        baseUrl: cfg.baseUrl,
-        instanceName: conn.evolutionInstance,
-        apiKey: decrypt(conn.evolutionTokenEnc),
-      });
-      if (refreshed.ok) {
-        await db
-          .update(whatsappConnections)
-          .set({
-            qrB64: refreshed.qrBase64,
-            status: 'PENDING',
-            updatedAt: new Date(),
-          })
-          .where(eq(whatsappConnections.id, conn.id));
-        revalidatePath('/dashboard/configuration');
-        return ok({
-          qrBase64: refreshed.qrBase64,
-          pairingCode: refreshed.pairingCode,
-          instanceName: conn.evolutionInstance,
-        });
-      }
-    }
-    const body = await createRes.text().catch(() => '');
-    return fail(
-      `Evolution /instance/create devolvió 403 y no hay credenciales locales para recuperar: ${body.slice(0, 200)}`,
-    );
-  }
-
   if (!createRes.ok) {
     const body = await createRes.text().catch(() => '');
     return fail(
@@ -449,13 +468,15 @@ export async function refreshEvolutionQr(): Promise<
     )
     .limit(1);
   const conn = rows[0];
-  if (!conn?.evolutionInstance || !conn.evolutionTokenEnc) {
+  if (!conn?.evolutionInstance) {
     return fail('No hay instancia Evolution creada para este tenant');
   }
+  // Admin key global: re-pide el QR aunque el token por-instancia se haya
+  // borrado (p.ej. tras Desconectar).
   const r = await refreshEvolutionQrInternal({
     baseUrl: cfg.baseUrl,
     instanceName: conn.evolutionInstance,
-    apiKey: decrypt(conn.evolutionTokenEnc),
+    apiKey: cfg.adminApiKey,
   });
   if (!r.ok) return fail(`No pude pedir QR: ${r.error}`);
   await db
@@ -484,13 +505,13 @@ export async function getEvolutionConnectionState(): Promise<
     )
     .limit(1);
   const conn = rows[0];
-  if (!conn?.evolutionInstance || !conn.evolutionTokenEnc) {
+  if (!conn?.evolutionInstance) {
     return fail('No hay instancia Evolution creada para este tenant');
   }
   try {
     const res = await fetch(
       `${cfg.baseUrl}/instance/connectionState/${encodeURIComponent(conn.evolutionInstance)}`,
-      { method: 'GET', headers: { apikey: decrypt(conn.evolutionTokenEnc) } },
+      { method: 'GET', headers: { apikey: cfg.adminApiKey } },
     );
     if (!res.ok) {
       const body = await res.text().catch(() => '');

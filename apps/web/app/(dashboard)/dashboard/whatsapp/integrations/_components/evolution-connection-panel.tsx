@@ -8,7 +8,6 @@ import {
   disconnect,
   disconnectChatwoot,
   getEvolutionConnectionState,
-  refreshEvolutionQr,
   setChatwoot,
 } from '../actions';
 
@@ -62,32 +61,24 @@ export function EvolutionConnectionPanel({ initial }: Props) {
     setFeedback(null);
     startTransition(async () => {
       const res = await connectEvolution();
-      if (res.success) {
-        setQrBase64(res.data.qrBase64);
-        setPairingCode(res.data.pairingCode);
-        setInstanceName(res.data.instanceName);
+      if (!res.success) {
+        setFeedback({ ok: false, msg: res.error });
+        return;
+      }
+      setInstanceName(res.data.instanceName);
+      setQrBase64(res.data.qrBase64);
+      setPairingCode(res.data.pairingCode);
+      if (res.data.qrBase64 || res.data.pairingCode) {
         setStatus('PENDING');
         setFeedback({
           ok: true,
-          msg: 'Instancia creada. Escaneá el QR (o usá el código de vinculación) desde WhatsApp.',
+          msg: 'Escaneá el QR (o usá el código de vinculación) desde WhatsApp → Dispositivos vinculados.',
         });
       } else {
-        setFeedback({ ok: false, msg: res.error });
-      }
-    });
-  }
-
-  function onRefreshQr() {
-    setFeedback(null);
-    startTransition(async () => {
-      const res = await refreshEvolutionQr();
-      if (res.success) {
-        setQrBase64(res.data.qrBase64);
-        setPairingCode(res.data.pairingCode);
-        setStatus(res.data.state === 'open' ? 'CONNECTED' : 'PENDING');
-        setFeedback({ ok: true, msg: 'QR refrescado.' });
-      } else {
-        setFeedback({ ok: false, msg: res.error });
+        // Sin QR ⇒ la instancia ya estaba conectada. Confirmamos el estado real.
+        const st = await getEvolutionConnectionState();
+        if (st.success) setStatus(st.data.status);
+        setFeedback({ ok: true, msg: 'La instancia ya estaba conectada.' });
       }
     });
   }
@@ -154,7 +145,7 @@ export function EvolutionConnectionPanel({ initial }: Props) {
           )}
           {status === 'PENDING' && (
             <p className="mt-2 text-[11px] text-zinc-500">
-              Verificando estado cada 4s… El QR caduca en ~60s; usá "Pedir nuevo QR" si tarda.
+              Verificando estado cada 4s… El QR caduca en ~60s; volvé a tocar "Pedir QR" si tarda.
             </p>
           )}
         </div>
@@ -178,28 +169,14 @@ export function EvolutionConnectionPanel({ initial }: Props) {
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={onConnect}
-          disabled={pending}
-          className="rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-        >
-          {pending
-            ? 'Procesando…'
-            : status === 'CONNECTED'
-              ? 'Recrear instancia'
-              : initial
-                ? 'Pedir QR (recrear)'
-                : 'Crear instancia + obtener QR'}
-        </button>
-        {initial && status !== 'CONNECTED' && (
+        {status !== 'CONNECTED' && (
           <button
             type="button"
-            onClick={onRefreshQr}
+            onClick={onConnect}
             disabled={pending}
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+            className="rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
           >
-            Pedir nuevo QR
+            {pending ? 'Procesando…' : 'Pedir QR'}
           </button>
         )}
         {initial && (
