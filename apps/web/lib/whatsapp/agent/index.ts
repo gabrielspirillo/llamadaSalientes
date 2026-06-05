@@ -8,6 +8,7 @@ import {
   formatNowInClinicZone,
   loadGroundingForTenant,
 } from './prompt';
+import { detectDiagnosis, detectInjection, redactPii } from './guardrails';
 import {
   type AgentToolName,
   type ExecuteToolInput,
@@ -92,8 +93,24 @@ export async function runWhatsappAgent(
   let finalText: string | null = null;
   let handoff = false;
   let urgent = false;
+  const guardrailFlags: string[] = [];
 
-  for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
+  // Guardrail de ENTRADA: inyección de prompts / jailbreak (OWASP LLM01). Si
+  // se dispara, cortamos a handoff humano SIN llamar al LLM (no dejamos que el
+  // intento de inyección llegue al modelo ni gastamos tokens).
+  const injection = detectInjection(input.userText);
+  if (injection.tripped) {
+    guardrailFlags.push(`input_injection:${injection.matched ?? ''}`);
+    console.warn('[wa-agent] guardrail: inyección detectada', {
+      tenantId: input.tenantId,
+      matched: injection.matched,
+    });
+    handoff = true;
+    finalText = HANDOFF_RESPONSE_TEXT;
+    model = 'guardrail';
+  }
+
+  for (let iter = 0; !injection.tripped && iter < MAX_TOOL_ITERATIONS; iter++) {
     let result: LlmCallResult;
     try {
       result = await deps.callLLM({ messages, tools, temperature: TEMPERATURE });
@@ -168,6 +185,30 @@ export async function runWhatsappAgent(
     errorText = errorText ?? 'max_tool_iterations_reached';
   }
 
+  // Guardrail de SALIDA: solo sobre respuestas GENERADAS por el LLM, no sobre
+  // los textos plantillados de handoff/urgent (que ya son seguros).
+  if (finalText && !handoff && !urgent) {
+    const redacted = redactPii(finalText);
+    if (redacted.count > 0) {
+      finalText = redacted.text;
+      guardrailFlags.push(`output_pii:${redacted.count}`);
+      console.warn('[wa-agent] guardrail: PII redactada', {
+        tenantId: input.tenantId,
+        count: redacted.count,
+      });
+    }
+    const diag = detectDiagnosis(finalText);
+    if (diag.tripped) {
+      guardrailFlags.push(`output_diagnosis:${diag.matched ?? ''}`);
+      console.warn('[wa-agent] guardrail: diagnóstico bloqueado', {
+        tenantId: input.tenantId,
+        matched: diag.matched,
+      });
+      handoff = true;
+      finalText = HANDOFF_RESPONSE_TEXT;
+    }
+  }
+
   const intent = deriveIntent({ urgent, handoff, toolsCalled });
   const intentConfidence = deriveConfidence({ urgent, handoff, toolsCalled });
 
@@ -178,7 +219,7 @@ export async function runWhatsappAgent(
   return {
     intent,
     intentConfidence,
-    intentReasoning: null,
+    intentReasoning: guardrailFlags.length ? `guardrail: ${guardrailFlags.join('; ')}` : null,
     responseText: finalText,
     responseButtons: null,
     handoff,
