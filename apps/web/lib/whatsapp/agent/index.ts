@@ -8,8 +8,35 @@ import {
   formatNowInClinicZone,
   loadGroundingForTenant,
 } from './prompt';
-import { type AgentToolName, executeAgentTool, getAgentToolDefinitions } from './tools';
+import {
+  type AgentToolName,
+  type ExecuteToolInput,
+  executeAgentTool,
+  getAgentToolDefinitions,
+} from './tools';
 import type { AgentInput, AgentIntent, AgentOutput, ToolCallTrace } from './types';
+
+/**
+ * Dependencias inyectables del orquestador. En producción usan las
+ * implementaciones reales (DB + GHL + LLM). El harness de evals
+ * (lib/whatsapp/agent/eval) las sustituye por fixtures + tools mockeadas +
+ * un `now` fijo, para correr el agente real (mismo loop, mismo LLM) SIN
+ * tocar BD, GHL ni enviar WhatsApp. Así se puede testear el prompt antes
+ * de deployar.
+ */
+export interface AgentRunDeps {
+  loadGrounding: typeof loadGroundingForTenant;
+  executeTool: (input: ExecuteToolInput) => Promise<ToolCallTrace>;
+  callLLM: typeof callLLM;
+  now: () => Date;
+}
+
+const defaultAgentDeps: AgentRunDeps = {
+  loadGrounding: loadGroundingForTenant,
+  executeTool: executeAgentTool,
+  callLLM,
+  now: () => new Date(),
+};
 
 /**
  * Orquestador del agente conversacional de WhatsApp.
@@ -29,16 +56,20 @@ import type { AgentInput, AgentIntent, AgentOutput, ToolCallTrace } from './type
 const MAX_TOOL_ITERATIONS = 5;
 const TEMPERATURE = 0.3;
 
-export async function runWhatsappAgent(input: AgentInput): Promise<AgentOutput> {
+export async function runWhatsappAgent(
+  input: AgentInput,
+  depsOverride: Partial<AgentRunDeps> = {},
+): Promise<AgentOutput> {
+  const deps: AgentRunDeps = { ...defaultAgentDeps, ...depsOverride };
   const startedAll = Date.now();
 
   // Grounding por-tenant: clinic settings + treatments + FAQs.
-  const grounding = await loadGroundingForTenant(input.tenantId);
+  const grounding = await deps.loadGrounding(input.tenantId);
   const system = buildSystemPrompt({
     clinic: grounding.clinic,
     treatments: grounding.treatments,
     faqs: grounding.faqs,
-    now: formatNowInClinicZone(grounding.clinic.timezone),
+    now: formatNowInClinicZone(grounding.clinic.timezone, deps.now()),
     remindersResume: input.remindersResume ?? null,
   });
 
@@ -65,7 +96,7 @@ export async function runWhatsappAgent(input: AgentInput): Promise<AgentOutput> 
   for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
     let result: LlmCallResult;
     try {
-      result = await callLLM({ messages, tools, temperature: TEMPERATURE });
+      result = await deps.callLLM({ messages, tools, temperature: TEMPERATURE });
     } catch (err) {
       errorText = (err as Error).message ?? 'llm_error';
       console.warn('[wa-agent] callLLM falló', { tenantId: input.tenantId, errorText });
@@ -97,7 +128,7 @@ export async function runWhatsappAgent(input: AgentInput): Promise<AgentOutput> 
     // Ejecutamos todas las tools de esta vuelta y guardamos sus traces.
     let terminalHit = false;
     for (const tc of result.toolCalls) {
-      const trace = await executeAgentTool({
+      const trace = await deps.executeTool({
         tenantId: input.tenantId,
         toolName: tc.name,
         rawArgs: tc.args,

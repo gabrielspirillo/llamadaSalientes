@@ -8,6 +8,7 @@
     "start": "next start",
     "worker": "tsx worker/index.ts",
     "worker:dev": "tsx watch worker/index.ts",
+    "eval:agent": "tsx --import ./worker/preload.ts lib/whatsapp/agent/eval/run.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
