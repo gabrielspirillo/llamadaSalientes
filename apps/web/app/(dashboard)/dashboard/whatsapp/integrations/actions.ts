@@ -11,6 +11,7 @@ import { auditLogs, users, whatsappConnections } from '@/lib/db/schema';
 import { decrypt, encrypt } from '@/lib/crypto';
 import { env } from '@/lib/env';
 import { getCurrentTenant } from '@/lib/tenant';
+import { upsertWhatsappAgentSettings } from '@/lib/data/whatsapp-agent-settings';
 import { auth } from '@clerk/nextjs/server';
 
 export type ActionResult<T> =
@@ -22,6 +23,26 @@ function ok<T>(data: T): ActionResult<T> {
 }
 function fail<T>(error: string, fieldErrors?: Record<string, string[]>): ActionResult<T> {
   return { success: false, error, fieldErrors };
+}
+
+// ─── Personalización del agente WhatsApp (persona por tenant) ────────────────
+
+const agentSettingsSchema = z.object({
+  persona: z.string().trim().max(2000).optional(),
+  agentName: z.string().trim().max(60).optional(),
+});
+
+export async function saveWhatsappAgentSettings(input: unknown): Promise<ActionResult<null>> {
+  const parsed = agentSettingsSchema.safeParse(input);
+  if (!parsed.success) return fail('Datos inválidos', parsed.error.flatten().fieldErrors);
+  const { tenant } = await getCurrentTenant();
+  await upsertWhatsappAgentSettings({
+    tenantId: tenant.id,
+    persona: parsed.data.persona?.trim() || null,
+    agentName: parsed.data.agentName?.trim() || null,
+  });
+  revalidatePath('/dashboard/configuration');
+  return ok(null);
 }
 
 async function getInternalUserId(): Promise<string | null> {

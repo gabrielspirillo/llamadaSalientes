@@ -8,6 +8,7 @@ import {
   formatNowInClinicZone,
   loadGroundingForTenant,
 } from './prompt';
+import { getWhatsappAgentSettings } from '@/lib/data/whatsapp-agent-settings';
 import { getLeadMemory } from '@/lib/memory/lead-memory';
 
 import { detectDiagnosis, detectInjection, redactPii } from './guardrails';
@@ -37,6 +38,10 @@ export interface AgentRunDeps {
     tenantId: string,
     phoneE164: string,
   ) => Promise<{ profileSummary: string | null; facts: Record<string, unknown> } | null>;
+  /** Personalización por tenant (persona/nombre) — aditiva, no anula reglas. */
+  loadAgentSettings: (
+    tenantId: string,
+  ) => Promise<{ persona: string | null; agentName: string | null } | null>;
 }
 
 const defaultAgentDeps: AgentRunDeps = {
@@ -48,6 +53,7 @@ const defaultAgentDeps: AgentRunDeps = {
     const row = await getLeadMemory(tenantId, phoneE164);
     return row ? { profileSummary: row.profileSummary, facts: row.facts } : null;
   },
+  loadAgentSettings: getWhatsappAgentSettings,
 };
 
 /**
@@ -77,9 +83,10 @@ export async function runWhatsappAgent(
 
   // Grounding por-tenant: clinic settings + treatments + FAQs. La memoria del
   // lead se carga en paralelo (best-effort: si falla, seguimos sin memoria).
-  const [grounding, leadMemory] = await Promise.all([
+  const [grounding, leadMemory, agentSettings] = await Promise.all([
     deps.loadGrounding(input.tenantId),
     deps.loadLeadMemory(input.tenantId, input.contactPhoneE164).catch(() => null),
+    deps.loadAgentSettings(input.tenantId).catch(() => null),
   ]);
   const system = buildSystemPrompt({
     clinic: grounding.clinic,
@@ -88,6 +95,8 @@ export async function runWhatsappAgent(
     now: formatNowInClinicZone(grounding.clinic.timezone, deps.now()),
     remindersResume: input.remindersResume ?? null,
     leadMemory,
+    persona: agentSettings?.persona ?? null,
+    agentName: agentSettings?.agentName ?? null,
   });
 
   const tools = getAgentToolDefinitions();

@@ -82,6 +82,8 @@ async function main(): Promise<void> {
         // Sandbox sin memoria por defecto (no toca BD). Para testear la
         // inyección de memoria se puede devolver un perfil fijo acá.
         loadLeadMemory: async () => null,
+        // Sin personalización por tenant en el sandbox por defecto.
+        loadAgentSettings: async () => null,
       },
     );
     const result = gradeCase(c, output);

@@ -318,6 +318,21 @@ export const leadMemory = pgTable(
   }),
 );
 
+// ─────────────────────────────────────────────────────────────────────────────
+// WhatsApp agent settings — personalización ADITIVA del agente de WhatsApp por
+// tenant. `persona` son instrucciones extra de tono/estilo/foco; `agent_name`
+// el nombre con que se presenta. NUNCA anula las reglas duras ni los guardrails
+// (eso es global y de seguridad). Uno por tenant.
+// ─────────────────────────────────────────────────────────────────────────────
+export const whatsappAgentSettings = pgTable('whatsapp_agent_settings', {
+  tenantId: uuid('tenant_id')
+    .primaryKey()
+    .references(() => tenants.id, { onDelete: 'cascade' }),
+  persona: text('persona'),
+  agentName: text('agent_name'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const callEvents = pgTable(
   'call_events',
   {

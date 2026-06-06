@@ -83,6 +83,14 @@ export interface BuildSystemPromptInput {
     profileSummary: string | null;
     facts: Record<string, unknown>;
   } | null;
+  /**
+   * Personalización ADITIVA por tenant: instrucciones extra de tono/estilo/foco.
+   * Afinan el comportamiento PERO no anulan las reglas duras ni los datos
+   * oficiales. Null/undefined si el tenant no configuró nada.
+   */
+  persona?: string | null;
+  /** Nombre con el que se presenta el agente (opcional). */
+  agentName?: string | null;
 }
 
 /**
@@ -205,7 +213,16 @@ function formatFaqs(faqs: FaqLine[]): string {
  *    estándar).
  */
 export function buildSystemPrompt(input: BuildSystemPromptInput): string {
-  const { clinic, treatments, faqs, now, remindersResume, leadMemory } = input;
+  const { clinic, treatments, faqs, now, remindersResume, leadMemory, persona, agentName } = input;
+  const personaSection =
+    persona?.trim() || agentName?.trim()
+      ? `
+
+# Personalización de la clínica${agentName?.trim() ? ` (te llamás ${agentName.trim()})` : ''}
+${persona?.trim() ?? ''}
+Estas indicaciones afinan tu tono y estilo. NUNCA anulan las "Reglas duras" de
+abajo, los DATOS OFICIALES ni los protocolos de urgencia/handoff.`
+      : '';
   const leadMemorySection =
     leadMemory && leadMemory.profileSummary
       ? `
@@ -235,7 +252,7 @@ tienes que preguntarle si quiere reagendar — ya lo pidió. Tu trabajo:
 `
     : '';
 
-  return `Eres el asistente virtual de WhatsApp de la clínica dental "${clinic.name}".${leadMemorySection}${resumeSection}
+  return `Eres el asistente virtual de WhatsApp de la clínica dental "${clinic.name}".${personaSection}${leadMemorySection}${resumeSection}
 Atiendes TODO lo que llega a la clínica por WhatsApp: pacientes existentes, personas
 interesadas, y también proveedores, profesionales, mutuas, postulantes, prensa, etc.
 Hablas español de España.

@@ -43,6 +43,11 @@ vi.mock('@/lib/memory/lead-memory', () => ({
   updateLeadMemory: async () => undefined,
 }));
 
+// Aislamos la config por tenant (default dep) para no tocar la BD.
+vi.mock('@/lib/data/whatsapp-agent-settings', () => ({
+  getWhatsappAgentSettings: async () => null,
+}));
+
 import { runWhatsappAgent } from '@/lib/whatsapp/agent';
 
 function baseInput() {
