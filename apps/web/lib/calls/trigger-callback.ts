@@ -188,6 +188,11 @@ export async function triggerCallback(input: TriggerCallbackInput): Promise<Trig
       retell_llm_dynamic_variables: {
         ...clinicVars,
         patient_name: input.patientName ?? 'paciente',
+        // Retell NO auto-popula {{to_number}} en el prompt. Lo inyectamos
+        // explícitamente para que el agente pueda pasar el teléfono real a las
+        // tools (set_lead_email, register_patient, book_appointment) en vez del
+        // placeholder literal "+{{to_number}}".
+        to_number: phone,
         current_date: new Date().toISOString().slice(0, 10),
         direction: 'outbound',
         lead_source: input.source ?? 'manual',
@@ -458,6 +463,8 @@ async function triggerCallbackZadarmaViaRetell(
       retell_llm_dynamic_variables: {
         ...clinicVars,
         patient_name: input.patientName ?? 'paciente',
+        // Ver nota en el path Twilio: Retell no auto-popula {{to_number}}.
+        to_number: phone,
         current_date: new Date().toISOString().slice(0, 10),
         direction: 'outbound',
         lead_source: input.source ?? 'manual',

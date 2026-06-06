@@ -52,6 +52,22 @@ export async function POST(req: NextRequest) {
   }
 
   const toolArgs = body.args ?? body.arguments ?? {};
+
+  // Fallbacks defensivos: el LLM a veces manda el placeholder textual sin
+  // resolver ("+{{to_number}}") o no pasa el contact_id aunque ya lo tengamos
+  // en la metadata de la llamada (triggerCallback crea el contacto antes de
+  // llamar). Completamos desde body.call para que las tools de agenda no fallen.
+  const looksUnresolved = (v: unknown): boolean =>
+    typeof v === 'string' && (v.includes('{{') || v.trim() === '' || v.trim() === '+');
+  if (looksUnresolved(toolArgs.phone) && body.call.to_number) {
+    toolArgs.phone = body.call.to_number;
+  }
+  const metaContactId = (body.call.metadata as { ghl_contact_id?: string } | undefined)
+    ?.ghl_contact_id;
+  if (looksUnresolved(toolArgs.contact_id) || (!toolArgs.contact_id && metaContactId)) {
+    if (metaContactId) toolArgs.contact_id = metaContactId;
+  }
+
   const ctx = { retellCallId: body.call.call_id };
 
   // Override GHL para el flow demo de la landing: si la llamada vino disparada
