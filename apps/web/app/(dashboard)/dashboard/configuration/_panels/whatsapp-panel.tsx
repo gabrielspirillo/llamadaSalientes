@@ -1,12 +1,10 @@
 import { eq } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
-import { getWhatsappAgentSettings } from '@/lib/data/whatsapp-agent-settings';
 import { whatsappConnections } from '@/lib/db/schema';
 import { env } from '@/lib/env';
 import { getCurrentTenant } from '@/lib/tenant';
 
-import { AgentPersonaForm } from '../../whatsapp/integrations/_components/agent-persona-form';
 import { CloudConnectionForm } from '../../whatsapp/integrations/_components/cloud-connection-form';
 import { EvolutionConnectionPanel } from '../../whatsapp/integrations/_components/evolution-connection-panel';
 import { TwilioConnectionForm } from '../../whatsapp/integrations/_components/twilio-connection-form';
@@ -22,8 +20,6 @@ export async function WhatsappPanel() {
   const evolution = rows.find((r) => r.mode === 'EVOLUTION');
   const twilio = rows.find((r) => r.mode === 'TWILIO');
 
-  const agentSettings = await getWhatsappAgentSettings(tenant.id);
-
   const appUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
   const cloudWebhookUrl = `${appUrl}/api/webhooks/whatsapp/cloud`;
   const evolutionWebhookUrl = `${appUrl}/api/webhooks/whatsapp/evolution`;
@@ -37,23 +33,6 @@ export async function WhatsappPanel() {
           Conecta Meta Cloud API (oficial), Twilio (BSP oficial) o Evolution API (self-hosted, Baileys).
         </p>
       </div>
-
-      <section className="rounded-xl border border-zinc-200 bg-white p-6">
-        <div className="mb-4">
-          <h3 className="text-lg font-semibold text-zinc-900">Personalización del agente IA</h3>
-          <p className="text-xs text-zinc-500">
-            Ajustá el nombre y el tono/estilo del agente de WhatsApp de esta clínica. Es
-            aditivo: no cambia las reglas de seguridad ni los datos oficiales.
-          </p>
-        </div>
-        <AgentPersonaForm
-          initial={
-            agentSettings
-              ? { persona: agentSettings.persona, agentName: agentSettings.agentName }
-              : null
-          }
-        />
-      </section>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
         <section className="rounded-xl border border-zinc-200 bg-white p-6">
