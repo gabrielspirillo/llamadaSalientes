@@ -143,23 +143,52 @@ describe('whatsappProcess handler', () => {
     expect(mocks.runWhatsappAgent).not.toHaveBeenCalled();
   });
 
-  it('ai_enabled=false → sale sin invocar agente', async () => {
-    pushSelect([
-      {
-        id: 'conv-1',
-        contactId: 'contact-1',
-        status: 'ACTIVE',
-        aiEnabled: false,
-        humanTakeoverUntil: null,
-        channel: 'WHATSAPP_CLOUD',
-      },
-    ]);
+  // Mensaje inbound de prueba para llenar el batch (el SUT chequea el gate
+  // DESPUÉS de cargar batch + multimodal, así que el batch no puede estar
+  // vacío o saldría antes con 'no_inbound_messages').
+  const inboundMsg = () => ({
+    id: 'msg-1',
+    tenantId: 'tenant-1',
+    conversationId: 'conv-1',
+    direction: 'INBOUND',
+    type: 'TEXT',
+    contentText: 'Hola',
+    createdAt: new Date(),
+    externalId: 'ext-1',
+    mediaUrl: null,
+    mediaType: null,
+    transcription: null,
+    rawJson: {},
+  });
+
+  // Empuja la cola FIFO hasta el chequeo de skip del gate (sin loadHistory,
+  // porque el skip ocurre antes): gate, lastRun, messages, existing, connector.
+  function pushUntilGateSkip(conv: Record<string, unknown>) {
+    pushSelect([conv]); // gate-check
+    pushSelect([]); // loadInboundBatch.lastRun
+    pushSelect([inboundMsg()]); // loadInboundBatch.messages (no vacío)
+    pushSelect([]); // loadInboundBatch.existing run
+    pushSelect([]); // resolveConnector (sin conexión → null, da igual: salimos)
+    mocks.processInboundMessages.mockResolvedValue({ combinedText: 'Hola', totalLatencyMs: 1 });
+  }
+
+  it('ai_enabled=false → sale sin invocar agente (ai_disabled)', async () => {
+    pushUntilGateSkip({
+      id: 'conv-1',
+      contactId: 'contact-1',
+      status: 'ACTIVE',
+      aiEnabled: false,
+      humanTakeoverUntil: null,
+      channel: 'WHATSAPP_CLOUD',
+    });
     const out = (await runHandler()) as { ok: boolean; reason?: string };
     expect(out.reason).toBe('ai_disabled');
     expect(mocks.runWhatsappAgent).not.toHaveBeenCalled();
   });
 
-  it('status=HANDOFF → sale (humano controlando)', async () => {
+  it('status=HANDOFF con IA activa → NO bloquea (AI-first): corre el agente', async () => {
+    // Comportamiento nuevo: un HANDOFF "pegado" ya no silencia la IA; solo la
+    // frenan aiEnabled=false o un takeover vigente.
     pushSelect([
       {
         id: 'conv-1',
@@ -170,24 +199,58 @@ describe('whatsappProcess handler', () => {
         channel: 'WHATSAPP_CLOUD',
       },
     ]);
-    const out = (await runHandler()) as { ok: boolean; reason?: string };
-    expect(out.reason).toBe('status_HANDOFF');
+    pushSelect([]); // lastRun
+    pushSelect([inboundMsg()]); // messages
+    pushSelect([]); // existing run
+    pushSelect([
+      {
+        id: 'conn-1',
+        tenantId: 'tenant-1',
+        mode: 'CLOUD',
+        status: 'CONNECTED',
+        phoneId: 'ph-1',
+        cloudAccessTokenEnc: 'enc',
+        cloudAppSecretEnc: 'enc',
+      },
+    ]); // resolveConnector
+    mocks.buildConnector.mockReturnValue({ channel: 'whatsapp_cloud' } as never);
+    pushSelect([]); // loadHistory
+    mocks.processInboundMessages.mockResolvedValue({ combinedText: 'Hola', totalLatencyMs: 1 });
+    mocks.runWhatsappAgent.mockResolvedValue({
+      intent: 'OTHER',
+      intentConfidence: 0.5,
+      intentReasoning: null,
+      responseText: 'Hola, ¿en qué te puedo ayudar?',
+      responseButtons: null,
+      handoff: false,
+      urgent: false,
+      model: 'm',
+      tokensIn: 1,
+      tokensOut: 1,
+      latencyMs: 1,
+      fallbackUsed: false,
+      toolsCalled: [],
+      errorText: null,
+      traceId: null,
+    });
+    mocks.sendAgentResponse.mockResolvedValue({ messageId: 'out-1', externalId: 'wamid-1', kind: 'text' });
+    const out = (await runHandler()) as { ok: boolean };
+    expect(out.ok).toBe(true);
+    expect(mocks.runWhatsappAgent).toHaveBeenCalledTimes(1);
   });
 
   it('humanTakeoverUntil futuro → sale (takeover activo)', async () => {
-    const future = new Date(Date.now() + 60_000);
-    pushSelect([
-      {
-        id: 'conv-1',
-        contactId: 'contact-1',
-        status: 'ACTIVE',
-        aiEnabled: true,
-        humanTakeoverUntil: future,
-        channel: 'WHATSAPP_CLOUD',
-      },
-    ]);
+    pushUntilGateSkip({
+      id: 'conv-1',
+      contactId: 'contact-1',
+      status: 'ACTIVE',
+      aiEnabled: true,
+      humanTakeoverUntil: new Date(Date.now() + 60_000),
+      channel: 'WHATSAPP_CLOUD',
+    });
     const out = (await runHandler()) as { ok: boolean; reason?: string };
     expect(out.reason).toBe('human_takeover_active');
+    expect(mocks.runWhatsappAgent).not.toHaveBeenCalled();
   });
 
   it('flujo completo: gate OK → batch → agent → outbound → persist', async () => {
