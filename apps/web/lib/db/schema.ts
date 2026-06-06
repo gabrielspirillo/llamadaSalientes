@@ -289,6 +289,35 @@ export const calls = pgTable(
   }),
 );
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Lead memory — memoria unificada por lead, cross-canal (WhatsApp + llamadas
+// in/out). Keyed por (tenant_id, phone_e164), que es la llave universal entre
+// whatsapp_contacts.phone_e164, calls.from/to_number y outbound_targets.
+// `profile_summary` es el resumen rolling que se inyecta al agente; `facts`
+// guarda hechos estructurados (intereses, seguro, última cita, opt-outs, etc.).
+// Se regenera con UNA llamada de resumen tras cada interacción (no por mensaje).
+// ─────────────────────────────────────────────────────────────────────────────
+export const leadMemory = pgTable(
+  'lead_memory',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    phoneE164: text('phone_e164').notNull(),
+    ghlContactId: text('ghl_contact_id'),
+    profileSummary: text('profile_summary'),
+    facts: jsonb('facts').$type<Record<string, unknown>>().notNull().default({}),
+    lastInteractionAt: timestamp('last_interaction_at', { withTimezone: true }),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantPhoneUnique: unique('lead_memory_tenant_phone_unique').on(t.tenantId, t.phoneE164),
+    tenantGhlIdx: index('lead_memory_tenant_ghl_idx').on(t.tenantId, t.ghlContactId),
+  }),
+);
+
 export const callEvents = pgTable(
   'call_events',
   {

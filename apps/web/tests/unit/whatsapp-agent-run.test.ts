@@ -37,6 +37,12 @@ vi.mock('@/lib/whatsapp/agent/tools', () => ({
   getAgentToolDefinitions: () => [],
 }));
 
+// Aislamos la memoria de lead (default dep) para no tocar la BD en el test.
+vi.mock('@/lib/memory/lead-memory', () => ({
+  getLeadMemory: async () => null,
+  updateLeadMemory: async () => undefined,
+}));
+
 import { runWhatsappAgent } from '@/lib/whatsapp/agent';
 
 function baseInput() {

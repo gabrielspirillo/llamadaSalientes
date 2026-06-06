@@ -73,6 +73,16 @@ export interface BuildSystemPromptInput {
     ghlAppointmentId: string;
     expiresAt: string;
   } | null;
+  /**
+   * Memoria del lead (cross-canal): resumen rolling de TODA la comunicación
+   * con este contacto (WhatsApp + llamadas in/out, según módulos activos) más
+   * hechos estructurados. Es contexto, no datos oficiales: el agente no puede
+   * inventar precios/horarios desde acá.
+   */
+  leadMemory?: {
+    profileSummary: string | null;
+    facts: Record<string, unknown>;
+  } | null;
 }
 
 /**
@@ -195,7 +205,20 @@ function formatFaqs(faqs: FaqLine[]): string {
  *    estándar).
  */
 export function buildSystemPrompt(input: BuildSystemPromptInput): string {
-  const { clinic, treatments, faqs, now, remindersResume } = input;
+  const { clinic, treatments, faqs, now, remindersResume, leadMemory } = input;
+  const leadMemorySection =
+    leadMemory && leadMemory.profileSummary
+      ? `
+
+# Memoria del lead (histórico multicanal)
+${leadMemory.profileSummary}${
+          leadMemory.facts && Object.keys(leadMemory.facts).length
+            ? `\nDatos: ${JSON.stringify(leadMemory.facts)}`
+            : ''
+        }
+Usá esto como contexto del interlocutor (lo que ya habló por WhatsApp o por teléfono).
+NO lo repitas literal, NO inventes datos fuera de esto ni de los DATOS OFICIALES.`
+      : '';
   const resumeSection = remindersResume
     ? `
 
@@ -212,7 +235,7 @@ tienes que preguntarle si quiere reagendar — ya lo pidió. Tu trabajo:
 `
     : '';
 
-  return `Eres el asistente virtual de WhatsApp de la clínica dental "${clinic.name}".${resumeSection}
+  return `Eres el asistente virtual de WhatsApp de la clínica dental "${clinic.name}".${leadMemorySection}${resumeSection}
 Atiendes TODO lo que llega a la clínica por WhatsApp: pacientes existentes, personas
 interesadas, y también proveedores, profesionales, mutuas, postulantes, prensa, etc.
 Hablas español de España.

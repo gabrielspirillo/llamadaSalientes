@@ -8,6 +8,8 @@ import {
   formatNowInClinicZone,
   loadGroundingForTenant,
 } from './prompt';
+import { getLeadMemory } from '@/lib/memory/lead-memory';
+
 import { detectDiagnosis, detectInjection, redactPii } from './guardrails';
 import {
   type AgentToolName,
@@ -30,6 +32,11 @@ export interface AgentRunDeps {
   executeTool: (input: ExecuteToolInput) => Promise<ToolCallTrace>;
   callLLM: typeof callLLM;
   now: () => Date;
+  /** Memoria del lead (cross-canal) para inyectar al prompt. */
+  loadLeadMemory: (
+    tenantId: string,
+    phoneE164: string,
+  ) => Promise<{ profileSummary: string | null; facts: Record<string, unknown> } | null>;
 }
 
 const defaultAgentDeps: AgentRunDeps = {
@@ -37,6 +44,10 @@ const defaultAgentDeps: AgentRunDeps = {
   executeTool: executeAgentTool,
   callLLM,
   now: () => new Date(),
+  loadLeadMemory: async (tenantId, phoneE164) => {
+    const row = await getLeadMemory(tenantId, phoneE164);
+    return row ? { profileSummary: row.profileSummary, facts: row.facts } : null;
+  },
 };
 
 /**
@@ -64,14 +75,19 @@ export async function runWhatsappAgent(
   const deps: AgentRunDeps = { ...defaultAgentDeps, ...depsOverride };
   const startedAll = Date.now();
 
-  // Grounding por-tenant: clinic settings + treatments + FAQs.
-  const grounding = await deps.loadGrounding(input.tenantId);
+  // Grounding por-tenant: clinic settings + treatments + FAQs. La memoria del
+  // lead se carga en paralelo (best-effort: si falla, seguimos sin memoria).
+  const [grounding, leadMemory] = await Promise.all([
+    deps.loadGrounding(input.tenantId),
+    deps.loadLeadMemory(input.tenantId, input.contactPhoneE164).catch(() => null),
+  ]);
   const system = buildSystemPrompt({
     clinic: grounding.clinic,
     treatments: grounding.treatments,
     faqs: grounding.faqs,
     now: formatNowInClinicZone(grounding.clinic.timezone, deps.now()),
     remindersResume: input.remindersResume ?? null,
+    leadMemory,
   });
 
   const tools = getAgentToolDefinitions();

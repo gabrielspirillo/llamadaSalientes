@@ -14,6 +14,7 @@ import { runWhatsappAgent } from '@/lib/whatsapp/agent';
 import { processInboundMessages } from '@/lib/whatsapp/agent/multimodal';
 import { writeAgentRun } from '@/lib/whatsapp/agent/persist-run';
 import type { AgentInput, AgentOutput, HistoryTurn } from '@/lib/whatsapp/agent/types';
+import { updateLeadMemory } from '@/lib/memory/lead-memory';
 import { syncWhatsappContactAvatar } from '@/lib/whatsapp/contacts/sync-avatar';
 import { syncWhatsappContactWithGhl } from '@/lib/whatsapp/contacts/sync-ghl';
 import { buildConnector } from '@/lib/whatsapp/factory';
@@ -227,6 +228,13 @@ export async function processWhatsappJob(
         errorText: agentOutput.errorText,
         traceId: agentOutput.traceId,
       });
+    });
+
+    // 10. Actualizar la memoria del lead (cross-canal, gated por módulo).
+    //     Best-effort: updateLeadMemory nunca lanza; no bloquea la respuesta.
+    await step.run('update-lead-memory', async () => {
+      await updateLeadMemory(tenantId, contactPhoneE164);
+      return { ok: true };
     });
 
     return {

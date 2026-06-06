@@ -79,6 +79,9 @@ async function main(): Promise<void> {
         loadGrounding: fixtureLoadGrounding,
         executeTool: fixtureExecuteTool,
         now: FIXTURE_NOW,
+        // Sandbox sin memoria por defecto (no toca BD). Para testear la
+        // inyección de memoria se puede devolver un perfil fijo acá.
+        loadLeadMemory: async () => null,
       },
     );
     const result = gradeCase(c, output);
