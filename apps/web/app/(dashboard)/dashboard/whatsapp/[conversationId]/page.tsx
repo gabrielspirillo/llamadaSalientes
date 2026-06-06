@@ -14,6 +14,7 @@ import {
   whatsappTags,
 } from '@/lib/db/schema';
 import { getCurrentTenant } from '@/lib/tenant';
+import { getLeadMemory } from '@/lib/memory/lead-memory';
 import { listTenantMembersSynced } from '@/lib/tenant-members';
 
 import { MessageComposer } from '../_components/message-composer';
@@ -56,6 +57,9 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
       .set({ unreadCount: 0 })
       .where(eq(whatsappConversations.id, row.conv.id));
   }
+
+  // Memoria del lead (cross-canal) para mostrar en el sidebar. Best-effort.
+  const leadMem = await getLeadMemory(tenant.id, row.contact.phoneE164).catch(() => null);
 
   // Citas del contacto: lectura optimista del cache local. Si el contact aún
   // no tiene ghl_contact_id (sync GHL no corrió todavía) devolvemos []
@@ -206,6 +210,15 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
         tagsAll={allTags}
         tagsOnConversation={tagsOnConversation}
         members={membersRows}
+        leadMemory={
+          leadMem
+            ? {
+                profileSummary: leadMem.profileSummary,
+                facts: leadMem.facts,
+                updatedAt: leadMem.updatedAt.toISOString(),
+              }
+            : null
+        }
       />
     </div>
   );

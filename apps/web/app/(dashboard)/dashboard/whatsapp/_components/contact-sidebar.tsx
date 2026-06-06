@@ -52,6 +52,24 @@ interface Props {
   tagsAll: Tag[];
   tagsOnConversation: Tag[];
   members: Member[];
+  /** Memoria del lead (cross-canal): resumen rolling + hechos. Null si aún no hay. */
+  leadMemory?: {
+    profileSummary: string | null;
+    facts: Record<string, unknown>;
+    updatedAt: string;
+  } | null;
+}
+
+/** Aplana los `facts` de la memoria a pares legibles, salteando vacíos. */
+function leadFactEntries(facts: Record<string, unknown>): Array<[string, string]> {
+  const out: Array<[string, string]> = [];
+  for (const [k, v] of Object.entries(facts ?? {})) {
+    if (v == null) continue;
+    const val = Array.isArray(v) ? v.filter(Boolean).join(', ') : String(v);
+    if (!val.trim()) continue;
+    out.push([k, val]);
+  }
+  return out;
 }
 
 const channelLabel = (c: Props['conversation']['channel']) =>
@@ -65,6 +83,7 @@ export function ContactSidebar({
   tagsAll,
   tagsOnConversation,
   members,
+  leadMemory,
 }: Props) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -233,6 +252,34 @@ export function ContactSidebar({
           )}
         </dl>
       </div>
+
+      {/* Memoria del lead (cross-canal: WhatsApp + llamadas in/out) */}
+      {leadMemory?.profileSummary ? (
+        <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-zinc-900">Memoria del lead</p>
+            <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700">
+              multicanal
+            </span>
+          </div>
+          <p className="mt-1.5 whitespace-pre-line text-xs leading-relaxed text-zinc-700">
+            {leadMemory.profileSummary}
+          </p>
+          {leadFactEntries(leadMemory.facts).length > 0 && (
+            <dl className="mt-2 space-y-0.5 border-t border-indigo-100 pt-2">
+              {leadFactEntries(leadMemory.facts).map(([k, v]) => (
+                <div key={k} className="flex gap-1 text-[11px]">
+                  <dt className="font-medium capitalize text-zinc-500">{k.replace(/_/g, ' ')}:</dt>
+                  <dd className="text-zinc-700">{v}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          <p className="mt-2 text-[10px] text-zinc-400">
+            Actualizada {new Date(leadMemory.updatedAt).toLocaleString()}
+          </p>
+        </div>
+      ) : null}
 
       {/* Citas */}
       <div className="rounded-xl border border-zinc-200 bg-white p-4">
