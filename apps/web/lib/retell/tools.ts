@@ -7,6 +7,8 @@ import { patchCallCustomData, setCallGhlContact } from '@/lib/data/calls';
 import { getGhlIntegration } from '@/lib/data/ghl-integration';
 import { listTreatmentsForTenant } from '@/lib/data/treatments';
 import { listFaqsForTenant } from '@/lib/data/faqs';
+import { embedText } from '@/lib/openai/client';
+import { cosineSimilarity } from '@/lib/rag/cosine';
 import { clockArticle, speakClockTime } from '@/lib/retell/time-speech';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -445,10 +447,30 @@ export async function getTreatmentDetails(
   }
   const rows = await listTreatmentsForTenant(tenantId);
   const q = normalize(args.name);
-  const match =
+  let match =
     rows.find((t) => normalize(t.name) === q) ??
     rows.find((t) => normalize(t.name).includes(q)) ??
     rows.find((t) => q.includes(normalize(t.name)));
+  // RAG: si no matcheó por nombre, intentamos semántico (ej. "para los
+  // dientes torcidos" → Ortodoncia). Best-effort, fallback al mensaje de abajo.
+  if (!match) {
+    try {
+      const withEmb = rows.filter(
+        (t) => t.active && Array.isArray(t.embedding) && t.embedding.length > 0,
+      );
+      if (withEmb.length > 0) {
+        const qVec = await embedText(args.name);
+        if (qVec.length > 0) {
+          const best = withEmb
+            .map((t) => ({ t, sim: cosineSimilarity(qVec, t.embedding as number[]) }))
+            .sort((a, b) => b.sim - a.sim)[0];
+          if (best && best.sim >= 0.35) match = best.t;
+        }
+      }
+    } catch (err) {
+      console.warn('[rag] getTreatmentDetails semántico falló', (err as Error).message);
+    }
+  }
   if (!match) {
     const names = rows
       .filter((t) => t.active)
@@ -470,6 +492,27 @@ export async function getTreatmentDetails(
   };
 }
 
+// Fallback por keyword (cuando no hay embeddings o el semántico falla).
+function keywordFaqMatch<T extends { question: string; answer: string; category?: string | null; priority?: number | null }>(
+  rows: T[],
+  query: string,
+): T[] {
+  const q = normalize(query);
+  const terms = q.split(/\s+/).filter((t) => t.length >= 3);
+  return rows
+    .map((f) => {
+      const hay = normalize(`${f.question} ${f.answer} ${f.category ?? ''}`);
+      const hits = terms.reduce((n, t) => n + (hay.includes(t) ? 1 : 0), 0);
+      return { f, score: hits };
+    })
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score || (b.f.priority ?? 0) - (a.f.priority ?? 0))
+    .slice(0, 3)
+    .map((s) => s.f);
+}
+
+const FAQ_SIM_THRESHOLD = 0.3;
+
 export async function searchFaqs(
   tenantId: string,
   args: SearchFaqsArgs,
@@ -478,23 +521,36 @@ export async function searchFaqs(
     return { result: 'Necesito una palabra clave para buscar en las FAQs.' };
   }
   const rows = await listFaqsForTenant(tenantId);
-  const q = normalize(args.query);
-  const terms = q.split(/\s+/).filter((t) => t.length >= 3);
-  const scored = rows
-    .map((f) => {
-      const hay = normalize(`${f.question} ${f.answer} ${f.category ?? ''}`);
-      const hits = terms.reduce((n, t) => n + (hay.includes(t) ? 1 : 0), 0);
-      return { f, score: hits };
-    })
-    .filter((s) => s.score > 0)
-    .sort((a, b) => b.score - a.score || (b.f.priority ?? 0) - (a.f.priority ?? 0))
-    .slice(0, 3);
-  if (scored.length === 0) {
+
+  // RAG: ranking semántico por coseno sobre las FAQs con embedding. Si falla
+  // (OpenAI caído) o no hay embeddings, caemos a keyword. Escala mejor que el
+  // keyword cuando hay muchas FAQs y capta sinónimos/parafraseos.
+  let top: typeof rows = [];
+  try {
+    const withEmb = rows.filter((f) => Array.isArray(f.embedding) && f.embedding.length > 0);
+    if (withEmb.length > 0) {
+      const qVec = await embedText(args.query);
+      if (qVec.length > 0) {
+        top = withEmb
+          .map((f) => ({ f, sim: cosineSimilarity(qVec, f.embedding as number[]) }))
+          .sort((a, b) => b.sim - a.sim)
+          .filter((s) => s.sim >= FAQ_SIM_THRESHOLD)
+          .slice(0, 3)
+          .map((s) => s.f);
+      }
+    }
+  } catch (err) {
+    console.warn('[rag] searchFaqs semántico falló, uso keyword', (err as Error).message);
+  }
+
+  if (top.length === 0) top = keywordFaqMatch(rows, args.query);
+
+  if (top.length === 0) {
     return {
       result: `No encontré nada en las FAQs sobre "${args.query}". Si la información no está en la clínica, ofrecé tomar el dato y devolver llamada.`,
     };
   }
-  const lines = scored.map(({ f }) => `P: ${f.question}\nR: ${f.answer}`);
+  const lines = top.map((f) => `P: ${f.question}\nR: ${f.answer}`);
   return { result: lines.join('\n\n') };
 }
 

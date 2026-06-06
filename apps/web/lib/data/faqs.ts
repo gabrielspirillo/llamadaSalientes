@@ -1,6 +1,7 @@
 import 'server-only';
 import { db } from '@/lib/db/client';
 import { faqs } from '@/lib/db/schema';
+import { refreshFaqEmbedding } from '@/lib/rag/embeddings';
 import { and, desc, eq } from 'drizzle-orm';
 
 export type Faq = typeof faqs.$inferSelect;
@@ -25,6 +26,8 @@ export async function getFaqById(tenantId: string, id: string) {
 
 export async function createFaq(values: NewFaq) {
   const [row] = await db.insert(faqs).values(values).returning();
+  // RAG: generar embedding (best-effort, no bloquea si OpenAI falla).
+  if (row) await refreshFaqEmbedding(row.id);
   return row;
 }
 
@@ -34,6 +37,10 @@ export async function updateFaq(tenantId: string, id: string, patch: Partial<New
     .set(patch)
     .where(and(eq(faqs.tenantId, tenantId), eq(faqs.id, id)))
     .returning();
+  // Re-embeber si cambió la pregunta/respuesta (best-effort).
+  if (row && (patch.question != null || patch.answer != null || patch.category != null)) {
+    await refreshFaqEmbedding(row.id);
+  }
   return row;
 }
 

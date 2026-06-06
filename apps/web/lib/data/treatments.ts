@@ -1,6 +1,7 @@
 import 'server-only';
 import { db } from '@/lib/db/client';
 import { treatments } from '@/lib/db/schema';
+import { refreshTreatmentEmbedding } from '@/lib/rag/embeddings';
 import { and, desc, eq } from 'drizzle-orm';
 
 export type Treatment = typeof treatments.$inferSelect;
@@ -25,6 +26,8 @@ export async function getTreatmentById(tenantId: string, id: string) {
 
 export async function createTreatment(values: NewTreatment) {
   const [row] = await db.insert(treatments).values(values).returning();
+  // RAG: generar embedding (best-effort).
+  if (row) await refreshTreatmentEmbedding(row.id);
   return row;
 }
 
@@ -34,6 +37,10 @@ export async function updateTreatment(tenantId: string, id: string, patch: Parti
     .set(patch)
     .where(and(eq(treatments.tenantId, tenantId), eq(treatments.id, id)))
     .returning();
+  // Re-embeber si cambió nombre/descripción (best-effort).
+  if (row && (patch.name != null || patch.description != null)) {
+    await refreshTreatmentEmbedding(row.id);
+  }
   return row;
 }
 

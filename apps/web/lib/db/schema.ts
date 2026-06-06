@@ -99,6 +99,9 @@ export const treatments = pgTable(
     // Si true, este tratamiento entra al pool de waitlist (citas adelantadas).
     // Ver migración 0014_waitlist.sql.
     waitlistEligible: boolean('waitlist_eligible').notNull().default(false),
+    // RAG: embedding (text-embedding-3-small, 1536 floats) de nombre+descripción.
+    // Sin pgvector — coseno en memoria (set chico por tenant). Null = sin embeber.
+    embedding: jsonb('embedding').$type<number[]>(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => ({
@@ -117,7 +120,9 @@ export const faqs = pgTable(
     question: text('question').notNull(),
     answer: text('answer').notNull(),
     priority: integer('priority').default(0),
-    // V1: añadir vector(1536) cuando habilitemos pgvector
+    // RAG: embedding (text-embedding-3-small, 1536 floats) de pregunta+respuesta.
+    // Sin pgvector — coseno en memoria. Null = sin embeber todavía (fallback keyword).
+    embedding: jsonb('embedding').$type<number[]>(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => ({

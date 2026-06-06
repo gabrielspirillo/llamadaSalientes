@@ -11,6 +11,19 @@ function getOpenAI(): OpenAI {
   return _client;
 }
 
+// ─── Embeddings (RAG) ─────────────────────────────────────────────────────────
+
+const EMBEDDING_MODEL = process.env.OPENAI_EMBEDDING_MODEL ?? 'text-embedding-3-small';
+
+/** Embebe un texto. Devuelve el vector (1536 floats con el modelo default). */
+export async function embedText(text: string): Promise<number[]> {
+  const input = (text ?? '').trim().slice(0, 8000);
+  if (!input) return [];
+  const openai = getOpenAI();
+  const res = await openai.embeddings.create({ model: EMBEDDING_MODEL, input });
+  return res.data[0]?.embedding ?? [];
+}
+
 export type CallSummary = {
   intent: string; // agendar | cancelar | reagendar | pregunta | queja | otro
   sentiment: 'positivo' | 'neutro' | 'negativo';
