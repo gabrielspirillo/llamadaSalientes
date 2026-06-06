@@ -153,7 +153,7 @@ export async function triggerCallback(input: TriggerCallbackInput): Promise<Trig
   }
 
   // 4. Resolver contexto de clínica (nombre, dirección, horarios, etc.)
-  const clinicVars = await buildClinicContextVars(input.tenantId);
+  const clinicVars = await buildClinicContextVars(input.tenantId, { leadPhoneE164: phone });
 
   // 5. Llamar a Retell
   console.log('[triggerCallback] createPhoneCall', {
@@ -434,7 +434,7 @@ async function triggerCallbackZadarmaViaRetell(
     }
   }
 
-  const clinicVars = await buildClinicContextVars(input.tenantId);
+  const clinicVars = await buildClinicContextVars(input.tenantId, { leadPhoneE164: phone });
 
   console.log('[triggerCallback/zadarma-via-retell] createPhoneCall', {
     from: fromNumber,

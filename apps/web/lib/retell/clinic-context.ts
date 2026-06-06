@@ -1,5 +1,6 @@
 import 'server-only';
 import { getClinicSettings, getTenant } from '@/lib/data/clinic';
+import { getLeadMemory } from '@/lib/memory/lead-memory';
 import { speakWorkingHoursRange } from '@/lib/retell/time-speech';
 
 type DayKey =
@@ -49,10 +50,17 @@ function normalizeTenantName(name: string | undefined | null): string {
  */
 export async function buildClinicContextVars(
   tenantId: string,
+  opts?: { leadPhoneE164?: string | null },
 ): Promise<Record<string, string>> {
-  const [clinic, tenant] = await Promise.all([
+  // Si hay teléfono del lead, cargamos su memoria cross-canal en paralelo
+  // (best-effort: si falla, va vacío). Se inyecta como {{lead_memory}} para
+  // que el agente de voz "recuerde" lo hablado por WhatsApp o llamadas previas.
+  const [clinic, tenant, leadMem] = await Promise.all([
     getClinicSettings(tenantId),
     getTenant(tenantId),
+    opts?.leadPhoneE164
+      ? getLeadMemory(tenantId, opts.leadPhoneE164).catch(() => null)
+      : Promise.resolve(null),
   ]);
   const phones = (clinic?.phones ?? []).filter(Boolean);
   return {
@@ -64,5 +72,8 @@ export async function buildClinicContextVars(
     after_hours_message: clinic?.afterHoursMessage?.trim() || '',
     recording_consent: clinic?.recordingConsentText?.trim() || '',
     clinic_transfer_number: clinic?.transferNumber?.trim() || '',
+    // Vacío si no hay memoria. El prompt del agente Retell debe referenciar
+    // {{lead_memory}} para usarlo (config en el dashboard de Retell).
+    lead_memory: leadMem?.profileSummary?.trim() || '',
   };
 }

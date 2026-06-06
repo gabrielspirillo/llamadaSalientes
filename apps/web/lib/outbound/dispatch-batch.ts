@@ -4,6 +4,7 @@ import { type OutboundCampaign, setCampaignStatus } from '@/lib/data/outbound-ca
 import { getTenantTelephony } from '@/lib/data/tenant-telephony';
 import { db } from '@/lib/db/client';
 import { outboundTargets, phoneNumbers, tenants } from '@/lib/db/schema';
+import { getLeadMemory } from '@/lib/memory/lead-memory';
 import { getRetellClient } from '@/lib/retell/client';
 import { and, eq } from 'drizzle-orm';
 
@@ -104,8 +105,11 @@ export async function dispatchCampaign(
 
   const shared = (campaign.sharedDynamicVars ?? {}) as Record<string, string>;
 
-  const tasks = targets.map((t) => {
+  const tasks = await Promise.all(
+    targets.map(async (t) => {
     const targetVars = (t.dynamicVars ?? {}) as Record<string, string>;
+    // Memoria del lead (cross-canal) por destinatario. Best-effort.
+    const leadMem = await getLeadMemory(tenantId, t.toNumber).catch(() => null);
     return {
       to_number: t.toNumber,
       retell_llm_dynamic_variables: {
@@ -115,6 +119,7 @@ export async function dispatchCampaign(
         use_case: campaign.useCase,
         patient_name: t.patientName ?? targetVars.patient_name ?? 'paciente',
         campaign_name: campaign.name,
+        lead_memory: leadMem?.profileSummary?.trim() || '',
         ...shared,
         ...targetVars,
       },
@@ -129,7 +134,8 @@ export async function dispatchCampaign(
         use_case: campaign.useCase,
       },
     } as const;
-  });
+    }),
+  );
 
   const callTimeWindow =
     campaign.callWindowStart != null && campaign.callWindowEnd != null

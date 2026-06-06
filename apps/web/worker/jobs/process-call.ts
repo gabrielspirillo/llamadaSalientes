@@ -111,6 +111,41 @@ export async function processCallJob(
     });
   }
 
+  // Alimentar la memoria del lead con esta llamada (cross-canal, best-effort).
+  // Resolvemos el teléfono del LEAD como el número que NO es de la clínica.
+  await step.run('update-lead-memory', async () => {
+    try {
+      const { getCallByRetellId } = await import('@/lib/data/calls');
+      const { updateLeadMemory } = await import('@/lib/memory/lead-memory');
+      const { getTenantTelephony } = await import('@/lib/data/tenant-telephony');
+      const { db } = await import('@/lib/db/client');
+      const { phoneNumbers } = await import('@/lib/db/schema');
+      const { eq } = await import('drizzle-orm');
+
+      const call = await getCallByRetellId(retellCallId);
+      if (!call) return { ok: false, reason: 'call_not_found' };
+
+      const clinicNumbers = new Set<string>();
+      const tele = await getTenantTelephony(tenantId).catch(() => null);
+      if (tele?.inboundNumberE164) clinicNumbers.add(tele.inboundNumberE164);
+      const nums = await db
+        .select({ e164: phoneNumbers.e164 })
+        .from(phoneNumbers)
+        .where(eq(phoneNumbers.tenantId, tenantId));
+      for (const n of nums) if (n.e164) clinicNumbers.add(n.e164);
+
+      const candidates = [call.toNumber, call.fromNumber].filter(Boolean) as string[];
+      const leadPhone = candidates.find((p) => !clinicNumbers.has(p)) ?? null;
+      if (!leadPhone) return { ok: false, reason: 'lead_phone_unresolved' };
+
+      await updateLeadMemory(tenantId, leadPhone);
+      return { ok: true, leadPhone };
+    } catch (err) {
+      console.warn('[process-call] update-lead-memory falló', (err as Error).message);
+      return { ok: false };
+    }
+  });
+
   return {
     tenantId,
     retellCallId,
