@@ -2,12 +2,13 @@
 
 import { cn } from '@/lib/cn';
 import Link from 'next/link';
-import { MessageCircle, Phone, Plug, ToggleRight } from 'lucide-react';
+import { FlaskConical, MessageCircle, Phone, Plug, ToggleRight } from 'lucide-react';
 
-export type ConfigTab = 'whatsapp' | 'telephony' | 'integrations' | 'modules';
+export type ConfigTab = 'whatsapp' | 'telephony' | 'integrations' | 'modules' | 'playground';
 
 const BASE_TABS: { key: ConfigTab; label: string; icon: typeof MessageCircle }[] = [
   { key: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
+  { key: 'playground', label: 'Probador', icon: FlaskConical },
   { key: 'telephony', label: 'Telefonía', icon: Phone },
   { key: 'integrations', label: 'Integraciones', icon: Plug },
 ];

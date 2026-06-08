@@ -4,12 +4,13 @@ import { getCurrentTenant } from '@/lib/tenant';
 import { ConfigurationTabs, type ConfigTab } from './configuration-tabs';
 import { IntegrationsPanel } from './_panels/integrations-panel';
 import { ModulesPanel } from './_panels/modules-panel';
+import { PlaygroundPanel } from './_panels/playground-panel';
 import { TelephonyPanel } from './_panels/telephony-panel';
 import { WhatsappPanel } from './_panels/whatsapp-panel';
 
 export const dynamic = 'force-dynamic';
 
-const PUBLIC_TABS = new Set<ConfigTab>(['whatsapp', 'telephony', 'integrations']);
+const PUBLIC_TABS = new Set<ConfigTab>(['whatsapp', 'playground', 'telephony', 'integrations']);
 
 export default async function ConfigurationPage({
   searchParams,
@@ -33,6 +34,7 @@ export default async function ConfigurationPage({
       />
       <ConfigurationTabs active={tab} showModulesTab={isSuperAdmin} />
       {tab === 'whatsapp' && <WhatsappPanel />}
+      {tab === 'playground' && <PlaygroundPanel />}
       {tab === 'telephony' && <TelephonyPanel />}
       {tab === 'integrations' && (
         <IntegrationsPanel flash={{ ghl: sp.ghl, ghl_error: sp.ghl_error }} />
