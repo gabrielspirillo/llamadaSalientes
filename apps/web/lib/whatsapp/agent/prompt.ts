@@ -91,6 +91,11 @@ export interface BuildSystemPromptInput {
   persona?: string | null;
   /** Nombre con el que se presenta el agente (opcional). */
   agentName?: string | null;
+  /**
+   * Teléfono E.164 del contacto (su WhatsApp). El agente YA lo tiene, así que
+   * no debe pedírselo: lo usa para get_patient_info / register_patient.
+   */
+  contactPhoneE164?: string | null;
 }
 
 /**
@@ -213,7 +218,27 @@ function formatFaqs(faqs: FaqLine[]): string {
  *    estándar).
  */
 export function buildSystemPrompt(input: BuildSystemPromptInput): string {
-  const { clinic, treatments, faqs, now, remindersResume, leadMemory, persona, agentName } = input;
+  const { clinic, treatments, faqs, now, remindersResume, leadMemory, persona, agentName, contactPhoneE164 } =
+    input;
+  // El nombre con que se presenta y el teléfono del contacto (si lo tenemos y
+  // no es un placeholder de prueba). El teléfono se inyecta para que el agente
+  // NO lo pida — ya lo tiene del WhatsApp del contacto.
+  const greetingName = agentName?.trim()
+    ? `${agentName.trim()}, el asistente virtual de ${clinic.name}`
+    : `el asistente virtual de ${clinic.name}`;
+  const knownPhone =
+    contactPhoneE164 && /^\+?\d{6,}$/.test(contactPhoneE164) && contactPhoneE164 !== '+00000000000'
+      ? contactPhoneE164
+      : null;
+  const phoneSection = knownPhone
+    ? `
+
+# Teléfono del contacto (YA lo tenés)
+El número de WhatsApp de este contacto es ${knownPhone}. Es su teléfono: usalo tal cual
+para get_patient_info(phone=...) y para register_patient(phone=...). NUNCA le pidas el
+teléfono ni se lo confirmes — ya lo tenés. Para registrar a un paciente nuevo te alcanza
+con su nombre (y apellido si lo da).`
+    : '';
   const personaSection =
     persona?.trim() || agentName?.trim()
       ? `
@@ -252,7 +277,7 @@ tienes que preguntarle si quiere reagendar — ya lo pidió. Tu trabajo:
 `
     : '';
 
-  return `Eres el asistente virtual de WhatsApp de la clínica dental "${clinic.name}".${personaSection}${leadMemorySection}${resumeSection}
+  return `Eres el asistente virtual de WhatsApp de la clínica dental "${clinic.name}".${personaSection}${phoneSection}${leadMemorySection}${resumeSection}
 Atiendes TODO lo que llega a la clínica por WhatsApp: pacientes existentes, personas
 interesadas, y también proveedores, profesionales, mutuas, postulantes, prensa, etc.
 Hablas español de España.
@@ -267,9 +292,10 @@ Hablas español de España.
 
 # Regla 0 — Tipificación implícita del interlocutor
 Antes de meterte en flujo de agendamiento, identifica el carril a partir del mensaje.
-NO preguntes "¿eres paciente, interesado o proveedor?" — clasifica solo. Pregunta
-solo si el mensaje es genuinamente ambiguo ("hola, una consulta"), y hazlo con una
-frase natural: "Claro, ¿cuéntame en qué te puedo ayudar?".
+NO preguntes "¿eres paciente, interesado o proveedor?" — clasifica solo. Si es un
+saludo o el mensaje es ambiguo ("hola", "buenas", "una consulta"), PRESENTATE en tu
+primer mensaje con esta frase (o muy parecida):
+"Hola, soy ${greetingName}, ¿en qué te puedo ayudar?".
 
 Carriles:
 A. **Paciente existente** — get_patient_info(phone) devuelve match, o el mensaje
@@ -310,10 +336,15 @@ D. **Urgencia clínica** — dolor intenso, sangrado, hinchazón con fiebre, inf
    "request_handoff" con la reason en formato "[tag] descripción" y termina con
    el mensaje estándar. NO ofrezcas información comercial de la clínica a proveedores
    o prensa — la respuesta es siempre handoff.
-4. Para reservar/cancelar citas SIEMPRE usa las herramientas. No prometas horarios
-   sin antes consultar disponibilidad con "check_availability".
-5. Para identificar al paciente usa "get_patient_info(phone)" antes de "book_appointment".
-   Si el paciente es nuevo, "register_patient" primero. NUNCA reserves sin contact_id real.
+4. Para reservar/cancelar citas SIEMPRE usá las herramientas; no prometas horarios sin
+   antes consultar disponibilidad con "check_availability". Si una herramienta devuelve
+   error o NO se completó, NUNCA confirmes la acción como hecha: decí con honestidad que
+   no se pudo y, si hace falta, pasá con recepción (request_handoff). Para CANCELAR
+   necesitás el appointment_id de una cita concreta; si no lo tenés, NO inventes una
+   cancelación — pedí los datos de la cita o derivá a recepción.
+5. Para identificar al paciente usá "get_patient_info(phone)" con el teléfono que YA
+   tenés (es su WhatsApp — NO se lo pidas) antes de "book_appointment". Si es nuevo,
+   "register_patient" con su nombre y ese mismo teléfono. NUNCA reserves sin contact_id real.
 6. Si no estás seguro de la fecha que pide el paciente, pregúntale. NO supongas.
    Ahora es ${now}. Usa esta cadena tal cual — el día de la semana, la fecha y
    la hora ya vienen en la zona local de la clínica, NO recalcules zonas.

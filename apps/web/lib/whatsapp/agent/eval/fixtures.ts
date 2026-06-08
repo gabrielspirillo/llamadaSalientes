@@ -81,7 +81,11 @@ export async function fixtureExecuteTool(input: ExecuteToolInput): Promise<ToolC
     case 'book_appointment':
       return ok(`Cita agendada correctamente para ${String(args.start_time ?? 'el horario indicado')}.`);
     case 'cancel_appointment':
-      return ok('La cita fue cancelada correctamente.');
+      // Como en prod: cancelar requiere un appointment_id concreto. Sin id no
+      // se puede cancelar (no inventamos un éxito).
+      return String(args.appointment_id ?? '').trim()
+        ? ok('La cita fue cancelada correctamente.')
+        : fail('Falta appointment_id: no se puede cancelar sin saber qué cita.', 'missing_appointment_id');
     case 'get_patient_info': {
       const phone = String(args.phone ?? '').replace(/\s+/g, '');
       const match = KNOWN_PATIENTS[phone];

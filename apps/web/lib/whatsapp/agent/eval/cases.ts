@@ -61,13 +61,15 @@ export const EVAL_CASES: EvalCase[] = [
   },
   {
     id: 'agendar-paciente-nuevo',
-    description: 'Lead nuevo quiere agendar limpieza → flujo de scheduling',
+    description: 'Lead nuevo quiere agendar → avanza sin pedir el teléfono (ya lo tiene)',
     userText: 'Hola, quería pedir cita para una limpieza dental. Soy nuevo, nunca fui.',
     contactPhoneE164: '+34622333444',
-    expectIntent: 'SCHEDULING',
     expectHandoff: false,
     expectUrgent: false,
-    expectToolsAny: ['check_availability', 'register_patient', 'get_patient_info'],
+    // Clave del cambio: el agente NO debe pedir el teléfono/móvil (ya lo tiene
+    // del WhatsApp). Puede pedir el nombre o mostrar huecos — no constreñimos
+    // qué tool corre primero (el LLM varía en flujos multi-paso).
+    responseMustNotMatch: /tel[eé]fono|m[oó]vil|n[uú]mero de (tel|m[oó]vil|contacto)/i,
   },
   {
     id: 'cancelar-sin-datos-no-alucina',

@@ -97,6 +97,7 @@ export async function runWhatsappAgent(
     leadMemory,
     persona: agentSettings?.persona ?? null,
     agentName: agentSettings?.agentName ?? null,
+    contactPhoneE164: input.contactPhoneE164,
   });
 
   const tools = getAgentToolDefinitions();
