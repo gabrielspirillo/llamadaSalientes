@@ -76,9 +76,9 @@ export function buildConnector(conn: WhatsAppConnectionRow): WhatsAppConnector {
   }
 
   if (conn.mode === 'EVOLUTION') {
-    if (!conn.evolutionInstance || !conn.evolutionTokenEnc) {
+    if (!conn.evolutionInstance) {
       throw new WhatsAppConnectorError(
-        `Tenant ${conn.tenantId} sin credenciales Evolution`,
+        `Tenant ${conn.tenantId} sin instancia Evolution`,
         'INCOMPLETE_EVOLUTION_CREDS',
         undefined,
         false,
@@ -93,10 +93,25 @@ export function buildConnector(conn: WhatsAppConnectionRow): WhatsAppConnector {
         false,
       );
     }
+    // apiKey: token por-instancia si está guardado; si no, la admin key global
+    // (AUTHENTICATION_API_KEY), que autoriza todos los endpoints de instancia.
+    // Así el envío funciona aunque el token no se haya persistido — p.ej. al
+    // reconectar por /instance/connect, que no devuelve el hash.
+    const apiKey = conn.evolutionTokenEnc
+      ? decrypt(conn.evolutionTokenEnc)
+      : process.env.EVOLUTION_API_KEY;
+    if (!apiKey) {
+      throw new WhatsAppConnectorError(
+        `Tenant ${conn.tenantId} sin token Evolution ni EVOLUTION_API_KEY`,
+        'INCOMPLETE_EVOLUTION_CREDS',
+        undefined,
+        false,
+      );
+    }
     return new EvolutionConnector({
       baseUrl,
       instanceName: conn.evolutionInstance,
-      apiKey: decrypt(conn.evolutionTokenEnc),
+      apiKey,
     });
   }
 
