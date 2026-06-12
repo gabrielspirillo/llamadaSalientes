@@ -169,7 +169,7 @@ export function getAgentToolDefinitions(): AgentToolDefinition[] {
           start_time: {
             type: 'string',
             description:
-              'Hora de inicio en ISO 8601 (ej: 2026-05-22T10:00:00). Debe coincidir con un hueco devuelto por check_availability.',
+              'Usa EXACTAMENTE el valor start_time (el que viene entre corchetes [start_time=...]) que devolvió check_availability para el hueco que eligió el paciente. NO lo recalcules, NO cambies la zona horaria ni lo deduzcas del texto hablado: cópialo tal cual.',
           },
           treatment_name: {
             type: 'string',

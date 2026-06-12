@@ -309,7 +309,7 @@ describe('runWhatsappAgent', () => {
     expect(out.intent).toBe('HANDOFF');
   });
 
-  it('max iterations: 5 vueltas con tools, sin texto final → handoff fallback', async () => {
+  it('max iterations: 7 vueltas con tools, sin texto final → handoff fallback', async () => {
     const loopResponse = {
       text: null,
       toolCalls: [{ id: 'c', name: 'search_faqs', args: { query: 'x' } }],
@@ -333,7 +333,7 @@ describe('runWhatsappAgent', () => {
     expect(out.handoff).toBe(true);
     expect(out.responseText).toBe(HANDOFF_RESPONSE_TEXT);
     expect(out.errorText).toBe('max_tool_iterations_reached');
-    expect(mocks.callLLM).toHaveBeenCalledTimes(5);
+    expect(mocks.callLLM).toHaveBeenCalledTimes(7);
   });
 
   it('history y userText llegan a callLLM como messages user/assistant + final user', async () => {

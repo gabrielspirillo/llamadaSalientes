@@ -93,10 +93,15 @@ function formatSlots(slots: GhlSlot[]): string {
       const d = new Date(s.startTime);
       const weekday = d.toLocaleDateString('es-ES', { weekday: 'long', timeZone: tz });
       const time = speakClockTime(d, tz);
-      return `${weekday} ${clockArticle(time)} ${time}`;
+      // Anexamos el start_time EXACTO (ISO con zona) entre corchetes. El agente
+      // debe pasarlo VERBATIM a book_appointment: si lo "adivina" a partir del
+      // texto hablado pierde la zona horaria y GHL rechaza la reserva con
+      // "slot no longer available". No lo digas en voz alta al paciente: es dato
+      // interno; al paciente le dices solo el día y la hora.
+      return `${weekday} ${clockArticle(time)} ${time} [start_time=${s.startTime}]`;
     })
     .join('; ');
-  return `Horarios disponibles: ${formatted}.`;
+  return `Horarios disponibles: ${formatted}. Para reservar, pasá a book_appointment el valor exacto de start_time (entre corchetes) del hueco que elija el paciente, sin modificarlo ni recalcular la hora.`;
 }
 
 // ─── Tool handlers ────────────────────────────────────────────────────────────

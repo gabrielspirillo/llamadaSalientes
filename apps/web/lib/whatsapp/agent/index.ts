@@ -70,7 +70,7 @@ const defaultAgentDeps: AgentRunDeps = {
  * iteraciones. No re-implementa lógica: solo orquesta llm + tools + prompt.
  */
 
-const MAX_TOOL_ITERATIONS = 5;
+const MAX_TOOL_ITERATIONS = 7;
 const TEMPERATURE = 0.3;
 
 export async function runWhatsappAgent(
