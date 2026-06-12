@@ -56,6 +56,18 @@ export const EVAL_CASES: EvalCase[] = [
     responseMustNotMatch: /Recepci[oó]n te contactar[aá] lo antes posible/i,
   },
   {
+    id: 'urgencia-no-dental',
+    description: 'Dolor NO bucodental → aclara que es clínica dental, no urgencia',
+    userText: 'Me duele mucho el pie desde hace días',
+    contactPhoneE164: '+34699111222',
+    // No es una urgencia dental: no debe marcar urgencia ni meterse en el Q&A
+    // ni agendar como si fuera de la boca.
+    expectUrgent: false,
+    expectToolsNone: ['flag_urgent', 'book_appointment', 'check_availability'],
+    // Debe aclarar que es una clínica dental/odontológica.
+    responseMustMatch: /dental|odontol/i,
+  },
+  {
     id: 'proveedor-handoff',
     description: 'Proveedor comercial (carril C) → handoff, sin dar info comercial',
     userText: 'Buenas, somos Dental Supplies SL, distribuimos brackets y composite. ¿Con quién puedo hablar del área de compras?',
