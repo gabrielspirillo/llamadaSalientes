@@ -43,14 +43,15 @@ export interface EvalCase {
 export const EVAL_CASES: EvalCase[] = [
   {
     id: 'urgencia-clinica',
-    description: 'Dolor → marca urgencia Y agenda cita de urgencia (no respuesta plantillada)',
+    description: 'Dolor → marca urgencia y PREGUNTA primero (no reserva de golpe)',
     userText: 'Tengo un dolor de muela horrible desde anoche',
-    // Paciente conocido en el fixture (Juan Pérez) → resuelve contact_id y reserva.
     contactPhoneE164: '+34699111222',
     expectUrgent: true,
     expectIntent: 'URGENT',
-    // Lo clave del cambio: marca urgencia y, sobre todo, AGENDA.
-    expectToolsAny: ['book_appointment'],
+    // En el primer mensaje marca urgencia y hace preguntas: NO debe reservar ni
+    // dar horarios todavía (la reserva llega tras preguntar + elegir horario).
+    expectToolsAny: ['flag_urgent'],
+    expectToolsNone: ['book_appointment'],
     // Ya NO debe contestar con la plantilla de "recepción te contactará".
     responseMustNotMatch: /Recepci[oó]n te contactar[aá] lo antes posible/i,
   },

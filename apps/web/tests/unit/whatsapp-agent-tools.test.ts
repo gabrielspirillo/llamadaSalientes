@@ -98,8 +98,9 @@ describe('executeAgentTool', () => {
     });
     expect(trace.ok).toBe(true);
     expect(trace.result).toContain('URGENT');
-    // La observación empuja al LLM a seguir y agendar la cita de urgencia.
-    expect(trace.result).toContain('agenda');
+    // La observación empuja al LLM a seguir el flujo de urgencia (preguntar y
+    // reservar), no a cortar la conversación.
+    expect(trace.result).toContain('reserva');
     expect(dispatchToolMock).not.toHaveBeenCalled();
   });
 

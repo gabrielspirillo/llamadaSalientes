@@ -291,7 +291,7 @@ export function getAgentToolDefinitions(): AgentToolDefinition[] {
     {
       name: 'flag_urgent',
       description:
-        'Marca la conversación como URGENTE clínica (dolor, molestia fuerte, urgencia dental). NO corta la conversación: después de llamarla DEBES seguir y agendar una cita de urgencia en el primer hueco disponible (check_availability + get_patient_info/register_patient + book_appointment). Úsala ante dolor, hinchazón, sangrado, infección, traumatismo o cualquier molestia que el paciente describa como urgente.',
+        'Marca la conversación como URGENTE clínica (dolor, molestia fuerte, urgencia dental). NO corta la conversación: después de llamarla haz 2-3 preguntas breves sobre el síntoma, ofrece los horarios más cercanos con check_availability y, cuando el paciente elija uno, agenda con get_patient_info/register_patient + book_appointment. Úsala ante dolor, hinchazón, sangrado, infección, traumatismo o cualquier molestia que el paciente describa como urgente.',
       parameters: {
         type: 'object',
         properties: {
@@ -365,7 +365,7 @@ export async function executeAgentTool(input: ExecuteToolInput): Promise<ToolCal
       ok: true,
       result:
         name === 'flag_urgent'
-          ? 'URGENT marcado. Ahora agenda la cita de urgencia: busca el primer hueco con check_availability, identifica/registra al paciente y reserva con book_appointment.'
+          ? 'URGENT marcado. Ahora haz 2-3 preguntas breves sobre el síntoma; luego ofrece 2-3 horarios cercanos con check_availability y, cuando el paciente elija uno, reserva con book_appointment.'
           : 'HANDOFF marcado',
       latencyMs: Date.now() - started,
     };
