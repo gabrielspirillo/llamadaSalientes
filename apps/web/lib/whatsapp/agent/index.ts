@@ -3,7 +3,6 @@ import 'server-only';
 import { type LlmCallResult, type LlmMessage, callLLM } from './llm';
 import {
   HANDOFF_RESPONSE_TEXT,
-  URGENT_RESPONSE_TEXT,
   buildSystemPrompt,
   formatNowInClinicZone,
   loadGroundingForTenant,
@@ -186,9 +185,9 @@ export async function runWhatsappAgent(
       });
 
       if (trace.ok && tc.name === 'flag_urgent') {
+        // Marcador, NO terminal: dejamos el flag urgent pero el loop sigue
+        // para que el agente agende la cita de urgencia y responda él mismo.
         urgent = true;
-        handoff = true;
-        terminalHit = true;
       } else if (trace.ok && tc.name === 'request_handoff') {
         handoff = true;
         terminalHit = true;
@@ -196,24 +195,25 @@ export async function runWhatsappAgent(
     }
 
     if (terminalHit) {
-      // El orquestador es la fuente de verdad de la respuesta plantillada.
-      // El LLM no debería seguir generando — descartamos su `text` final si
-      // hubiera intentado escribir uno tras llamar a la terminal.
-      finalText = urgent ? URGENT_RESPONSE_TEXT : HANDOFF_RESPONSE_TEXT;
+      // request_handoff es la única terminal: la respuesta la pone el
+      // orquestador (plantilla), no el LLM. Descartamos su `text` final.
+      finalText = HANDOFF_RESPONSE_TEXT;
       break;
     }
   }
 
   // Llegamos al límite de iteraciones sin respuesta final → handoff fallback.
-  if (finalText === null && !handoff && !urgent) {
+  // Cubre también urgencias que no llegaron a cerrar (no se pudo agendar):
+  // derivamos a recepción como red de seguridad, manteniendo el flag urgent.
+  if (finalText === null) {
     handoff = true;
     finalText = HANDOFF_RESPONSE_TEXT;
     errorText = errorText ?? 'max_tool_iterations_reached';
   }
 
-  // Guardrail de SALIDA: solo sobre respuestas GENERADAS por el LLM, no sobre
-  // los textos plantillados de handoff/urgent (que ya son seguros).
-  if (finalText && !handoff && !urgent) {
+  // Guardrail de SALIDA: sobre respuestas GENERADAS por el LLM (incluye las
+  // confirmaciones de cita de urgencia), no sobre la plantilla de handoff.
+  if (finalText && !handoff) {
     const redacted = redactPii(finalText);
     if (redacted.count > 0) {
       finalText = redacted.text;

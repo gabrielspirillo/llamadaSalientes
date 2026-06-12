@@ -153,43 +153,83 @@ describe('runWhatsappAgent', () => {
     expect(out.tokensOut).toBe(28); // 10 + 18
   });
 
-  it('flag_urgent → intent=URGENT + URGENT_RESPONSE_TEXT + handoff', async () => {
-    mocks.callLLM.mockResolvedValueOnce({
-      text: null,
-      toolCalls: [
-        {
-          id: 'call-1',
-          name: 'flag_urgent',
-          args: { reason: 'sangrado intenso tras extracción' },
-        },
-      ],
-      tokensIn: 150,
-      tokensOut: 5,
-      model: 'gemini-flash-latest',
-      latencyMs: 700,
-      fallbackUsed: false,
-    });
+  it('flag_urgent NO es terminal: marca urgent y el agente sigue para agendar la cita', async () => {
+    // Vuelta 1: el LLM marca urgencia con flag_urgent.
+    mocks.callLLM
+      .mockResolvedValueOnce({
+        text: null,
+        toolCalls: [
+          {
+            id: 'call-1',
+            name: 'flag_urgent',
+            args: { reason: 'dolor de muela fuerte' },
+          },
+        ],
+        tokensIn: 150,
+        tokensOut: 5,
+        model: 'gemini-flash-latest',
+        latencyMs: 700,
+        fallbackUsed: false,
+      })
+      // Vuelta 2: agenda la cita de urgencia.
+      .mockResolvedValueOnce({
+        text: null,
+        toolCalls: [
+          {
+            id: 'call-2',
+            name: 'book_appointment',
+            args: { contact_id: 'ghl_juan', start_time: '2026-06-08T13:00:00', treatment_name: 'Urgencia' },
+          },
+        ],
+        tokensIn: 120,
+        tokensOut: 8,
+        model: 'gemini-flash-latest',
+        latencyMs: 500,
+        fallbackUsed: false,
+      })
+      // Vuelta 3: confirma la cita con su propio mensaje (sin tools).
+      .mockResolvedValueOnce({
+        text: 'Te he reservado una cita de urgencia hoy a las 13:00. Te esperamos.',
+        toolCalls: [],
+        tokensIn: 90,
+        tokensOut: 16,
+        model: 'gemini-flash-latest',
+        latencyMs: 400,
+        fallbackUsed: false,
+      });
 
-    mocks.executeAgentTool.mockResolvedValueOnce({
-      name: 'flag_urgent',
-      args: { reason: 'sangrado intenso tras extracción' },
-      ok: true,
-      result: 'URGENT marcado',
-      latencyMs: 1,
-    });
+    mocks.executeAgentTool
+      .mockResolvedValueOnce({
+        name: 'flag_urgent',
+        args: { reason: 'dolor de muela fuerte' },
+        ok: true,
+        result: 'URGENT marcado. Ahora agenda la cita de urgencia.',
+        latencyMs: 1,
+      })
+      .mockResolvedValueOnce({
+        name: 'book_appointment',
+        args: { contact_id: 'ghl_juan', start_time: '2026-06-08T13:00:00', treatment_name: 'Urgencia' },
+        ok: true,
+        result: 'Cita agendada correctamente para 2026-06-08T13:00:00.',
+        latencyMs: 120,
+      });
 
     const out = await runWhatsappAgent({
       ...baseInput(),
-      userText: 'Llevo sangrando 3 horas, no para',
+      userText: 'Tengo un dolor de muela horrible desde anoche',
     });
 
+    // Sigue marcada como urgencia, pero NO derivada a recepción: se agendó.
     expect(out.intent).toBe('URGENT');
     expect(out.urgent).toBe(true);
-    expect(out.handoff).toBe(true);
-    expect(out.responseText).toBe(URGENT_RESPONSE_TEXT);
-    expect(out.intentConfidence).toBe(1.0);
-    // El LLM no se llamó una segunda vez: terminamos al detectar la tool terminal.
-    expect(mocks.callLLM).toHaveBeenCalledTimes(1);
+    expect(out.handoff).toBe(false);
+    // La respuesta es la confirmación del agente, NO el texto plantillado viejo.
+    expect(out.responseText).toBe('Te he reservado una cita de urgencia hoy a las 13:00. Te esperamos.');
+    expect(out.responseText).not.toBe(URGENT_RESPONSE_TEXT);
+    // Agendó de verdad.
+    expect(out.toolsCalled.map((t) => t.name)).toContain('book_appointment');
+    // El loop siguió tras flag_urgent (no cortó en la vuelta 1).
+    expect(mocks.callLLM).toHaveBeenCalledTimes(3);
   });
 
   it('request_handoff → intent=HANDOFF + HANDOFF_RESPONSE_TEXT', async () => {

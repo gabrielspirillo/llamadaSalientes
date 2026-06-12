@@ -185,7 +185,10 @@ export async function processWhatsappJob(
     // 7. Aplicar flags handoff/urgent ANTES de enviar outbound.
     if (agentOutput.handoff || agentOutput.urgent) {
       await step.run('apply-handoff-flags', async () => {
-        await applyHandoffFlags(conversationId, agentOutput.urgent);
+        await applyHandoffFlags(conversationId, {
+          handoff: agentOutput.handoff,
+          urgent: agentOutput.urgent,
+        });
       });
     }
 
@@ -368,18 +371,28 @@ async function resolveConnector(tenantId: string): Promise<WhatsAppConnector | n
   }
 }
 
-async function applyHandoffFlags(conversationId: string, urgent: boolean): Promise<void> {
-  // La IA escaló a un humano: la pausamos (aiEnabled=false) para que pare de
-  // responder — con el nuevo gate AI-first, status por sí solo ya no frena.
-  // El operador la reactiva desde el toggle "Agente Virtual".
+async function applyHandoffFlags(
+  conversationId: string,
+  flags: { handoff: boolean; urgent: boolean },
+): Promise<void> {
+  // Marcamos el flag de urgencia SIEMPRE que la conversación sea urgente (para
+  // que el inbox la priorice), pero solo PAUSAMOS la IA (status=HANDOFF +
+  // aiEnabled=false) cuando hubo un handoff real a recepción. Una urgencia que
+  // la IA resolvió sola agendando la cita NO pausa el agente: sigue AI-first.
+  const patch: Partial<typeof whatsappConversations.$inferInsert> = {
+    urgentFlag: flags.urgent,
+    updatedAt: new Date(),
+  };
+  if (flags.handoff) {
+    // La IA escaló a un humano: la pausamos (aiEnabled=false) para que pare de
+    // responder — con el gate AI-first, status por sí solo ya no frena. El
+    // operador la reactiva desde el toggle "Agente Virtual".
+    patch.status = 'HANDOFF';
+    patch.aiEnabled = false;
+  }
   await db
     .update(whatsappConversations)
-    .set({
-      status: 'HANDOFF',
-      aiEnabled: false,
-      urgentFlag: urgent,
-      updatedAt: new Date(),
-    })
+    .set(patch)
     .where(eq(whatsappConversations.id, conversationId));
 }
 

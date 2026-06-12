@@ -12,11 +12,14 @@ import type { ToolCallTrace } from './types';
  *   (check_availability, book_appointment, cancel_appointment, get_patient_info,
  *   register_patient, list_treatments, get_treatment_details, search_faqs).
  *   Toda la lógica de GHL, calendarios, FAQs y validación de IDs ya está allí.
- * - Añadimos 2 herramientas "terminales" propias del canal:
- *     request_handoff  → marca conversación HANDOFF (sin urgencia).
- *     flag_urgent      → marca conversación HANDOFF + URGENT (clínica).
- *   No tienen lado-server (no llaman a GHL); el orquestador detecta su
- *   invocación, setea los flags del run y devuelve la respuesta estándar.
+ * - Añadimos 2 herramientas propias del canal:
+ *     request_handoff  → TERMINAL: marca conversación HANDOFF (sin urgencia)
+ *                        y corta el loop con la respuesta estándar.
+ *     flag_urgent      → MARCADOR (no terminal): marca la conversación como
+ *                        URGENT pero NO corta el loop. El agente debe seguir
+ *                        y agendar una cita de urgencia en el primer hueco.
+ *   Ninguna tiene lado-server (no llaman a GHL); el orquestador detecta su
+ *   invocación y setea los flags del run.
  *
  * Exponemos:
  *   - getAgentToolDefinitions(): JSON-schemas para tool-calling del LLM
@@ -92,10 +95,10 @@ const SCHEMAS = {
 
 export type AgentToolName = keyof typeof SCHEMAS;
 
-export const TERMINAL_TOOL_NAMES: ReadonlySet<AgentToolName> = new Set([
-  'request_handoff',
-  'flag_urgent',
-]);
+// Solo request_handoff corta el loop. flag_urgent es un MARCADOR: setea el
+// flag urgent del run pero deja seguir al agente para que agende la cita de
+// urgencia (no es terminal).
+export const TERMINAL_TOOL_NAMES: ReadonlySet<AgentToolName> = new Set(['request_handoff']);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // JSON Schema definitions para el LLM (Gemini + OpenAI)
@@ -288,7 +291,7 @@ export function getAgentToolDefinitions(): AgentToolDefinition[] {
     {
       name: 'flag_urgent',
       description:
-        'Marca la conversación como URGENTE clínica y la deriva a recepción inmediatamente. Úsala SOLO ante dolor intenso, sangrado, hinchazón con fiebre, infección o traumatismo.',
+        'Marca la conversación como URGENTE clínica (dolor, molestia fuerte, urgencia dental). NO corta la conversación: después de llamarla DEBES seguir y agendar una cita de urgencia en el primer hueco disponible (check_availability + get_patient_info/register_patient + book_appointment). Úsala ante dolor, hinchazón, sangrado, infección, traumatismo o cualquier molestia que el paciente describa como urgente.',
       parameters: {
         type: 'object',
         properties: {
@@ -351,15 +354,19 @@ export async function executeAgentTool(input: ExecuteToolInput): Promise<ToolCal
 
   const args = parsed.data as Record<string, unknown>;
 
-  // Terminal tools: no llaman a GHL. El orquestador detecta la invocación
-  // mirando TERMINAL_TOOL_NAMES y devuelve el mensaje estándar; nosotros
-  // sólo dejamos el trace para auditoría.
+  // request_handoff (terminal) y flag_urgent (marcador) no llaman a GHL. El
+  // orquestador detecta la invocación y setea los flags del run; nosotros sólo
+  // dejamos el trace para auditoría. A flag_urgent le devolvemos una
+  // observación que recuerda al LLM que aún tiene que agendar la cita.
   if (name === 'request_handoff' || name === 'flag_urgent') {
     return {
       name,
       args,
       ok: true,
-      result: name === 'flag_urgent' ? 'URGENT marcado' : 'HANDOFF marcado',
+      result:
+        name === 'flag_urgent'
+          ? 'URGENT marcado. Ahora agenda la cita de urgencia: busca el primer hueco con check_availability, identifica/registra al paciente y reserva con book_appointment.'
+          : 'HANDOFF marcado',
       latencyMs: Date.now() - started,
     };
   }

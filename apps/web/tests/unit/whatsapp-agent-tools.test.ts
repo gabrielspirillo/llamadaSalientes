@@ -18,7 +18,7 @@ beforeEach(() => {
 });
 
 describe('getAgentToolDefinitions', () => {
-  it('expone las 8 tools de Retell + 2 terminales (handoff/urgent)', () => {
+  it('expone las 8 tools de Retell + handoff (terminal) + flag_urgent (marcador)', () => {
     const defs = getAgentToolDefinitions();
     const names = defs.map((d) => d.name).sort();
     expect(names).toEqual(
@@ -45,9 +45,10 @@ describe('getAgentToolDefinitions', () => {
     }
   });
 
-  it('marca request_handoff y flag_urgent como terminales', () => {
+  it('solo request_handoff es terminal; flag_urgent es marcador no terminal', () => {
     expect(TERMINAL_TOOL_NAMES.has('request_handoff')).toBe(true);
-    expect(TERMINAL_TOOL_NAMES.has('flag_urgent')).toBe(true);
+    // flag_urgent marca urgencia pero deja seguir al agente para que agende.
+    expect(TERMINAL_TOOL_NAMES.has('flag_urgent')).toBe(false);
     expect(TERMINAL_TOOL_NAMES.has('check_availability')).toBe(false);
   });
 });
@@ -89,7 +90,7 @@ describe('executeAgentTool', () => {
     expect(dispatchToolMock).not.toHaveBeenCalled();
   });
 
-  it('flag_urgent es terminal: NO toca dispatchTool', async () => {
+  it('flag_urgent es marcador: NO toca dispatchTool y pide agendar la cita', async () => {
     const trace = await executeAgentTool({
       tenantId: 'tenant-1',
       toolName: 'flag_urgent',
@@ -97,6 +98,8 @@ describe('executeAgentTool', () => {
     });
     expect(trace.ok).toBe(true);
     expect(trace.result).toContain('URGENT');
+    // La observación empuja al LLM a seguir y agendar la cita de urgencia.
+    expect(trace.result).toContain('agenda');
     expect(dispatchToolMock).not.toHaveBeenCalled();
   });
 

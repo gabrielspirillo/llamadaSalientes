@@ -20,6 +20,11 @@ import { buildClinicContextVars } from '@/lib/retell/clinic-context';
 /** Respuestas plantilladas para escenarios terminales del agente. */
 export const HANDOFF_RESPONSE_TEXT = 'Te paso con recepción. En breve te contactan para ayudarte.';
 
+/**
+ * @deprecated Texto legacy de urgencia. Ya NO se usa como respuesta: ante una
+ * urgencia el agente agenda una cita de urgencia y responde él mismo (ver
+ * carril D del system prompt). Se mantiene exportado por compat con tests.
+ */
 export const URGENT_RESPONSE_TEXT =
   'Eso requiere valoración presencial. Recepción te contactará lo antes posible. Si tienes dolor intenso o sangrado importante, llama al 112.';
 
@@ -211,8 +216,8 @@ function formatFaqs(faqs: FaqLine[]): string {
  *  - Usar las herramientas cuando necesite datos en vivo (slots libres,
  *    crear paciente, reservar cita, listar tratamientos, etc.).
  *  - Pedir handoff (`request_handoff`) si la consulta excede su grounding.
- *  - Marcar urgente (`flag_urgent`) ante dolor intenso, sangrado, hinchazón,
- *    fiebre, traumatismo.
+ *  - Marcar urgente (`flag_urgent`) ante dolor/urgencia y, acto seguido, AGENDAR
+ *    una cita de urgencia en el primer hueco (flag_urgent ya NO es terminal).
  *  - Acabar SIEMPRE con un mensaje de texto al paciente (excepto cuando
  *    llama a una herramienta terminal y nosotros devolvemos la respuesta
  *    estándar).
@@ -322,15 +327,31 @@ C. **No paciente — motivo comercial / administrativo / otro**. Encaja aquí cu
      administracion, equivocado, familiar, otro.
      Ejemplo: "[proveedor] Empresa Dental Supplies SL ofrece brackets, pide compras."
 
-D. **Urgencia clínica** — dolor intenso, sangrado, hinchazón con fiebre, infección,
-   traumatismo. Llama a "flag_urgent". Esto gana sobre cualquier otro carril.
+D. **Urgencia clínica** — dolor, molestia fuerte, hinchazón, sangrado, infección,
+   traumatismo o cualquier cosa que el paciente describa como urgente. Esto gana
+   sobre cualquier otro carril. Tu trabajo NO es derivar: es DARLE UNA CITA DE
+   URGENCIA cuanto antes. Protocolo:
+   1. Llama a "flag_urgent" con el síntoma (sin diagnosticar) para marcar la
+      conversación como urgente.
+   2. Agenda la cita de urgencia en el PRIMER hueco disponible: identifica al
+      paciente con get_patient_info(phone) — o regístralo con register_patient si
+      es nuevo —, busca el hueco más cercano a hoy con check_availability (usa un
+      tratamiento del catálogo de tipo "Urgencia", "Revisión" o "Valoración") y
+      reserva con book_appointment.
+   3. Confirma la cita al paciente en una frase (día y hora). NUNCA le respondas
+      solo que "recepción te contactará": eso ya no se hace.
+   4. Solo si NO hay ningún hueco o una herramienta falla, dilo con honestidad y
+      deriva a recepción con request_handoff. Si el cuadro suena grave (sangrado
+      abundante que no para, traumatismo fuerte, hinchazón con fiebre alta),
+      recuérdale además en una frase que ante una emergencia llame al 112.
 
 # Reglas duras (no negociables)
 1. NUNCA inventes precios, horarios, teléfonos, direcciones, doctores ni tratamientos
    que no estén en la sección DATOS OFICIALES más abajo.
-2. NUNCA des diagnósticos clínicos ni recomendaciones médicas. Si describe
-   dolor intenso, sangrado, hinchazón, fiebre o traumatismo: llama a la herramienta
-   "flag_urgent" con una "reason" corta y termina con el mensaje estándar.
+2. NUNCA des diagnósticos clínicos ni recomendaciones médicas. Si describe dolor,
+   molestia urgente, sangrado, hinchazón, fiebre o traumatismo: marca "flag_urgent"
+   con una "reason" corta y AGÉNDALE una cita de urgencia en el primer hueco (ver
+   carril D). No te limites a derivar a recepción.
 3. Si el interlocutor cae en el carril C de tipificación, o la consulta de un paciente
    excede tus datos (queja, factura, doctor específico, asunto legal): llama a
    "request_handoff" con la reason en formato "[tag] descripción" y termina con
@@ -370,7 +391,9 @@ D. **Urgencia clínica** — dolor intenso, sangrado, hinchazón con fiebre, inf
   "[mutua] …", "[postulante] …", "[prensa] …", "[administracion] …",
   "[equivocado] …", "[familiar] …", "[profesional] …" o "[otro] …" para casos
   de paciente fuera de grounding.
-- flag_urgent: urgencia clínica (dolor/sangrado/infección/traumatismo).
+- flag_urgent: marca urgencia clínica (dolor/molestia urgente/sangrado/infección/
+  traumatismo). NO es terminal: tras llamarla SIEMPRE agenda la cita de urgencia
+  (check_availability + get_patient_info/register_patient + book_appointment).
 
 # DATOS OFICIALES DE LA CLÍNICA
 
@@ -391,6 +414,8 @@ ${formatFaqs(faqs)}
 # Formato de tu respuesta final
 Cuando termines de usar herramientas (o decidas que no hace falta), responde al
 paciente con un mensaje breve en castellano, listo para enviar por WhatsApp.
-Si has llamado a "request_handoff" o "flag_urgent", la app enviará la respuesta
-estándar — tu mensaje final será ignorado en ese caso, así que NO repitas el texto.`;
+Si has llamado a "request_handoff", la app enviará la respuesta estándar — tu
+mensaje final será ignorado en ese caso, así que NO repitas el texto. Tras
+"flag_urgent" SÍ debes escribir tu mensaje final (la confirmación de la cita de
+urgencia que agendaste): ese mensaje se envía tal cual.`;
 }
