@@ -2,6 +2,8 @@
 
 SaaS multi-tenant que provee a clínicas estéticas odontológicas un agente de voz con IA para llamadas entrantes. Atiende, identifica al paciente, agenda/cancela/reagenda citas, responde FAQs y transfiere a humano cuando hace falta. Sincroniza con GoHighLevel.
 
+> 📚 **Documentación técnica completa en [`docs/`](./docs/README.md)**: arquitectura con diagramas, setup local, referencia de API (Swagger UI en `/api/docs`) y deployment. Nota: el stack productivo actual es **self-hosted en Dokploy** (Postgres + Redis/BullMQ + MinIO) — las menciones a Supabase/Inngest/Vercel más abajo son del setup original y están deprecadas (ver `CLAUDE.md`).
+
 ## Stack
 
 - Node.js 20 + TypeScript 5.7 (estricto, `noUncheckedIndexedAccess`)
