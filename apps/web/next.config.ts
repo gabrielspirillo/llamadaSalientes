@@ -10,6 +10,11 @@ const nextConfig: NextConfig = {
   // En monorepo con pnpm, Next necesita saber dónde está la raíz para que
   // el output standalone copie las deps correctas (también las hoisted).
   outputFileTracingRoot: path.join(__dirname, '../../'),
+  // El visor /docs lee los Markdown de docs/ (raíz del repo) en runtime;
+  // sin esto el output standalone no los incluiría en la imagen Docker.
+  outputFileTracingIncludes: {
+    '/docs/[[...slug]]': ['../../docs/**/*'],
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: '4mb',

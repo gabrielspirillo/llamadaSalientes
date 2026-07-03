@@ -9,6 +9,10 @@ Documentación técnica de **CliniQ / DentalVoice** — SaaS multi-tenant de age
 | [03 — Referencia de API / Endpoints](./03-api-referencia.md) | Autenticación, todos los endpoints REST, webhooks, tools del agente de voz y convenciones de error |
 | [04 — Despliegue (Deployment)](./04-deployment.md) | Build de imágenes Docker, auto-deploy con Dokploy, env de producción, migraciones y rollback |
 
+## Ver esta documentación en la app web
+
+Toda esta documentación se puede leer renderizada (diagramas incluidos) dentro de la app, en **`/docs`** — en producción `https://app.futuradigital.es/docs` (requiere sesión Clerk).
+
 ## Swagger / OpenAPI
 
 - Spec: [`apps/web/public/openapi.yaml`](../apps/web/public/openapi.yaml)
