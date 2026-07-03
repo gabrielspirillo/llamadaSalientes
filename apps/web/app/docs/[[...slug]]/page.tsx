@@ -7,7 +7,8 @@
 // Mermaid en el cliente (mermaid cargado desde CDN, igual que Swagger UI en
 // /api/docs). La ruta NO está en la lista pública del middleware, así que
 // requiere sesión Clerk. Los archivos docs/ llegan a la imagen standalone
-// vía `outputFileTracingIncludes` en next.config.ts.
+// vía `outputFileTracingIncludes` en next.config.ts — y OJO: .dockerignore
+// debe permitirlos (`!docs/*.md`), si no la imagen queda sin contenido.
 
 import fs from 'node:fs';
 import path from 'node:path';
