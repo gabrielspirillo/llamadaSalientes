@@ -41,7 +41,9 @@ pnpm-debug.log*
 **/tests/e2e
 README.md
 **/*.md
-docs
+# docs/ SI entra a la imagen: el visor /docs los lee en runtime
+# (llegan al standalone via outputFileTracingIncludes en next.config.ts).
+!docs/*.md
 
 # CI
 .github
