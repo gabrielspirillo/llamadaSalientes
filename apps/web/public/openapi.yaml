@@ -1,0 +1,1493 @@
+# Spec OpenAPI 3.0 de la API REST de CliniQ / DentalVoice.
+# Se sirve en /openapi.yaml (protegido por el middleware Clerk) y lo consume
+# el Swagger UI montado en /api/docs. Mantener sincronizado al agregar o
+# cambiar endpoints en apps/web/app/api/**.
+openapi: 3.0.3
+info:
+  title: CliniQ / DentalVoice API
+  version: 0.1.0
+  description: |
+    API REST del SaaS multi-tenant de agente de voz + WhatsApp con IA para clínicas.
+
+    ## Autenticación
+    - **Dashboard (`clerkSession`)**: la mayoría de los endpoints requieren sesión de Clerk
+      (cookie `__session`) con una **organización activa**; la organización se mapea al tenant.
+      Sin sesión u organización → `401`.
+    - **Roles**: los módulos Recordatorios y Waitlist exigen rol mínimo por endpoint
+      (`viewer` < `operator` < `admin`, tabla `tenant_memberships`). Rol insuficiente → `403`.
+    - **Webhooks**: públicos a nivel middleware; cada uno valida su propia firma
+      (Svix, Retell HMAC, Twilio HMAC-SHA1, Meta HMAC-SHA256, Zadarma md5).
+    - **Leads intake**: API key por tenant (`Authorization: Bearer <intake_key>`).
+
+    Documentación ampliada en `docs/03-api-referencia.md` del repositorio.
+servers:
+  - url: https://app.futuradigital.es
+    description: Producción (Dokploy)
+  - url: http://localhost:3000
+    description: Desarrollo local
+
+tags:
+  - name: Sistema
+  - name: Contactos
+    description: Contactos del CRM GoHighLevel del tenant
+  - name: Llamadas
+    description: Llamadas de voz (Retell) y grabaciones
+  - name: Insights
+    description: Analytics, búsqueda global y notificaciones derivadas
+  - name: Leads
+    description: Intake público de leads (dispara llamada saliente)
+  - name: Admin
+    description: Utilidades de administración/diagnóstico del tenant
+  - name: Outbound
+    description: Campañas de llamadas salientes (batch via Retell)
+  - name: Telefonía
+    description: Credenciales Twilio/Zadarma, Caller ID y número entrante
+  - name: Retell
+    description: Tools del agente de voz y llamadas web de prueba
+  - name: GHL OAuth
+    description: Flujo OAuth de GoHighLevel
+  - name: Público
+    description: Endpoints públicos con CORS + rate-limit propios
+  - name: Recordatorios
+    description: Recordatorios de citas (reglas, plantillas, envíos)
+  - name: Waitlist
+    description: Lista de espera y ofertas de huecos cancelados
+  - name: WhatsApp
+    description: Inbox de WhatsApp (streaming en tiempo real)
+  - name: Webhooks
+    description: Receptores de eventos de terceros (verifican firma propia)
+
+security:
+  - clerkSession: []
+
+paths:
+  /api/health:
+    get:
+      tags: [Sistema]
+      summary: Health check
+      security: []
+      responses:
+        '200':
+          description: Servicio operativo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean, example: true }
+                  service: { type: string, example: dental-voice }
+                  timestamp: { type: string, format: date-time }
+
+  /api/contacts:
+    get:
+      tags: [Contactos]
+      summary: Listar contactos (proxy a GoHighLevel)
+      description: Si el tenant no tiene GHL conectado o la llamada falla, devuelve lista vacía (no error).
+      parameters:
+        - { name: q, in: query, schema: { type: string }, description: Término de búsqueda }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, default: 50, maximum: 100 } }
+      responses:
+        '200':
+          description: Contactos del CRM
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  contacts:
+                    type: array
+                    items: { $ref: '#/components/schemas/GhlContact' }
+                  total: { type: integer }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/contacts/{id}:
+    get:
+      tags: [Contactos]
+      summary: Detalle de contacto + llamadas + citas
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string }, description: ID del contacto en GHL }
+      responses:
+        '200':
+          description: Contacto con hasta 20 llamadas locales y citas de GHL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  contact: { $ref: '#/components/schemas/GhlContact' }
+                  calls:
+                    type: array
+                    items: { $ref: '#/components/schemas/CallSummary' }
+                  appointments:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        startTime: { type: string }
+                        endTime: { type: string }
+                        status: { type: string }
+                        title: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/calls/outbound:
+    post:
+      tags: [Llamadas]
+      summary: Disparar llamada saliente individual ("Llamar ahora")
+      description: |
+        Resuelve el agente outbound de Retell y el proveedor de telefonía del tenant
+        (Twilio BYOT / Zadarma vía SIP trunk de Retell / Zadarma callback legacy).
+        Puede crear el contacto en GHL si no existe.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OutboundCallRequest' }
+      responses:
+        '200':
+          description: Llamada iniciada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  callId: { type: string }
+                  status: { type: string }
+                  contactId: { type: string, nullable: true }
+        '400': { $ref: '#/components/responses/TriggerError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/calls/{id}/recording:
+    get:
+      tags: [Llamadas]
+      summary: Descargar/streamear grabación de una llamada
+      description: Proxy del audio desde Retell (evita CORS). `HEAD` disponible para verificar disponibilidad.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string }, description: ID local de la llamada }
+      responses:
+        '200':
+          description: Audio de la grabación
+          content:
+            audio/wav:
+              schema: { type: string, format: binary }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '425': { description: La grabación todavía no está lista }
+        '502': { description: Error consultando Retell }
+        '503': { description: RETELL_API_KEY no configurada }
+    head:
+      tags: [Llamadas]
+      summary: Verificar disponibilidad de la grabación
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Grabación disponible }
+        '425': { description: Aún no lista }
+        '404': { description: Llamada no encontrada }
+
+  /api/insights:
+    get:
+      tags: [Insights]
+      summary: Insights IA sobre las últimas llamadas (Gemini)
+      responses:
+        '200':
+          description: Patrones, alertas y sugerencias de prompt
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  topPatterns: { type: array, items: { type: string } }
+                  alerts: { type: array, items: { type: string } }
+                  promptSuggestions: { type: array, items: { type: string } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '502': { description: Falló Gemini }
+        '503': { description: GEMINI_API_KEY no configurada }
+
+  /api/notifications:
+    get:
+      tags: [Insights]
+      summary: Notificaciones derivadas de llamadas recientes (últimos 7 días)
+      responses:
+        '200':
+          description: Notificaciones en runtime (no persistidas)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        kind: { type: string, enum: [agendar, reagendar, cancelar, consulta, queja, transferida, otro] }
+                        title: { type: string }
+                        detail: { type: string }
+                        callId: { type: string }
+                        createdAt: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/search:
+    get:
+      tags: [Insights]
+      summary: Búsqueda global (llamadas, tratamientos, contactos GHL)
+      parameters:
+        - { name: q, in: query, schema: { type: string, minLength: 2 }, description: Mínimo 2 caracteres }
+      responses:
+        '200':
+          description: Hasta 10 resultados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hits:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind: { type: string, enum: [call, treatment, contact] }
+                        id: { type: string }
+                        title: { type: string }
+                        subtitle: { type: string }
+                        href: { type: string }
+                        when: { type: string, nullable: true }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/leads/intake:
+    post:
+      tags: [Leads]
+      summary: Intake de lead → dispara llamada saliente
+      description: |
+        Endpoint público autenticado con **intake key por tenant**
+        (`Authorization: Bearer <key>` o `?key=`). La key es
+        `HMAC-SHA256("intake:{tenantId}", ENCRYPTION_KEY)` y se revoca rotando `ENCRYPTION_KEY`.
+      security:
+        - intakeKey: []
+      parameters:
+        - { name: tenant, in: query, required: true, schema: { type: string }, description: Slug de la clínica }
+        - { name: key, in: query, schema: { type: string }, description: Alternativa al header Authorization }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone]
+              properties:
+                phone: { type: string, minLength: 7 }
+                name: { type: string }
+                email: { type: string, format: email }
+                source: { type: string, description: "Se registra como source de la llamada (default: lead_intake)" }
+      responses:
+        '200':
+          description: Llamada disparada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  callId: { type: string }
+                  status: { type: string }
+                  contactId: { type: string, nullable: true }
+        '400': { description: Falta tenant / JSON inválido / fallo del proveedor }
+        '401': { description: Intake key inválida }
+        '404': { description: Clínica no encontrada }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/admin/backfill-intents:
+    post:
+      tags: [Admin]
+      summary: Re-clasificar intents de llamadas sin intent (Gemini)
+      description: Procesa hasta 50 llamadas con transcript y sin intent. Síncrono (hasta 5 min).
+      responses:
+        '200':
+          description: Resultado del backfill
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  processed: { type: integer }
+                  ok: { type: integer }
+                  fail: { type: integer }
+                  results: { type: array, items: { type: object } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503': { description: GEMINI_API_KEY no configurada }
+
+  /api/admin/inspect-call/{id}:
+    get:
+      tags: [Admin]
+      summary: Diagnóstico de una llamada (fila local + estado en Retell)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Estado en BD y en Retell
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  db: { type: object }
+                  retell: { type: object }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/outbound/campaigns:
+    get:
+      tags: [Outbound]
+      summary: Listar campañas del tenant
+      responses:
+        '200':
+          description: Campañas con progreso calculado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  campaigns: { type: array, items: { type: object } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Outbound]
+      summary: Crear campaña con targets (queda en draft)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCampaignRequest' }
+      responses:
+        '201':
+          description: Campaña creada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  campaignId: { type: string, format: uuid }
+                  targetCount: { type: integer }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/outbound/campaigns/{id}:
+    get:
+      tags: [Outbound]
+      summary: Detalle de campaña + targets
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Campaña y sus destinatarios
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  campaign: { type: object }
+                  targets: { type: array, items: { type: object } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/outbound/campaigns/{id}/dispatch:
+    post:
+      tags: [Outbound]
+      summary: Despachar campaña (crea batch call en Retell)
+      description: Idempotente — si la campaña ya tiene batch call, falla con `retell_error`.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Batch despachado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  batchCallId: { type: string }
+                  taskCount: { type: integer }
+        '400': { $ref: '#/components/responses/TriggerError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { description: 'Sin targets pendientes (reason: no_targets)' }
+
+  /api/telephony/credentials:
+    get:
+      tags: [Telefonía]
+      summary: Estado de credenciales del proveedor (enmascarado)
+      responses:
+        '200':
+          description: Estado por proveedor + configuración inbound/caller ID
+          content:
+            application/json:
+              schema: { type: object }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Telefonía]
+      summary: Guardar credenciales Twilio o Zadarma (valida contra el proveedor)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required: [provider, accountSid, authToken]
+                  properties:
+                    provider: { type: string, enum: [twilio] }
+                    accountSid: { type: string, pattern: '^AC[a-f0-9]{32}$' }
+                    authToken: { type: string, minLength: 20 }
+                - type: object
+                  required: [provider, userKey, secret]
+                  properties:
+                    provider: { type: string, enum: [zadarma] }
+                    userKey: { type: string, minLength: 10 }
+                    secret: { type: string, minLength: 10 }
+                    webhookSecret: { type: string, nullable: true }
+              discriminator: { propertyName: provider }
+      responses:
+        '200': { description: Credenciales validadas y guardadas cifradas }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { description: Body inválido o credenciales rechazadas por el proveedor }
+        '502': { description: No se pudo contactar al proveedor }
+
+  /api/telephony/caller-id:
+    delete:
+      tags: [Telefonía]
+      summary: Desvincular el Caller ID saliente actual
+      responses:
+        '200': { description: 'Caller ID eliminado (`{ ok: true }`)' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/telephony/caller-id/start:
+    post:
+      tags: [Telefonía]
+      summary: Iniciar verificación del Caller ID saliente
+      description: |
+        **Twilio**: crea un OutgoingCallerId — Twilio llama al número y dicta un código
+        que se ingresa por DTMF; la respuesta incluye `validationCode`.
+        **Zadarma**: solo acepta números ya verificados en el cabinet.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phoneNumber]
+              properties:
+                phoneNumber: { type: string, pattern: '^\+[1-9]\d{6,14}$' }
+                friendlyName: { type: string, maxLength: 64 }
+      responses:
+        '200':
+          description: Verificación iniciada o número ya verificado
+          content:
+            application/json:
+              schema: { type: object }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/telephony/caller-id/status:
+    get:
+      tags: [Telefonía]
+      summary: Estado de la verificación del Caller ID (poller de la UI)
+      responses:
+        '200':
+          description: '`{ verified, phoneNumber?, pendingPhoneNumber? }`'
+          content:
+            application/json:
+              schema: { type: object }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/telephony/inbound/configure:
+    post:
+      tags: [Telefonía]
+      summary: Configurar número entrante del tenant
+      description: |
+        **Twilio**: setea automáticamente `VoiceUrl`/`SmsUrl` del número.
+        **Zadarma**: devuelve la URL de webhook para pegar manualmente en el cabinet.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sid]
+              properties:
+                sid: { type: string, description: 'Twilio: SID PNxxxx · Zadarma: número E.164' }
+                route: { type: string, enum: [agent, forward], default: agent }
+                forwardNumber: { type: string, pattern: '^\+[1-9]\d{6,14}$', description: Obligatorio si route=forward }
+      responses:
+        '200': { description: Número entrante configurado }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/telephony/inbound/numbers:
+    get:
+      tags: [Telefonía]
+      summary: Listar números disponibles en la cuenta del proveedor
+      responses:
+        '200':
+          description: Números con capabilities
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  provider: { type: string, enum: [twilio, zadarma] }
+                  numbers: { type: array, items: { type: object } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/retell/tools:
+    post:
+      tags: [Retell]
+      summary: Tools del agente de voz (invocado por Retell durante la llamada)
+      description: |
+        Verifica firma HMAC (`x-retell-signature`, secreto `RETELL_API_KEY`).
+        Tools disponibles: `check_availability`, `book_appointment`, `cancel_appointment`,
+        `get_patient_info`, `register_patient`, `set_lead_email`, `list_treatments`,
+        `get_treatment_details`, `search_faqs`, `accept_waitlist_offer`, `decline_waitlist_offer`.
+        Siempre responde 200 con `{ result }` (texto para el agente), incluso en fallos de negocio.
+      security:
+        - retellSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, call]
+              properties:
+                name: { type: string, description: Nombre de la tool }
+                args: { type: object, additionalProperties: true }
+                call:
+                  type: object
+                  properties:
+                    call_id: { type: string }
+                    to_number: { type: string }
+                    from_number: { type: string }
+                    metadata: { type: object }
+      responses:
+        '200':
+          description: Resultado textual para el agente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result: { type: string }
+        '400': { description: JSON inválido }
+        '401': { description: Firma inválida }
+
+  /api/retell/web-call:
+    post:
+      tags: [Retell]
+      summary: Crear web call de prueba (WebRTC browser ↔ agente)
+      responses:
+        '200':
+          description: Token de acceso para el SDK de Retell
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken: { type: string }
+                  callId: { type: string }
+                  agentId: { type: string }
+        '400': { description: Tenant sin agente Retell configurado }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { description: RETELL_API_KEY no configurada }
+
+  /api/ghl/oauth/authorize:
+    get:
+      tags: [GHL OAuth]
+      summary: Iniciar OAuth de GoHighLevel
+      responses:
+        '302': { description: Redirect a marketplace.gohighlevel.com/oauth/chooselocation }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/ghl/oauth/callback:
+    get:
+      tags: [GHL OAuth]
+      summary: Callback OAuth de GoHighLevel
+      parameters:
+        - { name: code, in: query, schema: { type: string } }
+        - { name: state, in: query, schema: { type: string } }
+        - { name: error, in: query, schema: { type: string } }
+      responses:
+        '302':
+          description: |
+            Redirect a `/dashboard/configuration?tab=integrations` con `ghl=connected`
+            o `ghl_error=<code>` (session_lost, state_mismatch, token_exchange_failed…).
+
+  /api/public/demo-call:
+    post:
+      tags: [Público]
+      summary: Demo de la landing — dispara llamada al visitante
+      description: |
+        Público, sin auth. CORS restringido a `FUTURA_DEMO_ALLOWED_ORIGINS`;
+        rate-limit de 1 llamada por número cada 60 s. Usa el tenant demo
+        (`FUTURA_DEMO_TENANT_ID`) y opcionalmente un GHL dedicado de demo.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone]
+              properties:
+                phone: { type: string, minLength: 7, maxLength: 20 }
+                name: { type: string, maxLength: 80 }
+      responses:
+        '200': { description: Llamada demo iniciada }
+        '422': { description: Número/body inválido }
+        '429': { description: Rate limit (1 llamada/60s por número) }
+        '502': { description: Error del proveedor de voz }
+        '503': { description: Demo no configurada }
+
+  /api/reminders:
+    get:
+      tags: [Recordatorios]
+      summary: Listar recordatorios (máx 500)
+      description: Rol mínimo `viewer`.
+      parameters:
+        - { name: status, in: query, schema: { type: string }, description: Filtra por status del reminder }
+        - { name: channel, in: query, schema: { type: string, enum: [WHATSAPP, VOICE] } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { name: include, in: query, schema: { type: string, enum: [skipped] }, description: Incluye el log de skips }
+      responses:
+        '200':
+          description: Recordatorios + opcionalmente skips
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reminders: { type: array, items: { type: object } }
+                  skipped: { type: array, items: { type: object } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/reminders/{id}/mark:
+    post:
+      tags: [Recordatorios]
+      summary: Marcar recordatorio manualmente (confirmar/reagendar/cancelar)
+      description: Rol mínimo `operator`. Remueve jobs pendientes y puede cancelar los siguientes recordatorios de la cita.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [confirm, reschedule, cancel] }
+                note: { type: string, maxLength: 500 }
+      responses:
+        '200':
+          description: '`{ ok, status }`'
+        '400': { $ref: '#/components/responses/ValidationError400' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/reminders/backfill:
+    post:
+      tags: [Recordatorios]
+      summary: Sincronizar citas desde GHL y materializar recordatorios
+      description: Rol mínimo `admin`. Corta a los 60 s devolviendo resultado parcial.
+      parameters:
+        - { name: days, in: query, schema: { type: integer, default: 90, maximum: 180 } }
+      responses:
+        '200':
+          description: Conteos de procesadas/programadas/skipped/errores
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/reminders/preview:
+    post:
+      tags: [Recordatorios]
+      summary: Previsualizar el render de un recordatorio (no envía)
+      description: Rol mínimo `viewer`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ruleId]
+              properties:
+                ruleId: { type: string, format: uuid }
+                sampleGhlAppointmentId: { type: string }
+      responses:
+        '200': { description: Render por canal/driver o error de template }
+        '400': { $ref: '#/components/responses/ValidationError400' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/reminders/rule-sets:
+    get:
+      tags: [Recordatorios]
+      summary: Listar rule sets
+      responses:
+        '200': { description: '`{ ruleSets: [...] }`' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Recordatorios]
+      summary: Crear rule set (GLOBAL o por tratamiento)
+      description: Rol mínimo `admin`. Solo puede existir un rule set GLOBAL por tenant.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scope]
+              properties:
+                scope: { type: string, enum: [GLOBAL, TREATMENT] }
+                treatmentId: { type: string, format: uuid, description: Obligatorio si scope=TREATMENT }
+                enabled: { type: boolean, default: true }
+                quietMode: { type: string, enum: [SHIFT_INTO_HOURS, SKIP], default: SHIFT_INTO_HOURS }
+      responses:
+        '200': { description: '`{ ruleSet }` creado' }
+        '400': { $ref: '#/components/responses/ValidationError400' }
+        '409': { description: Ya existe un rule set global }
+
+  /api/reminders/rule-sets/{id}:
+    patch:
+      tags: [Recordatorios]
+      summary: Actualizar rule set
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled: { type: boolean }
+                quietMode: { type: string, enum: [SHIFT_INTO_HOURS, SKIP] }
+      responses:
+        '200': { description: '`{ ruleSet }` actualizado' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Recordatorios]
+      summary: Eliminar rule set
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: '`{ ok: true }`' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/reminders/rules:
+    get:
+      tags: [Recordatorios]
+      summary: Listar reglas
+      parameters:
+        - { name: ruleSetId, in: query, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: '`{ rules: [...] }`' }
+    post:
+      tags: [Recordatorios]
+      summary: Crear regla de recordatorio
+      description: Rol mínimo `admin`. `fallbackChannel` y `fallbackWindowHours` van juntos y el fallback no puede igualar al canal primario.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReminderRuleCreate' }
+      responses:
+        '200': { description: '`{ rule }` creada' }
+        '400': { $ref: '#/components/responses/ValidationError400' }
+        '404': { description: Rule set no pertenece al tenant }
+
+  /api/reminders/rules/{id}:
+    patch:
+      tags: [Recordatorios]
+      summary: Actualizar regla
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReminderRulePatch' }
+      responses:
+        '200': { description: '`{ rule }` actualizada' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Recordatorios]
+      summary: Eliminar regla
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: '`{ ok: true }`' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/reminders/templates:
+    get:
+      tags: [Recordatorios]
+      summary: Listar plantillas de mensaje
+      parameters:
+        - { name: ruleId, in: query, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: '`{ templates: [...] }`' }
+    post:
+      tags: [Recordatorios]
+      summary: Crear plantilla (única por regla + driverScope)
+      description: Rol mínimo `admin`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReminderTemplateCreate' }
+      responses:
+        '200': { description: '`{ template }` creada' }
+        '400': { $ref: '#/components/responses/ValidationError400' }
+        '404': { description: Regla no pertenece al tenant }
+        '409': { description: Ya existe template para esa regla + driverScope }
+
+  /api/reminders/templates/{id}:
+    patch:
+      tags: [Recordatorios]
+      summary: Actualizar plantilla
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReminderTemplatePatch' }
+      responses:
+        '200': { description: '`{ template }` actualizada' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Recordatorios]
+      summary: Eliminar plantilla
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: '`{ ok: true }`' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/reminders/test-send:
+    post:
+      tags: [Recordatorios]
+      summary: Envío de prueba real (WhatsApp o llamada) sin persistir reminder
+      description: Rol mínimo `admin`. ⚠️ Envía un mensaje o llamada REAL al número indicado.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ruleId, toPhoneE164]
+              properties:
+                ruleId: { type: string, format: uuid }
+                toPhoneE164: { type: string, pattern: '^\+\d{7,15}$' }
+                sampleGhlAppointmentId: { type: string }
+      responses:
+        '200': { description: Enviado (`externalMessageId` o `callId`) }
+        '400': { description: Datos inválidos / sin conexión WhatsApp / sin plantilla }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { description: Fallo del envío real }
+
+  /api/waitlist/entries:
+    post:
+      tags: [Waitlist]
+      summary: Alta manual en lista de espera
+      description: Rol mínimo `operator`. Única por `(tenant, ghlAppointmentId)`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WaitlistEntryCreate' }
+      responses:
+        '200': { description: '`{ ok, entryId }`' }
+        '400': { $ref: '#/components/responses/ValidationError400' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Ya existe entrada para esa cita }
+
+  /api/waitlist/entries/{id}:
+    patch:
+      tags: [Waitlist]
+      summary: Actualizar entrada de lista de espera
+      description: Rol mínimo `operator`.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [ACTIVE, PAUSED, REMOVED] }
+                notes: { type: string, maxLength: 1000, nullable: true }
+                preferredTimeWindowStart: { type: string, pattern: '^\d{2}:\d{2}$', nullable: true }
+                preferredTimeWindowEnd: { type: string, pattern: '^\d{2}:\d{2}$', nullable: true }
+      responses:
+        '200': { description: '`{ ok: true }`' }
+        '400': { $ref: '#/components/responses/ValidationError400' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/waitlist/offers/{id}/cancel:
+    post:
+      tags: [Waitlist]
+      summary: Cancelar oferta pendiente/enviada
+      description: Rol mínimo `operator`. Remueve los jobs `waitlist-offer-send` y `waitlist-offer-expire`.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: '`{ ok: true }`' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: La oferta no está en estado cancelable }
+
+  /api/waitlist/preview:
+    post:
+      tags: [Waitlist]
+      summary: Previsualizar mensaje de oferta (no envía)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                channel: { type: string, enum: [WHATSAPP, VOICE], default: WHATSAPP }
+                treatmentId: { type: string, format: uuid, nullable: true }
+      responses:
+        '200': { description: Render con datos demo }
+        '400': { description: Datos inválidos / sin conexión WhatsApp }
+        '404': { description: Sin plantilla para el driver }
+
+  /api/waitlist/test-send:
+    post:
+      tags: [Waitlist]
+      summary: Envío de prueba real de oferta (sin persistir)
+      description: Rol mínimo `admin`. ⚠️ Envía WhatsApp o llamada REAL.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [channel, toPhoneE164]
+              properties:
+                channel: { type: string, enum: [WHATSAPP, VOICE] }
+                toPhoneE164: { type: string, pattern: '^\+\d{7,15}$' }
+                treatmentId: { type: string, format: uuid, nullable: true }
+      responses:
+        '200': { description: Enviado }
+        '400': { description: Datos inválidos / sin conexión / sin plantilla }
+        '502': { description: Fallo del envío real }
+
+  /api/waitlist/templates:
+    get:
+      tags: [Waitlist]
+      summary: Listar plantillas de oferta
+      responses:
+        '200': { description: '`{ ok, templates }`' }
+    put:
+      tags: [Waitlist]
+      summary: Upsert de plantilla por driverScope
+      description: Rol mínimo `admin`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WaitlistTemplateUpsert' }
+      responses:
+        '200': { description: '`{ ok, id }`' }
+        '400': { $ref: '#/components/responses/ValidationError400' }
+
+  /api/waitlist/treatments:
+    patch:
+      tags: [Waitlist]
+      summary: Marcar tratamiento como elegible/no elegible para waitlist
+      description: Rol mínimo `admin`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [treatmentId, waitlistEligible]
+              properties:
+                treatmentId: { type: string, format: uuid }
+                waitlistEligible: { type: boolean }
+      responses:
+        '200': { description: '`{ ok: true }`' }
+        '400': { $ref: '#/components/responses/ValidationError400' }
+
+  /api/waitlist/settings:
+    get:
+      tags: [Waitlist]
+      summary: Configuración de waitlist del tenant (crea defaults si no existe)
+      responses:
+        '200': { description: '`{ ok, settings }`' }
+    patch:
+      tags: [Waitlist]
+      summary: Actualizar configuración de waitlist
+      description: Rol mínimo `admin`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WaitlistSettingsPatch' }
+      responses:
+        '200': { description: '`{ ok, settings }` actualizado' }
+        '400': { $ref: '#/components/responses/ValidationError400' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/whatsapp/conversations/{conversationId}/stream:
+    get:
+      tags: [WhatsApp]
+      summary: Stream SSE de eventos de una conversación
+      description: |
+        Server-Sent Events (`text/event-stream`) respaldado por Redis pub/sub.
+        Emite eventos del inbox en tiempo real y heartbeat `: ping` cada 15 s.
+      parameters:
+        - { name: conversationId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Stream SSE abierto }
+        '400': { description: conversationId inválido }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: La conversación no pertenece al tenant }
+        '503': { description: REDIS_URL no configurada }
+
+  # ── Webhooks (verifican firma propia; públicos a nivel middleware) ────────
+  /api/webhooks/clerk:
+    post:
+      tags: [Webhooks]
+      summary: Webhook de Clerk (usuarios y organizaciones)
+      description: |
+        Firma **Svix** (`svix-id`, `svix-timestamp`, `svix-signature`) con
+        `CLERK_WEBHOOK_SIGNING_SECRET`. Crea/actualiza tenants (con seed de
+        tratamientos y FAQs), usuarios y membresías.
+      security: []
+      responses:
+        '200': { description: Procesado }
+        '400': { description: Faltan headers Svix }
+        '401': { description: Firma inválida }
+
+  /api/webhooks/retell:
+    post:
+      tags: [Webhooks]
+      summary: Webhook de Retell (ciclo de vida de llamadas)
+      description: |
+        Firma `x-retell-signature` (HMAC, secreto `RETELL_API_KEY`).
+        Eventos `call_started` / `call_ended` / `call_analyzed`: upsert de `calls`,
+        actualización de targets outbound, cifrado de transcript y encolado del job
+        BullMQ `process-call`.
+      security:
+        - retellSignature: []
+      responses:
+        '200': { description: Procesado }
+        '400': { description: JSON inválido o tenant no resuelto }
+        '401': { description: Firma inválida }
+
+  /api/webhooks/ghl/contact:
+    post:
+      tags: [Webhooks]
+      summary: Webhook GHL — contacto creado (dispara llamada saliente)
+      description: Sin firma (v1) — autentica matcheando `locationId` contra la integración del tenant. Solo procesa `ContactCreate`.
+      security: []
+      parameters:
+        - { name: location, in: query, schema: { type: string }, description: locationId de GHL (alternativa al payload) }
+      responses:
+        '200': { description: Procesado / ignorado }
+        '400': { description: JSON inválido o falta locationId }
+        '404': { description: Location sin tenant }
+
+  /api/webhooks/ghl/appointment:
+    post:
+      tags: [Webhooks]
+      summary: Webhook GHL — citas (cache, waitlist, atribución)
+      description: |
+        Sin firma (v1) — autentica por `locationId`. `AppointmentCreate/Update/Delete`:
+        mantiene `appointments_cache`, registra huecos cancelados y dispara el motor
+        de waitlist (jobs `waitlist-offer-send` / `waitlist-offer-expire`).
+      security: []
+      parameters:
+        - { name: location, in: query, schema: { type: string } }
+      responses:
+        '200': { description: Procesado / ignorado }
+        '400': { description: JSON inválido o falta locationId }
+        '404': { description: Location sin tenant }
+
+  /api/webhooks/whatsapp/twilio:
+    post:
+      tags: [Webhooks]
+      summary: Webhook WhatsApp entrante (Twilio)
+      description: |
+        Firma `X-Twilio-Signature` (HMAC-SHA1 con el auth token por tenant).
+        Persiste el mensaje y encola el job `wa-process` (debounce 5 s).
+      security: []
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema: { type: object }
+      responses:
+        '200': { description: Procesado / ignorado }
+        '401': { description: Firma inválida }
+        '415': { description: Content-Type inválido }
+
+  /api/webhooks/whatsapp/twilio/status:
+    post:
+      tags: [Webhooks]
+      summary: Status callback de mensajes Twilio (sent/delivered/read/failed)
+      description: Firma `X-Twilio-Signature`. Actualiza `whatsapp_messages.deliveryStatus` con lógica anti-regresión.
+      security: []
+      responses:
+        '200': { description: Procesado / ignorado }
+        '401': { description: Firma inválida }
+
+  /api/webhooks/whatsapp/evolution:
+    post:
+      tags: [Webhooks]
+      summary: Webhook Evolution API (QR, conexión, mensajes)
+      description: |
+        Sin firma criptográfica — autentica matcheando `instance` contra `whatsapp_connections`.
+        `messages.upsert` pasa por los handlers de waitlist/recordatorios y si nadie consume,
+        encola `wa-process`.
+      security: []
+      responses:
+        '200': { description: Procesado / ignorado }
+        '400': { description: JSON inválido }
+
+  /api/webhooks/whatsapp/cloud:
+    get:
+      tags: [Webhooks]
+      summary: Handshake de verificación de Meta (hub.challenge)
+      description: Compara `hub.verify_token` con `WHATSAPP_VERIFY_TOKEN` y devuelve el challenge.
+      security: []
+      parameters:
+        - { name: hub.mode, in: query, schema: { type: string } }
+        - { name: hub.verify_token, in: query, schema: { type: string } }
+        - { name: hub.challenge, in: query, schema: { type: string } }
+      responses:
+        '200': { description: Challenge devuelto }
+        '403': { description: Verify token incorrecto }
+    post:
+      tags: [Webhooks]
+      summary: Webhook WhatsApp Cloud API (Meta)
+      description: |
+        Firma `X-Hub-Signature-256` (HMAC-SHA256 con el app secret por tenant).
+        Persiste mensajes y encola `wa-process`.
+      security: []
+      responses:
+        '200': { description: Procesado / ignorado }
+        '401': { description: Firma inválida }
+
+  /api/twilio/inbound-voice:
+    post:
+      tags: [Webhooks]
+      summary: Voz entrante Twilio → TwiML (conecta al agente Retell vía SIP)
+      description: |
+        Sin firma (solo devuelve instrucciones TwiML). Resuelve el tenant por `To` y
+        según `inboundRoute` conecta al agente (`<Sip>`), desvía a un humano (`<Dial>`)
+        o cuelga.
+      security: []
+      responses:
+        '200':
+          description: TwiML
+          content:
+            text/xml:
+              schema: { type: string }
+
+  /api/twilio/sms-passthrough:
+    post:
+      tags: [Webhooks]
+      summary: SMS entrante Twilio (captura OTPs, reenvío opcional)
+      security: []
+      parameters:
+        - { name: forward, in: query, schema: { type: string }, description: Número E.164 al que reenviar el SMS }
+      responses:
+        '200': { description: TwiML (reenvío o respuesta vacía), content text/xml }
+
+  /api/twilio/voice-record:
+    post:
+      tags: [Webhooks]
+      summary: Voz entrante Twilio → grabar (captura OTPs de voz)
+      security: []
+      parameters:
+        - { name: to, in: query, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string } }
+      responses:
+        '200': { description: 'TwiML `<Record>` (o `<Hangup>` si no matchea el filtro)' }
+
+  /api/zadarma/webhook:
+    get:
+      tags: [Webhooks]
+      summary: Handshake zd_echo de Zadarma
+      security: []
+      parameters:
+        - { name: zd_echo, in: query, schema: { type: string } }
+      responses:
+        '200': { description: Devuelve el echo en texto plano }
+    post:
+      tags: [Webhooks]
+      summary: Eventos NOTIFY_* de Zadarma (routing de llamadas entrantes)
+      description: |
+        `NOTIFY_START` valida firma `base64(md5(call_start + caller_id + called_did + secret))`
+        con el webhook secret por tenant, y responde JSON de routing:
+        `{ redirect: "sip:<agente>@<RETELL_SIP_DOMAIN>" }`, `{ redirect: "<E164>" }` o `{ hangup: true }`.
+        El resto de eventos (`NOTIFY_ANSWER`, `NOTIFY_END`, `NOTIFY_RECORD`…) se registran.
+      security: []
+      responses:
+        '200': { description: JSON de routing o ack }
+        '403': { description: Firma inválida }
+
+components:
+  securitySchemes:
+    clerkSession:
+      type: apiKey
+      in: cookie
+      name: __session
+      description: Sesión de Clerk con organización activa (dashboard).
+    intakeKey:
+      type: http
+      scheme: bearer
+      description: Intake key por tenant (HMAC derivada de ENCRYPTION_KEY). Solo /api/leads/intake.
+    retellSignature:
+      type: apiKey
+      in: header
+      name: x-retell-signature
+      description: Firma HMAC de Retell (secreto = RETELL_API_KEY).
+
+  responses:
+    Unauthorized:
+      description: Sin sesión Clerk, sin organización activa o tenant inexistente
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: Rol insuficiente para la operación
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Recurso inexistente o de otro tenant
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ValidationError:
+      description: Body inválido (detalle Zod en `error`)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ValidationError400:
+      description: Datos inválidos (detalle Zod en `issues`)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string }
+              issues: { type: array, items: { type: object } }
+    TriggerError:
+      description: 'Fallo al disparar la llamada (`reason`: no_agent | no_phone | retell_error)'
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string }
+              reason: { type: string }
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+
+    GhlContact:
+      type: object
+      properties:
+        id: { type: string }
+        firstName: { type: string, nullable: true }
+        lastName: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        country: { type: string, nullable: true }
+        tags: { type: array, items: { type: string } }
+        type: { type: string, nullable: true }
+        dateAdded: { type: string, nullable: true }
+        dateUpdated: { type: string, nullable: true }
+        source: { type: string, nullable: true }
+
+    CallSummary:
+      type: object
+      properties:
+        id: { type: string }
+        retellCallId: { type: string, nullable: true }
+        fromNumber: { type: string, nullable: true }
+        toNumber: { type: string, nullable: true }
+        startedAt: { type: string, format: date-time, nullable: true }
+        durationSeconds: { type: integer, nullable: true }
+        intent: { type: string, nullable: true, enum: [book, reschedule, cancel, faq, pricing, location, human, other, null] }
+        sentiment: { type: string, nullable: true }
+        summary: { type: string, nullable: true }
+        transferred: { type: boolean, nullable: true }
+
+    OutboundCallRequest:
+      type: object
+      required: [toNumber]
+      properties:
+        toNumber: { type: string, minLength: 7 }
+        patientName: { type: string, nullable: true }
+        email: { type: string, format: email, nullable: true }
+        ghlContactId: { type: string, nullable: true }
+        useCase: { type: string, nullable: true, enum: [payment, info, reminder, reactivation, custom, null] }
+        dynamicVars:
+          type: object
+          additionalProperties: { type: string }
+
+    CreateCampaignRequest:
+      type: object
+      required: [name, useCase, targets]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        useCase: { type: string, enum: [payment, info, reminder, reactivation, custom] }
+        fromPhoneId: { type: string, format: uuid, nullable: true }
+        scheduledAt: { type: string, format: date-time, nullable: true }
+        callWindow:
+          type: object
+          nullable: true
+          properties:
+            startMinutes: { type: integer, minimum: 0, maximum: 1440 }
+            endMinutes: { type: integer, minimum: 0, maximum: 1440 }
+            timezone: { type: string }
+        maxRetries: { type: integer, minimum: 0, maximum: 5 }
+        retryDelayMinutes: { type: integer, minimum: 5, maximum: 720 }
+        sharedDynamicVars:
+          type: object
+          additionalProperties: { type: string }
+        notes: { type: string, nullable: true }
+        targets:
+          type: array
+          minItems: 1
+          maxItems: 5000
+          items:
+            type: object
+            required: [toNumber]
+            properties:
+              toNumber: { type: string, minLength: 7 }
+              patientName: { type: string }
+              email: { type: string, format: email }
+              ghlContactId: { type: string }
+              dynamicVars:
+                type: object
+                additionalProperties: { type: string }
+
+    ReminderRuleCreate:
+      type: object
+      required: [ruleSetId, offsetMinutes, primaryChannel]
+      properties:
+        ruleSetId: { type: string, format: uuid }
+        offsetMinutes: { type: integer, minimum: 1, description: Minutos antes de la cita }
+        primaryChannel: { type: string, enum: [WHATSAPP, VOICE] }
+        fallbackChannel: { type: string, enum: [WHATSAPP, VOICE], nullable: true }
+        fallbackWindowHours: { type: integer, minimum: 1, maximum: 72, nullable: true }
+        label: { type: string, maxLength: 80, nullable: true }
+        order: { type: integer, minimum: 0, default: 0 }
+        enabled: { type: boolean, default: true }
+
+    ReminderRulePatch:
+      type: object
+      properties:
+        offsetMinutes: { type: integer, minimum: 1 }
+        primaryChannel: { type: string, enum: [WHATSAPP, VOICE] }
+        fallbackChannel: { type: string, enum: [WHATSAPP, VOICE], nullable: true }
+        fallbackWindowHours: { type: integer, minimum: 1, maximum: 72, nullable: true }
+        label: { type: string, maxLength: 80, nullable: true }
+        order: { type: integer, minimum: 0 }
+        enabled: { type: boolean }
+
+    ReminderTemplateCreate:
+      type: object
+      required: [ruleId, channel, driverScope]
+      properties:
+        ruleId: { type: string, format: uuid }
+        channel: { type: string, enum: [WHATSAPP, VOICE] }
+        driverScope: { type: string, enum: [whatsapp_cloud, whatsapp_twilio, whatsapp_evolution, voice_retell] }
+        templateName: { type: string, maxLength: 120, nullable: true }
+        templateLanguage: { type: string, maxLength: 10, default: es }
+        templateParamsMap:
+          type: array
+          items:
+            oneOf:
+              - type: object
+                properties: { source: { type: string } }
+              - type: object
+                properties: { literal: { type: string } }
+        freeText: { type: string, maxLength: 4000, nullable: true }
+        buttons:
+          type: array
+          maxItems: 3
+          items:
+            type: object
+            properties:
+              id: { type: string, maxLength: 100 }
+              title: { type: string, maxLength: 40 }
+        voicePromptOverride: { type: string, maxLength: 2000, nullable: true }
+        enabled: { type: boolean, default: true }
+
+    ReminderTemplatePatch:
+      type: object
+      properties:
+        templateName: { type: string, maxLength: 120, nullable: true }
+        templateLanguage: { type: string, maxLength: 10 }
+        templateParamsMap: { type: array, items: { type: object } }
+        freeText: { type: string, maxLength: 4000, nullable: true }
+        buttons: { type: array, maxItems: 3, items: { type: object } }
+        voicePromptOverride: { type: string, maxLength: 2000, nullable: true }
+        enabled: { type: boolean }
+
+    WaitlistEntryCreate:
+      type: object
+      required: [ghlContactId, ghlAppointmentId, originalStartTime]
+      properties:
+        ghlContactId: { type: string, minLength: 1 }
+        ghlAppointmentId: { type: string, minLength: 1 }
+        treatmentId: { type: string, format: uuid, nullable: true }
+        calendarId: { type: string, nullable: true }
+        assignedDentistId: { type: string, nullable: true }
+        originalStartTime: { type: string, format: date-time }
+        originalEndTime: { type: string, format: date-time, nullable: true }
+        preferredTimeWindowStart: { type: string, pattern: '^\d{2}:\d{2}$', nullable: true }
+        preferredTimeWindowEnd: { type: string, pattern: '^\d{2}:\d{2}$', nullable: true }
+        notes: { type: string, maxLength: 1000, nullable: true }
+
+    WaitlistTemplateUpsert:
+      type: object
+      required: [channel, driverScope]
+      properties:
+        channel: { type: string, enum: [WHATSAPP, VOICE] }
+        driverScope: { type: string, enum: [whatsapp_cloud, whatsapp_twilio, whatsapp_evolution, voice_retell] }
+        templateName: { type: string, nullable: true }
+        templateLanguage: { type: string, default: es }
+        templateParamsMap: { type: array, items: { type: object } }
+        freeText: { type: string, nullable: true }
+        buttons: { type: array, items: { type: object } }
+        voicePromptOverride: { type: string, nullable: true }
+        enabled: { type: boolean, default: true }
+
+    WaitlistSettingsPatch:
+      type: object
+      properties:
+        enabled: { type: boolean }
+        channelMode: { type: string, enum: [WHATSAPP_ONLY, VOICE_ONLY, WHATSAPP_THEN_VOICE] }
+        ttlMinutesDefault: { type: integer, minimum: 15, maximum: 10080 }
+        ttlMinutesNearSlot: { type: integer, minimum: 5, maximum: 1440 }
+        nearSlotHoursThreshold: { type: integer, minimum: 1, maximum: 72 }
+        minSkipHoursThreshold: { type: integer, minimum: 0, maximum: 72 }
+        whatsappToVoiceWindowMinutes: { type: integer, minimum: 5, maximum: 1440 }
+        minAppointmentDistanceDays: { type: integer, minimum: 0, maximum: 365 }
+        maxAppointmentDistanceDays: { type: integer, minimum: 1, maximum: 365, nullable: true }
+        minAdvanceDays: { type: integer, minimum: 0, maximum: 180 }
+        requireSameDentist: { type: boolean }
+        respectTimeWindow: { type: boolean }
