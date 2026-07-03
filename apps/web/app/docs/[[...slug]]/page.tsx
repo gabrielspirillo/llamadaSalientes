@@ -16,6 +16,8 @@ import { type Tokens, marked } from 'marked';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import { MermaidRenderer } from './mermaid-renderer';
+
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
@@ -111,20 +113,6 @@ function renderMarkdown(md: string): string {
   });
   return marked.parse(md, { async: false }) as string;
 }
-
-// Convierte los bloques ```mermaid en diagramas. Mismo patrón CDN que
-// swagger-ui en /api/docs: sin dependencias npm ni build extra.
-const MERMAID_SCRIPT = `
-import mermaid from 'https://unpkg.com/mermaid@11/dist/mermaid.esm.min.mjs';
-for (const code of document.querySelectorAll('pre > code.language-mermaid')) {
-  const div = document.createElement('div');
-  div.className = 'mermaid';
-  div.textContent = code.textContent;
-  code.closest('pre').replaceWith(div);
-}
-mermaid.initialize({ startOnLoad: false, securityLevel: 'loose' });
-await mermaid.run({ querySelector: '.mermaid' });
-`;
 
 const DOCS_CSS = `
 .docs-page { max-width: 900px; margin: 0 auto; padding: 24px 20px 80px; color: #1f2328; font-size: 15px; line-height: 1.65; }
@@ -291,8 +279,7 @@ export default async function DocsPage({
       <DocsNav docs={available} active={requested} />
       {/* biome-ignore lint/security/noDangerouslySetInnerHtml: Markdown propio del repo (docs/), no input de usuarios */}
       <main className="docs-body" dangerouslySetInnerHTML={{ __html: html }} />
-      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: script estático para renderizar diagramas Mermaid */}
-      <script type="module" dangerouslySetInnerHTML={{ __html: MERMAID_SCRIPT }} />
+      <MermaidRenderer docKey={requested} />
     </div>
   );
 }
