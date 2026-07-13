@@ -55,11 +55,22 @@ export async function processWhatsappJob(
   handoff?: boolean;
   urgent?: boolean;
 }> {
-  if (process.env.WHATSAPP_AGENT_ENABLED !== 'true') {
+  const { tenantId, conversationId, contactPhoneE164 } = data;
+  const agentEnabled = process.env.WHATSAPP_AGENT_ENABLED === 'true';
+  console.log('[wa-process] job recibido', {
+    tenantId,
+    conversationId,
+    contactPhoneE164,
+    agentEnabled,
+  });
+  if (!agentEnabled) {
+    console.warn(
+      '[wa-process] salida temprana feature_disabled: WHATSAPP_AGENT_ENABLED != "true". ' +
+        'El worker no invoca al LLM y el bot no responde. ' +
+        'Seteá WHATSAPP_AGENT_ENABLED=true en el servicio cliniq-worker.',
+    );
     return { ok: false, reason: 'feature_disabled' };
   }
-
-  const { tenantId, conversationId, contactPhoneE164 } = data;
 
   // 1. Cargar conversación.
   const gate = await step.run('gate-check', async () => {
@@ -93,7 +104,13 @@ export async function processWhatsappJob(
       context: (conv.context ?? {}) as Record<string, unknown>,
     };
   });
-  if (!gate.ok) return { ok: false, reason: gate.reason };
+  if (!gate.ok) {
+    console.warn('[wa-process] gate bloqueó (conversación)', {
+      conversationId,
+      reason: gate.reason,
+    });
+    return { ok: false, reason: gate.reason };
+  }
 
   // 1.5. Sincronizar el contacto con GHL (CRM externo). Corre siempre que
   // exista la conv — incluso si el agente está bloqueado (HANDOFF, AI
@@ -111,15 +128,25 @@ export async function processWhatsappJob(
     return loadInboundBatch(tenantId, conversationId);
   });
   if (!batch.messages.length) {
+    console.warn('[wa-process] sin mensajes inbound para procesar', { conversationId });
     return { ok: false, reason: 'no_inbound_messages' };
   }
   if (batch.alreadyProcessed) {
+    console.log('[wa-process] batch ya procesado (otro job de la ráfaga lo tomó)', {
+      conversationId,
+      lastMessageId: batch.lastMessageId,
+    });
     return { ok: false, reason: 'already_processed' };
   }
 
   // 3. Resolver connector. NO envolver en step.run: el caché de step.run
   //    serializa a JSON y destruye los métodos de la instancia.
   const connector = await resolveConnector(tenantId);
+  console.log('[wa-process] connector resuelto', {
+    tenantId,
+    hasConnector: !!connector,
+    inboundCount: batch.messages.length,
+  });
 
   // 3.5. Asegurar avatar del contacto (solo Evolution implementa fetch).
   // Idempotente: si ya hay avatar_url o el channel no lo soporta, sale.
@@ -151,6 +178,10 @@ export async function processWhatsappJob(
   // Si el agente está bloqueado (HANDOFF, AI disabled, etc.), salimos
   // después de procesar media para que el contenido sea visible en la UI.
   if (gate.skipAgent) {
+    console.warn('[wa-process] agente bloqueado tras multimodal (no responde)', {
+      conversationId,
+      reason: gate.reason,
+    });
     return { ok: false, reason: gate.reason };
   }
 
@@ -195,6 +226,16 @@ export async function processWhatsappJob(
     // 8. Enviar outbound (si hay connector y respuesta).
     let responseMessageId: string | null = null;
     const responseText = agentOutput.responseText;
+    console.log('[wa-process] agente terminó', {
+      conversationId,
+      hasResponseText: !!responseText,
+      responseChars: responseText?.length ?? 0,
+      intent: agentOutput.intent,
+      handoff: agentOutput.handoff,
+      hasConnector: !!connector,
+      fallbackUsed: agentOutput.fallbackUsed,
+      errorText: agentOutput.errorText ?? null,
+    });
     if (connector && responseText) {
       responseMessageId = await step.run('send-outbound', async () => {
         const sent = await sendAgentResponse({
@@ -205,7 +246,18 @@ export async function processWhatsappJob(
           buttons: agentOutput.responseButtons?.buttons ?? null,
           connector,
         });
+        console.log('[wa-process] outbound enviado OK', {
+          conversationId,
+          toPhoneE164: contactPhoneE164,
+          externalId: sent.externalId,
+        });
         return sent.messageId;
+      });
+    } else {
+      console.warn('[wa-process] NO se envía outbound (sin connector o sin texto)', {
+        conversationId,
+        hasConnector: !!connector,
+        hasResponseText: !!responseText,
       });
     }
 

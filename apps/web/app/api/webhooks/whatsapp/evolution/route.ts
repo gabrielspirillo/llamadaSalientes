@@ -196,11 +196,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
                   return { consumed: false } as const;
                 });
             if (!reminderResult.consumed) {
+              console.log('[wa-evolution-webhook] encolando wa-process', {
+                tenantId: conn.tenantId,
+                conversationId: persisted.conversation.id,
+                messageId: persisted.message.id,
+                contactPhoneE164: persisted.contact.phoneE164,
+              });
               await sendQueueEvent('wa-process', {
                 tenantId: conn.tenantId,
                 conversationId: persisted.conversation.id,
                 messageId: persisted.message.id,
                 contactPhoneE164: persisted.contact.phoneE164,
+              });
+            } else {
+              console.log('[wa-evolution-webhook] mensaje consumido por handler (waitlist/reminder), NO va al agente', {
+                conversationId: persisted.conversation.id,
+                messageId: persisted.message.id,
               });
             }
           }
