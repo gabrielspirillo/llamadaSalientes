@@ -58,6 +58,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     .limit(1);
   const conn = conns[0];
   if (!conn) {
+    console.warn('[wa-evolution-webhook] instancia desconocida (ninguna conexión EVOLUTION matchea)', {
+      instance,
+      event: event.event,
+    });
     return NextResponse.json({ ok: true, ignored: 'unknown_instance' });
   }
 
@@ -102,6 +106,36 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
       case 'messages.upsert':
       case 'MESSAGES_UPSERT': {
+        // ── Log de diagnóstico @lid ──────────────────────────────────────────
+        // Volcamos la `key` cruda con los campos alternativos (remoteJidAlt /
+        // senderPn / addressingMode) ANTES de normalizar, para ver cómo llega
+        // realmente el remoteJid. WhatsApp entrega a veces "<id>@lid" (Android /
+        // dispositivos vinculados) donde el número previo al @ NO es el teléfono.
+        // Si remoteJid llega "@lid" y remoteJidAlt/senderPn vienen vacíos, ese
+        // es el motivo por el que el bot no puede responder.
+        const rawData = (event.data ?? {}) as {
+          key?: Record<string, unknown>;
+          senderPn?: unknown;
+          pushName?: unknown;
+          messageType?: unknown;
+        };
+        const rawKey = (rawData.key ?? {}) as Record<string, unknown>;
+        const remoteJidRaw = typeof rawKey.remoteJid === 'string' ? rawKey.remoteJid : null;
+        console.log('[wa-evolution-webhook] messages.upsert recibido', {
+          instance,
+          tenantId: conn.tenantId,
+          remoteJid: remoteJidRaw,
+          remoteJidAlt: rawKey.remoteJidAlt ?? null,
+          participant: rawKey.participant ?? null,
+          participantAlt: rawKey.participantAlt ?? null,
+          addressingMode: rawKey.addressingMode ?? null,
+          senderPn: rawData.senderPn ?? null,
+          fromMe: rawKey.fromMe ?? null,
+          pushName: rawData.pushName ?? null,
+          messageType: rawData.messageType ?? null,
+          esLid: remoteJidRaw?.includes('@lid') ?? false,
+        });
+
         const parsed = evolutionMessagesUpsertSchema.safeParse(event);
         if (!parsed.success) {
           console.warn('[wa-evolution-webhook] messages.upsert no matchea schema', {
@@ -112,6 +146,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         // Filtramos outbound (fromMe=true) para no procesar nuestros propios envíos.
         if (parsed.data.data.key.fromMe) break;
         const inbound = normalizeEvolutionMessage(parsed.data, conn.tenantId);
+        // Comparación crudo → normalizado: si el remoteJid es "@lid" y el
+        // fromPhoneE164 quedó como un "+<id_lid>" (número inexistente), acá se
+        // ve el bug que impide responder.
+        console.log('[wa-evolution-webhook] mensaje normalizado', {
+          remoteJid: parsed.data.data.key.remoteJid,
+          fromPhoneE164: inbound.fromPhoneE164,
+          type: inbound.type,
+          contactName: inbound.contactName,
+        });
         try {
           const persisted = await persistInboundMessage(inbound);
           if (persisted.message) {
