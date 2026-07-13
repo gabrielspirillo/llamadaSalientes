@@ -742,31 +742,52 @@ export async function disconnect(input: unknown): Promise<ActionResult<null>> {
   const { tenant } = await getCurrentTenant();
   const senderUserId = await getInternalUserId();
 
-  // Para EVOLUTION, también cerramos la sesión en el server Evolution
-  // (best-effort). Si falla, igualmente marcamos DISCONNECTED en BD.
+  // Para EVOLUTION, cerramos la sesión en el server Evolution ANTES de tocar
+  // la BD. Si el logout no se confirma, NO marcamos DISCONNECTED: así el
+  // estado en BD/UI refleja la realidad y el usuario puede reintentar.
   if (parsed.data.mode === 'EVOLUTION') {
     const cfg = evolutionBase();
-    if (!('error' in cfg)) {
-      const rows = await db
-        .select()
-        .from(whatsappConnections)
-        .where(
-          and(
-            eq(whatsappConnections.tenantId, tenant.id),
-            eq(whatsappConnections.mode, 'EVOLUTION'),
-          ),
-        )
-        .limit(1);
-      const conn = rows[0];
-      if (conn?.evolutionInstance && conn.evolutionTokenEnc) {
-        try {
-          await fetch(
-            `${cfg.baseUrl}/instance/logout/${encodeURIComponent(conn.evolutionInstance)}`,
-            { method: 'DELETE', headers: { apikey: decrypt(conn.evolutionTokenEnc) } },
+    if ('error' in cfg) return fail(cfg.error);
+    const rows = await db
+      .select()
+      .from(whatsappConnections)
+      .where(
+        and(
+          eq(whatsappConnections.tenantId, tenant.id),
+          eq(whatsappConnections.mode, 'EVOLUTION'),
+        ),
+      )
+      .limit(1);
+    const conn = rows[0];
+    if (conn?.evolutionInstance) {
+      // ADMIN key global (no el token por-instancia): el token se borra al
+      // desconectar, así que reusarlo dejaba el 2do "Desconectar" sin efecto
+      // (skippeaba el logout). La admin key siempre autoriza /instance/logout.
+      try {
+        const res = await fetch(
+          `${cfg.baseUrl}/instance/logout/${encodeURIComponent(conn.evolutionInstance)}`,
+          { method: 'DELETE', headers: { apikey: cfg.adminApiKey } },
+        );
+        const body = await res.text().catch(() => '');
+        console.log('[disconnect] /instance/logout resultado', {
+          instance: conn.evolutionInstance,
+          httpStatus: res.status,
+          ok: res.ok,
+          body: body.slice(0, 200),
+        });
+        // Tratamos como éxito (idempotente) si la instancia ya estaba
+        // deslogueada / no conectada / no existe: el objetivo ya se cumplió.
+        const yaDesconectada = /not.?connected|logged.?out|not.?logged|does not exist|not.?found|Cannot destroy/i.test(
+          body,
+        );
+        if (!res.ok && !yaDesconectada) {
+          return fail(
+            `No pude cerrar la sesión en Evolution (HTTP ${res.status}): ${body.slice(0, 200)}`,
           );
-        } catch (logoutErr) {
-          console.warn('[disconnect] /instance/logout falló:', (logoutErr as Error).message);
         }
+      } catch (logoutErr) {
+        console.warn('[disconnect] /instance/logout falló:', (logoutErr as Error).message);
+        return fail(`No pude alcanzar Evolution para desconectar: ${(logoutErr as Error).message}`);
       }
     }
   }
