@@ -67,41 +67,33 @@ export const processCall = inngest.createFunction(
       });
     }
 
+    // Sin OPENAI_API_KEY no inventamos clasificación: el webhook ya pudo haber
+    // guardado una mejor (Gemini) y pisarla con 'otro'/'neutro' sería peor.
     let summary: SummaryShape | null = null;
-    if (transcript) {
-      summary = await step.run<SummaryShape>('summarize-transcript', async () => {
-        if (!process.env.OPENAI_API_KEY) {
-          return {
-            intent: 'otro',
-            sentiment: 'neutro',
-            summary: analysisSummary ?? 'Sin resumen.',
-            followUp: null,
-          };
-        }
-        return summarizeCall(transcript);
-      });
+    if (transcript && process.env.OPENAI_API_KEY) {
+      summary = await step.run<SummaryShape>('summarize-transcript', async () =>
+        summarizeCall(transcript),
+      );
     }
 
     await step.run('persist-results', async () => {
-      const transcriptEnc = transcript ? encrypt(transcript) : null;
+      // undefined = no tocar la columna (upsertCall hace merge parcial).
+      const transcriptEnc = transcript ? encrypt(transcript) : undefined;
       await upsertCall({
         tenantId,
         retellCallId,
         status: 'ended',
         transcriptEnc,
-        summary: summary?.summary ?? analysisSummary ?? null,
-        intent: summary?.intent ?? null,
-        sentiment: summary?.sentiment ?? null,
+        summary: summary?.summary ?? analysisSummary ?? undefined,
+        intent: summary?.intent ?? undefined,
+        sentiment: summary?.sentiment ?? undefined,
       });
 
       if (recordingR2Key) {
         const { db } = await import('@/lib/db/client');
         const { calls } = await import('@/lib/db/schema');
         const { eq } = await import('drizzle-orm');
-        await db
-          .update(calls)
-          .set({ recordingR2Key })
-          .where(eq(calls.retellCallId, retellCallId));
+        await db.update(calls).set({ recordingR2Key }).where(eq(calls.retellCallId, retellCallId));
       }
     });
 

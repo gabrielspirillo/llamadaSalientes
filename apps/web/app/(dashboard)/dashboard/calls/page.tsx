@@ -1,9 +1,10 @@
+import { BackfillMetadataButton } from '@/components/dashboard/backfill-metadata-button';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { formatDuration, listCalls } from '@/lib/data/calls-list';
+import { countCallsMissingMetadata, formatDuration, listCalls } from '@/lib/data/calls-list';
 import { getCurrentTenant } from '@/lib/tenant';
 import { ArrowRight, Download, Filter, Phone, Search } from 'lucide-react';
 import Link from 'next/link';
@@ -51,12 +52,15 @@ export default async function CallsPage({
 }) {
   const sp = await searchParams;
   const { tenant } = await getCurrentTenant();
-  const realCalls = await listCalls(tenant.id, {
-    limit: 100,
-    q: sp.q,
-    intent: sp.intent,
-    sentiment: sp.sentiment,
-  });
+  const [realCalls, missingMetadata] = await Promise.all([
+    listCalls(tenant.id, {
+      limit: 100,
+      q: sp.q,
+      intent: sp.intent,
+      sentiment: sp.sentiment,
+    }),
+    countCallsMissingMetadata(tenant.id),
+  ]);
 
   const activeFilters = [sp.q, sp.intent, sp.sentiment].filter(Boolean).length;
 
@@ -66,9 +70,12 @@ export default async function CallsPage({
         title="Llamadas"
         description="Todas las llamadas atendidas por el agente."
         actions={
-          <Button variant="secondary" size="sm">
-            <Download className="h-4 w-4" /> Exportar CSV
-          </Button>
+          <div className="flex items-center gap-2">
+            <BackfillMetadataButton pending={missingMetadata} />
+            <Button variant="secondary" size="sm">
+              <Download className="h-4 w-4" /> Exportar CSV
+            </Button>
+          </div>
         }
       />
 
@@ -172,15 +179,20 @@ export default async function CallsPage({
                           {formatDuration(c.durationSeconds)}
                         </td>
                         <td className="px-5 py-3.5 text-zinc-600 tabular-nums">
-                          {c.startedAt
-                            ? new Date(c.startedAt).toLocaleString('es-ES', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })
-                            : '—'}
+                          {(() => {
+                            // started_at es lo correcto; created_at (alta de la fila
+                            // por el webhook) es el fallback para llamadas viejas.
+                            const when = c.startedAt ?? c.createdAt;
+                            return when
+                              ? new Date(when).toLocaleString('es-ES', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })
+                              : '—';
+                          })()}
                         </td>
                         <td className="px-5 py-3.5 text-right">
                           <Button asChild variant="ghost" size="sm">

@@ -20,41 +20,66 @@ export type UpsertCallInput = {
   ghlContactId?: string | null;
 };
 
+/**
+ * Upsert *parcial*: solo escribe las columnas que vengan definidas en `input`.
+ *
+ * ⚠️ Importante: Retell manda 3 eventos por llamada (call_started → call_ended →
+ * call_analyzed) y cada uno trae un subconjunto de datos. Si acá construyéramos
+ * el objeto con `?? null`, el último evento pisaría con NULL todo lo que no
+ * mande (from/to number, started_at, ended_at, duration, ghl_contact_id...).
+ * Eso es exactamente lo que dejaba la tabla de /dashboard/calls vacía.
+ *
+ * Por eso: `undefined` = "no tocar esta columna"; `null` = "borrar el valor".
+ */
 export async function upsertCall(input: UpsertCallInput) {
-  const existing = await db
+  // Solo las claves explícitamente presentes en el input.
+  const patch: Partial<typeof calls.$inferInsert> = {};
+  const assign = <K extends keyof typeof calls.$inferInsert>(
+    key: K,
+    value: (typeof calls.$inferInsert)[K] | undefined,
+  ) => {
+    if (value !== undefined) patch[key] = value;
+  };
+
+  assign('fromNumber', input.fromNumber);
+  assign('toNumber', input.toNumber);
+  assign('startedAt', input.startedAt);
+  assign('endedAt', input.endedAt);
+  assign('durationSeconds', input.durationSeconds);
+  assign('status', input.status);
+  assign('intent', input.intent);
+  assign('sentiment', input.sentiment);
+  assign('transferred', input.transferred);
+  assign('transcriptEnc', input.transcriptEnc);
+  assign('summary', input.summary);
+  assign('ghlContactId', input.ghlContactId);
+
+  const values = {
+    ...patch,
+    tenantId: input.tenantId,
+    retellCallId: input.retellCallId,
+    transferred: input.transferred ?? false,
+  };
+
+  // INSERT ... ON CONFLICT: atómico. Dos eventos de la misma llamada pueden
+  // llegar casi a la vez (call_started y call_ended en llamadas cortas); con
+  // select-then-insert los dos veían "no existe" y el segundo reventaba contra
+  // el unique de retell_call_id.
+  const insert = db.insert(calls).values(values);
+  const [row] =
+    Object.keys(patch).length === 0
+      ? await insert.onConflictDoNothing({ target: calls.retellCallId }).returning()
+      : await insert.onConflictDoUpdate({ target: calls.retellCallId, set: patch }).returning();
+
+  if (row) return row;
+
+  // onConflictDoNothing sin cambios: devolvemos la fila existente.
+  const [existing] = await db
     .select()
     .from(calls)
     .where(eq(calls.retellCallId, input.retellCallId))
     .limit(1);
-
-  const values = {
-    tenantId: input.tenantId,
-    retellCallId: input.retellCallId,
-    fromNumber: input.fromNumber ?? null,
-    toNumber: input.toNumber ?? null,
-    startedAt: input.startedAt ?? null,
-    endedAt: input.endedAt ?? null,
-    durationSeconds: input.durationSeconds ?? null,
-    status: input.status ?? null,
-    intent: input.intent ?? null,
-    sentiment: input.sentiment ?? null,
-    transferred: input.transferred ?? false,
-    transcriptEnc: input.transcriptEnc ?? null,
-    summary: input.summary ?? null,
-    ghlContactId: input.ghlContactId ?? null,
-  };
-
-  if (existing[0]) {
-    const [row] = await db
-      .update(calls)
-      .set(values)
-      .where(eq(calls.retellCallId, input.retellCallId))
-      .returning();
-    return row;
-  }
-
-  const [row] = await db.insert(calls).values(values).returning();
-  return row;
+  return existing;
 }
 
 export async function getCallByRetellId(retellCallId: string) {
