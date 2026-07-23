@@ -23,11 +23,10 @@ async function findTenantByOrg(orgId: string) {
   return rows[0];
 }
 
-// Mapea Clerk org_id → fila de tenant.
-// Cacheado por request (React.cache) para evitar refetch en una misma página.
-export const getCurrentTenant = cache(async () => {
-  const { orgId, userId } = await requireOrg();
-
+// Resuelve el tenant de una org de Clerk, auto-provisionándolo si falta.
+// Separado de getCurrentTenant (que lo envuelve en React.cache + requireOrg)
+// para poder testearlo sin el contexto de request de cache().
+export async function resolveTenantForOrg(orgId: string, userId: string) {
   let tenant = await findTenantByOrg(orgId);
 
   if (!tenant) {
@@ -50,6 +49,13 @@ export const getCurrentTenant = cache(async () => {
   }
 
   return { tenant, userId };
+}
+
+// Mapea Clerk org_id → fila de tenant.
+// Cacheado por request (React.cache) para evitar refetch en una misma página.
+export const getCurrentTenant = cache(async () => {
+  const { orgId, userId } = await requireOrg();
+  return resolveTenantForOrg(orgId, userId);
 });
 
 // Versión no-throw: útil en componentes que solo quieren saber si hay tenant.
