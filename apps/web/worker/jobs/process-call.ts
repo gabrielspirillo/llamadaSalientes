@@ -11,14 +11,14 @@ import {
   whatsappConversations,
 } from '@/lib/db/schema';
 import { summarizeCall } from '@/lib/openai/client';
-import { buildRecordingKey, fetchAsBuffer, r2Upload } from '@/lib/r2/client';
-import type { QueueJobs } from '@/lib/queue/queues';
 import {
   removeReminderFallbackJob,
   removeReminderSendJob,
   sendQueueEvent,
 } from '@/lib/queue/client';
+import type { QueueJobs } from '@/lib/queue/queues';
 import type { StepRunner } from '@/lib/queue/step';
+import { buildRecordingKey, fetchAsBuffer, r2Upload } from '@/lib/r2/client';
 import { cancelFollowingReminders } from '@/lib/reminders/cancel';
 import { parseReminderVoiceIntent } from '@/lib/reminders/parse-voice-intent';
 import { cancelAppointment } from '@/lib/retell/tools';
@@ -47,7 +47,12 @@ type SummaryShape = {
 export async function processCallJob(
   data: QueueJobs['process-call'],
   step: StepRunner,
-): Promise<{ tenantId: string; retellCallId: string; recordingR2Key: string | null; summarized: boolean }> {
+): Promise<{
+  tenantId: string;
+  retellCallId: string;
+  recordingR2Key: string | null;
+  summarized: boolean;
+}> {
   const { tenantId, retellCallId, recordingUrl, transcript, analysisSummary } = data;
 
   let recordingR2Key: string | null = null;
@@ -65,41 +70,33 @@ export async function processCallJob(
     });
   }
 
+  // Sin OPENAI_API_KEY no inventamos clasificación: el webhook ya pudo haber
+  // guardado una mejor (Gemini) y pisarla con 'otro'/'neutro' sería peor.
   let summary: SummaryShape | null = null;
-  if (transcript) {
-    summary = await step.run<SummaryShape>('summarize-transcript', async () => {
-      if (!process.env.OPENAI_API_KEY) {
-        return {
-          intent: 'otro',
-          sentiment: 'neutro',
-          summary: analysisSummary ?? 'Sin resumen.',
-          followUp: null,
-        };
-      }
-      return summarizeCall(transcript);
-    });
+  if (transcript && process.env.OPENAI_API_KEY) {
+    summary = await step.run<SummaryShape>('summarize-transcript', async () =>
+      summarizeCall(transcript),
+    );
   }
 
   await step.run('persist-results', async () => {
-    const transcriptEnc = transcript ? encrypt(transcript) : null;
+    // undefined = no tocar la columna (upsertCall hace merge parcial).
+    const transcriptEnc = transcript ? encrypt(transcript) : undefined;
     await upsertCall({
       tenantId,
       retellCallId,
       status: 'ended',
       transcriptEnc,
-      summary: summary?.summary ?? analysisSummary ?? null,
-      intent: summary?.intent ?? null,
-      sentiment: summary?.sentiment ?? null,
+      summary: summary?.summary ?? analysisSummary ?? undefined,
+      intent: summary?.intent ?? undefined,
+      sentiment: summary?.sentiment ?? undefined,
     });
 
     if (recordingR2Key) {
       const { db } = await import('@/lib/db/client');
       const { calls } = await import('@/lib/db/schema');
       const { eq } = await import('drizzle-orm');
-      await db
-        .update(calls)
-        .set({ recordingR2Key })
-        .where(eq(calls.retellCallId, retellCallId));
+      await db.update(calls).set({ recordingR2Key }).where(eq(calls.retellCallId, retellCallId));
     }
   });
 
@@ -187,17 +184,20 @@ async function matchReminderIntent(args: {
   const intent = await parseReminderVoiceIntent(args.transcript);
   if (intent.action === 'none' || intent.confidence < CONFIDENCE_THRESHOLD) {
     // Loguear en metadata para revisión pero no transicionar.
-    await db.insert(reminderConfirmations).values({
-      tenantId: args.tenantId,
-      reminderId: rem.id,
-      action: 'confirm', // placeholder; el caller no actúa con confidence baja.
-      source: 'voice',
-      metadata: {
-        skipped: true,
-        reason: 'low_confidence_or_none',
-        intent,
-      },
-    }).catch(() => undefined);
+    await db
+      .insert(reminderConfirmations)
+      .values({
+        tenantId: args.tenantId,
+        reminderId: rem.id,
+        action: 'confirm', // placeholder; el caller no actúa con confidence baja.
+        source: 'voice',
+        metadata: {
+          skipped: true,
+          reason: 'low_confidence_or_none',
+          intent,
+        },
+      })
+      .catch(() => undefined);
     return { matched: true, action: 'none', confidence: intent.confidence };
   }
 
@@ -266,10 +266,7 @@ async function matchReminderIntent(args: {
         .select({ id: whatsappContacts.id })
         .from(whatsappContacts)
         .where(
-          and(
-            eq(whatsappContacts.tenantId, args.tenantId),
-            eq(whatsappContacts.phoneE164, phone),
-          ),
+          and(eq(whatsappContacts.tenantId, args.tenantId), eq(whatsappContacts.phoneE164, phone)),
         )
         .limit(1);
 

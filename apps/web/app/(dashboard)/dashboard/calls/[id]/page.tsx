@@ -41,9 +41,16 @@ export default async function CallDetailPage({
   const transcript = await getCallTranscript(tenant.id, id);
   const transcriptTurns = parseTranscript(transcript);
 
-  const startedDate = call.startedAt
-    ? new Date(call.startedAt).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })
+  // started_at es lo correcto; created_at (alta de la fila por el webhook) es el
+  // fallback para llamadas viejas a las que les falta el timestamp.
+  const occurredAt = call.startedAt ?? call.createdAt;
+  const startedDate = occurredAt
+    ? new Date(occurredAt).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })
     : '—';
+
+  const customData = (call.customData ?? {}) as { patient_name?: string };
+  const title =
+    customData.patient_name ?? call.fromNumber ?? call.toNumber ?? 'Llamada anónima';
 
   return (
     <>
@@ -57,9 +64,7 @@ export default async function CallDetailPage({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 sm:mb-8">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
-            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight truncate">
-              {call.fromNumber ?? 'Llamada anónima'}
-            </h1>
+            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight truncate">{title}</h1>
             {statusBadge(call.status, call.transferred ?? false)}
             {intentBadge(call.intent)}
           </div>

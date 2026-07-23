@@ -24,7 +24,10 @@ type RetellCallPayload = {
     to_number?: string;
     start_timestamp?: number; // ms
     end_timestamp?: number; // ms
+    duration_ms?: number;
+    disconnection_reason?: string;
     transcript?: string;
+    recording_url?: string;
     call_analysis?: {
       call_summary?: string;
       user_sentiment?: string;
@@ -34,6 +37,30 @@ type RetellCallPayload = {
     metadata?: Record<string, unknown>;
   };
 };
+
+/**
+ * Retell manda el objeto `call` completo en los 3 eventos, pero con campos
+ * opcionales. Extraemos identidad/tiempos solo cuando vienen, para no pisar con
+ * NULL lo que ya guardamos en un evento anterior (upsertCall es un merge parcial).
+ */
+function identityPatch(call: RetellCallPayload['call']) {
+  const start = call.start_timestamp ? new Date(call.start_timestamp) : undefined;
+  const end = call.end_timestamp ? new Date(call.end_timestamp) : undefined;
+  const durationSeconds =
+    start && end
+      ? Math.round((end.getTime() - start.getTime()) / 1000)
+      : typeof call.duration_ms === 'number'
+        ? Math.round(call.duration_ms / 1000)
+        : undefined;
+
+  return {
+    fromNumber: call.from_number || undefined,
+    toNumber: call.to_number || undefined,
+    startedAt: start,
+    endedAt: end,
+    durationSeconds,
+  };
+}
 
 export async function POST(req: NextRequest) {
   const rawBody = Buffer.from(await req.arrayBuffer());
@@ -83,12 +110,12 @@ export async function POST(req: NextRequest) {
 
   switch (event) {
     case 'call_started': {
+      const identity = identityPatch(call);
       await upsertCall({
         tenantId,
         retellCallId: call.call_id,
-        fromNumber: call.from_number ?? null,
-        toNumber: call.to_number ?? null,
-        startedAt: call.start_timestamp ? new Date(call.start_timestamp) : new Date(),
+        ...identity,
+        startedAt: identity.startedAt ?? new Date(),
         status: 'ongoing',
       });
       if (targetId) {
@@ -105,25 +132,19 @@ export async function POST(req: NextRequest) {
     }
 
     case 'call_ended': {
-      const start = call.start_timestamp ? new Date(call.start_timestamp) : null;
-      const end = call.end_timestamp ? new Date(call.end_timestamp) : null;
-      const durationSeconds =
-        start && end ? Math.round((end.getTime() - start.getTime()) / 1000) : null;
+      const identity = identityPatch(call);
+      const disconnectionReason = call.disconnection_reason;
 
       await upsertCall({
         tenantId,
         retellCallId: call.call_id,
-        fromNumber: call.from_number ?? null,
-        toNumber: call.to_number ?? null,
-        startedAt: start,
-        endedAt: end,
-        durationSeconds,
+        ...identity,
+        endedAt: identity.endedAt ?? new Date(),
         status: call.call_status ?? 'ended',
+        transferred: disconnectionReason === 'call_transfer',
       });
 
       if (targetId) {
-        const disconnectionReason = (call as { disconnection_reason?: string })
-          .disconnection_reason;
         const status = mapOutboundStatus(call.call_status, disconnectionReason);
         await db
           .update(outboundTargets)
@@ -131,7 +152,7 @@ export async function POST(req: NextRequest) {
             status,
             retellCallId: call.call_id,
             lastDisconnectionReason: disconnectionReason ?? null,
-            lastAttemptAt: end ?? new Date(),
+            lastAttemptAt: identity.endedAt ?? new Date(),
           })
           .where(and(eq(outboundTargets.id, targetId), eq(outboundTargets.tenantId, tenantId)));
       }
@@ -141,21 +162,22 @@ export async function POST(req: NextRequest) {
 
     case 'call_analyzed': {
       const analysis = call.call_analysis;
-      const transcriptEnc = call.transcript ? encrypt(call.transcript) : null;
+      const identity = identityPatch(call);
+      const transcriptEnc = call.transcript ? encrypt(call.transcript) : undefined;
 
       // Resumen rápido en español usando Gemini (si está disponible).
       // El job Inngest después puede sobreescribir con OpenAI si está configurado.
-      let summaryEs: string | null = analysis?.call_summary ?? null;
-      let intentEs: string | null = null;
-      let sentimentEs: string | null = mapRetellSentiment(analysis?.user_sentiment);
+      let summaryEs: string | undefined = analysis?.call_summary || undefined;
+      let intentEs: string | undefined;
+      let sentimentEs: string | undefined = mapRetellSentiment(analysis?.user_sentiment);
 
       if (call.transcript && process.env.GEMINI_API_KEY) {
         try {
           const { summarizeCallWithGemini } = await import('@/lib/gemini/client');
           const ai = await summarizeCallWithGemini(call.transcript);
-          summaryEs = ai.summary;
-          intentEs = ai.intent;
-          sentimentEs = ai.sentiment;
+          summaryEs = ai.summary || summaryEs;
+          intentEs = ai.intent || undefined;
+          sentimentEs = ai.sentiment || sentimentEs;
         } catch (err) {
           console.error('[retell-webhook] gemini summary fallo:', err);
         }
@@ -164,22 +186,22 @@ export async function POST(req: NextRequest) {
       await upsertCall({
         tenantId,
         retellCallId: call.call_id,
+        // call_analyzed también trae el objeto call completo: aprovechamos para
+        // rellenar número/tiempos si el evento call_ended se perdió.
+        ...identity,
         status: 'ended',
         transcriptEnc,
         summary: summaryEs,
         intent: intentEs,
         sentiment: sentimentEs,
+        ...(call.disconnection_reason === 'call_transfer' ? { transferred: true } : {}),
       });
 
       // Dispatch al job de procesamiento async — fire-and-forget
-      const recordingUrl =
-        typeof (call as { recording_url?: unknown }).recording_url === 'string'
-          ? ((call as { recording_url?: string }).recording_url ?? null)
-          : null;
       await sendQueueEvent('process-call', {
         tenantId,
         retellCallId: call.call_id,
-        recordingUrl,
+        recordingUrl: call.recording_url ?? null,
         transcript: call.transcript ?? null,
         analysisSummary: analysis?.call_summary ?? null,
       });
@@ -210,8 +232,8 @@ function mapOutboundStatus(
   return 'ended';
 }
 
-function mapRetellSentiment(s: string | null | undefined): string | null {
-  if (!s) return null;
+function mapRetellSentiment(s: string | null | undefined): string | undefined {
+  if (!s) return undefined;
   const map: Record<string, string> = {
     Positive: 'positivo',
     Neutral: 'neutro',

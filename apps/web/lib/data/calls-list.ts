@@ -1,10 +1,17 @@
 import 'server-only';
+import { decrypt } from '@/lib/crypto';
 import { db } from '@/lib/db/client';
 import { calls } from '@/lib/db/schema';
-import { decrypt } from '@/lib/crypto';
-import { and, count, desc, eq, gte, ilike, isNotNull, or, sql, type SQL } from 'drizzle-orm';
+import { type SQL, and, count, desc, eq, ilike, isNotNull, or, sql } from 'drizzle-orm';
 
 export type CallRow = typeof calls.$inferSelect;
+
+/**
+ * Momento efectivo de la llamada. `started_at` puede faltar (webhook perdido,
+ * llamada creada desde otro flujo), así que caemos a `created_at` para que la
+ * fila igual ordene y entre en los rangos de fecha en vez de desaparecer.
+ */
+const occurredAt = sql`COALESCE(${calls.startedAt}, ${calls.createdAt})`;
 
 export type CallsFilter = {
   intent?: string;
@@ -17,14 +24,13 @@ export async function listCalls(
   tenantId: string,
   limitOrFilter: number | (CallsFilter & { limit?: number }) = 50,
 ): Promise<CallRow[]> {
-  const filter =
-    typeof limitOrFilter === 'number' ? { limit: limitOrFilter } : limitOrFilter;
+  const filter = typeof limitOrFilter === 'number' ? { limit: limitOrFilter } : limitOrFilter;
   const limit = filter.limit ?? 50;
 
   const conditions: SQL[] = [eq(calls.tenantId, tenantId)];
   if (filter.intent) conditions.push(eq(calls.intent, filter.intent));
   if (filter.sentiment) conditions.push(eq(calls.sentiment, filter.sentiment));
-  if (filter.since) conditions.push(gte(calls.startedAt, filter.since));
+  if (filter.since) conditions.push(sql`${occurredAt} >= ${filter.since}`);
   if (filter.q && filter.q.trim().length > 0) {
     const q = `%${filter.q.trim()}%`;
     const search = or(
@@ -39,7 +45,7 @@ export async function listCalls(
     .select()
     .from(calls)
     .where(and(...conditions))
-    .orderBy(desc(calls.startedAt))
+    .orderBy(desc(occurredAt))
     .limit(limit);
 }
 
@@ -55,10 +61,7 @@ export async function getCall(tenantId: string, callId: string): Promise<CallRow
 /**
  * Devuelve el transcript desencriptado para un call. Solo el dueño del tenant.
  */
-export async function getCallTranscript(
-  tenantId: string,
-  callId: string,
-): Promise<string | null> {
+export async function getCallTranscript(tenantId: string, callId: string): Promise<string | null> {
   const call = await getCall(tenantId, callId);
   if (!call?.transcriptEnc) return null;
   try {
@@ -89,28 +92,22 @@ export async function getDashboardStats(tenantId: string): Promise<DashboardStat
       transferred: calls.transferred,
     })
     .from(calls)
-    .where(and(eq(calls.tenantId, tenantId), gte(calls.startedAt, startOfToday)));
+    .where(and(eq(calls.tenantId, tenantId), sql`${occurredAt} >= ${startOfToday}`));
 
   const yesterdayCount = await db
     .select({ id: calls.id })
     .from(calls)
-    .where(
-      and(
-        eq(calls.tenantId, tenantId),
-        gte(calls.startedAt, startOfYesterday),
-      ),
-    );
+    .where(and(eq(calls.tenantId, tenantId), sql`${occurredAt} >= ${startOfYesterday}`));
 
   const callsToday = todayRows.length;
-  const durations = todayRows
-    .map((r) => r.durationSeconds)
-    .filter((d): d is number => d !== null);
+  const durations = todayRows.map((r) => r.durationSeconds).filter((d): d is number => d !== null);
   const avgDurationSec =
-    durations.length > 0 ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : null;
+    durations.length > 0
+      ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
+      : null;
 
   const booked = todayRows.filter((r) => r.intent === 'agendar').length;
-  const conversionRate =
-    callsToday === 0 ? 0 : Math.round((booked / callsToday) * 100);
+  const conversionRate = callsToday === 0 ? 0 : Math.round((booked / callsToday) * 100);
 
   const transferred = todayRows.filter((r) => r.transferred).length;
   const containmentRate =
@@ -168,13 +165,9 @@ export async function getUpcomingAppointments(
     })
     .from(calls)
     .where(
-      and(
-        eq(calls.tenantId, tenantId),
-        eq(calls.intent, 'agendar'),
-        isNotNull(calls.customData),
-      ),
+      and(eq(calls.tenantId, tenantId), eq(calls.intent, 'agendar'), isNotNull(calls.customData)),
     )
-    .orderBy(desc(calls.startedAt))
+    .orderBy(desc(occurredAt))
     .limit(50);
 
   const now = Date.now();
@@ -217,6 +210,23 @@ export async function countCallsPendingIntent(tenantId: string): Promise<number>
 }
 
 /**
+ * Llamadas a las que les falta inicio o duración — candidatas a que el backfill
+ * las recupere desde `call_events` / la API de Retell.
+ */
+export async function countCallsMissingMetadata(tenantId: string): Promise<number> {
+  const [row] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(calls)
+    .where(
+      and(
+        eq(calls.tenantId, tenantId),
+        sql`(${calls.startedAt} IS NULL OR ${calls.durationSeconds} IS NULL)`,
+      ),
+    );
+  return row?.total ?? 0;
+}
+
+/**
  * Cantidades agregadas por motivo en los últimos 7 días.
  * Para mini-charts en el dashboard.
  */
@@ -233,7 +243,7 @@ export async function getMotivoBreakdown(
     })
     .from(calls)
     .where(
-      and(eq(calls.tenantId, tenantId), gte(calls.startedAt, since), isNotNull(calls.intent)),
+      and(eq(calls.tenantId, tenantId), sql`${occurredAt} >= ${since}`, isNotNull(calls.intent)),
     )
     .groupBy(calls.intent);
 

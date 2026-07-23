@@ -1,7 +1,10 @@
 import 'server-only';
 import { db } from '@/lib/db/client';
 import { calls } from '@/lib/db/schema';
-import { and, eq, gte, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
+
+/** Ver nota en calls-list.ts: started_at puede faltar, created_at es el fallback. */
+const occurredAtSql = sql<Date>`COALESCE(${calls.startedAt}, ${calls.createdAt})`;
 
 export type AnalyticsRange = 'today' | '7d' | '30d';
 
@@ -25,15 +28,13 @@ export async function getInboundAnalytics(tenantId: string, range: AnalyticsRang
       intent: calls.intent,
       sentiment: calls.sentiment,
       transferred: calls.transferred,
-      startedAt: calls.startedAt,
+      startedAt: occurredAtSql,
     })
     .from(calls)
-    .where(and(eq(calls.tenantId, tenantId), gte(calls.startedAt, start)));
+    .where(and(eq(calls.tenantId, tenantId), sql`${occurredAtSql} >= ${start}`));
 
   const total = rows.length;
-  const durations = rows
-    .map((r) => r.durationSeconds)
-    .filter((d): d is number => d !== null);
+  const durations = rows.map((r) => r.durationSeconds).filter((d): d is number => d !== null);
   const avgDuration = durations.length
     ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
     : null;
@@ -65,7 +66,8 @@ export async function getInboundAnalytics(tenantId: string, range: AnalyticsRang
   const dayMs = 24 * 60 * 60 * 1000;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const days: { date: string; calls: number; agendar: number; cancelar: number; otro: number }[] = [];
+  const days: { date: string; calls: number; agendar: number; cancelar: number; otro: number }[] =
+    [];
   for (let d = new Date(start); d.getTime() <= today.getTime(); d = new Date(d.getTime() + dayMs)) {
     days.push({
       date: d.toISOString().slice(0, 10),
