@@ -1,3 +1,4 @@
+import { DemoBanner } from '@/components/dashboard/demo-banner';
 import { GlobalAnalyticsBar } from '@/components/dashboard/global-analytics-bar';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { RealtimeRefresh } from '@/components/dashboard/realtime-refresh';
@@ -5,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { getUpcomingAppointments } from '@/lib/data/calls-list';
+import { getDemoUpcoming } from '@/lib/demo-data';
 import { getCurrentTenant } from '@/lib/tenant';
 import {
   ArrowRight,
@@ -13,34 +15,59 @@ import {
   CalendarClock,
   Phone,
   PhoneOutgoing,
+  Sparkles,
   Stethoscope,
   User,
 } from 'lucide-react';
 import Link from 'next/link';
 
-export default async function DashboardOverview() {
+export default async function DashboardOverview({
+  searchParams,
+}: {
+  searchParams: Promise<{ demo?: string }>;
+}) {
   const { tenant } = await getCurrentTenant();
-  const upcoming = await getUpcomingAppointments(tenant.id, 8);
+  const demo = (await searchParams).demo === '1';
+  const upcoming = demo ? getDemoUpcoming() : await getUpcomingAppointments(tenant.id, 8);
 
   return (
     <>
       <PageHeader
         title={`Buenas, ${tenant.name.split(/['']s|\s/)[0]}`}
         description="Resumen en tiempo real de tu clínica."
+        demoBadge={demo}
         actions={
-          <Button asChild>
-            <Link href="/dashboard/agent">
-              Probar agente <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
+          demo ? (
+            <Button asChild variant="secondary">
+              <Link href="/dashboard">Salir del demo</Link>
+            </Button>
+          ) : (
+            <>
+              <Button asChild variant="secondary">
+                <Link href="/dashboard?demo=1">
+                  <Sparkles className="h-4 w-4" /> Ver Demo
+                </Link>
+              </Button>
+              <Button asChild>
+                <Link href="/dashboard/agent">
+                  Probar agente <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </>
+          )
         }
       />
-      {/* Sin UI: refresca server components cada 30s mientras la pestaña está visible */}
-      <div className="hidden">
-        <RealtimeRefresh intervalMs={30_000} />
-      </div>
+      {/* Sin UI: refresca server components cada 30s mientras la pestaña está visible.
+          En demo lo desactivamos: los datos son fijos y no queremos re-fetchs. */}
+      {!demo && (
+        <div className="hidden">
+          <RealtimeRefresh intervalMs={30_000} />
+        </div>
+      )}
 
-      <GlobalAnalyticsBar tenantId={tenant.id} />
+      {demo && <DemoBanner />}
+
+      <GlobalAnalyticsBar tenantId={tenant.id} demo={demo} />
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
         <Card className="xl:col-span-2">

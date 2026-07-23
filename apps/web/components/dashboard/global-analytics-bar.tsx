@@ -8,6 +8,7 @@ import {
   getOptimizedRevenueMTD,
   getTopTreatments,
 } from '@/lib/data/analytics/global';
+import { getDemoAnalytics } from '@/lib/demo-data';
 import { CalendarCheck, Coins, MessageCircle, Phone, PhoneCall, TrendingDown } from 'lucide-react';
 import { NoShowTrendChart, TopTreatmentsChart } from './analytics-global-charts';
 
@@ -29,15 +30,24 @@ function formatPercent(rate: number, digits = 1): string {
   return `${(rate * 100).toFixed(digits)}%`;
 }
 
-export async function GlobalAnalyticsBar({ tenantId }: { tenantId: string }) {
-  const [noShow, revenue, recovery, today, treatments, noShowSeries] = await Promise.all([
-    getNoShowStats(tenantId, 90),
-    getOptimizedRevenueMTD(tenantId),
-    getCancellationRecoveryStats(tenantId, 90),
-    getAppointmentsToday(tenantId),
-    getTopTreatments(tenantId, 30, 5),
-    getNoShowSeries(tenantId, 90),
-  ]);
+export async function GlobalAnalyticsBar({
+  tenantId,
+  demo = false,
+}: {
+  tenantId: string;
+  demo?: boolean;
+}) {
+  // En modo demo usamos el dataset ficticio; nunca tocamos la DB del tenant.
+  const [noShow, revenue, recovery, today, treatments, noShowSeries] = demo
+    ? getDemoAnalytics()
+    : await Promise.all([
+        getNoShowStats(tenantId, 90),
+        getOptimizedRevenueMTD(tenantId),
+        getCancellationRecoveryStats(tenantId, 90),
+        getAppointmentsToday(tenantId),
+        getTopTreatments(tenantId, 30, 5),
+        getNoShowSeries(tenantId, 90),
+      ]);
 
   return (
     <section className="mb-8">
@@ -160,7 +170,9 @@ function KpiCard({
         </div>
       </div>
       <div className="mt-3">
-        <span className="text-2xl sm:text-3xl font-semibold tracking-tight tabular-nums">{value}</span>
+        <span className="text-2xl sm:text-3xl font-semibold tracking-tight tabular-nums">
+          {value}
+        </span>
       </div>
       {hint && <p className="mt-1 text-xs text-zinc-500">{hint}</p>}
     </Card>
