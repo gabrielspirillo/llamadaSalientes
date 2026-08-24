@@ -5,6 +5,7 @@ const isPublicRoute = createRouteMatcher([
   '/',
   '/sign-in(.*)',
   '/sign-up(.*)',
+  '/onboarding/clinica(.*)', // wizard público de alta de clínicas (valida su propia key firmada)
   '/api/health',
   '/api/webhooks/(.*)', // clerk, retell, ghl, stripe — verifican firma propia
   '/api/retell/(.*)',
