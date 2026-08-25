@@ -136,7 +136,6 @@ export function StepClinic({ form, mutate, errors }: StepProps) {
         label="Email de contacto"
         required
         htmlFor="clinic-email"
-        hint="Lo usamos para avisarte cuando activemos tu agente."
         error={errors['clinic.contactEmail']}
       >
         <Input
