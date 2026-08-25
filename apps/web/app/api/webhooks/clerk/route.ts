@@ -120,7 +120,9 @@ async function handleOrgCreated(evt: ClerkOrgEvent) {
       slug,
       clerkOrganizationId: evt.data.id,
       plan: 'starter',
-      status: 'trial',
+      // Clínica recién creada: arranca en 'onboarding' → el dashboard la manda
+      // al wizard hasta que lo complete.
+      status: 'onboarding',
     })
     .returning({ id: tenants.id });
 

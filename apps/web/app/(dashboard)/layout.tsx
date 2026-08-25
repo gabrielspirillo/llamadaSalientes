@@ -20,6 +20,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // Tenant puede no existir si el webhook de Clerk todavía no llegó (1-2s).
   // En ese caso renderizamos con módulos OFF — al refrescar el tenant ya estará.
   const tenantCtx = await getCurrentTenantOrNull();
+
+  // Clínica nueva que todavía no completó el onboarding → al wizard. Solo aplica
+  // a clínicas en estado 'onboarding' (las nuevas); las existentes no se tocan.
+  if (tenantCtx?.tenant.status === 'onboarding') {
+    redirect('/onboarding/setup');
+  }
+
   const enabledModules: EnabledModules =
     (tenantCtx?.tenant.enabledModules as EnabledModules | null) ?? DEFAULT_ENABLED_MODULES;
 

@@ -33,11 +33,15 @@ export function OnboardingWizard({
   tenant,
   onboardingKey,
   selfRegister = false,
+  authenticated = false,
 }: {
   tenant: string;
   onboardingKey: string;
-  // Modo link único: no hay tenant en la URL; la clínica se crea al enviar.
+  // Modo link único (retirado como alta): no hay tenant en la URL.
   selfRegister?: boolean;
+  // Modo logueado: la clínica ya tiene sesión; guarda sobre SU tenant vía el
+  // endpoint autenticado y al terminar va al dashboard.
+  authenticated?: boolean;
 }) {
   const [form, setForm] = React.useState<OnboardingForm>(defaultForm);
   const [step, setStep] = React.useState(1);
@@ -119,11 +123,18 @@ export function OnboardingWizard({
 
     const payload = toPayload(form, tenant);
     try {
-      const params = new URLSearchParams();
-      if (tenant) params.set('tenant', tenant);
-      if (onboardingKey) params.set('key', onboardingKey);
-      const qs = params.toString();
-      const res = await fetch(`/api/public/onboarding${qs ? `?${qs}` : ''}`, {
+      let url: string;
+      if (authenticated) {
+        // Modo logueado: guarda sobre el tenant de la sesión (sin tenant/key).
+        url = '/api/onboarding/complete';
+      } else {
+        const params = new URLSearchParams();
+        if (tenant) params.set('tenant', tenant);
+        if (onboardingKey) params.set('key', onboardingKey);
+        const qs = params.toString();
+        url = `/api/public/onboarding${qs ? `?${qs}` : ''}`;
+      }
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -149,11 +160,11 @@ export function OnboardingWizard({
   };
 
   if (success) {
-    return <SuccessScreen payload={success} />;
+    return <SuccessScreen payload={success} authenticated={authenticated} />;
   }
 
-  // Link sin tenant y sin modo auto-registro → link incompleto.
-  if (!tenant && !selfRegister) {
+  // Link sin tenant, sin auto-registro y sin sesión → link incompleto.
+  if (!tenant && !selfRegister && !authenticated) {
     return (
       <div className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center">
         <h1 className="text-xl font-semibold text-zinc-900">Link incompleto</h1>

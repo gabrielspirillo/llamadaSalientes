@@ -46,7 +46,10 @@ export async function ensureTenantForOrg(input: {
       slug,
       clerkOrganizationId: input.clerkOrgId,
       plan: 'starter',
-      status: 'trial',
+      // Clínica recién creada: arranca en 'onboarding' → el dashboard la manda
+      // al wizard hasta que lo complete. Las clínicas existentes (trial/active)
+      // no se ven afectadas.
+      status: 'onboarding',
     })
     // clerk_organization_id es UNIQUE → si dos requests concurrentes provisionan
     // a la vez, uno gana y el otro no rompe.
