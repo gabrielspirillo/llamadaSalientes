@@ -1,10 +1,9 @@
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { getCurrentTenant } from '@/lib/tenant';
 import { auth, clerkClient } from '@clerk/nextjs/server';
-import { UserPlus } from 'lucide-react';
+import { InviteMember } from './invite-member';
 
 const roleMap: Record<string, { label: string; tone: 'violet' | 'info' | 'neutral' }> = {
   'org:admin': { label: 'Admin', tone: 'violet' },
@@ -54,25 +53,14 @@ export default async function TeamPage() {
       <PageHeader
         title="Equipo"
         description="Personas con acceso al panel."
-        actions={
-          <Button asChild size="sm">
-            <a
-              href={`https://dashboard.clerk.com/apps`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2"
-            >
-              <UserPlus className="h-4 w-4" /> Invitar miembro
-            </a>
-          </Button>
-        }
+        actions={<InviteMember />}
       />
 
       <Card>
         <div className="divide-y divide-zinc-100">
           {memberships.data.length === 0 && invitations.data.length === 0 ? (
             <div className="p-10 text-center text-sm text-zinc-500">
-              Aún no hay miembros. Invitá a tu equipo desde Clerk.
+              Aún no hay miembros. Usá “Invitar miembro” para sumar a tu equipo.
             </div>
           ) : null}
 
@@ -104,7 +92,9 @@ export default async function TeamPage() {
                     <p className="text-xs text-zinc-500 truncate">{email}</p>
                   </div>
                 </div>
-                <Badge tone={role.tone} className="shrink-0">{role.label}</Badge>
+                <Badge tone={role.tone} className="shrink-0">
+                  {role.label}
+                </Badge>
               </div>
             );
           })}
