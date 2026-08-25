@@ -3,7 +3,6 @@ import { db } from '@/lib/db/client';
 import { tenants } from '@/lib/db/schema';
 import { buildSummary, notifyInternalTeam } from '@/lib/onboarding/notify';
 import { persistOnboarding } from '@/lib/onboarding/persist';
-import { createPendingClinic } from '@/lib/onboarding/provision-public';
 import { payloadSchema } from '@/lib/onboarding/schema';
 import { eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -39,51 +38,44 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Dos modos:
-  //  A) Link único (sin ?tenant): auto-registro. Se crea una clínica "pendiente
-  //     de activar" a partir del nombre cargado. No pide key.
-  //  B) Link por clínica (con ?tenant=<slug>): escribe sobre una clínica que ya
-  //     existe. Requiere key firmada (salvo bypass) y que el slug coincida.
-  let tenantId: string;
+  // Flujo por-clínica con key firmada, sobre una clínica que YA existe.
+  // (El alta de clínicas nuevas es el flujo autenticado registro → onboarding.)
+  if (!tenantSlug) {
+    return NextResponse.json({ error: 'Falta el parámetro "tenant" en el link.' }, { status: 400 });
+  }
 
-  if (tenantSlug) {
-    const [tenant] = await db
-      .select({ id: tenants.id, name: tenants.name })
-      .from(tenants)
-      .where(eq(tenants.slug, tenantSlug))
-      .limit(1);
+  const [tenant] = await db
+    .select({ id: tenants.id, name: tenants.name })
+    .from(tenants)
+    .where(eq(tenants.slug, tenantSlug))
+    .limit(1);
 
-    if (!tenant) {
-      return NextResponse.json({ error: 'Clínica no encontrada.' }, { status: 404 });
-    }
+  if (!tenant) {
+    return NextResponse.json({ error: 'Clínica no encontrada.' }, { status: 404 });
+  }
 
-    // Autorización: onboarding key firmada (salvo bypass explícito de dev/demo).
-    const bypass = process.env.ONBOARDING_PUBLIC_NO_KEY === 'true';
-    if (!bypass) {
-      const providedKey = req.nextUrl.searchParams.get('key');
-      if (!verifyOnboardingKey(tenant.id, providedKey)) {
-        return NextResponse.json(
-          { error: 'Este link de onboarding no es válido o expiró. Pedinos uno nuevo.' },
-          { status: 401 },
-        );
-      }
-    }
-
-    // El slug del body debe coincidir con el de la URL (evita cargar a otra
-    // clínica por accidente).
-    if (parsed.data.tenant && parsed.data.tenant !== tenantSlug) {
+  // Autorización: onboarding key firmada (salvo bypass explícito de dev/demo).
+  const bypass = process.env.ONBOARDING_PUBLIC_NO_KEY === 'true';
+  if (!bypass) {
+    const providedKey = req.nextUrl.searchParams.get('key');
+    if (!verifyOnboardingKey(tenant.id, providedKey)) {
       return NextResponse.json(
-        { error: 'El identificador de la clínica no coincide con el link.' },
-        { status: 400 },
+        { error: 'Este link de onboarding no es válido o expiró. Pedinos uno nuevo.' },
+        { status: 401 },
       );
     }
-
-    tenantId = tenant.id;
-  } else {
-    // Auto-registro: crear la clínica pendiente desde el nombre del formulario.
-    const created = await createPendingClinic(parsed.data.clinic.name);
-    tenantId = created.id;
   }
+
+  // El slug del body debe coincidir con el de la URL (evita cargar a otra
+  // clínica por accidente).
+  if (parsed.data.tenant && parsed.data.tenant !== tenantSlug) {
+    return NextResponse.json(
+      { error: 'El identificador de la clínica no coincide con el link.' },
+      { status: 400 },
+    );
+  }
+
+  const tenantId = tenant.id;
 
   try {
     // 1. Persistir reusando los servicios existentes.

@@ -274,7 +274,13 @@ export function downloadPdf(payload: OnboardingPayload) {
 // Pantalla de confirmación
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function SuccessScreen({ payload }: { payload: OnboardingPayload }) {
+export function SuccessScreen({
+  payload,
+  authenticated = false,
+}: {
+  payload: OnboardingPayload;
+  authenticated?: boolean;
+}) {
   return (
     <div className="mx-auto flex max-w-lg flex-col items-center px-4 py-16 text-center">
       <div className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-600">
@@ -284,8 +290,15 @@ export function SuccessScreen({ payload }: { payload: OnboardingPayload }) {
         ¡Listo! Recibimos los datos de {payload.clinic.name}
       </h1>
       <p className="mt-2 text-zinc-500">
-        Nuestro equipo lo revisa y activa tu agente. Te avisamos a{' '}
-        <span className="font-medium text-zinc-700">{payload.clinic.contactEmail}</span>.
+        {authenticated
+          ? 'Nuestro equipo revisa los datos y activa tu agente. Ya podés entrar al panel.'
+          : 'Nuestro equipo lo revisa y activa tu agente.'}{' '}
+        {payload.clinic.contactEmail && (
+          <>
+            Te avisamos a{' '}
+            <span className="font-medium text-zinc-700">{payload.clinic.contactEmail}</span>.
+          </>
+        )}
       </p>
 
       <div className="mt-8 w-full rounded-2xl border border-zinc-200/70 bg-white p-5 text-left">
@@ -300,9 +313,16 @@ export function SuccessScreen({ payload }: { payload: OnboardingPayload }) {
         </div>
       </div>
 
-      <Button variant="secondary" className="mt-6" onClick={() => downloadPdf(payload)}>
-        <Download className="h-4 w-4" /> Descargar PDF
-      </Button>
+      <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+        {authenticated && (
+          <Button type="button" onClick={() => window.location.assign('/dashboard')}>
+            Ir al panel
+          </Button>
+        )}
+        <Button variant="secondary" type="button" onClick={() => downloadPdf(payload)}>
+          <Download className="h-4 w-4" /> Descargar PDF
+        </Button>
+      </div>
     </div>
   );
 }
