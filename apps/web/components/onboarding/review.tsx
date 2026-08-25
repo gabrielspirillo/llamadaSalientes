@@ -144,19 +144,130 @@ export function ReviewStep({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Descargar copia (JSON) — sin dependencias
+// Descargar PDF — resumen estético vía print del navegador (sin dependencias)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function downloadCopy(payload: OnboardingPayload) {
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `onboarding-${payload.tenant || 'clinica'}.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+function esc(s: string) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function priceLabel(t: OnboardingPayload['treatments'][number]) {
+  const min = t.priceMin != null ? `${t.priceMin}€` : '';
+  const max = t.priceMax != null ? `${t.priceMax}€` : '';
+  if (min && max) return `${min}–${max}`;
+  return min || max || '';
+}
+
+function buildOnboardingHtml(payload: OnboardingPayload) {
+  const { clinic, hours, treatments, faqs, agent } = payload;
+  const langLabel = clinic.defaultLanguage === 'en' ? 'English' : 'Español';
+
+  const hoursRows = DAYS.map((day) => {
+    const h = hours[day];
+    const val = h ? `${h.open} – ${h.close}` : 'Cerrado';
+    return `<tr><td class="d">${esc(DAY_LABELS[day])}</td><td class="${h ? '' : 'muted'}">${esc(val)}</td></tr>`;
+  }).join('');
+
+  const treatmentRows = treatments
+    .map((t) => {
+      const price = priceLabel(t);
+      return `<div class="item"><div class="item-head"><span class="item-name">${esc(t.name)}</span><span class="pill">${t.durationMinutes} min</span>${price ? `<span class="price">${esc(price)}</span>` : ''}</div>${t.description ? `<div class="item-desc">${esc(t.description)}</div>` : ''}</div>`;
+    })
+    .join('');
+
+  const faqRows = faqs.length
+    ? faqs
+        .map(
+          (f) =>
+            `<div class="item"><div class="item-name">${esc(f.question)}${f.category ? ` <span class="tag">${esc(f.category)}</span>` : ''}</div><div class="item-desc">${esc(f.answer)}</div></div>`,
+        )
+        .join('')
+    : '<div class="muted">Sin preguntas cargadas.</div>';
+
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8" /><title>Onboarding — ${esc(clinic.name)}</title><style>
+*{box-sizing:border-box}html,body{margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:#0f1f2e;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.wrap{max-width:720px;margin:0 auto;padding:40px 40px 56px}
+.brand{display:flex;align-items:center;gap:8px}
+.brand .name{font-weight:800;letter-spacing:-.02em;font-size:20px}
+.brand .dot{width:9px;height:9px;border-radius:9999px;background:#5fa896;display:inline-block}
+.brand .sep{color:#cbd2d9}
+.brand .kicker{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#7c8894}
+h1{font-size:26px;letter-spacing:-.02em;margin:22px 0 2px}
+.sub{color:#6b7580;font-size:13px;margin:0 0 26px}
+section{margin-top:24px}
+h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#7c8894;margin:0 0 10px}
+.card{border:1px solid #eceef1;border-radius:14px;padding:16px 18px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 24px}
+.field .k{font-size:11px;color:#98a2ad}
+.field .v{font-size:14px;color:#0f1f2e}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td{padding:7px 0;border-bottom:1px solid #f1f3f5}
+td.d{color:#6b7580;width:130px}
+.muted{color:#a7b0b8}
+.item{padding:10px 0;border-bottom:1px solid #f1f3f5}
+.item:last-child{border-bottom:0}
+.item-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.item-name{font-weight:600;font-size:14px}
+.item-desc{color:#6b7580;font-size:13px;margin-top:3px}
+.pill{font-size:11px;font-weight:600;color:#6d28d9;background:#f3f0ff;border-radius:9999px;padding:2px 8px}
+.price{font-size:13px;color:#0f1f2e;font-weight:600}
+.tag{font-size:10px;font-weight:600;color:#5a6b8c;background:#eef1f6;border-radius:9999px;padding:1px 6px;text-transform:uppercase;letter-spacing:.04em}
+.foot{margin-top:40px;text-align:center;color:#b3bcc4;font-size:11px}
+@page{margin:16mm}
+</style></head><body><div class="wrap">
+<div class="brand"><span class="name">FUTURA</span><span class="dot"></span><span class="sep">·</span><span class="kicker">Formulario de onboarding</span></div>
+<h1>${esc(clinic.name)}</h1>
+<p class="sub">Datos cargados para la activación del agente de voz.</p>
+<section><h2>Clínica</h2><div class="card grid">
+<div class="field"><div class="k">Dirección</div><div class="v">${esc(clinic.address)}</div></div>
+<div class="field"><div class="k">Teléfonos</div><div class="v">${esc(clinic.phones.join(' · '))}</div></div>
+<div class="field"><div class="k">Email de contacto</div><div class="v">${esc(clinic.contactEmail)}</div></div>
+<div class="field"><div class="k">Zona horaria</div><div class="v">${esc(clinic.timezone)}</div></div>
+<div class="field"><div class="k">Idioma del agente</div><div class="v">${esc(langLabel)}</div></div>
+</div></section>
+<section><h2>Horarios</h2><div class="card"><table>${hoursRows}</table></div></section>
+<section><h2>Tratamientos (${treatments.length})</h2><div class="card">${treatmentRows}</div></section>
+<section><h2>Preguntas frecuentes (${faqs.length})</h2><div class="card">${faqRows}</div></section>
+<section><h2>El agente</h2><div class="card grid">
+${agent.name ? `<div class="field"><div class="k">Nombre del agente</div><div class="v">${esc(agent.name)}</div></div>` : ''}
+<div class="field"><div class="k">Transferencia a humano</div><div class="v">${esc(agent.transferNumber)}</div></div>
+${agent.tone ? `<div class="field"><div class="k">Tono / instrucciones</div><div class="v">${esc(agent.tone)}</div></div>` : ''}
+${agent.afterHoursMessage ? `<div class="field"><div class="k">Mensaje fuera de horario</div><div class="v">${esc(agent.afterHoursMessage)}</div></div>` : ''}
+<div class="field"><div class="k">Consentimiento de grabación</div><div class="v">${esc(agent.recordingConsentText)}</div></div>
+</div></section>
+<div class="foot">Generado desde app.futuradigital.es · Futura</div>
+</div></body></html>`;
+}
+
+export function downloadPdf(payload: OnboardingPayload) {
+  const iframe = document.createElement('iframe');
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentWindow?.document;
+  if (!doc) {
+    iframe.remove();
+    return;
+  }
+  doc.open();
+  doc.write(buildOnboardingHtml(payload));
+  doc.close();
+
+  const cleanup = () => setTimeout(() => iframe.remove(), 500);
+  // Damos un margen a que renderice el HTML (todo inline, sin assets externos).
+  setTimeout(() => {
+    const win = iframe.contentWindow;
+    if (!win) {
+      iframe.remove();
+      return;
+    }
+    win.onafterprint = cleanup;
+    win.focus();
+    win.print();
+    setTimeout(cleanup, 60000); // fallback si onafterprint no dispara
+  }, 350);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -189,8 +300,8 @@ export function SuccessScreen({ payload }: { payload: OnboardingPayload }) {
         </div>
       </div>
 
-      <Button variant="secondary" className="mt-6" onClick={() => downloadCopy(payload)}>
-        <Download className="h-4 w-4" /> Descargar copia (JSON)
+      <Button variant="secondary" className="mt-6" onClick={() => downloadPdf(payload)}>
+        <Download className="h-4 w-4" /> Descargar PDF
       </Button>
     </div>
   );
