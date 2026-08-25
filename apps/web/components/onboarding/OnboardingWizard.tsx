@@ -1,6 +1,6 @@
 'use client';
 
-import { ReviewStep, SuccessScreen, downloadCopy } from '@/components/onboarding/review';
+import { ReviewStep, SuccessScreen } from '@/components/onboarding/review';
 import {
   StepAgent,
   StepClinic,
@@ -10,7 +10,6 @@ import {
 } from '@/components/onboarding/steps';
 import { type Errors, validateStep } from '@/components/onboarding/validation';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/cn';
 import {
   type OnboardingForm,
   type OnboardingPayload,
@@ -18,7 +17,7 @@ import {
   defaultForm,
   toPayload,
 } from '@/lib/onboarding/schema';
-import { ArrowLeft, ArrowRight, Download, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import * as React from 'react';
 
 const STEPS = [
@@ -173,11 +172,15 @@ export function OnboardingWizard({
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-4 py-8 sm:px-6 sm:py-12">
       {/* Header + progreso */}
       <header className="mb-6">
-        <div className="mb-5 flex items-center gap-2.5">
-          <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-black">
-            <span className="text-sm font-semibold text-white">F</span>
-          </div>
-          <span className="text-sm font-medium text-zinc-500">FUTURA · Onboarding</span>
+        <div className="mb-5 flex items-center gap-2">
+          <span className="text-[18px] font-extrabold leading-none tracking-tight text-[#0f1f2e]">
+            FUTURA
+          </span>
+          <span className="inline-block h-2 w-2 rounded-full bg-[#5fa896]" />
+          <span className="mx-0.5 text-zinc-300">·</span>
+          <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            Formulario de onboarding
+          </span>
         </div>
 
         <div className="flex items-center justify-between">
@@ -232,25 +235,12 @@ export function OnboardingWizard({
             Siguiente <ArrowRight className="h-4 w-4" />
           </Button>
         ) : (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              type="button"
-              onClick={() => downloadCopy(toPayload(form, tenant))}
-            >
-              <Download className="h-4 w-4" /> Descargar copia
-            </Button>
-            <Button onClick={submit} disabled={submitting} type="button">
-              {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-              {submitting ? 'Enviando…' : 'Enviar onboarding'}
-            </Button>
-          </div>
+          <Button onClick={submit} disabled={submitting} type="button">
+            {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+            {submitting ? 'Enviando…' : 'Enviar onboarding'}
+          </Button>
         )}
       </footer>
-
-      <p className={cn('mt-4 text-center text-xs text-zinc-400')}>
-        Tus datos se guardan en este dispositivo mientras completás el formulario.
-      </p>
     </div>
   );
 }

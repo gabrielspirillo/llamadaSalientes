@@ -525,7 +525,7 @@ export function StepAgent({ form, mutate, errors }: StepProps) {
         label="Texto de consentimiento de grabación"
         required
         htmlFor="agent-consent"
-        hint="Lo dice el agente al inicio de cada llamada, obligatorio por compliance."
+        hint="Lo dice el agente al inicio de cada llamada"
         error={errors['agent.recordingConsentText']}
       >
         <Textarea
