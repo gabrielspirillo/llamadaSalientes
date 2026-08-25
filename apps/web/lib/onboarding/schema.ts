@@ -180,7 +180,9 @@ const numeric = z
   .nonnegative('No puede ser negativo');
 
 export const payloadSchema = z.object({
-  tenant: z.string().min(1),
+  // Vacío en modo link único (auto-registro): el server crea la clínica desde
+  // clinic.name. En modo link por clínica trae el slug del tenant existente.
+  tenant: z.string().default(''),
   submittedAt: z.string().min(1),
   clinic: z.object({
     name: z.string().trim().min(1, 'Ingresá el nombre de la clínica'),
