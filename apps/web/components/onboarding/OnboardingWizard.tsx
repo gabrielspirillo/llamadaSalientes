@@ -33,9 +33,12 @@ const STEPS = [
 export function OnboardingWizard({
   tenant,
   onboardingKey,
+  selfRegister = false,
 }: {
   tenant: string;
   onboardingKey: string;
+  // Modo link único: no hay tenant en la URL; la clínica se crea al enviar.
+  selfRegister?: boolean;
 }) {
   const [form, setForm] = React.useState<OnboardingForm>(defaultForm);
   const [step, setStep] = React.useState(1);
@@ -117,9 +120,11 @@ export function OnboardingWizard({
 
     const payload = toPayload(form, tenant);
     try {
-      const params = new URLSearchParams({ tenant });
+      const params = new URLSearchParams();
+      if (tenant) params.set('tenant', tenant);
       if (onboardingKey) params.set('key', onboardingKey);
-      const res = await fetch(`/api/public/onboarding?${params.toString()}`, {
+      const qs = params.toString();
+      const res = await fetch(`/api/public/onboarding${qs ? `?${qs}` : ''}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -148,8 +153,8 @@ export function OnboardingWizard({
     return <SuccessScreen payload={success} />;
   }
 
-  // Link sin tenant → no se puede identificar la clínica.
-  if (!tenant) {
+  // Link sin tenant y sin modo auto-registro → link incompleto.
+  if (!tenant && !selfRegister) {
     return (
       <div className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center">
         <h1 className="text-xl font-semibold text-zinc-900">Link incompleto</h1>

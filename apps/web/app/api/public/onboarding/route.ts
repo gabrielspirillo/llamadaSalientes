@@ -3,6 +3,7 @@ import { db } from '@/lib/db/client';
 import { tenants } from '@/lib/db/schema';
 import { buildSummary, notifyInternalTeam } from '@/lib/onboarding/notify';
 import { persistOnboarding } from '@/lib/onboarding/persist';
+import { createPendingClinic } from '@/lib/onboarding/provision-public';
 import { payloadSchema } from '@/lib/onboarding/schema';
 import { eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -22,31 +23,6 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(req: NextRequest) {
   const tenantSlug = req.nextUrl.searchParams.get('tenant');
-  if (!tenantSlug) {
-    return NextResponse.json({ error: 'Falta el parámetro "tenant" en el link.' }, { status: 400 });
-  }
-
-  const [tenant] = await db
-    .select({ id: tenants.id, name: tenants.name })
-    .from(tenants)
-    .where(eq(tenants.slug, tenantSlug))
-    .limit(1);
-
-  if (!tenant) {
-    return NextResponse.json({ error: 'Clínica no encontrada.' }, { status: 404 });
-  }
-
-  // Autorización: onboarding key firmada (salvo bypass explícito de dev/demo).
-  const bypass = process.env.ONBOARDING_PUBLIC_NO_KEY === 'true';
-  if (!bypass) {
-    const providedKey = req.nextUrl.searchParams.get('key');
-    if (!verifyOnboardingKey(tenant.id, providedKey)) {
-      return NextResponse.json(
-        { error: 'Este link de onboarding no es válido o expiró. Pedinos uno nuevo.' },
-        { status: 401 },
-      );
-    }
-  }
 
   let raw: unknown;
   try {
@@ -63,18 +39,55 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // El slug del body debe coincidir con el de la URL (evita cargar a otra
-  // clínica por accidente).
-  if (parsed.data.tenant !== tenantSlug) {
-    return NextResponse.json(
-      { error: 'El identificador de la clínica no coincide con el link.' },
-      { status: 400 },
-    );
+  // Dos modos:
+  //  A) Link único (sin ?tenant): auto-registro. Se crea una clínica "pendiente
+  //     de activar" a partir del nombre cargado. No pide key.
+  //  B) Link por clínica (con ?tenant=<slug>): escribe sobre una clínica que ya
+  //     existe. Requiere key firmada (salvo bypass) y que el slug coincida.
+  let tenantId: string;
+
+  if (tenantSlug) {
+    const [tenant] = await db
+      .select({ id: tenants.id, name: tenants.name })
+      .from(tenants)
+      .where(eq(tenants.slug, tenantSlug))
+      .limit(1);
+
+    if (!tenant) {
+      return NextResponse.json({ error: 'Clínica no encontrada.' }, { status: 404 });
+    }
+
+    // Autorización: onboarding key firmada (salvo bypass explícito de dev/demo).
+    const bypass = process.env.ONBOARDING_PUBLIC_NO_KEY === 'true';
+    if (!bypass) {
+      const providedKey = req.nextUrl.searchParams.get('key');
+      if (!verifyOnboardingKey(tenant.id, providedKey)) {
+        return NextResponse.json(
+          { error: 'Este link de onboarding no es válido o expiró. Pedinos uno nuevo.' },
+          { status: 401 },
+        );
+      }
+    }
+
+    // El slug del body debe coincidir con el de la URL (evita cargar a otra
+    // clínica por accidente).
+    if (parsed.data.tenant && parsed.data.tenant !== tenantSlug) {
+      return NextResponse.json(
+        { error: 'El identificador de la clínica no coincide con el link.' },
+        { status: 400 },
+      );
+    }
+
+    tenantId = tenant.id;
+  } else {
+    // Auto-registro: crear la clínica pendiente desde el nombre del formulario.
+    const created = await createPendingClinic(parsed.data.clinic.name);
+    tenantId = created.id;
   }
 
   try {
     // 1. Persistir reusando los servicios existentes.
-    await persistOnboarding(tenant.id, parsed.data);
+    await persistOnboarding(tenantId, parsed.data);
 
     // 2. Aviso interno (stub — punto de integración preparado).
     const summary = buildSummary(parsed.data);

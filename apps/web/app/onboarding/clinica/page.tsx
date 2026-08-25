@@ -6,13 +6,14 @@ export const metadata: Metadata = {
   description: 'Cargá los datos de tu clínica para activar tu agente de voz.',
 };
 
-// Página PÚBLICA (sin login) del onboarding de clínicas nuevas. Se envía por
-// link: /onboarding/clinica?tenant=<slug>&key=<key>
+// Página PÚBLICA (sin login) del onboarding de clínicas nuevas.
 //
-// ⚠️ Para que sea accesible sin sesión falta UN cambio en un archivo existente
-// (middleware.ts): agregar '/onboarding/clinica(.*)' a las rutas públicas.
-// Ese diff se entrega para revisión aparte — no se aplica acá por regla
-// (no tocar middleware/auth). Sin ese cambio, Clerk pide login antes de llegar.
+// Dos formas de usarla:
+//   • Link único (recomendado): /onboarding/clinica → sin tenant. La clínica
+//     pone su nombre y datos y se crea sola (auto-registro, "pendiente de
+//     activar"). Es el mismo link para todas.
+//   • Link por clínica: /onboarding/clinica?tenant=<slug>&key=<key> → escribe
+//     sobre una clínica que ya existe (requiere key firmada).
 export default async function OnboardingClinicaPage({
   searchParams,
 }: {
@@ -22,7 +23,7 @@ export default async function OnboardingClinicaPage({
 
   return (
     <div className="min-h-screen bg-zinc-50">
-      <OnboardingWizard tenant={tenant} onboardingKey={key} />
+      <OnboardingWizard tenant={tenant} onboardingKey={key} selfRegister={!tenant} />
     </div>
   );
 }
