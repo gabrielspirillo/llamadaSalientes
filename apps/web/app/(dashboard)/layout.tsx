@@ -6,7 +6,7 @@ import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { userId, orgId } = await auth();
+  const { userId, orgId, orgRole } = await auth();
 
   if (!userId) {
     redirect('/sign-in');
@@ -22,8 +22,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const tenantCtx = await getCurrentTenantOrNull();
 
   // Clínica nueva que todavía no completó el onboarding → al wizard. Solo aplica
-  // a clínicas en estado 'onboarding' (las nuevas); las existentes no se tocan.
-  if (tenantCtx?.tenant.status === 'onboarding') {
+  // a clínicas en estado 'onboarding' (las nuevas) y SOLO al admin/dueño: un
+  // trabajador que se une por invitación no debe pasar por el onboarding.
+  // Las clínicas existentes (trial/active) no se tocan.
+  if (tenantCtx?.tenant.status === 'onboarding' && orgRole === 'org:admin') {
     redirect('/onboarding/setup');
   }
 
