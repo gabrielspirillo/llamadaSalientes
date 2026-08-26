@@ -49,9 +49,27 @@ export async function inviteMemberAction(input: {
     revalidatePath('/dashboard/team');
     return { ok: true };
   } catch (err) {
-    // Clerk devuelve mensajes legibles (ej. ya es miembro, ya invitado).
-    const message =
-      err instanceof Error ? err.message : 'No se pudo enviar la invitación. Probá de nuevo.';
+    // Los errores de Clerk traen el detalle en `errors[].longMessage`; el
+    // `.message` genérico suele ser sólo "Bad Request".
+    const clerkErr = err as {
+      errors?: Array<{ longMessage?: string; message?: string; code?: string }>;
+      message?: string;
+    };
+    const detail = clerkErr.errors?.[0];
+    let message =
+      detail?.longMessage ??
+      detail?.message ??
+      clerkErr.message ??
+      'No se pudo enviar la invitación.';
+
+    // Traducción de los casos más comunes a algo claro en español.
+    if (
+      detail?.code === 'duplicate_record' ||
+      /already a member|already been invited/i.test(message)
+    ) {
+      message = 'Esa persona ya es miembro o ya tiene una invitación pendiente.';
+    }
+
     return { ok: false, error: message };
   }
 }

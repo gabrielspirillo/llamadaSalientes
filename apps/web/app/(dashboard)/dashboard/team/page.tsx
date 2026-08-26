@@ -50,11 +50,11 @@ export default async function TeamPage() {
 
   return (
     <>
-      <PageHeader
-        title="Equipo"
-        description="Personas con acceso al panel."
-        actions={<InviteMember />}
-      />
+      <PageHeader title="Equipo" description="Personas con acceso al panel." />
+
+      <div className="mb-5">
+        <InviteMember />
+      </div>
 
       <Card>
         <div className="divide-y divide-zinc-100">
