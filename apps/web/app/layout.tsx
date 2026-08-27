@@ -10,7 +10,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 5,
+  // Sin zoom en mobile: evita el pinch-zoom que desarma el layout.
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: 'cover',
 };
 
