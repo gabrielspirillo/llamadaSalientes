@@ -11,6 +11,7 @@ import {
   Contact,
   HelpCircle,
   Home,
+  LayoutDashboard,
   ListChecks,
   Lock,
   MessageCircle,
@@ -120,7 +121,22 @@ function SidebarNav({
         })}
       </nav>
 
-      <div className="px-3 pb-4">
+      <div className="space-y-0.5 px-3 pb-4">
+        {isSuperAdmin && (
+          <Link
+            href="/dashboard/futura"
+            onClick={onNavigate}
+            className={cn(
+              'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors',
+              pathname.startsWith('/dashboard/futura')
+                ? 'bg-white text-zinc-900 shadow-sm border border-zinc-200/70 font-medium'
+                : 'text-zinc-600 hover:bg-white/60 hover:text-zinc-900',
+            )}
+          >
+            <LayoutDashboard className="h-4 w-4" />
+            Panel Futura
+          </Link>
+        )}
         <Link
           href="/dashboard/configuration"
           onClick={onNavigate}
