@@ -1,12 +1,13 @@
 import { PageHeader } from '@/components/dashboard/page-header';
 import { isSuperAdminTenant } from '@/lib/modules';
 import { getCurrentTenant } from '@/lib/tenant';
-import { ConfigurationTabs, type ConfigTab } from './configuration-tabs';
+import { AgentStatusPanel } from './_panels/agent-status-panel';
 import { IntegrationsPanel } from './_panels/integrations-panel';
 import { ModulesPanel } from './_panels/modules-panel';
 import { PlaygroundPanel } from './_panels/playground-panel';
 import { TelephonyPanel } from './_panels/telephony-panel';
 import { WhatsappPanel } from './_panels/whatsapp-panel';
+import { type ConfigTab, ConfigurationTabs } from './configuration-tabs';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,10 +22,23 @@ export default async function ConfigurationPage({
   const { tenant } = await getCurrentTenant();
   const isSuperAdmin = isSuperAdminTenant(tenant.id);
 
+  // Vista de la CLÍNICA: solo lectura. No ve ni puede tocar las conexiones
+  // técnicas (las gestiona Futura). Muestra el estado de su agente.
+  if (!isSuperAdmin) {
+    return (
+      <>
+        <PageHeader
+          title="Estado de tu agente"
+          description="Cómo va la puesta a punto de tu agente de voz."
+        />
+        <AgentStatusPanel />
+      </>
+    );
+  }
+
+  // Vista de FUTURA (super-admin): conexiones técnicas completas.
   const raw = (sp.tab ?? 'whatsapp') as ConfigTab;
-  // Tab "modules" solo accesible para super-admin; resto fallback a whatsapp.
-  const isModulesTab = raw === 'modules' && isSuperAdmin;
-  const tab: ConfigTab = isModulesTab ? 'modules' : PUBLIC_TABS.has(raw) ? raw : 'whatsapp';
+  const tab: ConfigTab = raw === 'modules' ? 'modules' : PUBLIC_TABS.has(raw) ? raw : 'whatsapp';
 
   return (
     <>

@@ -1,6 +1,6 @@
 import { DashboardSidebar } from '@/components/dashboard/sidebar';
 import { DashboardTopbar } from '@/components/dashboard/topbar';
-import { DEFAULT_ENABLED_MODULES, type EnabledModules } from '@/lib/modules';
+import { DEFAULT_ENABLED_MODULES, type EnabledModules, isSuperAdminTenant } from '@/lib/modules';
 import { getCurrentTenantOrNull } from '@/lib/tenant';
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
@@ -32,11 +32,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const enabledModules: EnabledModules =
     (tenantCtx?.tenant.enabledModules as EnabledModules | null) ?? DEFAULT_ENABLED_MODULES;
 
+  // Futura (super-admin) ve las conexiones técnicas; la clínica ve solo lectura.
+  const isSuperAdmin = tenantCtx ? isSuperAdminTenant(tenantCtx.tenant.id) : false;
+
   return (
     <div className="flex min-h-screen bg-white text-zinc-900">
-      <DashboardSidebar enabledModules={enabledModules} />
+      <DashboardSidebar enabledModules={enabledModules} isSuperAdmin={isSuperAdmin} />
       <div className="flex-1 flex flex-col min-w-0">
-        <DashboardTopbar enabledModules={enabledModules} />
+        <DashboardTopbar enabledModules={enabledModules} isSuperAdmin={isSuperAdmin} />
         <main className="flex-1 px-4 sm:px-6 lg:px-10 py-5 sm:py-8">{children}</main>
       </div>
     </div>
