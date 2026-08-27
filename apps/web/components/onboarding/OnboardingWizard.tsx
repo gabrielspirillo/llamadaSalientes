@@ -17,7 +17,8 @@ import {
   defaultForm,
   toPayload,
 } from '@/lib/onboarding/schema';
-import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
+import { useClerk } from '@clerk/nextjs';
+import { ArrowLeft, ArrowRight, Loader2, LogOut } from 'lucide-react';
 import * as React from 'react';
 
 const STEPS = [
@@ -111,6 +112,11 @@ export function OnboardingWizard({
   };
 
   const back = () => goToStep(Math.max(step - 1, 1));
+
+  // En el paso 1 no hay "atrás": ofrecemos "Salir" para cerrar sesión y volver
+  // al inicio (por si se registraron con el mail equivocado).
+  const { signOut } = useClerk();
+  const exit = () => signOut({ redirectUrl: '/' });
 
   const submit = async () => {
     if (!confirmed) {
@@ -237,9 +243,15 @@ export function OnboardingWizard({
 
       {/* Navegación */}
       <footer className="mt-8 flex items-center justify-between gap-3 border-t border-zinc-100 pt-5">
-        <Button variant="ghost" onClick={back} disabled={step === 1 || submitting} type="button">
-          <ArrowLeft className="h-4 w-4" /> Atrás
-        </Button>
+        {step === 1 ? (
+          <Button variant="ghost" onClick={exit} disabled={submitting} type="button">
+            <LogOut className="h-4 w-4" /> Salir
+          </Button>
+        ) : (
+          <Button variant="ghost" onClick={back} disabled={submitting} type="button">
+            <ArrowLeft className="h-4 w-4" /> Atrás
+          </Button>
+        )}
 
         {step < STEPS.length ? (
           <Button onClick={next} type="button">
