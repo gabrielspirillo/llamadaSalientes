@@ -17,6 +17,7 @@ import {
   PhoneCall,
   PhoneOutgoing,
   Settings,
+  ShieldCheck,
   Stethoscope,
   Users,
   X,
@@ -44,9 +45,11 @@ const items = [
 function SidebarNav({
   onNavigate,
   enabledModules,
+  isSuperAdmin = false,
 }: {
   onNavigate?: () => void;
   enabledModules: EnabledModules;
+  isSuperAdmin?: boolean;
 }) {
   const pathname = usePathname();
   return (
@@ -128,18 +131,33 @@ function SidebarNav({
               : 'text-zinc-600 hover:bg-white/60 hover:text-zinc-900',
           )}
         >
-          <Settings className="h-4 w-4" />
-          Configuración
+          {isSuperAdmin ? (
+            <>
+              <Settings className="h-4 w-4" />
+              Configuración
+            </>
+          ) : (
+            <>
+              <ShieldCheck className="h-4 w-4" />
+              Estado
+            </>
+          )}
         </Link>
       </div>
     </>
   );
 }
 
-export function DashboardSidebar({ enabledModules }: { enabledModules: EnabledModules }) {
+export function DashboardSidebar({
+  enabledModules,
+  isSuperAdmin = false,
+}: {
+  enabledModules: EnabledModules;
+  isSuperAdmin?: boolean;
+}) {
   return (
     <aside className="hidden lg:flex sticky top-0 h-screen w-60 shrink-0 flex-col border-r border-zinc-200/70 bg-zinc-50/40">
-      <SidebarNav enabledModules={enabledModules} />
+      <SidebarNav enabledModules={enabledModules} isSuperAdmin={isSuperAdmin} />
     </aside>
   );
 }
@@ -148,10 +166,12 @@ export function DashboardSidebarMobile({
   open,
   onClose,
   enabledModules,
+  isSuperAdmin = false,
 }: {
   open: boolean;
   onClose: () => void;
   enabledModules: EnabledModules;
+  isSuperAdmin?: boolean;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -175,17 +195,18 @@ export function DashboardSidebarMobile({
       )}
       aria-hidden={!open}
     >
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <aside
         className={cn(
           'absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-zinc-200/70 bg-zinc-50 shadow-2xl transition-transform',
           open ? 'translate-x-0' : '-translate-x-full',
         )}
       >
-        <SidebarNav onNavigate={onClose} enabledModules={enabledModules} />
+        <SidebarNav
+          onNavigate={onClose}
+          enabledModules={enabledModules}
+          isSuperAdmin={isSuperAdmin}
+        />
       </aside>
     </div>
   );

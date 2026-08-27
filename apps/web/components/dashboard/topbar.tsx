@@ -43,7 +43,13 @@ const KIND_DOT: Record<Notification['kind'], string> = {
   otro: 'bg-zinc-400',
 };
 
-export function DashboardTopbar({ enabledModules }: { enabledModules: EnabledModules }) {
+export function DashboardTopbar({
+  enabledModules,
+  isSuperAdmin = false,
+}: {
+  enabledModules: EnabledModules;
+  isSuperAdmin?: boolean;
+}) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -106,7 +112,11 @@ export function DashboardTopbar({ enabledModules }: { enabledModules: EnabledMod
           >
             <Search className="h-4 w-4 text-zinc-600" />
           </button>
-          <NotificationsBell open={notifOpen} onToggle={() => setNotifOpen((v) => !v)} onClose={() => setNotifOpen(false)} />
+          <NotificationsBell
+            open={notifOpen}
+            onToggle={() => setNotifOpen((v) => !v)}
+            onClose={() => setNotifOpen(false)}
+          />
           <UserButton
             appearance={{
               elements: {
@@ -121,6 +131,7 @@ export function DashboardTopbar({ enabledModules }: { enabledModules: EnabledMod
         open={mobileNavOpen}
         onClose={() => setMobileNavOpen(false)}
         enabledModules={enabledModules}
+        isSuperAdmin={isSuperAdmin}
       />
       {searchOpen && <SearchPalette onClose={() => setSearchOpen(false)} />}
     </>
@@ -224,7 +235,10 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
                     </div>
                     {h.when && (
                       <span className="text-xs text-zinc-400 shrink-0 tabular-nums">
-                        {new Date(h.when).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}
+                        {new Date(h.when).toLocaleDateString('es-ES', {
+                          day: '2-digit',
+                          month: '2-digit',
+                        })}
                       </span>
                     )}
                   </button>
@@ -400,9 +414,7 @@ function NotificationsBell({
                             )}
                           </div>
                           <p className="text-xs text-zinc-500 truncate">{n.detail}</p>
-                          <p className="text-[11px] text-zinc-400 mt-0.5">
-                            {timeAgo(n.createdAt)}
-                          </p>
+                          <p className="text-[11px] text-zinc-400 mt-0.5">{timeAgo(n.createdAt)}</p>
                         </div>
                       </Link>
                       <button
