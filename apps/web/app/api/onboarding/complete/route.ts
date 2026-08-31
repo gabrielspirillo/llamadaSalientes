@@ -21,7 +21,10 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   let tenantId: string;
   try {
-    const { tenant } = await getCurrentTenant();
+    const { tenant, impersonating } = await getCurrentTenant();
+    if (impersonating) {
+      return NextResponse.json({ error: 'No disponible en modo Futura.' }, { status: 400 });
+    }
     tenantId = tenant.id;
   } catch {
     return NextResponse.json({ error: 'Sesión no válida.' }, { status: 401 });

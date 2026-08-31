@@ -2,6 +2,8 @@ import 'server-only';
 import { requireOrg } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { tenants } from '@/lib/db/schema';
+import { findTenantById, getActingTenantId } from '@/lib/impersonation';
+import { isSuperAdminTenant } from '@/lib/modules';
 import { ensureTenantForOrg } from '@/lib/provision-tenant';
 import { clerkClient } from '@clerk/nextjs/server';
 import { eq } from 'drizzle-orm';
@@ -51,11 +53,30 @@ export async function resolveTenantForOrg(orgId: string, userId: string) {
   return { tenant, userId };
 }
 
-// Mapea Clerk org_id → fila de tenant.
-// Cacheado por request (React.cache) para evitar refetch en una misma página.
+// Mapea Clerk org_id → fila de tenant. Cacheado por request (React.cache).
+//
+// Impersonación (Camino A): si el usuario real es super-admin (Futura) y hay
+// una cookie "actuando como clínica X", devuelve la clínica X en `tenant` para
+// que TODOS los paneles/acciones (que usan getCurrentTenant) operen sobre ella.
+// La cookie SOLO se respeta para super-admin — se re-valida acá en cada request.
+// `isSuperAdmin` refleja SIEMPRE al usuario real (para gates de UI), y
+// `realTenant` es la clínica de Futura aunque se esté impersonando.
 export const getCurrentTenant = cache(async () => {
   const { orgId, userId } = await requireOrg();
-  return resolveTenantForOrg(orgId, userId);
+  const { tenant: realTenant } = await resolveTenantForOrg(orgId, userId);
+  const isSuperAdmin = isSuperAdminTenant(realTenant.id);
+
+  if (isSuperAdmin) {
+    const actingId = await getActingTenantId();
+    if (actingId && actingId !== realTenant.id) {
+      const acting = await findTenantById(actingId);
+      if (acting) {
+        return { tenant: acting, userId, isSuperAdmin, impersonating: true as const, realTenant };
+      }
+    }
+  }
+
+  return { tenant: realTenant, userId, isSuperAdmin, impersonating: false as const, realTenant };
 });
 
 // Versión no-throw: útil en componentes que solo quieren saber si hay tenant.

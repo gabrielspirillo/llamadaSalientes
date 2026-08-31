@@ -1,5 +1,4 @@
 import { PageHeader } from '@/components/dashboard/page-header';
-import { isSuperAdminTenant } from '@/lib/modules';
 import { getCurrentTenant } from '@/lib/tenant';
 import { AgentStatusPanel } from './_panels/agent-status-panel';
 import { IntegrationsPanel } from './_panels/integrations-panel';
@@ -19,8 +18,7 @@ export default async function ConfigurationPage({
   searchParams: Promise<{ tab?: string; ghl?: string; ghl_error?: string }>;
 }) {
   const sp = await searchParams;
-  const { tenant } = await getCurrentTenant();
-  const isSuperAdmin = isSuperAdminTenant(tenant.id);
+  const { isSuperAdmin } = await getCurrentTenant();
 
   // Vista de la CLÍNICA: solo lectura. No ve ni puede tocar las conexiones
   // técnicas (las gestiona Futura). Muestra el estado de su agente.

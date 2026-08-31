@@ -6,12 +6,12 @@ import {
   type EnabledModules,
   MODULE_DEFINITIONS,
   MODULE_KEYS,
-  isSuperAdminTenant,
 } from '@/lib/modules';
 import { getCurrentTenant } from '@/lib/tenant';
 import { notFound } from 'next/navigation';
 import { ModuleToggle } from '../configuration/_panels/modules-panel-toggle';
 import { ActivateButton } from './activate-button';
+import { EnterButton } from './enter-button';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,8 +51,8 @@ function fmtDate(d: Date | string | null): string {
 }
 
 export default async function FuturaPanelPage() {
-  const { tenant } = await getCurrentTenant();
-  if (!isSuperAdminTenant(tenant.id)) {
+  const { isSuperAdmin, realTenant, tenant: actingTenant, impersonating } = await getCurrentTenant();
+  if (!isSuperAdmin) {
     notFound();
   }
 
@@ -89,6 +89,10 @@ export default async function FuturaPanelPage() {
         description="Gestioná las clínicas de la plataforma: activá altas nuevas y controlá sus módulos."
       />
 
+      <p className="mb-4 text-xs text-zinc-400">
+        Tu tenant (Futura): <code className="rounded bg-zinc-100 px-1.5 py-0.5 text-zinc-600">{realTenant.id}</code> · {realTenant.slug}
+      </p>
+
       {/* Resumen */}
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label="Clínicas" value={total} tone="neutral" />
@@ -105,7 +109,7 @@ export default async function FuturaPanelPage() {
           {clinics.map((c) => {
             const modules = (c.enabledModules ?? {}) as EnabledModules;
             const meta = STATUS_META[c.status] ?? { label: c.status, tone: 'neutral' as const };
-            const isFutura = c.id === tenant.id;
+            const isFutura = c.id === realTenant.id;
             const needsAttention = c.status === 'pending' || c.status === 'onboarding';
             return (
               <div
@@ -125,7 +129,16 @@ export default async function FuturaPanelPage() {
                       {c.slug} · creada el {fmtDate(c.createdAt)}
                     </p>
                   </div>
-                  {!isFutura && <ActivateButton tenantId={c.id} active={c.status === 'active'} />}
+                  {!isFutura && (
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      {impersonating && c.id === actingTenant.id ? (
+                        <Badge tone="violet">Gestionando ahora</Badge>
+                      ) : (
+                        <EnterButton tenantId={c.id} />
+                      )}
+                      <ActivateButton tenantId={c.id} active={c.status === 'active'} />
+                    </div>
+                  )}
                 </div>
 
                 {/* Módulos por clínica */}

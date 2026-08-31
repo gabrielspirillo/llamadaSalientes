@@ -5,7 +5,6 @@ import {
   FUTURA_TENANT_ID,
   MODULE_KEYS,
   MODULE_DEFINITIONS,
-  isSuperAdminTenant,
 } from '@/lib/modules';
 import { getCurrentTenant } from '@/lib/tenant';
 import { asc } from 'drizzle-orm';
@@ -13,10 +12,10 @@ import { notFound } from 'next/navigation';
 import { ModuleToggle } from './modules-panel-toggle';
 
 export async function ModulesPanel() {
-  const { tenant } = await getCurrentTenant();
+  const { isSuperAdmin } = await getCurrentTenant();
   // Defensa en profundidad: aunque la tab no se renderice para no-superadmin,
   // si alguien llega acá igual le devolvemos 404.
-  if (!isSuperAdminTenant(tenant.id)) {
+  if (!isSuperAdmin) {
     notFound();
   }
 

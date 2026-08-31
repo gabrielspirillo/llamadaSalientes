@@ -64,8 +64,15 @@ export function isModuleKey(value: unknown): value is ModuleKey {
 
 // Tenant Futura Solutions = demo. Único super-admin en fase 1.
 // Cualquier miembro de esta org Clerk puede togglear módulos de cualquier tenant.
-export const FUTURA_TENANT_ID = 'f6c01830-6a8b-44e3-8cfb-38bee10a2b10';
+// ID del tenant de Futura (super-admin). Configurable por env para no depender
+// de un UUID hardcodeado: si en producción el tenant de Futura tiene otro id,
+// se setea FUTURA_TENANT_ID en Dokploy sin tocar código.
+export const FUTURA_TENANT_ID =
+  process.env.FUTURA_TENANT_ID?.trim() ||
+  // Fail-CLOSED en producción: sin env explícita no hay super-admin (evita que
+  // un UUID de seed dev otorgue god-mode). El fallback dev/test es solo local.
+  (process.env.NODE_ENV === 'production' ? '' : 'f6c01830-6a8b-44e3-8cfb-38bee10a2b10');
 
 export function isSuperAdminTenant(tenantId: string): boolean {
-  return tenantId === FUTURA_TENANT_ID;
+  return FUTURA_TENANT_ID !== '' && tenantId === FUTURA_TENANT_ID;
 }

@@ -2,7 +2,7 @@ import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { getCurrentTenant } from '@/lib/tenant';
-import { auth, clerkClient } from '@clerk/nextjs/server';
+import { clerkClient } from '@clerk/nextjs/server';
 import { InviteMember } from './invite-member';
 
 const roleMap: Record<string, { label: string; tone: 'violet' | 'info' | 'neutral' }> = {
@@ -25,8 +25,8 @@ function initials(s: string): string {
 }
 
 export default async function TeamPage() {
-  await getCurrentTenant(); // garantiza sesión + tenant
-  const { orgId } = await auth();
+  const { tenant } = await getCurrentTenant();
+  const orgId = tenant.clerkOrganizationId;
   if (!orgId) {
     return (
       <Card>

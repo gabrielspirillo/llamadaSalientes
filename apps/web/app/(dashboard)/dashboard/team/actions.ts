@@ -2,7 +2,7 @@
 
 import { env } from '@/lib/env';
 import { getCurrentTenant } from '@/lib/tenant';
-import { auth, clerkClient } from '@clerk/nextjs/server';
+import { clerkClient } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
@@ -23,11 +23,19 @@ export async function inviteMemberAction(input: {
   email: string;
   role: string;
 }): Promise<InviteResult> {
-  await getCurrentTenant(); // asegura sesión + tenant
-
-  const { orgId, userId } = await auth();
-  if (!orgId || !userId) {
+  const { tenant, userId, impersonating } = await getCurrentTenant();
+  if (!userId) {
     return { ok: false, error: 'No hay una clínica activa.' };
+  }
+  // La gestión de miembros usa la organización de Clerk de la clínica. Al
+  // impersonar, el usuario de Futura NO es miembro de esa org (Clerk lo
+  // rechazaría) y, sobre todo, jamás debemos invitar a la org de Futura. Se
+  // hace desde la cuenta propia de la clínica.
+  if (impersonating) {
+    return {
+      ok: false,
+      error: 'La gestión del equipo de una clínica se hace desde su propia cuenta, no en modo Futura.',
+    };
   }
 
   const parsed = schema.safeParse(input);
@@ -38,7 +46,7 @@ export async function inviteMemberAction(input: {
   try {
     const cc = await clerkClient();
     await cc.organizations.createOrganizationInvitation({
-      organizationId: orgId,
+      organizationId: tenant.clerkOrganizationId,
       inviterUserId: userId,
       emailAddress: parsed.data.email,
       role: parsed.data.role,

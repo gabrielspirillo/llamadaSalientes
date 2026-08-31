@@ -46,9 +46,11 @@ const KIND_DOT: Record<Notification['kind'], string> = {
 export function DashboardTopbar({
   enabledModules,
   isSuperAdmin = false,
+  impersonatingClinic,
 }: {
   enabledModules: EnabledModules;
   isSuperAdmin?: boolean;
+  impersonatingClinic?: string;
 }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -74,6 +76,12 @@ export function DashboardTopbar({
     <>
       <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-zinc-200/70 bg-white/70 backdrop-blur-xl px-4 sm:px-6 gap-3">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+          {impersonatingClinic && (
+            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-2.5 py-1 text-xs font-medium text-violet-700 max-w-[220px]">
+              <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-violet-600" />
+              <span className="truncate">Gestionando: {impersonatingClinic}</span>
+            </span>
+          )}
           <button
             type="button"
             onClick={() => setMobileNavOpen(true)}
