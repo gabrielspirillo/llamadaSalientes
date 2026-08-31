@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { getUpcomingAppointments } from '@/lib/data/calls-list';
 import { getDemoUpcoming } from '@/lib/demo-data';
-import { WelcomeTour } from '@/components/dashboard/welcome-tour';
 import { getCurrentTenant } from '@/lib/tenant';
 import {
   ArrowRight,
@@ -27,15 +26,12 @@ export default async function DashboardOverview({
 }: {
   searchParams: Promise<{ demo?: string }>;
 }) {
-  const { tenant, isSuperAdmin, impersonating } = await getCurrentTenant();
+  const { tenant } = await getCurrentTenant();
   const demo = (await searchParams).demo === '1';
   const upcoming = demo ? getDemoUpcoming() : await getUpcomingAppointments(tenant.id, 8);
 
   return (
     <>
-      <div className="mb-4 flex justify-end">
-        <WelcomeTour autoStart={!isSuperAdmin && !impersonating} />
-      </div>
       <PageHeader
         title={`Buenas, ${tenant.name.split(/['']s|\s/)[0]}`}
         description="Resumen en tiempo real de tu clínica."

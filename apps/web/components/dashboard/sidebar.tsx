@@ -13,6 +13,7 @@ import {
   Home,
   LayoutDashboard,
   ListChecks,
+  Sparkles,
   Lock,
   MessageCircle,
   PhoneCall,
@@ -122,6 +123,19 @@ function SidebarNav({
       </nav>
 
       <div className="space-y-0.5 px-3 pb-4">
+        <button
+          type="button"
+          onClick={() => {
+            onNavigate?.();
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new Event('futura:open-tour'));
+            }
+          }}
+          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-zinc-600 transition-colors hover:bg-white/60 hover:text-zinc-900"
+        >
+          <Sparkles className="h-4 w-4 text-violet-600" />
+          Tutorial
+        </button>
         {isSuperAdmin && (
           <Link
             href="/dashboard/futura"
