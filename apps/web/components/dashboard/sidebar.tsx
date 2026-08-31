@@ -48,10 +48,12 @@ function SidebarNav({
   onNavigate,
   enabledModules,
   isSuperAdmin = false,
+  anchorTour = false,
 }: {
   onNavigate?: () => void;
   enabledModules: EnabledModules;
   isSuperAdmin?: boolean;
+  anchorTour?: boolean;
 }) {
   const pathname = usePathname();
   return (
@@ -101,6 +103,7 @@ function SidebarNav({
             <Link
               key={it.href}
               href={it.href}
+              data-tour={anchorTour ? it.href : undefined}
               onClick={onNavigate}
               className={cn(
                 'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors',
@@ -187,7 +190,7 @@ export function DashboardSidebar({
 }) {
   return (
     <aside className="hidden lg:flex sticky top-0 h-screen w-60 shrink-0 flex-col border-r border-zinc-200/70 bg-zinc-50/40">
-      <SidebarNav enabledModules={enabledModules} isSuperAdmin={isSuperAdmin} />
+      <SidebarNav enabledModules={enabledModules} isSuperAdmin={isSuperAdmin} anchorTour />
     </aside>
   );
 }

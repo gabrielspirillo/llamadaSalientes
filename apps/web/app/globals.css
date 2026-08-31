@@ -73,6 +73,16 @@
       transform: translateY(-8px);
     }
   }
+
+  @keyframes tour-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.55);
+    }
+    50% {
+      box-shadow: 0 0 0 7px rgba(139, 92, 246, 0);
+    }
+  }
 }
 
 * {
