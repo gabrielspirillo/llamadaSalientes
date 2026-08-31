@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db/client';
 import { tenants } from '@/lib/db/schema';
-import { isModuleKey, isSuperAdminTenant } from '@/lib/modules';
+import { isModuleKey } from '@/lib/modules';
 import { getCurrentTenant } from '@/lib/tenant';
 import { eq, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
@@ -12,9 +12,9 @@ export async function toggleModuleAction(
   moduleKey: string,
   enabled: boolean,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { tenant } = await getCurrentTenant();
+  const { isSuperAdmin } = await getCurrentTenant();
 
-  if (!isSuperAdminTenant(tenant.id)) {
+  if (!isSuperAdmin) {
     return { ok: false, error: 'Forbidden' };
   }
   if (!isModuleKey(moduleKey)) {
