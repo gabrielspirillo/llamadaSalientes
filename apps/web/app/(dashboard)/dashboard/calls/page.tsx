@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { countCallsMissingMetadata, formatDuration, listCalls } from '@/lib/data/calls-list';
 import { getCurrentTenant } from '@/lib/tenant';
-import { ArrowRight, Download, Filter, Phone, Search } from 'lucide-react';
+import { ArrowRight, Filter, Phone, Search } from 'lucide-react';
 import Link from 'next/link';
 
 const motivoMap: Record<string, { label: string; tone: 'success' | 'info' | 'warn' | 'violet' | 'neutral' | 'danger' }> = {
@@ -70,12 +70,7 @@ export default async function CallsPage({
         title="Llamadas"
         description="Todas las llamadas atendidas por el agente."
         actions={
-          <div className="flex items-center gap-2">
-            <BackfillMetadataButton pending={missingMetadata} />
-            <Button variant="secondary" size="sm">
-              <Download className="h-4 w-4" /> Exportar CSV
-            </Button>
-          </div>
+          <BackfillMetadataButton pending={missingMetadata} />
         }
       />
 
