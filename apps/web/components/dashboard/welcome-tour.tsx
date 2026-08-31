@@ -8,6 +8,8 @@ import {
   BellRing,
   Bot,
   Check,
+  Contact,
+  HelpCircle,
   MessageCircle,
   PhoneCall,
   ShieldCheck,
@@ -17,79 +19,128 @@ import {
   X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import type { CSSProperties } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 
-const STORAGE_KEY = 'futura:welcome-tour:v1';
+const STORAGE_KEY = 'futura:welcome-tour:v2';
 
-type Slide = {
+type Step = {
+  target?: string; // selector del ítem real a iluminar; sin target = tarjeta centrada
   icon: LucideIcon;
-  tint: string; // clases del círculo del ícono
+  tint: string;
+  eyebrow: string;
   title: string;
   body: string;
 };
 
-const SLIDES: Slide[] = [
+const STEPS: Step[] = [
   {
     icon: Sparkles,
     tint: 'bg-gradient-to-br from-violet-500 to-fuchsia-500',
-    title: '¡Bienvenido a Futura! 🎉',
-    body: 'Tu recepcionista con inteligencia artificial: atiende llamadas y WhatsApp por vos, las 24 horas. Te muestro en 1 minuto todo lo que puede hacer.',
+    eyebrow: 'Bienvenido',
+    title: 'Conocé Futura en 1 minuto',
+    body: 'Tu recepcionista con IA que atiende llamadas y WhatsApp por vos, las 24 horas. Te voy a ir señalando cada parte del menú para que sepas dónde está todo.',
   },
   {
+    target: '[data-tour="/dashboard/agent"]',
     icon: Bot,
     tint: 'bg-gradient-to-br from-violet-500 to-indigo-500',
+    eyebrow: 'El cerebro',
     title: 'Tu Agente',
-    body: 'Es el cerebro de todo. Desde acá configurás cómo habla: su tono, el saludo, y a qué número transfiere cuando hace falta una persona.',
+    body: 'Acá configurás cómo habla: su tono, el saludo y a qué número transfiere cuando hace falta una persona.',
   },
   {
+    target: '[data-tour="/dashboard/calls"]',
     icon: PhoneCall,
     tint: 'bg-gradient-to-br from-blue-500 to-cyan-500',
+    eyebrow: 'Teléfono',
     title: 'Llamadas',
-    body: 'El agente atiende las llamadas que entran a tu clínica y también llama a tus pacientes: recordatorios de turno, recuperar citas perdidas y más.',
+    body: 'El agente atiende las llamadas que entran, y también llama a tus pacientes: recordatorios y recuperar turnos.',
   },
   {
+    target: '[data-tour="/dashboard/whatsapp"]',
     icon: MessageCircle,
     tint: 'bg-gradient-to-br from-emerald-500 to-teal-500',
+    eyebrow: 'Mensajes',
     title: 'WhatsApp',
-    body: 'Además de llamar, tu agente conversa por WhatsApp con tus pacientes: responde dudas, confirma turnos y deriva a tu equipo cuando conviene.',
+    body: 'Tu agente también conversa por WhatsApp: responde dudas, confirma turnos y deriva a tu equipo cuando conviene.',
   },
   {
+    target: '[data-tour="/dashboard/treatments"]',
     icon: Stethoscope,
     tint: 'bg-gradient-to-br from-rose-500 to-pink-500',
-    title: 'Tu clínica',
-    body: 'Cargá tus tratamientos, horarios de atención y preguntas frecuentes. El agente usa toda esa información para responder bien y agendar.',
+    eyebrow: 'Tu clínica',
+    title: 'Tratamientos',
+    body: 'Cargá lo que ofrecés, con duración y precios. El agente lo usa para responder y agendar bien.',
   },
   {
-    icon: BellRing,
+    target: '[data-tour="/dashboard/faqs"]',
+    icon: HelpCircle,
     tint: 'bg-gradient-to-br from-amber-500 to-orange-500',
-    title: 'Seguimiento automático',
-    body: 'Recordatorios de turno automáticos, lista de espera para llenar los huecos que se liberan, y todos tus pacientes ordenados en Contactos.',
+    eyebrow: 'Respuestas',
+    title: 'Preguntas frecuentes',
+    body: 'Las respuestas a lo que más te preguntan (precios, ubicación, formas de pago). El agente las usa tal cual.',
   },
   {
+    target: '[data-tour="/dashboard/reminders"]',
+    icon: BellRing,
+    tint: 'bg-gradient-to-br from-orange-500 to-red-500',
+    eyebrow: 'Automático',
+    title: 'Recordatorios',
+    body: 'Avisos de turno automáticos para reducir ausencias. Y en Waitlist, una lista de espera para llenar los huecos.',
+  },
+  {
+    target: '[data-tour="/dashboard/contacts"]',
+    icon: Contact,
+    tint: 'bg-gradient-to-br from-sky-500 to-blue-500',
+    eyebrow: 'Pacientes',
+    title: 'Contactos',
+    body: 'Todos tus pacientes ordenados en un solo lugar, con su historial de llamadas y conversaciones.',
+  },
+  {
+    target: '[data-tour="/dashboard/analytics"]',
     icon: BarChart3,
     tint: 'bg-gradient-to-br from-indigo-500 to-violet-500',
-    title: 'Resultados a la vista',
-    body: 'En Analytics ves métricas reales: cuántas llamadas atendió el agente, turnos agendados, sentimiento de los pacientes y mucho más.',
+    eyebrow: 'Resultados',
+    title: 'Analytics',
+    body: 'Métricas reales: cuántas llamadas atendió el agente, turnos agendados y cómo se fueron sintiendo tus pacientes.',
   },
   {
+    target: '[data-tour="/dashboard/team"]',
     icon: Users,
     tint: 'bg-gradient-to-br from-cyan-500 to-blue-500',
-    title: 'Tu equipo',
-    body: 'Invitá a las personas de tu clínica desde Equipo, cada una con su rol. Trabajen todos sobre el mismo panel.',
+    eyebrow: 'Tu gente',
+    title: 'Equipo',
+    body: 'Invitá a las personas de tu clínica, cada una con su rol. Trabajan todos sobre el mismo panel.',
   },
   {
     icon: ShieldCheck,
     tint: 'bg-gradient-to-br from-emerald-500 to-green-500',
-    title: 'Nosotros lo activamos',
-    body: 'Las conexiones técnicas (teléfono, WhatsApp, agenda) las deja listas el equipo de Futura. Vos ocupate de tu clínica; de lo técnico nos encargamos nosotros.',
+    eyebrow: 'Listo',
+    title: 'De lo técnico nos encargamos nosotros',
+    body: 'Las conexiones (teléfono, WhatsApp, agenda) las deja andando el equipo de Futura. Vos ocupate de tu clínica. ¿Dudas? Escribinos cuando quieras.',
   },
 ];
+
+type Rect = { top: number; left: number; width: number; height: number };
+
+const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
 export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
+  const [rect, setRect] = useState<Rect | null>(null);
+  const [reduced, setReduced] = useState(false);
 
-  // Auto-apertura solo la primera vez (por navegador).
+  useEffect(() => {
+    try {
+      setReduced(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    } catch {
+      // no-op
+    }
+  }, []);
+
+  // Auto-apertura la primera vez (por navegador).
   useEffect(() => {
     if (!autoStart) return;
     try {
@@ -98,24 +149,30 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
         setOpen(true);
       }
     } catch {
-      // sin localStorage (modo privado): no autolanzamos.
+      // sin localStorage: no autolanzamos
     }
   }, [autoStart]);
 
-  const markSeen = useCallback(() => {
+  // Reabrir desde el botón "Tutorial" del menú (evento global).
+  useEffect(() => {
+    function onOpen() {
+      setStep(0);
+      setOpen(true);
+    }
+    window.addEventListener('futura:open-tour', onOpen);
+    return () => window.removeEventListener('futura:open-tour', onOpen);
+  }, []);
+
+  const close = useCallback(() => {
     try {
       localStorage.setItem(STORAGE_KEY, '1');
     } catch {
       // no-op
     }
+    setOpen(false);
   }, []);
 
-  const close = useCallback(() => {
-    markSeen();
-    setOpen(false);
-  }, [markSeen]);
-
-  const last = SLIDES.length - 1;
+  const last = STEPS.length - 1;
   const next = useCallback(() => {
     setStep((s) => {
       if (s >= last) {
@@ -127,7 +184,49 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
   }, [last, close]);
   const back = useCallback(() => setStep((s) => Math.max(0, s - 1)), []);
 
-  // Teclado: Esc cierra, flechas navegan.
+  // Medir el ítem objetivo (y re-medir en resize/scroll).
+  useLayoutEffect(() => {
+    if (!open) return;
+    const selector = STEPS[step]?.target;
+    if (!selector) {
+      setRect(null);
+      return;
+    }
+    const el = document.querySelector<HTMLElement>(selector);
+    if (!el) {
+      setRect(null);
+      return;
+    }
+    el.scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
+
+    function measure() {
+      const node = document.querySelector<HTMLElement>(selector as string);
+      if (!node) {
+        setRect(null);
+        return;
+      }
+      const r = node.getBoundingClientRect();
+      // width/height 0 => oculto (ej. sidebar en mobile) => fallback centrado.
+      if (r.width === 0 || r.height === 0) {
+        setRect(null);
+        return;
+      }
+      setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+    }
+    measure();
+    const raf = requestAnimationFrame(measure);
+    const t = setTimeout(measure, 260); // tras el scroll suave
+    window.addEventListener('resize', measure);
+    window.addEventListener('scroll', measure, true);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(t);
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('scroll', measure, true);
+    };
+  }, [open, step, reduced]);
+
+  // Teclado.
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
@@ -139,86 +238,138 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [open, close, next, back]);
 
-  // Reabrir el tour desde cualquier lado (ej. botón 'Tutorial' del menú) vía
-  // un evento global, para no acoplar componentes.
-  useEffect(() => {
-    function onOpen() {
-      setStep(0);
-      setOpen(true);
-    }
-    window.addEventListener('futura:open-tour', onOpen);
-    return () => window.removeEventListener('futura:open-tour', onOpen);
-  }, []);
+  if (!open) return null;
+
+  const s = STEPS[step];
+  if (!s) return null;
+  const Icon = s.icon;
+  const PAD = 8;
+  const hl = rect
+    ? {
+        top: rect.top - PAD,
+        left: rect.left - PAD,
+        width: rect.width + PAD * 2,
+        height: rect.height + PAD * 2,
+      }
+    : null;
+
+  // Posición de la tarjeta.
+  const CARD_W = 360;
+  const GAP = 20;
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 1280;
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
+  let cardPos: CSSProperties;
+  let beakTop: number | null = null;
+
+  if (hl && vw - (hl.left + hl.width) > CARD_W + GAP + 12) {
+    // A la derecha del ítem (caso típico: menú a la izquierda).
+    const top = clamp(hl.top - 8, 16, vh - 300);
+    cardPos = { top, left: hl.left + hl.width + GAP, width: CARD_W };
+    beakTop = clamp(hl.top + hl.height / 2 - top - 6, 16, 220);
+  } else {
+    // Centrada (intro/outro, o mobile sin espacio).
+    cardPos = {
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      width: `min(${CARD_W}px, calc(100vw - 32px))`,
+    };
+  }
+
+  const glide = reduced ? '' : 'transition-all duration-500 ease-out';
 
   return (
-    <>
-      {open && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center p-4 animate-[fade-in_150ms_ease-out]"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Tutorial de bienvenida"
-        >
-          {/* Backdrop */}
+    <div
+      className="fixed inset-0 z-[60]"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Tutorial de bienvenida"
+    >
+      {/* Captura de clics: bloquea la app detrás. Click fuera no avanza (evita cierres accidentales). */}
+      <button
+        type="button"
+        aria-label="Fondo del tutorial"
+        tabIndex={-1}
+        className="absolute inset-0 cursor-default"
+        onClick={(e) => e.preventDefault()}
+      />
+
+      {hl ? (
+        <>
+          {/* Recorte + oscurecido (box-shadow gigante) */}
+          <div
+            className={`pointer-events-none absolute rounded-xl ${glide}`}
+            style={{
+              top: hl.top,
+              left: hl.left,
+              width: hl.width,
+              height: hl.height,
+              boxShadow: '0 0 0 9999px rgba(24, 24, 27, 0.78)',
+            }}
+          />
+          {/* Halo violeta que late */}
+          <div
+            className={`pointer-events-none absolute rounded-xl ring-2 ring-violet-400/90 ${glide} ${
+              reduced ? '' : 'animate-[tour-pulse_2s_ease-out_infinite]'
+            }`}
+            style={{ top: hl.top, left: hl.left, width: hl.width, height: hl.height }}
+          />
+        </>
+      ) : (
+        // Sin objetivo: oscurecido completo con desenfoque.
+        <div className="absolute inset-0 bg-zinc-900/78 backdrop-blur-[2px]" />
+      )}
+
+      {/* Tarjeta */}
+      <div
+        className={`absolute ${reduced ? '' : 'animate-[zoom-in_200ms_cubic-bezier(0.16,1,0.3,1)]'}`}
+        style={cardPos}
+      >
+        <div className="relative rounded-2xl border border-white/10 bg-white shadow-2xl">
+          {/* Puntero hacia el ítem */}
+          {beakTop !== null && (
+            <span
+              className="absolute -left-1.5 h-3 w-3 rotate-45 rounded-[3px] border-b border-l border-zinc-200 bg-white"
+              style={{ top: beakTop }}
+            />
+          )}
+
           <button
             type="button"
-            aria-label="Cerrar tutorial"
             onClick={close}
-            className="absolute inset-0 cursor-default bg-zinc-900/60 backdrop-blur-sm"
-          />
+            aria-label="Cerrar tutorial"
+            className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
+          >
+            <X className="h-4 w-4" />
+          </button>
 
-          {/* Card */}
-          <div className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-white/10 bg-white shadow-2xl">
-            <button
-              type="button"
-              onClick={close}
-              aria-label="Cerrar"
-              className="absolute right-4 top-4 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
+          <div className="p-6">
+            <div className="flex items-center gap-3">
+              <span
+                className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-md ${s.tint} ${
+                  reduced ? '' : 'animate-[float_3s_ease-in-out_infinite]'
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+              </span>
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-violet-600">
+                {s.eyebrow}
+              </span>
+            </div>
+
+            <h2
+              key={step}
+              className="mt-4 animate-[fade-in_250ms_ease-out] text-lg font-semibold tracking-tight text-zinc-900"
             >
-              <X className="h-4 w-4" />
-            </button>
-
-            {/* Escena animada del ícono */}
-            <div className="relative flex h-52 items-center justify-center overflow-hidden bg-gradient-to-b from-zinc-50 to-white">
-              {SLIDES.map((s, i) => {
-                const Icon = s.icon;
-                const active = i === step;
-                return (
-                  <div
-                    key={s.title}
-                    className={`absolute transition-all duration-500 ease-out ${
-                      active
-                        ? 'scale-100 opacity-100 blur-0'
-                        : 'pointer-events-none scale-75 opacity-0 blur-sm'
-                    }`}
-                  >
-                    <span
-                      className={`inline-flex h-24 w-24 items-center justify-center rounded-3xl text-white shadow-lg ${s.tint} ${
-                        active ? 'animate-[float_3s_ease-in-out_infinite]' : ''
-                      }`}
-                    >
-                      <Icon className="h-11 w-11" />
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Texto (cambia con animación por step) */}
-            <div key={step} className="animate-[fade-in_300ms_ease-out] px-7 pb-2 pt-5 text-center">
-              <h2 className="text-xl font-semibold tracking-tight text-zinc-900">
-                {SLIDES[step]?.title}
-              </h2>
-              <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-zinc-600">
-                {SLIDES[step]?.body}
-              </p>
-            </div>
+              {s.title}
+            </h2>
+            <p className="mt-1.5 text-sm leading-relaxed text-zinc-600">{s.body}</p>
 
             {/* Progreso */}
-            <div className="flex items-center justify-center gap-1.5 py-4">
-              {SLIDES.map((s, i) => (
+            <div className="mt-5 flex items-center gap-1.5">
+              {STEPS.map((st, i) => (
                 <button
-                  key={s.title}
+                  key={st.title}
                   type="button"
                   aria-label={`Ir al paso ${i + 1}`}
                   onClick={() => setStep(i)}
@@ -230,7 +381,7 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
             </div>
 
             {/* Navegación */}
-            <div className="flex items-center justify-between gap-3 border-t border-zinc-100 px-6 py-4">
+            <div className="mt-5 flex items-center justify-between gap-3">
               {step === 0 ? (
                 <button
                   type="button"
@@ -240,13 +391,17 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
                   Saltar
                 </button>
               ) : (
-                <Button variant="ghost" size="sm" type="button" onClick={back}>
+                <button
+                  type="button"
+                  onClick={back}
+                  className="inline-flex items-center gap-1 text-sm font-medium text-zinc-500 transition-colors hover:text-zinc-800"
+                >
                   <ArrowLeft className="h-4 w-4" /> Atrás
-                </Button>
+                </button>
               )}
 
-              <span className="text-xs text-zinc-400">
-                {step + 1} / {SLIDES.length}
+              <span className="text-xs tabular-nums text-zinc-400">
+                {step + 1} / {STEPS.length}
               </span>
 
               <Button size="sm" type="button" onClick={next}>
@@ -263,7 +418,7 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
             </div>
           </div>
         </div>
-      )}
-    </>
+      </div>
+    </div>
   );
 }
