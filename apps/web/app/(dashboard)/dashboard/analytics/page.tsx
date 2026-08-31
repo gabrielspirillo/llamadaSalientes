@@ -174,7 +174,7 @@ async function InboundAnalytics({
                 </Badge>
               </div>
               <div className="px-4 sm:px-6 pb-4 sm:pb-6 pt-4">
-                <div className="flex items-end gap-1 sm:gap-1.5 h-48 sm:h-56">
+                <div className="overflow-x-auto"><div className="flex items-end gap-1 sm:gap-1.5 h-48 sm:h-56 min-w-[540px] sm:min-w-0">
                   {data.byHour.map((h) => (
                     <div key={h.hour} className="flex-1 flex flex-col items-center gap-1.5 sm:gap-2 min-w-0">
                       <div
@@ -187,6 +187,7 @@ async function InboundAnalytics({
                       </span>
                     </div>
                   ))}
+                </div>
                 </div>
               </div>
             </Card>

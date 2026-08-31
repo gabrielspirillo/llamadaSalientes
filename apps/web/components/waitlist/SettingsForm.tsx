@@ -62,7 +62,7 @@ export function WaitlistSettingsForm({ initial }: { initial: Settings }) {
 
       <Row label="Canal de oferta" hint="Cómo se contacta al paciente cuando hay un slot disponible.">
         <select
-          className="rounded-md border border-zinc-200 px-3 py-1.5 text-sm bg-white"
+          className="w-full sm:w-auto max-w-full rounded-md border border-zinc-200 px-3 py-1.5 text-sm bg-white"
           value={s.channelMode}
           onChange={(e) => setS({ ...s, channelMode: e.target.value as Settings['channelMode'] })}
         >
@@ -170,12 +170,12 @@ function Row({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-6">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
       <div className="flex-1">
         <div className="text-sm font-medium text-zinc-900">{label}</div>
         {hint ? <div className="text-xs text-zinc-500 mt-0.5">{hint}</div> : null}
       </div>
-      <div className="shrink-0">{children}</div>
+      <div className="sm:shrink-0">{children}</div>
     </div>
   );
 }
