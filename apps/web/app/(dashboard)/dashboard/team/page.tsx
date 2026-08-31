@@ -25,7 +25,7 @@ function initials(s: string): string {
 }
 
 export default async function TeamPage() {
-  const { tenant } = await getCurrentTenant();
+  const { tenant, impersonating } = await getCurrentTenant();
   const orgId = tenant.clerkOrganizationId;
   if (!orgId) {
     return (
@@ -38,23 +38,54 @@ export default async function TeamPage() {
   }
 
   const cc = await clerkClient();
-  const memberships = await cc.organizations.getOrganizationMembershipList({
-    organizationId: orgId,
-    limit: 50,
-  });
-  const invitations = await cc.organizations.getOrganizationInvitationList({
-    organizationId: orgId,
-    status: ['pending'],
-    limit: 50,
-  });
+  // La org de Clerk de la clínica puede no existir/ser inválida (ej. tenant de
+  // prueba, o clínica sin org real). No debemos romper la página: si Clerk
+  // falla, mostramos un estado vacío en vez de un 500.
+  const [memberships, invitations] = await (async () => {
+    try {
+      return [
+        await cc.organizations.getOrganizationMembershipList({ organizationId: orgId, limit: 50 }),
+        await cc.organizations.getOrganizationInvitationList({
+          organizationId: orgId,
+          status: ['pending'],
+          limit: 50,
+        }),
+      ] as const;
+    } catch {
+      return [null, null] as const;
+    }
+  })();
+
+  if (!memberships || !invitations) {
+    return (
+      <>
+        <PageHeader title="Equipo" description="Personas con acceso al panel." />
+        <Card>
+          <div className="p-10 text-center text-sm text-zinc-500">
+            No se pudo cargar el equipo de esta clínica.
+            {impersonating
+              ? ' La gestión del equipo se hace desde la cuenta de la clínica.'
+              : ''}
+          </div>
+        </Card>
+      </>
+    );
+  }
 
   return (
     <>
       <PageHeader title="Equipo" description="Personas con acceso al panel." />
 
-      <div className="mb-5">
-        <InviteMember />
-      </div>
+      {impersonating ? (
+        <div className="mb-5 rounded-2xl border border-violet-200/70 bg-violet-50/60 p-4 text-sm text-zinc-600">
+          En modo Futura no podés invitar miembros de esta clínica. La gestión del equipo se hace
+          desde la cuenta de la clínica.
+        </div>
+      ) : (
+        <div className="mb-5">
+          <InviteMember />
+        </div>
+      )}
 
       <Card>
         <div className="divide-y divide-zinc-100">
