@@ -14,14 +14,16 @@ export default async function WhoamiPage() {
   const ctx = await getCurrentTenant();
   // realTenant = tu tenant real (aunque estés impersonando).
   const t = ctx.realTenant ?? ctx.tenant;
-  const { orgId, orgSlug } = await auth();
+  const a = await auth();
+  const orgId = a.orgId ?? null;
+  const orgSlug = a.orgSlug ?? null;
 
   const rows: { k: string; v: string | null; hint?: string }[] = [
     { k: 'Tenant ID', v: t.id, hint: 'Este valor va en la env FUTURA_TENANT_ID' },
     { k: 'Slug', v: t.slug },
     { k: 'Nombre', v: t.name },
     { k: 'Estado', v: t.status },
-    { k: 'Clerk Org ID', v: orgId },
+    { k: 'Clerk Org ID', v: orgId },  // ya normalizado a string | null
     { k: 'Clerk Org Slug', v: orgSlug ?? '—' },
   ];
 
