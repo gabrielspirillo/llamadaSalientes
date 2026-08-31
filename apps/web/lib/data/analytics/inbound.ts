@@ -31,7 +31,7 @@ export async function getInboundAnalytics(tenantId: string, range: AnalyticsRang
       startedAt: occurredAtSql,
     })
     .from(calls)
-    .where(and(eq(calls.tenantId, tenantId), sql`${occurredAtSql} >= ${start}`));
+    .where(and(eq(calls.tenantId, tenantId), sql`${occurredAtSql} >= ${start.toISOString()}::timestamptz`));
 
   const total = rows.length;
   const durations = rows.map((r) => r.durationSeconds).filter((d): d is number => d !== null);
