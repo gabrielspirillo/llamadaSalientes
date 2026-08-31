@@ -10,7 +10,6 @@ import {
   Check,
   MessageCircle,
   PhoneCall,
-  PlayCircle,
   ShieldCheck,
   Sparkles,
   Stethoscope,
@@ -140,23 +139,19 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [open, close, next, back]);
 
-  const reopen = () => {
-    setStep(0);
-    setOpen(true);
-  };
+  // Reabrir el tour desde cualquier lado (ej. botón 'Tutorial' del menú) vía
+  // un evento global, para no acoplar componentes.
+  useEffect(() => {
+    function onOpen() {
+      setStep(0);
+      setOpen(true);
+    }
+    window.addEventListener('futura:open-tour', onOpen);
+    return () => window.removeEventListener('futura:open-tour', onOpen);
+  }, []);
 
   return (
     <>
-      {/* Botón para volver a ver el tutorial cuando quieras */}
-      <button
-        type="button"
-        onClick={reopen}
-        className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-600 transition-colors hover:border-zinc-300 hover:text-zinc-900"
-      >
-        <PlayCircle className="h-3.5 w-3.5 text-violet-600" />
-        Ver tutorial
-      </button>
-
       {open && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center p-4 animate-[fade-in_150ms_ease-out]"

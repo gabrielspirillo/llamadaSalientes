@@ -1,5 +1,6 @@
 import { DashboardSidebar } from '@/components/dashboard/sidebar';
 import { ImpersonationBanner } from '@/components/dashboard/impersonation-banner';
+import { WelcomeTour } from '@/components/dashboard/welcome-tour';
 import { DashboardTopbar } from '@/components/dashboard/topbar';
 import { DEFAULT_ENABLED_MODULES, type EnabledModules } from '@/lib/modules';
 import { getCurrentTenantOrNull } from '@/lib/tenant';
@@ -54,6 +55,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         />
         <main className="flex-1 px-4 sm:px-6 lg:px-10 py-5 sm:py-8">{children}</main>
       </div>
+      <WelcomeTour autoStart={!isSuperAdmin && !tenantCtx?.impersonating} />
     </div>
   );
 }
