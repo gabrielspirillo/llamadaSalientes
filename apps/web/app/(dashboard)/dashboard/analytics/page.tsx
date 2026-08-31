@@ -215,7 +215,7 @@ function RangePill({ href, active, label }: { href: string; active: boolean; lab
   return (
     <Link
       href={href}
-      className={`px-3 py-1 rounded-full transition-colors ${
+      className={`px-3.5 py-2 rounded-full transition-colors ${
         active ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:text-zinc-900'
       }`}
     >

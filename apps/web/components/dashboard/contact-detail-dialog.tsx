@@ -286,7 +286,7 @@ export function ContactDetailDialog({
                     </div>
                   )}
 
-                  <div className="pt-2 flex items-center gap-2">
+                  <div className="pt-2 flex flex-wrap items-center gap-2">
                     <Button asChild variant="secondary" size="sm">
                       <a
                         href={`https://app.gohighlevel.com/contacts/detail/${contactId}`}
