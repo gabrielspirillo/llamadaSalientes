@@ -47,7 +47,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
         {tenantCtx?.impersonating && (
           <ImpersonationBanner clinicName={tenantCtx.tenant.name} />
         )}
-        <DashboardTopbar enabledModules={enabledModules} isSuperAdmin={isSuperAdmin} />
+        <DashboardTopbar
+          enabledModules={enabledModules}
+          isSuperAdmin={isSuperAdmin}
+          impersonatingClinic={tenantCtx?.impersonating ? tenantCtx.tenant.name : undefined}
+        />
         <main className="flex-1 px-4 sm:px-6 lg:px-10 py-5 sm:py-8">{children}</main>
       </div>
     </div>

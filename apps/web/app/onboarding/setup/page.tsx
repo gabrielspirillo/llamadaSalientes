@@ -24,6 +24,9 @@ export default async function OnboardingSetupPage() {
   const ctx = await getCurrentTenantOrNull();
   if (!ctx) redirect('/onboarding');
 
+  // Si Futura está impersonando, no debe pasar por el onboarding de la clínica.
+  if (ctx.impersonating) redirect('/dashboard');
+
   // Ya completó el onboarding → al panel.
   if (ctx.tenant.status !== 'onboarding') redirect('/dashboard');
 

@@ -51,7 +51,7 @@ function fmtDate(d: Date | string | null): string {
 }
 
 export default async function FuturaPanelPage() {
-  const { isSuperAdmin, realTenant } = await getCurrentTenant();
+  const { isSuperAdmin, realTenant, tenant: actingTenant, impersonating } = await getCurrentTenant();
   if (!isSuperAdmin) {
     notFound();
   }
@@ -131,7 +131,11 @@ export default async function FuturaPanelPage() {
                   </div>
                   {!isFutura && (
                     <div className="flex flex-wrap items-center justify-end gap-2">
-                      <EnterButton tenantId={c.id} />
+                      {impersonating && c.id === actingTenant.id ? (
+                        <Badge tone="violet">Gestionando ahora</Badge>
+                      ) : (
+                        <EnterButton tenantId={c.id} />
+                      )}
                       <ActivateButton tenantId={c.id} active={c.status === 'active'} />
                     </div>
                   )}

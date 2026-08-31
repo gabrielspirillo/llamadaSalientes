@@ -19,7 +19,17 @@ export async function getActingTenantId(): Promise<string | null> {
   }
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function findTenantById(id: string) {
-  const rows = await db.select().from(tenants).where(eq(tenants.id, id)).limit(1);
-  return rows[0] ?? null;
+  // La cookie es texto arbitrario editable por el usuario; validamos el formato
+  // UUID antes de la query para no reventar Postgres (22P02) y tumbar el
+  // dashboard. Cualquier valor inválido o error → null (se ignora la cookie).
+  if (!UUID_RE.test(id)) return null;
+  try {
+    const rows = await db.select().from(tenants).where(eq(tenants.id, id)).limit(1);
+    return rows[0] ?? null;
+  } catch {
+    return null;
+  }
 }
