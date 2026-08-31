@@ -3,20 +3,30 @@ import { type VariantProps, cva } from 'class-variance-authority';
 import type * as React from 'react';
 
 const badgeVariants = cva(
-  'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset',
+  'inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold transition-colors duration-200',
   {
     variants: {
       tone: {
-        neutral: 'bg-zinc-50 text-zinc-700 ring-zinc-200',
-        success: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-        warn: 'bg-amber-50 text-amber-700 ring-amber-200',
-        danger: 'bg-red-50 text-red-700 ring-red-200',
-        info: 'bg-blue-50 text-blue-700 ring-blue-200',
-        violet: 'bg-violet-50 text-violet-700 ring-violet-200',
+        neutral: 'bg-zinc-100 text-zinc-600',
+        success: 'bg-emerald-100/80 text-emerald-700',
+        warn: 'bg-amber-100/80 text-amber-700',
+        danger: 'bg-rose-100/80 text-rose-700',
+        info: 'bg-sky-100/80 text-sky-700',
+        violet: 'bg-violet-100/80 text-violet-700',
+        pink: 'bg-pink-100/80 text-pink-700',
+        /* Gradiente de marca — para contadores destacados */
+        brand:
+          'bg-[linear-gradient(120deg,#7139e8,#a855f7)] text-white shadow-[0_4px_12px_-4px_rgba(113,57,232,0.6)]',
+      },
+      size: {
+        sm: 'px-2 py-0.5 text-[10px]',
+        md: 'px-2.5 py-0.5 text-[11px]',
+        lg: 'px-3 py-1 text-xs',
       },
     },
     defaultVariants: {
       tone: 'neutral',
+      size: 'md',
     },
   },
 );
@@ -25,6 +35,79 @@ export interface BadgeProps
   extends React.HTMLAttributes<HTMLSpanElement>,
     VariantProps<typeof badgeVariants> {}
 
-export function Badge({ className, tone, ...props }: BadgeProps) {
-  return <span className={cn(badgeVariants({ tone }), className)} {...props} />;
+export function Badge({ className, tone, size, ...props }: BadgeProps) {
+  return <span className={cn(badgeVariants({ tone, size }), className)} {...props} />;
+}
+
+/**
+ * Etiqueta tipo "#tag" del tablero de referencia: pastel, minúscula, con hash.
+ * Se usa para categorizar llamadas, campañas, tratamientos, etc.
+ */
+const TAG_TONES = [
+  'bg-violet-100/70 text-violet-600',
+  'bg-pink-100/70 text-pink-600',
+  'bg-sky-100/70 text-sky-600',
+  'bg-emerald-100/70 text-emerald-600',
+  'bg-amber-100/70 text-amber-600',
+  'bg-rose-100/70 text-rose-600',
+] as const;
+
+/** Color estable derivado del texto — la misma etiqueta siempre sale igual. */
+function toneFor(label: string): string {
+  let h = 0;
+  for (let i = 0; i < label.length; i++) h = (h * 31 + label.charCodeAt(i)) >>> 0;
+  return TAG_TONES[h % TAG_TONES.length] as string;
+}
+
+export function Tag({
+  children,
+  className,
+  hash = true,
+}: {
+  children: string;
+  className?: string;
+  hash?: boolean;
+}) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold lowercase tracking-tight',
+        toneFor(children),
+        className,
+      )}
+    >
+      {hash && <span className="opacity-60">#</span>}
+      {children}
+    </span>
+  );
+}
+
+/** Punto de estado con halo animado — "en vivo", "activo", "error". */
+export function StatusDot({
+  tone = 'success',
+  pulse = true,
+  className,
+}: {
+  tone?: 'success' | 'warn' | 'danger' | 'info' | 'neutral' | 'violet';
+  pulse?: boolean;
+  className?: string;
+}) {
+  const map = {
+    success: 'bg-emerald-500',
+    warn: 'bg-amber-500',
+    danger: 'bg-rose-500',
+    info: 'bg-sky-500',
+    neutral: 'bg-zinc-400',
+    violet: 'bg-violet-500',
+  } as const;
+  return (
+    <span className={cn('relative inline-flex h-2 w-2 shrink-0', className)}>
+      {pulse && (
+        <span
+          className={cn('absolute inline-flex h-full w-full animate-ping rounded-full opacity-60', map[tone])}
+        />
+      )}
+      <span className={cn('relative inline-flex h-2 w-2 rounded-full', map[tone])} />
+    </span>
+  );
 }

@@ -17,8 +17,8 @@ export const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'fixed inset-0 z-50 bg-black/40 backdrop-blur-sm',
-      'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+      'fixed inset-0 z-50 bg-[#171429]/45 backdrop-blur-md',
+      'data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out',
       className,
     )}
     {...props}
@@ -35,19 +35,21 @@ export const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed left-1/2 top-1/2 z-50 w-[calc(100vw-1rem)] max-w-lg max-h-[calc(100vh-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto',
-        'rounded-2xl border border-zinc-200/70 bg-white p-5 sm:p-6 shadow-2xl shadow-zinc-900/10',
-        'data-[state=open]:animate-in data-[state=closed]:animate-out',
-        'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
-        'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
-        'duration-150',
+        'fixed left-1/2 top-1/2 z-50 max-h-[calc(100vh-2rem)] w-[calc(100vw-1rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto',
+        'rounded-[26px] border border-white/60 bg-white p-5 shadow-[0_40px_90px_-30px_rgba(23,20,41,0.5)] sm:p-7',
+        'data-[state=open]:animate-zoom-in data-[state=closed]:animate-zoom-out',
         'focus-visible:outline-none',
         className,
       )}
       {...props}
     >
-      {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-md p-1 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/15">
+      {/* Halo superior de marca — da profundidad sin recargar */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-28 rounded-t-[26px] bg-[radial-gradient(60%_100%_at_50%_0%,rgba(139,92,246,0.14),transparent_70%)]"
+      />
+      <div className="relative">{children}</div>
+      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full p-1.5 text-zinc-400 transition-all duration-300 hover:rotate-90 hover:bg-zinc-100 hover:text-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40">
         <X className="h-4 w-4" />
         <span className="sr-only">Cerrar</span>
       </DialogPrimitive.Close>
@@ -57,14 +59,14 @@ export const DialogContent = React.forwardRef<
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 export function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('flex flex-col gap-1.5 mb-5', className)} {...props} />;
+  return <div className={cn('mb-5 flex flex-col gap-1.5', className)} {...props} />;
 }
 
 export function DialogFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
-        'flex items-center justify-end gap-2 mt-6 pt-4 border-t border-zinc-100',
+        'mt-6 flex items-center justify-end gap-2 border-t border-[--color-border-subtle] pt-4',
         className,
       )}
       {...props}
@@ -78,7 +80,7 @@ export const DialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn('text-lg font-semibold tracking-tight', className)}
+    className={cn('text-xl font-bold tracking-tight text-zinc-900', className)}
     {...props}
   />
 ));
@@ -90,7 +92,7 @@ export const DialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn('text-sm text-zinc-500', className)}
+    className={cn('text-[13px] leading-relaxed text-zinc-500', className)}
     {...props}
   />
 ));

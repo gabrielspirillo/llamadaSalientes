@@ -1,26 +1,65 @@
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/cn';
 import type { ReactNode } from 'react';
 
+/**
+ * Encabezado común de todas las páginas del panel.
+ * Añade: eyebrow opcional, título con degradado, icono en pastilla y acciones.
+ */
 export function PageHeader({
   title,
   description,
   actions,
   demoBadge,
+  eyebrow,
+  icon,
+  className,
 }: {
   title: string;
   description?: string;
   actions?: ReactNode;
   /** Mostrar pill "Datos de muestra" — para páginas que aún usan mockData. */
   demoBadge?: boolean;
+  /** Texto pequeño encima del título (sección / contexto). */
+  eyebrow?: string;
+  icon?: ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">{title}</h1>
-          {demoBadge && <Badge tone="warn">Datos de muestra</Badge>}
+    <div
+      className={cn(
+        'mb-6 flex animate-fade-down flex-col gap-4 sm:mb-8 md:flex-row md:items-center md:justify-between',
+        className,
+      )}
+    >
+      <div className="flex min-w-0 items-center gap-4">
+        {icon && (
+          <span className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#7139e8,#a855f7_60%,#ec4899)] text-white shadow-[0_10px_26px_-12px_rgba(113,57,232,0.9)] sm:inline-flex">
+            {icon}
+          </span>
+        )}
+        <div className="min-w-0">
+          {eyebrow && (
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-brand-500">
+              {eyebrow}
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <h1 className="text-[26px] font-extrabold leading-tight tracking-tight text-zinc-900 sm:text-[32px]">
+              {title}
+            </h1>
+            {demoBadge && (
+              <Badge tone="warn" size="lg">
+                Datos de muestra
+              </Badge>
+            )}
+          </div>
+          {description && (
+            <p className="mt-1.5 max-w-2xl text-[13.5px] leading-relaxed text-zinc-500">
+              {description}
+            </p>
+          )}
         </div>
-        {description && <p className="mt-1.5 text-sm text-zinc-500">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
