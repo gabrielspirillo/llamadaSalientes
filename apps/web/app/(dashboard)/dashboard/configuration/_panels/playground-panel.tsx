@@ -151,7 +151,7 @@ function TraceDetails({ trace }: { trace: PlaygroundResult }) {
       </button>
       <span className="ml-2">{badges.join(' · ')}</span>
       {open && (
-        <div className="mt-1 space-y-1 rounded-lg border border-zinc-200 bg-white p-2">
+        <div className="mt-1 space-y-1 rounded-lg border border-zinc-200 bg-white p-2 break-words">
           <div>
             modelo: {trace.model} · tokens: {trace.tokensIn}/{trace.tokensOut} · {trace.latencyMs}ms
           </div>
@@ -162,7 +162,7 @@ function TraceDetails({ trace }: { trace: PlaygroundResult }) {
               <div className="font-medium">tools:</div>
               <ul className="space-y-0.5">
                 {trace.toolsCalled.map((tc, i) => (
-                  <li key={i}>
+                  <li key={i} className="break-all">
                     {tc.ok ? '✓' : '✗'} <code>{tc.name}</code>({JSON.stringify(tc.args)}) →{' '}
                     {tc.result.slice(0, 120)}
                   </li>

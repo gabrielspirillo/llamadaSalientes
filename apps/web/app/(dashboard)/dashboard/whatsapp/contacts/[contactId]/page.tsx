@@ -156,9 +156,9 @@ export default async function ContactDetailPage({ params }: Props) {
 
   return (
     // Outer: ocupa toda la altura visible. NO scrollea.
-    <div className="-mx-4 flex h-[calc(100vh-7.5rem)] gap-4 overflow-hidden sm:mx-0">
+    <div className="-mx-4 flex flex-col lg:flex-row lg:h-[calc(100vh-7.5rem)] gap-4 lg:overflow-hidden sm:mx-0">
       {/* COLUMNA IZQUIERDA: contenedor flex-col con header fijo + form scrollable. */}
-      <div className="flex min-w-0 flex-1 flex-col bg-zinc-50">
+      <div className="flex min-w-0 flex-1 flex-col bg-zinc-50 h-[calc(100vh-7.5rem)] lg:h-auto">
         {/* Header fijo: breadcrumb + acción. No scrollea. */}
         <div className="shrink-0 px-6 pt-4">
           <div className="flex items-center justify-between">
@@ -217,7 +217,7 @@ export default async function ContactDetailPage({ params }: Props) {
       </div>
 
       {/* COLUMNA DERECHA: independiente, scroll propio. */}
-      <div className="hidden w-[420px] shrink-0 overflow-y-auto pr-4 pt-4 lg:block">
+      <div className="w-full lg:w-[420px] lg:shrink-0 overflow-y-auto pr-4 pt-4">
         <ContactHistoryTabs
           contactId={contact.id}
           ghlContactId={contact.ghlContactId}

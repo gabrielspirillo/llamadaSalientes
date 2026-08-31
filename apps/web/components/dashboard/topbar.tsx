@@ -424,7 +424,7 @@ function NotificationsBell({
                           e.stopPropagation();
                           dismissOne(n.id);
                         }}
-                        className="absolute top-3 right-3 h-5 w-5 inline-flex items-center justify-center rounded-md text-zinc-300 hover:text-zinc-700 hover:bg-zinc-200 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute top-2 right-2 h-8 w-8 inline-flex items-center justify-center rounded-md text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                         title="Descartar"
                       >
                         <X className="h-3 w-3" />

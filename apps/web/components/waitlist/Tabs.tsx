@@ -21,7 +21,7 @@ export function WaitlistTabs({
 }) {
   return (
     <Tabs defaultValue="queue">
-      <TabsList>
+      <TabsList className="w-full flex-wrap h-auto">
         <TabsTrigger value="queue">Cola activa ({queueCount})</TabsTrigger>
         <TabsTrigger value="offers">Ofertas en curso ({offersCount})</TabsTrigger>
         <TabsTrigger value="history">Histórico ({historyCount})</TabsTrigger>

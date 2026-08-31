@@ -180,7 +180,7 @@ export function StepHours({ form, mutate, errors }: StepProps) {
           const row = form.hours[day];
           return (
             <div key={day} className="flex flex-col gap-2 py-3">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <label className="flex items-center gap-2 w-32 shrink-0 cursor-pointer">
                   <input
                     type="checkbox"
@@ -205,7 +205,7 @@ export function StepHours({ form, mutate, errors }: StepProps) {
                           d.hours[day].open = ev.target.value;
                         })
                       }
-                      className="w-32"
+                      className="w-28"
                     />
                     <span className="text-zinc-400 text-sm">a</span>
                     <Input
@@ -216,7 +216,7 @@ export function StepHours({ form, mutate, errors }: StepProps) {
                           d.hours[day].close = ev.target.value;
                         })
                       }
-                      className="w-32"
+                      className="w-28"
                     />
                   </div>
                 ) : (
@@ -224,7 +224,7 @@ export function StepHours({ form, mutate, errors }: StepProps) {
                 )}
               </div>
               {errors[`hours.${day}`] && (
-                <p className="text-xs text-red-600 pl-[8.5rem]">{errors[`hours.${day}`]}</p>
+                <p className="text-xs text-red-600 pl-0 sm:pl-[8.5rem]">{errors[`hours.${day}`]}</p>
               )}
             </div>
           );

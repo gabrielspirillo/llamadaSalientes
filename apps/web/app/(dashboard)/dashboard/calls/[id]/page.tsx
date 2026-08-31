@@ -126,7 +126,7 @@ export default async function CallDetailPage({
                           {turn.speaker === 'agent' ? 'Agente' : 'Paciente'}
                         </div>
                         <p
-                          className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                          className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed break-words ${
                             turn.speaker === 'agent'
                               ? 'bg-zinc-100 text-zinc-800'
                               : 'bg-blue-50 text-blue-900'
