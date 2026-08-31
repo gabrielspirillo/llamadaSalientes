@@ -236,8 +236,8 @@ function ConnectedState({
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between text-sm">
-      <span className="text-zinc-500">{label}</span>
-      <span className="font-medium text-right">{value}</span>
+      <span className="text-zinc-500 shrink-0">{label}</span>
+      <span className="font-medium text-right break-all min-w-0 pl-3">{value}</span>
     </div>
   );
 }

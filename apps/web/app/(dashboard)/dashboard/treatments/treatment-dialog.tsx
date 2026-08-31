@@ -197,7 +197,7 @@ export function TreatmentDialog({
                         key={d.key}
                         type="button"
                         onClick={() => toggleDay(d.key)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                        className={`px-3 py-2 rounded-full text-xs font-medium transition-colors ${
                           active
                             ? 'bg-zinc-900 text-white'
                             : 'bg-white border border-zinc-200 text-zinc-600 hover:border-zinc-300'
