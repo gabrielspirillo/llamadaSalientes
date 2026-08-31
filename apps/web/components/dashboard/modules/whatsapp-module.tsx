@@ -4,6 +4,7 @@ import {
 } from '@/components/dashboard/analytics-module-charts';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { ModuleUnavailable } from './module-error';
 import {
   getConversationStatusBreakdown,
   getMessagesByHour,
@@ -30,11 +31,19 @@ function formatMoney(cents: number, currency = 'EUR'): string {
 }
 
 export async function WhatsappModule({ tenantId }: { tenantId: string }) {
-  const [kpis, byHour, status] = await Promise.all([
-    getWhatsappKPIs(tenantId),
-    getMessagesByHour(tenantId),
-    getConversationStatusBreakdown(tenantId),
-  ]);
+  const res = await (async () => {
+    try {
+      return await Promise.all([
+        getWhatsappKPIs(tenantId),
+        getMessagesByHour(tenantId),
+        getConversationStatusBreakdown(tenantId),
+      ]);
+    } catch {
+      return null;
+    }
+  })();
+  if (!res) return <ModuleUnavailable label="WhatsApp" />;
+  const [kpis, byHour, status] = res;
 
   const totalConversations = status.active + status.handoff + status.closed;
   if (totalConversations === 0 && kpis.messagesLast24h === 0) {

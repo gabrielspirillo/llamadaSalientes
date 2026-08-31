@@ -2,6 +2,7 @@ import { OutboundTrendChart } from '@/components/dashboard/analytics-module-char
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { ModuleUnavailable } from './module-error';
 import {
   getCampaignPerformance,
   getOutboundDailyTrend,
@@ -28,11 +29,19 @@ function formatMoney(cents: number, currency = 'EUR'): string {
 }
 
 export async function OutboundModule({ tenantId }: { tenantId: string }) {
-  const [kpis, trend, campaigns] = await Promise.all([
-    getOutboundKPIs(tenantId, 30),
-    getOutboundDailyTrend(tenantId, 30),
-    getCampaignPerformance(tenantId, 30, 8),
-  ]);
+  const res = await (async () => {
+    try {
+      return await Promise.all([
+        getOutboundKPIs(tenantId, 30),
+        getOutboundDailyTrend(tenantId, 30),
+        getCampaignPerformance(tenantId, 30, 8),
+      ]);
+    } catch {
+      return null;
+    }
+  })();
+  if (!res) return <ModuleUnavailable label="salientes" />;
+  const [kpis, trend, campaigns] = res;
 
   if (kpis.callsAttempted === 0 && campaigns.length === 0) {
     return <EmptyState />;
