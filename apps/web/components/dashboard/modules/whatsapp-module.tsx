@@ -31,19 +31,22 @@ function formatMoney(cents: number, currency = 'EUR'): string {
 }
 
 export async function WhatsappModule({ tenantId }: { tenantId: string }) {
-  const res = await (async () => {
+  const result = await (async () => {
     try {
-      return await Promise.all([
-        getWhatsappKPIs(tenantId),
-        getMessagesByHour(tenantId),
-        getConversationStatusBreakdown(tenantId),
-      ]);
-    } catch {
-      return null;
+      return {
+        ok: true as const,
+        data: await Promise.all([
+          getWhatsappKPIs(tenantId),
+          getMessagesByHour(tenantId),
+          getConversationStatusBreakdown(tenantId),
+        ]),
+      };
+    } catch (e) {
+      return { ok: false as const, error: e instanceof Error ? e.message : String(e) };
     }
   })();
-  if (!res) return <ModuleUnavailable label="WhatsApp" />;
-  const [kpis, byHour, status] = res;
+  if (!result.ok) return <ModuleUnavailable label="WhatsApp" detail={result.error} />;
+  const [kpis, byHour, status] = result.data;
 
   const totalConversations = status.active + status.handoff + status.closed;
   if (totalConversations === 0 && kpis.messagesLast24h === 0) {

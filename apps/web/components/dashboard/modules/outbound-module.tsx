@@ -29,19 +29,22 @@ function formatMoney(cents: number, currency = 'EUR'): string {
 }
 
 export async function OutboundModule({ tenantId }: { tenantId: string }) {
-  const res = await (async () => {
+  const result = await (async () => {
     try {
-      return await Promise.all([
-        getOutboundKPIs(tenantId, 30),
-        getOutboundDailyTrend(tenantId, 30),
-        getCampaignPerformance(tenantId, 30, 8),
-      ]);
-    } catch {
-      return null;
+      return {
+        ok: true as const,
+        data: await Promise.all([
+          getOutboundKPIs(tenantId, 30),
+          getOutboundDailyTrend(tenantId, 30),
+          getCampaignPerformance(tenantId, 30, 8),
+        ]),
+      };
+    } catch (e) {
+      return { ok: false as const, error: e instanceof Error ? e.message : String(e) };
     }
   })();
-  if (!res) return <ModuleUnavailable label="salientes" />;
-  const [kpis, trend, campaigns] = res;
+  if (!result.ok) return <ModuleUnavailable label="salientes" detail={result.error} />;
+  const [kpis, trend, campaigns] = result.data;
 
   if (kpis.callsAttempted === 0 && campaigns.length === 0) {
     return <EmptyState />;
