@@ -5,6 +5,7 @@ import {
 } from '@/components/dashboard/analytics-charts';
 import { OutboundModule } from '@/components/dashboard/modules/outbound-module';
 import { WhatsappModule } from '@/components/dashboard/modules/whatsapp-module';
+import { ModuleUnavailable } from '@/components/dashboard/modules/module-error';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -80,7 +81,15 @@ async function InboundAnalytics({
   tenantId: string;
   range: AnalyticsRange;
 }) {
-  const data = await getAnalytics(tenantId, range);
+  const result = await (async () => {
+    try {
+      return { ok: true as const, data: await getAnalytics(tenantId, range) };
+    } catch (e) {
+      return { ok: false as const, error: e instanceof Error ? e.message : String(e) };
+    }
+  })();
+  if (!result.ok) return <ModuleUnavailable label="entrantes" detail={result.error} />;
+  const data = result.data;
   const maxByHour = Math.max(1, ...data.byHour.map((h) => h.calls));
 
   return (
