@@ -75,6 +75,7 @@ export default async function MessagesPage() {
         initialRail={rail}
         currentUserId={currentUserId}
         canWrite={role !== 'viewer'}
+        isAdmin={role === 'admin'}
       />
     </>
   );

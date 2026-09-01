@@ -25,6 +25,7 @@ import {
   Phone,
   Pin,
   Sparkles,
+  UserPlus,
   Users,
   X,
 } from 'lucide-react';
@@ -56,6 +57,7 @@ export function ContextPanel({
   currentUserId,
   onJumpToMessage,
   onTogglePin,
+  onManageMembers,
   onClose,
   className,
 }: {
@@ -68,6 +70,8 @@ export function ContextPanel({
   mentions?: MentionIndex;
   onJumpToMessage: (messageId: string) => void;
   onTogglePin: (message: ImMessageDTO) => void;
+  /** Abre la gestión de miembros. Ausente en canales que no la admiten. */
+  onManageMembers?: () => void;
   onClose: () => void;
   className?: string;
 }) {
@@ -208,7 +212,21 @@ export function ContextPanel({
         )}
 
         {/* Miembros */}
-        <Section title="Miembros">
+        <Section
+          title="Miembros"
+          action={
+            onManageMembers ? (
+              <button
+                type="button"
+                onClick={onManageMembers}
+                className="press inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] font-semibold text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-800"
+              >
+                <UserPlus className="h-3 w-3" />
+                Gestionar
+              </button>
+            ) : undefined
+          }
+        >
           <ul className="space-y-1">
             {members.map((m) => {
               const online = presence.get(m.userId)?.online ?? false;

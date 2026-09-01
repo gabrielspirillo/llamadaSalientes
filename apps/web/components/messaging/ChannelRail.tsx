@@ -1,6 +1,7 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { InputWithIcon } from '@/components/ui/input';
 import { Equalizer } from '@/components/ui/stat';
@@ -35,6 +36,7 @@ export function ChannelRail({
   connected,
   onSelect,
   onStartDm,
+  onNewChannel,
   className,
 }: {
   channels: ImChannelDTO[];
@@ -46,6 +48,8 @@ export function ChannelRail({
   connected: boolean;
   onSelect: (channelId: string) => void;
   onStartDm: (userId: string) => void;
+  /** Abre el diálogo de crear canal. Sin esto no había forma de crear ninguno. */
+  onNewChannel?: () => void;
   className?: string;
 }) {
   const [query, setQuery] = useState('');
@@ -137,9 +141,17 @@ export function ChannelRail({
       {/* Lista */}
       <div className="min-h-0 flex-1 overflow-y-auto px-2 py-3">
         {empty && availablePeople.length === 0 ? (
-          <p className="px-3 py-8 text-center text-[14px] text-zinc-500">
-            {q ? 'Nada coincide con la búsqueda.' : 'Todavía no hay canales.'}
-          </p>
+          <div className="px-3 py-8 text-center">
+            <p className="text-[14px] text-zinc-500">
+              {q ? 'Nada coincide con la búsqueda.' : 'Todavía no hay canales.'}
+            </p>
+            {!q && onNewChannel && (
+              <Button size="sm" variant="soft" className="mt-3" onClick={onNewChannel}>
+                <Plus className="h-3.5 w-3.5" />
+                Crear el primero
+              </Button>
+            )}
+          </div>
         ) : null}
 
         {groups.pinned.length > 0 && (
@@ -158,7 +170,22 @@ export function ChannelRail({
         )}
 
         {groups.rooms.length > 0 && (
-          <RailSection title="Canales">
+          <RailSection
+            title="Canales"
+            action={
+              onNewChannel ? (
+                <button
+                  type="button"
+                  onClick={onNewChannel}
+                  aria-label="Crear un canal"
+                  title="Crear un canal"
+                  className="press inline-flex h-6 w-6 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
+              ) : undefined
+            }
+          >
             {groups.rooms.map((c, i) => (
               <RailChannel
                 key={c.id}

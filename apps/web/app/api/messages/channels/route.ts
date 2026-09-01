@@ -14,15 +14,17 @@ export const dynamic = 'force-dynamic';
 const schema = z.object({
   kind: z.enum(['PUBLIC', 'PRIVATE', 'GROUP']),
   name: z.string().trim().min(1).max(80),
+  // `nullish` y no `optional`: un formulario manda '' o null en los campos que
+  // el usuario dejó vacíos, y `optional()` solo acepta `undefined`.
   slug: z
     .string()
     .trim()
     .regex(/^[a-z0-9-]{2,40}$/, 'Slug inválido')
-    .optional(),
-  topic: z.string().trim().max(300).optional(),
-  icon: z.string().trim().max(40).optional(),
-  tone: z.enum(IM_TONES).optional(),
-  memberUserIds: z.array(z.string().uuid()).max(200).default([]),
+    .nullish(),
+  topic: z.string().trim().max(300).nullish(),
+  icon: z.string().trim().max(40).nullish(),
+  tone: z.enum(IM_TONES).nullish(),
+  memberUserIds: z.array(z.string().uuid()).max(200).nullish().default([]),
 });
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -37,7 +39,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     // El creador siempre queda dentro, aunque el cliente se olvide de incluirlo.
-    const memberUserIds = Array.from(new Set([...parsed.data.memberUserIds, auth.userId]));
+    const memberUserIds = Array.from(new Set([...(parsed.data.memberUserIds ?? []), auth.userId]));
 
     const { id } = await createChannel({
       tenantId: auth.tenantId,
@@ -46,7 +48,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       slug: parsed.data.slug ?? null,
       topic: parsed.data.topic ?? null,
       icon: parsed.data.icon ?? null,
-      tone: parsed.data.tone,
+      tone: parsed.data.tone ?? undefined,
       createdByUserId: auth.userId,
       memberUserIds,
     });

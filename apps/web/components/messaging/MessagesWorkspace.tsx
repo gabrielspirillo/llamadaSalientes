@@ -1,6 +1,10 @@
 'use client';
 
 import { ChannelRail } from '@/components/messaging/ChannelRail';
+import {
+  ChannelMembersDialog,
+  NewChannelDialog,
+} from '@/components/messaging/ChannelDialogs';
 import { Composer } from '@/components/messaging/Composer';
 import { ContextPanel } from '@/components/messaging/ContextPanel';
 import { MessageThread } from '@/components/messaging/MessageThread';
@@ -119,10 +123,13 @@ export function MessagesWorkspace({
   initialRail,
   currentUserId,
   canWrite,
+  isAdmin = false,
 }: {
   initialRail: ImRailDTO;
   currentUserId: string | null;
   canWrite: boolean;
+  /** Un canal público lo ve toda la clínica: solo lo abre un administrador. */
+  isAdmin?: boolean;
 }) {
   const [rail, setRail] = useState<ImRailDTO>(initialRail);
   const [threads, setThreads] = useState<Record<string, ThreadState>>({});
@@ -135,6 +142,8 @@ export function MessagesWorkspace({
   const [error, setError] = useState<string | null>(null);
   const [droppedFiles, setDroppedFiles] = useState<File[] | null>(null);
 
+  const [newChannelOpen, setNewChannelOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
   const [threadParent, setThreadParent] = useState<ImMessageDTO | null>(null);
   const [replies, setReplies] = useState<ImMessageDTO[]>([]);
   const [repliesLoading, setRepliesLoading] = useState(false);
@@ -858,6 +867,7 @@ export function MessagesWorkspace({
           connected={connected}
           onSelect={openChannel}
           onStartDm={startDm}
+          onNewChannel={() => setNewChannelOpen(true)}
           className={cn(
             'w-full shrink-0 lg:flex lg:w-[286px]',
             mobilePane === 'rail' ? 'flex' : 'hidden',
@@ -928,6 +938,16 @@ export function MessagesWorkspace({
           mentions={mentions}
           onJumpToMessage={jumpToMessage}
           onTogglePin={togglePin}
+          onManageMembers={
+            // En un DM o en un hilo de contexto la lista no la elige nadie:
+            // sale de con quién hablás o de la entidad que ancla el hilo.
+            activeChannel &&
+            (activeChannel.kind === 'PUBLIC' ||
+              activeChannel.kind === 'PRIVATE' ||
+              activeChannel.kind === 'GROUP')
+              ? () => setMembersOpen(true)
+              : undefined
+          }
           onClose={() => {
             setContextOpen(false);
             setMobilePane((p) => (p === 'context' ? 'thread' : p));
@@ -964,6 +984,27 @@ export function MessagesWorkspace({
         onToggleSave={toggleSave}
         onRetry={retry}
         onAction={runAction}
+      />
+
+      <NewChannelDialog
+        open={newChannelOpen}
+        onOpenChange={setNewChannelOpen}
+        people={rail.people}
+        me={rail.me}
+        canCreatePublic={isAdmin}
+        onCreated={(channelId) => {
+          void refreshRail();
+          openChannel(channelId);
+        }}
+      />
+
+      <ChannelMembersDialog
+        open={membersOpen}
+        onOpenChange={setMembersOpen}
+        channel={activeChannel}
+        people={rail.people}
+        me={rail.me}
+        onChanged={() => void refreshRail()}
       />
     </div>
   );

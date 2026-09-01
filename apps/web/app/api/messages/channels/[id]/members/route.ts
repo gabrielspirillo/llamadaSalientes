@@ -15,8 +15,8 @@ export const dynamic = 'force-dynamic';
 
 const schema = z
   .object({
-    add: z.array(z.string().uuid()).max(200).optional(),
-    remove: z.array(z.string().uuid()).max(200).optional(),
+    add: z.array(z.string().uuid()).max(200).nullish(),
+    remove: z.array(z.string().uuid()).max(200).nullish(),
   })
   .refine((v) => (v.add?.length ?? 0) + (v.remove?.length ?? 0) > 0, {
     message: 'Indicá al menos una persona a agregar o quitar',
