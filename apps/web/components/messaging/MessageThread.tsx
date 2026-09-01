@@ -225,7 +225,7 @@ export function MessageThread({
           type="button"
           onClick={onBack}
           aria-label="Volver a los canales"
-          className="press inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-brand-50 hover:text-brand-600 lg:hidden"
+          className="press inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 lg:hidden"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
@@ -265,7 +265,7 @@ export function MessageThread({
           onClick={onToggleContext}
           aria-label={contextOpen ? 'Ocultar contexto' : 'Mostrar contexto'}
           title={contextOpen ? 'Ocultar contexto' : 'Mostrar contexto'}
-          className="press inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-brand-50 hover:text-brand-600"
+          className="press inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
         >
           {contextOpen ? (
             <PanelRightClose className="h-4 w-4" />

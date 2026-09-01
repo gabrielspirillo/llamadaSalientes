@@ -315,7 +315,7 @@ export function MessageBubble(props: MessageBubbleProps) {
           <button
             type="button"
             onClick={() => onOpenThread?.(message)}
-            className="press mt-1 inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[11.5px] font-semibold text-brand-700 ring-1 ring-brand-100 transition-all duration-300 hover:bg-brand-50 hover:ring-brand-200"
+            className="press mt-1 inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[11.5px] font-semibold text-brand-700 ring-1 ring-brand-100 transition-all duration-300 hover:bg-zinc-100 hover:ring-brand-200"
           >
             <MessageSquare className="h-3 w-3" />
             {message.replyCount} {message.replyCount === 1 ? 'respuesta' : 'respuestas'}
@@ -337,7 +337,7 @@ export function MessageBubble(props: MessageBubbleProps) {
               key={emoji}
               type="button"
               onClick={() => onToggleReaction(message.id, emoji)}
-              className="press inline-flex h-7 w-7 items-center justify-center rounded-full text-[15px] transition-transform duration-200 hover:scale-125 hover:bg-brand-50"
+              className="press inline-flex h-7 w-7 items-center justify-center rounded-full text-[15px] transition-transform duration-200 hover:scale-125 hover:bg-zinc-100"
               aria-label={`Reaccionar con ${emoji}`}
             >
               {emoji}
@@ -393,7 +393,7 @@ export function MessageBubble(props: MessageBubbleProps) {
                 onToggleReaction(message.id, emoji);
                 setEmojiOpen(false);
               }}
-              className="press inline-flex h-8 w-8 items-center justify-center rounded-full text-[17px] transition-transform duration-200 hover:scale-125 hover:bg-brand-50"
+              className="press inline-flex h-8 w-8 items-center justify-center rounded-full text-[17px] transition-transform duration-200 hover:scale-125 hover:bg-zinc-100"
             >
               {emoji}
             </button>
@@ -437,7 +437,7 @@ function ToolbarButton({
           ? 'text-zinc-400 hover:bg-rose-50 hover:text-rose-600'
           : active
             ? 'bg-brand-100 text-brand-700'
-            : 'text-zinc-400 hover:bg-brand-50 hover:text-brand-600',
+            : 'text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700',
       )}
     >
       {children}

@@ -650,7 +650,7 @@ export function RichText({
           return (
             <blockquote
               key={key}
-              className="border-l-2 border-brand-200 bg-brand-50/50 py-1 pl-3 text-zinc-600"
+              className="border-l-2 border-zinc-200 bg-zinc-50/60 py-1 pl-3 text-zinc-600"
             >
               {block.lines.map((l, l2) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: mismo motivo: el markdown se re-parsea completo

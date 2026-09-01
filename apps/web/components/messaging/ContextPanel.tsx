@@ -166,7 +166,7 @@ export function ContextPanel({
                 type="button"
                 onClick={() => setPinsOpen((v) => !v)}
                 aria-label={pinsOpen ? 'Colapsar fijados' : 'Ver fijados'}
-                className="press inline-flex h-5 w-5 items-center justify-center rounded-full text-zinc-400 hover:bg-white hover:text-brand-600"
+                className="press inline-flex h-5 w-5 items-center justify-center rounded-full text-zinc-400 hover:bg-white hover:text-zinc-700"
               >
                 <ChevronDown
                   className={cn(

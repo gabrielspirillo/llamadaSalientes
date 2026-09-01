@@ -195,7 +195,7 @@ export function ChannelRail({
                 <button
                   type="button"
                   onClick={() => setShowPeople((v) => !v)}
-                  className="press inline-flex h-5 w-5 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-brand-50 hover:text-brand-600"
+                  className="press inline-flex h-5 w-5 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
                   aria-label={showPeople ? 'Ocultar equipo' : 'Escribir a alguien del equipo'}
                   title={showPeople ? 'Ocultar equipo' : 'Escribir a alguien del equipo'}
                 >

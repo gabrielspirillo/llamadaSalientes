@@ -185,7 +185,7 @@ export function QuickSwitcher() {
                     onClick={() => pick(r)}
                     className={cn(
                       'flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors duration-150',
-                      i === cursor ? 'bg-brand-50' : 'hover:bg-brand-50/60',
+                      i === cursor ? 'bg-brand-50' : 'hover:bg-zinc-100/70',
                     )}
                   >
                     <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-brand-600 ring-1 ring-[--color-border]">

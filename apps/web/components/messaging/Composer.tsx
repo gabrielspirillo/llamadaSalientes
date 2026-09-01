@@ -444,7 +444,7 @@ export function Composer({
           onClick={() => fileInputRef.current?.click()}
           aria-label="Adjuntar archivo"
           title="Adjuntar archivo"
-          className="press mb-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-colors duration-200 hover:bg-brand-50 hover:text-brand-600"
+          className="press mb-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-colors duration-200 hover:bg-zinc-100 hover:text-zinc-700"
         >
           <Paperclip className="h-4 w-4" />
         </button>
@@ -478,7 +478,7 @@ export function Composer({
           }}
           aria-label="Mencionar a alguien"
           title="Mencionar a alguien"
-          className="press mb-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-colors duration-200 hover:bg-brand-50 hover:text-brand-600"
+          className="press mb-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-colors duration-200 hover:bg-zinc-100 hover:text-zinc-700"
         >
           <AtSign className="h-4 w-4" />
         </button>

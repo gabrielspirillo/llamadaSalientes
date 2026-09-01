@@ -203,7 +203,7 @@ export function MessagesDock() {
                               }}
                               className={cn(
                                 'flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left transition-colors',
-                                c.id === current?.id ? 'bg-brand-50' : 'hover:bg-brand-50/60',
+                                c.id === current?.id ? 'bg-brand-50' : 'hover:bg-zinc-100/70',
                               )}
                             >
                               <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white text-brand-600 ring-1 ring-[--color-border]">

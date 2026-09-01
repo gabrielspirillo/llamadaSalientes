@@ -78,7 +78,7 @@ export function MentionsInbox({
               <button
                 type="button"
                 onClick={() => onGoToMessage(m.channelId, m.messageId)}
-                className="press inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold text-brand-700 transition-colors hover:bg-brand-100"
+                className="press inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold text-brand-700 transition-colors hover:bg-zinc-200"
               >
                 <CornerDownRight className="h-3 w-3" />
                 Ir al mensaje
@@ -86,7 +86,7 @@ export function MentionsInbox({
             ) : (
               <Link
                 href={`/dashboard/messages?channel=${m.channelId}&message=${m.messageId}`}
-                className="press inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold text-brand-700 transition-colors hover:bg-brand-100"
+                className="press inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold text-brand-700 transition-colors hover:bg-zinc-200"
               >
                 <CornerDownRight className="h-3 w-3" />
                 Ir al mensaje
