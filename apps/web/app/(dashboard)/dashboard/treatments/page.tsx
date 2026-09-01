@@ -33,7 +33,7 @@ export default async function TreatmentsPage() {
       ) : (
         <Card>
           {/* Mobile: cards */}
-          <ul className="md:hidden divide-y divide-zinc-50">
+          <ul className="md:hidden divide-y divide-[--color-border-subtle]">
             {rows.map((t) => (
               <li key={t.id} className="p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -72,7 +72,7 @@ export default async function TreatmentsPage() {
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs uppercase tracking-wider text-zinc-500 border-b border-zinc-100">
+                <tr className="text-left text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400 border-b border-[--color-border-subtle]">
                   <th className="px-5 py-3 font-medium">Nombre</th>
                   <th className="px-5 py-3 font-medium">Duración</th>
                   <th className="px-5 py-3 font-medium">Precio</th>
@@ -84,7 +84,7 @@ export default async function TreatmentsPage() {
                 {rows.map((t) => (
                   <tr
                     key={t.id}
-                    className="border-b border-zinc-50 last:border-b-0 hover:bg-zinc-50/60"
+                    className="border-b border-[--color-border-subtle] last:border-b-0 hover:bg-brand-50/50"
                   >
                     <td className="px-5 py-3.5">
                       <div className="font-medium">{t.name}</div>

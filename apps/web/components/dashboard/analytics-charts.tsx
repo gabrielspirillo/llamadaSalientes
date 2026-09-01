@@ -13,7 +13,14 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { axisProps, chartPalette, chartSequence, gridProps, tooltipStyle } from './chart-theme';
+import {
+  axisProps,
+  chartAnim,
+  chartPalette,
+  chartSequence,
+  gridProps,
+  tooltipStyle,
+} from './chart-theme';
 
 type ByDay = { date: string; calls: number; agendar: number; cancelar: number; otro: number };
 type Intent = { intent: string; count: number };
@@ -41,50 +48,53 @@ export function CallsTrendChart({ data }: { data: ByDay[] }) {
       <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
         <defs>
           <linearGradient id="gAgendadas" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={chartPalette.emerald} stopOpacity={0.4} />
+            <stop offset="0%" stopColor={chartPalette.emerald} stopOpacity={0.42} />
             <stop offset="100%" stopColor={chartPalette.emerald} stopOpacity={0.02} />
           </linearGradient>
           <linearGradient id="gCanceladas" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={chartPalette.amber} stopOpacity={0.4} />
+            <stop offset="0%" stopColor={chartPalette.amber} stopOpacity={0.42} />
             <stop offset="100%" stopColor={chartPalette.amber} stopOpacity={0.02} />
           </linearGradient>
           <linearGradient id="gOtras" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={chartPalette.indigo} stopOpacity={0.4} />
-            <stop offset="100%" stopColor={chartPalette.indigo} stopOpacity={0.02} />
+            <stop offset="0%" stopColor={chartPalette.violet} stopOpacity={0.42} />
+            <stop offset="100%" stopColor={chartPalette.violet} stopOpacity={0.02} />
           </linearGradient>
         </defs>
         <CartesianGrid {...gridProps} />
         <XAxis dataKey="label" {...axisProps} />
         <YAxis {...axisProps} width={32} />
-        <Tooltip contentStyle={tooltipStyle} cursor={{ stroke: '#e5e7eb' }} />
+        <Tooltip contentStyle={tooltipStyle} cursor={{ stroke: '#ddd8ef' }} />
         <Legend
           iconType="circle"
           iconSize={8}
-          wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
+          wrapperStyle={{ fontSize: 12, paddingTop: 10, fontWeight: 500 }}
         />
         <Area
           type="monotone"
           dataKey="Agendadas"
           stackId="1"
           stroke={chartPalette.emerald}
-          strokeWidth={2}
+          strokeWidth={2.5}
           fill="url(#gAgendadas)"
+          {...chartAnim}
         />
         <Area
           type="monotone"
           dataKey="Canceladas"
           stackId="1"
           stroke={chartPalette.amber}
-          strokeWidth={2}
+          strokeWidth={2.5}
           fill="url(#gCanceladas)"
+          {...chartAnim}
         />
         <Area
           type="monotone"
           dataKey="Otras"
           stackId="1"
-          stroke={chartPalette.indigo}
-          strokeWidth={2}
+          stroke={chartPalette.violet}
+          strokeWidth={2.5}
           fill="url(#gOtras)"
+          {...chartAnim}
         />
       </AreaChart>
     </ResponsiveContainer>
@@ -107,10 +117,12 @@ export function IntentDonut({ data }: { data: Intent[] }) {
             data={chartData}
             dataKey="value"
             nameKey="name"
-            innerRadius={62}
-            outerRadius={92}
-            paddingAngle={2}
+            innerRadius={58}
+            outerRadius={88}
+            paddingAngle={3}
+            cornerRadius={6}
             stroke="none"
+            {...chartAnim}
           >
             {chartData.map((_, i) => (
               <Cell key={i} fill={chartSequence[i % chartSequence.length]} />
@@ -119,8 +131,10 @@ export function IntentDonut({ data }: { data: Intent[] }) {
         </PieChart>
       </ResponsiveContainer>
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        <span className="text-2xl font-semibold tabular-nums">{total}</span>
-        <span className="text-[11px] text-zinc-500 uppercase tracking-wider">Total</span>
+        <span className="text-[26px] font-bold leading-none tabular-nums text-zinc-900">
+          {total}
+        </span>
+        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400">Total</span>
       </div>
     </div>
   );
@@ -139,15 +153,21 @@ export function IntentBarList({ data }: { data: Intent[] }) {
         const pct = (item.value / max) * 100;
         const color = chartSequence[i % chartSequence.length];
         return (
-          <li key={item.name} className="flex items-center gap-3 text-sm">
-            <span className="w-24 truncate text-zinc-600">{item.name}</span>
-            <div className="flex-1 h-2 rounded-full bg-zinc-100 overflow-hidden">
+          <li key={item.name} className="flex items-center gap-3 text-[13px]">
+            <span className="w-24 truncate font-medium text-zinc-600">{item.name}</span>
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-zinc-100">
               <div
-                className="h-full rounded-full transition-all"
-                style={{ width: `${pct}%`, backgroundColor: color }}
+                className="bar-fill h-full rounded-full"
+                style={{
+                  width: `${pct}%`,
+                  backgroundColor: color,
+                  ['--bar-delay' as string]: `${120 + i * 80}ms`,
+                }}
               />
             </div>
-            <span className="w-8 text-right tabular-nums font-medium">{item.value}</span>
+            <span className="w-8 text-right font-bold tabular-nums text-zinc-800">
+              {item.value}
+            </span>
           </li>
         );
       })}

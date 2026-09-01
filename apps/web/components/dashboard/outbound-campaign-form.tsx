@@ -115,7 +115,7 @@ export function OutboundCampaignForm() {
             id="campaign-use-case"
             value={useCase}
             onChange={(e) => setUseCase(e.target.value as typeof useCase)}
-            className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3.5 text-sm"
+            className="h-10 w-full rounded-xl border border-[--color-border] bg-white px-3.5 text-sm"
           >
             {USE_CASES.map((u) => (
               <option key={u.value} value={u.value}>
@@ -151,7 +151,7 @@ export function OutboundCampaignForm() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3.5 text-sm hover:bg-zinc-50">
+          <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-[--color-border] bg-white px-3.5 text-sm hover:bg-brand-50/50">
             <Upload className="h-4 w-4" />
             Elegir archivo
             <input type="file" accept=".csv,text/csv" onChange={onFile} className="hidden" />

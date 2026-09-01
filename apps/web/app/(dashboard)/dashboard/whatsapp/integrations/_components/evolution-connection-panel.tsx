@@ -123,7 +123,7 @@ export function EvolutionConnectionPanel({ initial }: Props) {
       )}
 
       {qrBase64 && status !== 'CONNECTED' && (
-        <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-center">
+        <div className="rounded-lg border border-[--color-border] bg-zinc-50 p-4 text-center">
           <p className="mb-2 text-xs text-zinc-600">
             Escaneá este QR desde WhatsApp → Dispositivos vinculados
           </p>
@@ -152,7 +152,7 @@ export function EvolutionConnectionPanel({ initial }: Props) {
       )}
 
       {!qrBase64 && pairingCode && status !== 'CONNECTED' && (
-        <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-center text-xs">
+        <div className="rounded-lg border border-[--color-border] bg-zinc-50 p-3 text-center text-xs">
           Código de vinculación:{' '}
           <code className="rounded bg-white px-2 py-0.5 font-mono text-base">{pairingCode}</code>
         </div>
@@ -184,7 +184,7 @@ export function EvolutionConnectionPanel({ initial }: Props) {
             type="button"
             onClick={onCheckStatus}
             disabled={pending}
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+            className="rounded-lg border border-[--color-border] bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-brand-50/50 disabled:opacity-50"
           >
             Verificar estado
           </button>
@@ -206,7 +206,7 @@ export function EvolutionConnectionPanel({ initial }: Props) {
           Útil si el equipo prefiere atender desde Chatwoot en lugar del
           inbox propio. */}
       {initial && status === 'CONNECTED' && (
-        <div className="mt-4 rounded-lg border border-zinc-200">
+        <div className="mt-4 rounded-lg border border-[--color-border]">
           <button
             type="button"
             onClick={() => setShowChatwoot((v) => !v)}
@@ -260,14 +260,14 @@ function ChatwootBridgeForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-2 border-t border-zinc-100 p-3 text-xs">
+    <form onSubmit={onSubmit} className="space-y-2 border-t border-[--color-border-subtle] p-3 text-xs">
       <label className="block">
         <span className="block font-medium text-zinc-700">URL Chatwoot</span>
         <input
           name="url"
           required
           placeholder="https://chatwoot.tu-dominio.com"
-          className="mt-0.5 w-full rounded border border-zinc-200 px-2 py-1"
+          className="mt-0.5 w-full rounded border border-[--color-border] px-2 py-1"
         />
       </label>
       <div className="grid grid-cols-2 gap-2">
@@ -277,7 +277,7 @@ function ChatwootBridgeForm() {
             name="accountId"
             required
             placeholder="1"
-            className="mt-0.5 w-full rounded border border-zinc-200 px-2 py-1"
+            className="mt-0.5 w-full rounded border border-[--color-border] px-2 py-1"
           />
         </label>
         <label className="block">
@@ -285,7 +285,7 @@ function ChatwootBridgeForm() {
           <input
             name="nameInbox"
             placeholder="cliniq-tenant-x"
-            className="mt-0.5 w-full rounded border border-zinc-200 px-2 py-1"
+            className="mt-0.5 w-full rounded border border-[--color-border] px-2 py-1"
           />
         </label>
       </div>
@@ -295,7 +295,7 @@ function ChatwootBridgeForm() {
           name="token"
           required
           type="password"
-          className="mt-0.5 w-full rounded border border-zinc-200 px-2 py-1"
+          className="mt-0.5 w-full rounded border border-[--color-border] px-2 py-1"
         />
       </label>
       <div className="flex flex-wrap gap-3 pt-1 text-zinc-600">
@@ -327,7 +327,7 @@ function ChatwootBridgeForm() {
           type="button"
           onClick={onDisconnect}
           disabled={pending}
-          className="rounded border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+          className="rounded border border-[--color-border] bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-brand-50/50 disabled:opacity-50"
         >
           Desactivar bridge
         </button>

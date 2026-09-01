@@ -44,7 +44,7 @@ export default async function SettingsPage() {
         }}
       />
 
-      <section className="mt-8 rounded-xl border border-zinc-200 bg-white p-6">
+      <section className="mt-8 rounded-xl border border-[--color-border] bg-white p-6">
         <div className="mb-4">
           <h2 className="text-lg font-semibold text-zinc-900">Personalización del agente IA</h2>
           <p className="text-sm text-zinc-500">

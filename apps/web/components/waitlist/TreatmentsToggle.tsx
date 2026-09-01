@@ -46,7 +46,7 @@ export function TreatmentsToggle({ rows }: { rows: TreatmentToggleRow[] }) {
   }
 
   return (
-    <div className="rounded-xl border border-zinc-200/70 overflow-hidden bg-white">
+    <div className="rounded-xl border border-[--color-border] overflow-hidden bg-white">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[560px] text-sm">
           <thead className="bg-zinc-50 text-zinc-600 text-xs uppercase tracking-wide">
@@ -57,9 +57,9 @@ export function TreatmentsToggle({ rows }: { rows: TreatmentToggleRow[] }) {
               <th className="text-right px-4 py-2.5">Elegible para waitlist</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100">
+          <tbody className="divide-y divide-[--color-border-subtle]">
             {rows.map((r) => (
-              <tr key={r.id} className="hover:bg-zinc-50/60">
+              <tr key={r.id} className="hover:bg-brand-50/50">
                 <td className="px-4 py-3 font-medium text-zinc-900">{r.name}</td>
                 <td className="px-4 py-3 text-zinc-500">{r.durationMinutes} min</td>
                 <td className="px-4 py-3">

@@ -18,7 +18,7 @@ export function MarketingTopbar() {
   }, [open]);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-zinc-200/60 bg-white/70 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 w-full border-b border-[--color-border] bg-white/70 backdrop-blur-xl">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-1.5">
           <span className="text-[18px] font-extrabold tracking-tight text-[#0f1f2e] leading-none">
@@ -62,7 +62,7 @@ export function MarketingTopbar() {
       </div>
 
       {open && (
-        <div className="sm:hidden border-t border-zinc-200/60 bg-white">
+        <div className="sm:hidden border-t border-[--color-border] bg-white">
           <nav className="px-4 py-4 flex flex-col gap-1 text-sm">
             <Link
               href="#producto"
@@ -92,7 +92,7 @@ export function MarketingTopbar() {
             >
               Demo
             </Link>
-            <div className="mt-3 pt-3 border-t border-zinc-200/60 flex flex-col gap-2">
+            <div className="mt-3 pt-3 border-t border-[--color-border] flex flex-col gap-2">
               <Button asChild variant="secondary" size="sm" className="w-full justify-center">
                 <Link href="/sign-in" onClick={() => setOpen(false)}>
                   Iniciar sesión

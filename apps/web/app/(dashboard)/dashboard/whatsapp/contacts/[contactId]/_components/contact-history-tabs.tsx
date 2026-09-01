@@ -66,8 +66,8 @@ export function ContactHistoryTabs({
   const [tab, setTab] = useState<Tab>('atributos');
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white">
-      <div className="flex border-b border-zinc-100">
+    <div className="rounded-2xl border border-[--color-border] bg-white">
+      <div className="flex border-b border-[--color-border-subtle]">
         {(['atributos', 'historial', 'notas', 'combinar'] as Tab[]).map((t) => (
           <button
             key={t}
@@ -127,7 +127,7 @@ function Atributos({
             {appointments.map((a) => (
               <li
                 key={a.id}
-                className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2 text-sm"
+                className="rounded-lg border border-[--color-border-subtle] bg-zinc-50 px-3 py-2 text-sm"
               >
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-zinc-900">{a.treatment ?? 'Cita'}</span>
@@ -175,7 +175,7 @@ function Historial({
               <li key={c.id}>
                 <Link
                   href={`/dashboard/whatsapp/${c.id}`}
-                  className="flex items-start gap-2 rounded-lg p-2 hover:bg-zinc-50"
+                  className="flex items-start gap-2 rounded-lg p-2 hover:bg-brand-50/50"
                 >
                   <div
                     className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${
@@ -215,7 +215,7 @@ function Historial({
               <li key={c.id}>
                 <Link
                   href={`/dashboard/llamadas/${c.id}`}
-                  className="flex items-start gap-2 rounded-lg p-2 hover:bg-zinc-50"
+                  className="flex items-start gap-2 rounded-lg p-2 hover:bg-brand-50/50"
                 >
                   <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-purple-500" />
                   <div className="min-w-0 flex-1">
@@ -289,7 +289,7 @@ function Notas({ contactId, notes }: { contactId: string; notes: NoteItem[] }) {
   return (
     <div className="space-y-4">
       <div className="rounded-xl bg-zinc-50 p-3">
-        <div className="mb-2 flex items-center gap-1 border-b border-zinc-200 pb-2">
+        <div className="mb-2 flex items-center gap-1 border-b border-[--color-border] pb-2">
           <ToolbarButton onClick={() => applyWrap('**')} title="Negrita">
             <span className="font-bold">B</span>
           </ToolbarButton>
@@ -469,7 +469,7 @@ function Combinar({ contactId }: { contactId: string }) {
           setSelected(null);
         }}
         placeholder="Buscar por nombre o teléfono…"
-        className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+        className="w-full rounded-lg border border-[--color-border] px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
       />
       {searching && <p className="text-[11px] text-zinc-400">Buscando…</p>}
       {!searching && query.trim().length >= 2 && results.length === 0 && (
@@ -486,7 +486,7 @@ function Combinar({ contactId }: { contactId: string }) {
                 className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                   isSelected
                     ? 'border border-emerald-300 bg-emerald-50'
-                    : 'border border-transparent hover:bg-zinc-50'
+                    : 'border border-transparent hover:bg-brand-50/50'
                 }`}
               >
                 <div className="font-medium text-zinc-900">{r.name ?? '(sin nombre)'}</div>

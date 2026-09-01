@@ -225,7 +225,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
       : 'Escribe un mensaje. Usa "/" para respuestas rápidas.';
 
   return (
-    <div className="relative rounded-xl border border-zinc-200 bg-white">
+    <div className="relative rounded-xl border border-[--color-border] bg-white">
       {error && (
         <div className="border-b border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700">
           {error}
@@ -233,7 +233,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
       )}
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 border-b border-zinc-100 px-2 pt-2">
+      <div className="flex items-center gap-1 border-b border-[--color-border-subtle] px-2 pt-2">
         <button
           type="button"
           onClick={() => setMode('reply')}
@@ -260,8 +260,8 @@ export function MessageComposer({ conversationId, disabled }: Props) {
 
       {/* Slash command popup */}
       {slashOpen && slashResults.length > 0 && (
-        <div className="absolute bottom-full left-3 right-3 z-20 mb-1 max-h-60 overflow-y-auto rounded-lg border border-zinc-200 bg-white shadow-lg">
-          <p className="border-b border-zinc-100 px-3 py-1.5 text-[10px] uppercase tracking-wide text-zinc-500">
+        <div className="absolute bottom-full left-3 right-3 z-20 mb-1 max-h-60 overflow-y-auto rounded-lg border border-[--color-border] bg-white shadow-lg">
+          <p className="border-b border-[--color-border-subtle] px-3 py-1.5 text-[10px] uppercase tracking-wide text-zinc-500">
             Respuestas rápidas · ↑↓ para navegar, Enter para usar
           </p>
           <ul>
@@ -271,7 +271,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
                   type="button"
                   onClick={() => applyQuickReply(qr)}
                   className={`block w-full px-3 py-2 text-left text-sm ${
-                    i === slashIndex ? 'bg-emerald-50' : 'hover:bg-zinc-50'
+                    i === slashIndex ? 'bg-emerald-50' : 'hover:bg-brand-50/50'
                   }`}
                 >
                   <div className="font-mono text-xs text-emerald-700">/{qr.shortcut}</div>
@@ -285,12 +285,12 @@ export function MessageComposer({ conversationId, disabled }: Props) {
 
       {/* Audio preview */}
       {audioBlob && (
-        <div className="flex items-center gap-2 border-b border-zinc-100 bg-zinc-50 px-3 py-2">
+        <div className="flex items-center gap-2 border-b border-[--color-border-subtle] bg-zinc-50 px-3 py-2">
           <audio src={URL.createObjectURL(audioBlob)} controls className="h-8 flex-1" />
           <button
             type="button"
             onClick={discardAudio}
-            className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-xs hover:bg-zinc-50"
+            className="rounded-lg border border-[--color-border] bg-white px-2 py-1 text-xs hover:bg-brand-50/50"
           >
             Descartar
           </button>
@@ -318,7 +318,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
           className={`w-full resize-none rounded-lg border px-3 py-2 text-sm focus:outline-none disabled:bg-zinc-50 ${
             isNote
               ? 'border-amber-200 bg-amber-50 focus:border-amber-400'
-              : 'border-zinc-200 bg-white focus:border-zinc-400'
+              : 'border-[--color-border] bg-white focus:border-zinc-400'
           }`}
         />
 
@@ -427,7 +427,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
 
       {/* Emoji popover */}
       {emojiOpen && (
-        <div className="absolute bottom-full left-3 z-20 mb-1 grid w-72 grid-cols-10 gap-1 rounded-lg border border-zinc-200 bg-white p-2 shadow-lg">
+        <div className="absolute bottom-full left-3 z-20 mb-1 grid w-72 grid-cols-10 gap-1 rounded-lg border border-[--color-border] bg-white p-2 shadow-lg">
           {EMOJIS.map((e) => (
             <button
               key={e}

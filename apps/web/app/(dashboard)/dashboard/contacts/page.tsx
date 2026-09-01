@@ -29,7 +29,7 @@ export default async function ContactsPage() {
             </p>
             <Link
               href="/dashboard/configuration?tab=integrations"
-              className="inline-block mt-5 rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 transition-colors"
+              className="mt-5 inline-flex items-center gap-2 rounded-full bg-[linear-gradient(120deg,#7139e8,#8b5cf6)] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_24px_-10px_rgba(113,57,232,0.75)] transition-all duration-300 hover:-translate-y-0.5"
             >
               Ir a configuración
             </Link>

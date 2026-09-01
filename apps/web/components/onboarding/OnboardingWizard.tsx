@@ -242,7 +242,7 @@ export function OnboardingWizard({
       )}
 
       {/* Navegación */}
-      <footer className="mt-8 flex items-center justify-between gap-3 border-t border-zinc-100 pt-5">
+      <footer className="mt-8 flex items-center justify-between gap-3 border-t border-[--color-border-subtle] pt-5">
         {step === 1 ? (
           <Button variant="ghost" onClick={exit} disabled={submitting} type="button">
             <LogOut className="h-4 w-4" /> Salir

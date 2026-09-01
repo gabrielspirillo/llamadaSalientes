@@ -117,7 +117,7 @@ function ProviderTabs({
                 className={`text-left rounded-xl border p-3 transition ${
                   active
                     ? 'border-zinc-900 bg-zinc-900 text-white'
-                    : 'border-zinc-200 bg-white hover:border-zinc-400'
+                    : 'border-[--color-border] bg-white hover:border-zinc-400'
                 }`}
               >
                 <div className="flex items-center gap-2">
@@ -701,7 +701,7 @@ function InboundCard({
               <select
                 value={selected}
                 onChange={(e) => setSelected(e.target.value)}
-                className="mt-2 flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3.5 text-sm"
+                className="mt-2 flex h-10 w-full rounded-xl border border-[--color-border] bg-white px-3.5 text-sm"
               >
                 <option value="">Seleccionar…</option>
                 {numbers.map((n) => (
@@ -886,7 +886,7 @@ function HelpCard({
             </>
           )}
         </ul>
-        <div className="pt-2 border-t border-zinc-100 space-y-2">
+        <div className="pt-2 border-t border-[--color-border-subtle] space-y-2">
           <div className="text-xs text-zinc-500">
             Webhook URLs configuradas automáticamente:
           </div>
@@ -907,7 +907,7 @@ function HelpCard({
 function CopyRow({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <div className="flex items-center justify-between gap-2 rounded-lg bg-zinc-50 border border-zinc-200 px-2.5 py-1.5">
+    <div className="flex items-center justify-between gap-2 rounded-lg bg-zinc-50 border border-[--color-border] px-2.5 py-1.5">
       <div className="min-w-0">
         <div className="text-[10px] uppercase tracking-wide text-zinc-500">{label}</div>
         <div className="text-xs font-mono text-zinc-900 truncate">{value}</div>

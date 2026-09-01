@@ -68,12 +68,12 @@ export default async function OutboundPage() {
       ) : (
         <Card>
           {/* Mobile: cards */}
-          <ul className="md:hidden divide-y divide-zinc-50">
+          <ul className="md:hidden divide-y divide-[--color-border-subtle]">
             {campaigns.map((c) => (
               <li key={c.id}>
                 <Link
                   href={`/dashboard/outbound/${c.id}`}
-                  className="flex items-start gap-3 p-4 hover:bg-zinc-50/60 transition-colors"
+                  className="flex items-start gap-3 p-4 hover:bg-brand-50/50 transition-colors"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
@@ -101,7 +101,7 @@ export default async function OutboundPage() {
           {/* Tablet/Desktop: table */}
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="text-zinc-500 border-b border-zinc-100">
+              <thead className="text-zinc-500 border-b border-[--color-border-subtle]">
                 <tr>
                   <th className="text-left font-medium px-5 py-3">Campaña</th>
                   <th className="text-left font-medium px-5 py-3 hidden lg:table-cell">Caso de uso</th>
@@ -113,7 +113,7 @@ export default async function OutboundPage() {
               </thead>
               <tbody>
                 {campaigns.map((c) => (
-                  <tr key={c.id} className="border-b border-zinc-50 last:border-0">
+                  <tr key={c.id} className="border-b border-[--color-border-subtle] last:border-0">
                     <td className="px-5 py-3 font-medium">{c.name}</td>
                     <td className="px-5 py-3 text-zinc-600 hidden lg:table-cell">
                       {USE_CASE_LABEL[c.useCase as UseCase] ?? c.useCase}

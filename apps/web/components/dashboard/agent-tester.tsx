@@ -242,7 +242,7 @@ export function AgentTester() {
             </Badge>
           )}
         </div>
-        <div className="border-t border-zinc-100 px-4 sm:px-6 py-4 sm:py-5 space-y-4 min-h-[300px] sm:min-h-[400px] max-h-[60vh] sm:max-h-[500px] overflow-y-auto">
+        <div className="border-t border-[--color-border-subtle] px-4 sm:px-6 py-4 sm:py-5 space-y-4 min-h-[300px] sm:min-h-[400px] max-h-[60vh] sm:max-h-[500px] overflow-y-auto">
           {transcript.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-[360px] text-center text-sm text-zinc-400">
               <Phone className="h-8 w-8 mb-3 text-zinc-300" />

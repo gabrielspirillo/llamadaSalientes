@@ -63,7 +63,7 @@ export function InviteMember() {
             id="invite-role"
             value={role}
             onChange={(e) => setRole(e.target.value)}
-            className="flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3.5 text-sm focus-visible:border-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/15"
+            className="flex h-10 w-full rounded-xl border border-[--color-border] bg-white px-3.5 text-sm focus-visible:border-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/25"
           >
             <option value="org:member">Operador — puede operar, sin config crítica</option>
             <option value="org:admin">Admin — acceso completo</option>

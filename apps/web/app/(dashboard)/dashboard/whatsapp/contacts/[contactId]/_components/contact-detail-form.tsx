@@ -72,7 +72,7 @@ export function ContactDetailForm({ contact }: Props) {
   }
 
   return (
-    <div className="space-y-6 rounded-2xl border border-zinc-200 bg-white p-5">
+    <div className="space-y-6 rounded-2xl border border-[--color-border] bg-white p-5">
       <div>
         <h2 className="text-sm font-semibold text-zinc-900">Editar detalles del contacto</h2>
         {error && (
@@ -192,7 +192,7 @@ function FieldInput({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         readOnly={readOnly}
-        className={`w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none ${
+        className={`w-full rounded-lg border border-[--color-border] px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none ${
           readOnly ? 'bg-zinc-50 text-zinc-500' : ''
         }`}
       />

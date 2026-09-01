@@ -63,7 +63,7 @@ export function PlaygroundPanel() {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="+34699111222"
-            className="mt-1 w-56 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm"
+            className="mt-1 w-56 rounded-lg border border-[--color-border] px-3 py-1.5 text-sm"
           />
         </label>
         <button
@@ -72,7 +72,7 @@ export function PlaygroundPanel() {
             setTurns([]);
             setError(null);
           }}
-          className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50"
+          className="rounded-lg border border-[--color-border] bg-white px-3 py-1.5 text-sm text-zinc-700 hover:bg-brand-50/50"
         >
           Reiniciar conversación
         </button>
@@ -80,7 +80,7 @@ export function PlaygroundPanel() {
 
       <div
         ref={listRef}
-        className="h-[420px] overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-4"
+        className="h-[420px] overflow-y-auto rounded-xl border border-[--color-border] bg-[#fbfaff] p-4"
       >
         {turns.length === 0 ? (
           <p className="text-sm text-zinc-400">
@@ -95,7 +95,7 @@ export function PlaygroundPanel() {
                     className={`whitespace-pre-line rounded-2xl px-3 py-2 text-sm ${
                       t.role === 'user'
                         ? 'bg-emerald-600 text-white'
-                        : 'border border-zinc-200 bg-white text-zinc-800'
+                        : 'border border-[--color-border] bg-white text-zinc-800'
                     }`}
                   >
                     {t.content}
@@ -123,7 +123,7 @@ export function PlaygroundPanel() {
           }}
           rows={2}
           placeholder="Mensaje del paciente… (Ctrl/Cmd+Enter para enviar)"
-          className="flex-1 rounded-lg border border-zinc-200 px-3 py-2 text-sm"
+          className="flex-1 rounded-lg border border-[--color-border] px-3 py-2 text-sm"
         />
         <button
           type="button"
@@ -151,7 +151,7 @@ function TraceDetails({ trace }: { trace: PlaygroundResult }) {
       </button>
       <span className="ml-2">{badges.join(' · ')}</span>
       {open && (
-        <div className="mt-1 space-y-1 rounded-lg border border-zinc-200 bg-white p-2 break-words">
+        <div className="mt-1 space-y-1 rounded-lg border border-[--color-border] bg-white p-2 break-words">
           <div>
             modelo: {trace.model} · tokens: {trace.tokensIn}/{trace.tokensOut} · {trace.latencyMs}ms
           </div>

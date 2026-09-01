@@ -43,8 +43,8 @@ export default async function WhoamiPage() {
         )}
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-zinc-200/70 bg-white">
-        <dl className="divide-y divide-zinc-100">
+      <div className="overflow-hidden rounded-2xl border border-[--color-border] bg-white">
+        <dl className="divide-y divide-[--color-border-subtle]">
           {rows.map((r) => (
             <div key={r.k} className="flex flex-col gap-1 px-5 py-3.5 sm:flex-row sm:items-center sm:gap-4">
               <dt className="w-40 shrink-0 text-sm text-zinc-500">{r.k}</dt>

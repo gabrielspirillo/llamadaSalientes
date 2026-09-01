@@ -48,7 +48,7 @@ export function WaitlistSettingsForm({ initial }: { initial: Settings }) {
   }
 
   return (
-    <div className="rounded-xl border border-zinc-200/70 bg-white p-6 space-y-6">
+    <div className="rounded-xl border border-[--color-border] bg-white p-6 space-y-6">
       <div>
         <h2 className="text-lg font-semibold text-zinc-900">Configuración general</h2>
         <p className="text-sm text-zinc-500 mt-1">
@@ -62,7 +62,7 @@ export function WaitlistSettingsForm({ initial }: { initial: Settings }) {
 
       <Row label="Canal de oferta" hint="Cómo se contacta al paciente cuando hay un slot disponible.">
         <select
-          className="w-full sm:w-auto max-w-full rounded-md border border-zinc-200 px-3 py-1.5 text-sm bg-white"
+          className="w-full sm:w-auto max-w-full rounded-md border border-[--color-border] px-3 py-1.5 text-sm bg-white"
           value={s.channelMode}
           onChange={(e) => setS({ ...s, channelMode: e.target.value as Settings['channelMode'] })}
         >
@@ -95,7 +95,7 @@ export function WaitlistSettingsForm({ initial }: { initial: Settings }) {
         />
       </Row>
 
-      <hr className="border-zinc-100" />
+      <hr className="border-[--color-border-subtle]" />
 
       <div>
         <h2 className="text-lg font-semibold text-zinc-900">Reglas de elegibilidad</h2>
@@ -203,7 +203,7 @@ function NumInput({ value, onChange }: { value: number; onChange: (v: number) =>
   return (
     <input
       type="number"
-      className="w-28 rounded-md border border-zinc-200 px-3 py-1.5 text-sm bg-white text-right"
+      className="w-28 rounded-md border border-[--color-border] px-3 py-1.5 text-sm bg-white text-right"
       value={value}
       onChange={(e) => {
         const n = Number.parseInt(e.target.value, 10);
@@ -225,7 +225,7 @@ function NullableNumInput({
   return (
     <input
       type="number"
-      className="w-28 rounded-md border border-zinc-200 px-3 py-1.5 text-sm bg-white text-right"
+      className="w-28 rounded-md border border-[--color-border] px-3 py-1.5 text-sm bg-white text-right"
       value={value ?? ''}
       placeholder={placeholder}
       onChange={(e) => {

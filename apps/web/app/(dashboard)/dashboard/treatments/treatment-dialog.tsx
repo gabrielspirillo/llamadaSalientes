@@ -177,7 +177,7 @@ export function TreatmentDialog({
           </div>
 
           {!isEdit && (
-            <div className="rounded-xl border border-zinc-200/70 bg-zinc-50/50 p-4 space-y-3">
+            <div className="rounded-xl border border-[--color-border] bg-[#fbfaff] p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-violet-600" />
                 <p className="text-sm font-medium">Horarios de atención (opcional)</p>
@@ -200,7 +200,7 @@ export function TreatmentDialog({
                         className={`px-3 py-2 rounded-full text-xs font-medium transition-colors ${
                           active
                             ? 'bg-zinc-900 text-white'
-                            : 'bg-white border border-zinc-200 text-zinc-600 hover:border-zinc-300'
+                            : 'bg-white border border-[--color-border] text-zinc-600 hover:border-brand-200'
                         }`}
                       >
                         {d.label}

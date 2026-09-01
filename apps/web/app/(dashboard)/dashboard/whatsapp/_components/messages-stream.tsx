@@ -154,7 +154,7 @@ function MessageBubble({
     ? 'mx-auto bg-amber-50 border border-amber-200'
     : isOutbound
       ? 'ml-auto bg-emerald-500 text-white'
-      : 'mr-auto bg-white border border-zinc-200';
+      : 'mr-auto bg-white border border-[--color-border]';
   const authorEmail = m.senderUserId ? senderUserEmails[m.senderUserId] ?? null : null;
   const timestamp = useMemo(() => new Date(m.createdAt).toLocaleString(), [m.createdAt]);
 
@@ -209,7 +209,7 @@ function MessageBubble({
 
 function TypingBubble() {
   return (
-    <li className="mr-auto max-w-[60%] rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm">
+    <li className="mr-auto max-w-[60%] rounded-2xl border border-[--color-border] bg-white px-3 py-2 text-sm">
       <div className="flex items-center gap-2 text-zinc-500">
         <span className="text-[11px]">Agente escribiendo</span>
         <span className="inline-flex gap-1">

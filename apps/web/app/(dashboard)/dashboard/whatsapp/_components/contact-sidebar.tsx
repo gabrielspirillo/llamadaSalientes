@@ -184,13 +184,13 @@ export function ContactSidebar({
   const assignedMember = members.find((m) => m.userId === assignedUserId);
 
   return (
-    <aside className="flex w-full lg:w-80 lg:shrink-0 flex-col gap-4 overflow-y-auto border-t lg:border-t-0 lg:border-l border-zinc-200 bg-zinc-50/50 p-4">
+    <aside className="flex w-full lg:w-80 lg:shrink-0 flex-col gap-4 overflow-y-auto border-t lg:border-t-0 lg:border-l border-[--color-border] bg-[#fbfaff] p-4">
       {error && (
         <div className="rounded bg-red-50 px-3 py-2 text-xs text-red-700">{error}</div>
       )}
 
       {/* Contacto */}
-      <div className="rounded-xl border border-zinc-200 bg-white p-4">
+      <div className="rounded-xl border border-[--color-border] bg-white p-4">
         <div className="flex items-center gap-3">
           {contact.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -213,7 +213,7 @@ export function ContactSidebar({
         </div>
         <Link
           href={`/dashboard/whatsapp/contacts/${contact.id}`}
-          className="mt-3 inline-flex w-full items-center justify-center rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+          className="mt-3 inline-flex w-full items-center justify-center rounded-lg border border-[--color-border] bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-brand-50/50"
         >
           Ver detalles del contacto
         </Link>
@@ -282,7 +282,7 @@ export function ContactSidebar({
       ) : null}
 
       {/* Citas */}
-      <div className="rounded-xl border border-zinc-200 bg-white p-4">
+      <div className="rounded-xl border border-[--color-border] bg-white p-4">
         <p className="text-sm font-semibold text-zinc-900">Citas</p>
         {appointments.length === 0 ? (
           <p className="mt-2 text-xs text-zinc-500">
@@ -324,7 +324,7 @@ export function ContactSidebar({
       </div>
 
       {/* Agente IA */}
-      <div className="rounded-xl border border-zinc-200 bg-white p-4">
+      <div className="rounded-xl border border-[--color-border] bg-white p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-zinc-900">Agente Virtual</p>
@@ -355,13 +355,13 @@ export function ContactSidebar({
       </div>
 
       {/* Asignación */}
-      <div className="rounded-xl border border-zinc-200 bg-white p-4">
+      <div className="rounded-xl border border-[--color-border] bg-white p-4">
         <p className="text-sm font-semibold text-zinc-900">Asignar a</p>
         <select
           value={assignedUserId ?? ''}
           onChange={(e) => handleAssign(e.target.value || null)}
           disabled={pending}
-          className="mt-2 w-full rounded-lg border border-zinc-200 px-2 py-1.5 text-sm focus:border-zinc-400 focus:outline-none disabled:bg-zinc-50"
+          className="mt-2 w-full rounded-lg border border-[--color-border] px-2 py-1.5 text-sm focus:border-zinc-400 focus:outline-none disabled:bg-zinc-50"
         >
           <option value="">Sin asignar</option>
           {members.map((m) => (
@@ -378,7 +378,7 @@ export function ContactSidebar({
       </div>
 
       {/* Etiquetas */}
-      <div className="rounded-xl border border-zinc-200 bg-white p-4">
+      <div className="rounded-xl border border-[--color-border] bg-white p-4">
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold text-zinc-900">Etiquetas</p>
           <button
@@ -398,14 +398,14 @@ export function ContactSidebar({
               onChange={(e) => setNewTagLabel(e.target.value)}
               placeholder="Nombre de la etiqueta"
               maxLength={40}
-              className="w-full rounded-lg border border-zinc-200 px-2 py-1.5 text-xs focus:border-zinc-400 focus:outline-none"
+              className="w-full rounded-lg border border-[--color-border] px-2 py-1.5 text-xs focus:border-zinc-400 focus:outline-none"
             />
             <div className="flex items-center gap-2">
               <input
                 type="color"
                 value={newTagColor}
                 onChange={(e) => setNewTagColor(e.target.value)}
-                className="h-7 w-10 cursor-pointer rounded border border-zinc-200"
+                className="h-7 w-10 cursor-pointer rounded border border-[--color-border]"
               />
               <button
                 type="submit"

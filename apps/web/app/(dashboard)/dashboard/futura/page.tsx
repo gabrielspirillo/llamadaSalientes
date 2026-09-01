@@ -101,7 +101,7 @@ export default async function FuturaPanelPage() {
       </div>
 
       {clinics.length === 0 ? (
-        <div className="rounded-2xl border border-zinc-200/70 bg-white p-12 text-center text-sm text-zinc-500">
+        <div className="rounded-2xl border border-[--color-border] bg-white p-12 text-center text-sm text-zinc-500">
           Todavía no hay clínicas registradas.
         </div>
       ) : (
@@ -115,7 +115,7 @@ export default async function FuturaPanelPage() {
               <div
                 key={c.id}
                 className={`rounded-2xl border bg-white p-5 transition-shadow hover:shadow-sm ${
-                  needsAttention ? 'border-violet-200/70' : 'border-zinc-200/70'
+                  needsAttention ? 'border-violet-200/70' : 'border-[--color-border]'
                 }`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -142,7 +142,7 @@ export default async function FuturaPanelPage() {
                 </div>
 
                 {/* Módulos por clínica */}
-                <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-zinc-100 pt-4">
+                <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-[--color-border-subtle] pt-4">
                   <span className="text-xs font-medium uppercase tracking-wide text-zinc-400">
                     Módulos
                   </span>
@@ -178,7 +178,7 @@ function StatCard({
   const ring =
     tone === 'success' ? 'from-emerald-50' : tone === 'violet' ? 'from-violet-50' : 'from-zinc-50';
   return (
-    <div className={`rounded-2xl border border-zinc-200/70 bg-gradient-to-br ${ring} to-white p-5`}>
+    <div className={`rounded-2xl border border-[--color-border] bg-gradient-to-br ${ring} to-white p-5`}>
       <p className="text-sm text-zinc-500">{label}</p>
       <p className="mt-1 text-3xl font-semibold tracking-tight text-zinc-900">{value}</p>
     </div>

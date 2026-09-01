@@ -54,7 +54,7 @@ export function TwilioConnectionForm({ initial }: Props) {
           onChange={(e) => setAccountSid(e.target.value)}
           required
           placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-          className="w-full rounded-lg border border-zinc-200 px-3 py-1.5 font-mono text-sm focus:border-zinc-400 focus:outline-none"
+          className="w-full rounded-lg border border-[--color-border] px-3 py-1.5 font-mono text-sm focus:border-zinc-400 focus:outline-none"
         />
       </div>
       <div>
@@ -67,7 +67,7 @@ export function TwilioConnectionForm({ initial }: Props) {
           onChange={(e) => setAuthToken(e.target.value)}
           required
           placeholder={initial ? 'Pega de nuevo para actualizar' : ''}
-          className="w-full rounded-lg border border-zinc-200 px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
+          className="w-full rounded-lg border border-[--color-border] px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
         />
       </div>
       <div>
@@ -80,7 +80,7 @@ export function TwilioConnectionForm({ initial }: Props) {
           onChange={(e) => setFromNumber(e.target.value)}
           required
           placeholder="+34123456789"
-          className="w-full rounded-lg border border-zinc-200 px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
+          className="w-full rounded-lg border border-[--color-border] px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
         />
         <p className="mt-1 text-[11px] text-zinc-500">
           El número WhatsApp sender aprobado en Twilio (sin prefijo

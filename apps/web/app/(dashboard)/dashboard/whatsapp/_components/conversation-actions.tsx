@@ -24,7 +24,7 @@ export function ConversationActions({ conversationId, status, urgentFlag }: Prop
         className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
           urgentFlag
             ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
-            : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
+            : 'border-[--color-border] bg-white text-zinc-700 hover:bg-brand-50/50'
         } disabled:opacity-50`}
       >
         {urgentFlag ? 'Quitar urgente' : 'Marcar urgente'}

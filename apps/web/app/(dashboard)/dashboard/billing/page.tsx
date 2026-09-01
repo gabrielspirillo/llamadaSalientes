@@ -53,7 +53,7 @@ export default function BillingPage() {
         <Card>
           <div className="p-4 sm:p-6">
             <h3 className="text-base font-semibold tracking-tight">Método de pago</h3>
-            <div className="mt-4 rounded-xl border border-zinc-200 p-4 flex items-center gap-3">
+            <div className="mt-4 rounded-xl border border-[--color-border] p-4 flex items-center gap-3">
               <div className="h-10 w-14 rounded-md bg-gradient-to-br from-zinc-900 to-zinc-700 text-white flex items-center justify-center text-xs font-semibold">
                 VISA
               </div>
@@ -76,11 +76,11 @@ export default function BillingPage() {
             <Download className="h-4 w-4" /> <span className="hidden sm:inline">Descargar todas</span>
           </Button>
         </div>
-        <div className="border-t border-zinc-100 divide-y divide-zinc-100">
+        <div className="border-t border-[--color-border-subtle] divide-y divide-[--color-border-subtle]">
           {invoices.map((i) => (
             <div
               key={i.id}
-              className="flex items-center justify-between gap-3 p-4 sm:p-5 hover:bg-zinc-50/60 transition-colors"
+              className="flex items-center justify-between gap-3 p-4 sm:p-5 hover:bg-brand-50/50 transition-colors"
             >
               <div className="min-w-0">
                 <p className="font-medium font-mono text-sm truncate">{i.id}</p>

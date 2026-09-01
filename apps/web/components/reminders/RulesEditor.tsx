@@ -166,7 +166,7 @@ export function RulesEditor(props: {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
+      <section className="rounded-lg border border-[--color-border] bg-zinc-50 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-sm font-semibold text-zinc-700">
@@ -205,7 +205,7 @@ export function RulesEditor(props: {
             activeWhatsAppMode={props.activeWhatsAppMode}
           />
         ) : (
-          <div className="rounded-lg border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">
+          <div className="rounded-lg border border-dashed border-[--color-border] p-4 text-sm text-zinc-500">
             <p>Todavía no hay configuración global. Creala para arrancar.</p>
             <Button size="sm" className="mt-3" onClick={createGlobal} disabled={pending}>
               Crear set global
@@ -306,7 +306,7 @@ function RuleRow(props: {
           defaultValue={props.rule.label ?? ''}
           placeholder="Etiqueta (ej: 24h antes)"
           onBlur={(e) => props.onPatch({ label: e.target.value || null })}
-          className="rounded-md border border-zinc-200 px-3 py-1.5 text-sm w-full md:w-44"
+          className="rounded-md border border-[--color-border] px-3 py-1.5 text-sm w-full md:w-44"
         />
         <OffsetPicker
           totalMinutes={props.rule.offsetMinutes}
@@ -318,7 +318,7 @@ function RuleRow(props: {
           onChange={(e) =>
             props.onPatch({ primaryChannel: e.target.value as 'WHATSAPP' | 'VOICE' })
           }
-          className="rounded-md border border-zinc-200 px-2 py-1.5 text-sm"
+          className="rounded-md border border-[--color-border] px-2 py-1.5 text-sm"
         >
           <option value="WHATSAPP">WhatsApp</option>
           <option value="VOICE">Voz</option>
@@ -332,7 +332,7 @@ function RuleRow(props: {
               fallbackWindowHours: v === '' ? null : props.rule.fallbackWindowHours ?? 1,
             });
           }}
-          className="rounded-md border border-zinc-200 px-2 py-1.5 text-sm"
+          className="rounded-md border border-[--color-border] px-2 py-1.5 text-sm"
         >
           <option value="">Sin fallback</option>
           <option value="WHATSAPP">Fallback WA</option>
@@ -350,7 +350,7 @@ function RuleRow(props: {
                   fallbackWindowHours: Math.max(1, Math.min(72, Number.parseInt(e.target.value, 10) || 1)),
                 })
               }
-              className="w-16 rounded-md border border-zinc-200 px-2 py-1.5 text-sm"
+              className="w-16 rounded-md border border-[--color-border] px-2 py-1.5 text-sm"
             />
             <span className="text-xs text-zinc-500">h de espera</span>
           </div>
@@ -371,7 +371,7 @@ function RuleRow(props: {
       </div>
 
       {showTemplates && (
-        <div className="mt-3 border-t border-zinc-100 pt-3 space-y-3">
+        <div className="mt-3 border-t border-[--color-border-subtle] pt-3 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-zinc-600">Plantillas de esta regla</span>
             <button
@@ -432,7 +432,7 @@ function OffsetPicker({
         onChange={(e) => setDays(Number.parseInt(e.target.value, 10) || 0)}
         onBlur={() => commit(days, hours)}
         disabled={disabled}
-        className="w-14 rounded-md border border-zinc-200 px-2 py-1.5 text-sm text-right"
+        className="w-14 rounded-md border border-[--color-border] px-2 py-1.5 text-sm text-right"
       />
       <span className="text-xs text-zinc-500">d</span>
       <input
@@ -443,7 +443,7 @@ function OffsetPicker({
         onChange={(e) => setHours(Number.parseInt(e.target.value, 10) || 0)}
         onBlur={() => commit(days, hours)}
         disabled={disabled}
-        className="w-14 rounded-md border border-zinc-200 px-2 py-1.5 text-sm text-right"
+        className="w-14 rounded-md border border-[--color-border] px-2 py-1.5 text-sm text-right"
       />
       <span className="text-xs text-zinc-500">h antes</span>
     </div>
@@ -595,7 +595,7 @@ function TemplateEditor(props: {
           <select
             value={selectedDriver}
             onChange={(e) => setSelectedDriver(e.target.value)}
-            className="rounded-md border border-zinc-200 px-2 py-1.5 text-sm"
+            className="rounded-md border border-[--color-border] px-2 py-1.5 text-sm"
           >
             {available.map((d) => (
               <option key={d.value} value={d.value}>
@@ -604,7 +604,7 @@ function TemplateEditor(props: {
             ))}
           </select>
         ) : (
-          <span className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-sm text-zinc-700">
+          <span className="rounded-md border border-[--color-border] bg-zinc-50 px-3 py-1.5 text-sm text-zinc-700">
             {available[0]?.label ?? 'Sin driver disponible'}
           </span>
         )}
@@ -619,7 +619,7 @@ function TemplateEditor(props: {
       </div>
 
       {/* Panel de variables siempre visible */}
-      <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
+      <div className="rounded-md border border-[--color-border] bg-zinc-50 p-3">
         <p className="mb-2 text-xs font-medium text-zinc-700">
           Variables disponibles{' '}
           <span className="font-normal text-zinc-500">(click para insertar)</span>
@@ -631,7 +631,7 @@ function TemplateEditor(props: {
               type="button"
               onClick={() => insertVariable(v.token)}
               title={v.description}
-              className="rounded-md border border-zinc-200 bg-white px-2 py-1 font-mono text-[11px] text-zinc-700 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+              className="rounded-md border border-[--color-border] bg-white px-2 py-1 font-mono text-[11px] text-zinc-700 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
             >
               {v.token}
             </button>
@@ -645,7 +645,7 @@ function TemplateEditor(props: {
           placeholder="Nombre de plantilla aprobada (ej: dental_reminder_24h)"
           value={templateName}
           onChange={(e) => setTemplateName(e.target.value)}
-          className="w-full rounded-md border border-zinc-200 px-3 py-1.5 text-sm"
+          className="w-full rounded-md border border-[--color-border] px-3 py-1.5 text-sm"
         />
       )}
 
@@ -656,7 +656,7 @@ function TemplateEditor(props: {
           onChange={(e) => setFreeText(e.target.value)}
           rows={4}
           placeholder="Hola {{contact.firstName}}, te recordamos tu cita de {{appointment.treatment}} {{appointment.dateTime}}."
-          className="w-full rounded-md border border-zinc-200 px-3 py-2 text-sm font-mono"
+          className="w-full rounded-md border border-[--color-border] px-3 py-2 text-sm font-mono"
         />
       )}
 
@@ -667,7 +667,7 @@ function TemplateEditor(props: {
           onChange={(e) => setVoicePrompt(e.target.value)}
           rows={3}
           placeholder="Mensaje inicial del agente (opcional)."
-          className="w-full rounded-md border border-zinc-200 px-3 py-2 text-sm"
+          className="w-full rounded-md border border-[--color-border] px-3 py-2 text-sm"
         />
       )}
 
@@ -696,7 +696,7 @@ function TemplateEditor(props: {
             placeholder="+34..."
             value={testPhone}
             onChange={(e) => setTestPhone(e.target.value)}
-            className="w-32 rounded-md border border-zinc-200 px-2 py-1.5 text-sm"
+            className="w-32 rounded-md border border-[--color-border] px-2 py-1.5 text-sm"
           />
           <Button size="sm" variant="secondary" onClick={testSend} disabled={!testPhone}>
             Enviar prueba
@@ -759,7 +759,7 @@ function TreatmentOverridesSection(props: {
         <div className="flex items-center gap-2">
           <select
             id="addOverride"
-            className="rounded-md border border-zinc-200 px-2 py-1.5 text-sm"
+            className="rounded-md border border-[--color-border] px-2 py-1.5 text-sm"
             defaultValue=""
           >
             <option value="" disabled>

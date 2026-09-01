@@ -92,7 +92,7 @@ export default async function WhatsappConversationsPage() {
           nuevos sin recargar a mano (la página es server-render). */}
       <AutoRefresh intervalMs={8000} />
       {rows.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/50 p-10 text-center">
+        <div className="rounded-xl border border-dashed border-zinc-300 bg-[#fbfaff] p-10 text-center">
           <p className="text-sm text-zinc-600">
             Aún no hay conversaciones. Configura una integración de WhatsApp para
             empezar a recibir mensajes.
@@ -105,9 +105,9 @@ export default async function WhatsappConversationsPage() {
           </Link>
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[--color-border] bg-white">
           {/* Mobile: cards */}
-          <ul className="md:hidden divide-y divide-zinc-100">
+          <ul className="md:hidden divide-y divide-[--color-border-subtle]">
             {rows.map((r) => {
               const badge = statusBadge(r);
               const preview = previewMap.get(r.id);
@@ -115,7 +115,7 @@ export default async function WhatsappConversationsPage() {
                 <li key={r.id}>
                   <Link
                     href={`/dashboard/whatsapp/${r.id}`}
-                    className="flex flex-col gap-1 p-4 hover:bg-zinc-50/60 transition-colors"
+                    className="flex flex-col gap-1 p-4 hover:bg-brand-50/50 transition-colors"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
@@ -172,7 +172,7 @@ export default async function WhatsappConversationsPage() {
           {/* Tablet/Desktop: table */}
           <div className="hidden md:block min-h-0 flex-1 overflow-auto">
           <table className="w-full">
-            <thead className="sticky top-0 z-10 border-b border-zinc-200 bg-zinc-50/95 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 backdrop-blur">
+            <thead className="sticky top-0 z-10 border-b border-[--color-border] bg-zinc-50/95 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 backdrop-blur">
               <tr>
                 <th className="px-4 py-3">Contacto</th>
                 <th className="px-4 py-3">Último mensaje</th>
@@ -181,12 +181,12 @@ export default async function WhatsappConversationsPage() {
                 <th className="px-4 py-3">Cuándo</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100 text-sm text-zinc-700">
+            <tbody className="divide-y divide-[--color-border-subtle] text-sm text-zinc-700">
               {rows.map((r) => {
                 const badge = statusBadge(r);
                 const preview = previewMap.get(r.id);
                 return (
-                  <tr key={r.id} className="hover:bg-zinc-50/50">
+                  <tr key={r.id} className="hover:bg-brand-50/50">
                     <td className="px-4 py-3">
                       <Link href={`/dashboard/whatsapp/${r.id}`} className="block">
                         <div

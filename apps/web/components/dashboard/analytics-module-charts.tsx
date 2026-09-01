@@ -18,21 +18,27 @@ import type {
   ConversationStatusBreakdown,
   MessagesByHourPoint,
 } from '@/lib/data/analytics/whatsapp';
-import { axisProps, chartPalette, gridProps, tooltipStyle } from './chart-theme';
+import { axisProps, chartAnim, chartPalette, gridProps, tooltipCursor, tooltipStyle } from './chart-theme';
 
 const STATUS_COLORS = {
   Activas: chartPalette.emerald,
   'Con humano': chartPalette.amber,
-  Cerradas: chartPalette.slate,
+  Cerradas: chartPalette.lilac,
 } as const;
+
+/** Estado vacío común a los tres gráficos del módulo. */
+function ChartEmpty({ label }: { label: string }) {
+  return (
+    <div className="flex h-56 flex-col items-center justify-center gap-2 text-sm text-zinc-400">
+      <span className="inline-flex h-10 w-10 animate-float items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#f4f0ff,#fdf0f7)]" />
+      {label}
+    </div>
+  );
+}
 
 export function OutboundTrendChart({ data }: { data: OutboundDailyPoint[] }) {
   if (data.length === 0) {
-    return (
-      <div className="h-56 flex items-center justify-center text-sm text-zinc-400">
-        Sin actividad reciente
-      </div>
-    );
+    return <ChartEmpty label="Sin actividad reciente" />;
   }
   const chartData = data.map((d) => ({
     label: new Date(d.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
@@ -47,11 +53,15 @@ export function OutboundTrendChart({ data }: { data: OutboundDailyPoint[] }) {
         <CartesianGrid {...gridProps} />
         <XAxis dataKey="label" {...axisProps} />
         <YAxis {...axisProps} width={32} />
-        <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(99,102,241,0.06)' }} />
-        <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-        <Bar dataKey="Completadas" stackId="a" fill={chartPalette.emerald} radius={[0, 0, 0, 0]} />
-        <Bar dataKey="Sin contactar" stackId="a" fill={chartPalette.zinc} />
-        <Bar dataKey="Fallidas" stackId="a" fill={chartPalette.rose} radius={[4, 4, 0, 0]} />
+        <Tooltip contentStyle={tooltipStyle} cursor={tooltipCursor} />
+        <Legend
+          iconType="circle"
+          iconSize={8}
+          wrapperStyle={{ fontSize: 12, paddingTop: 10, fontWeight: 500 }}
+        />
+        <Bar dataKey="Completadas" stackId="a" fill={chartPalette.emerald} {...chartAnim} />
+        <Bar dataKey="Sin contactar" stackId="a" fill="#ded9ee" {...chartAnim} />
+        <Bar dataKey="Fallidas" stackId="a" fill={chartPalette.rose} radius={[6, 6, 0, 0]} {...chartAnim} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -60,11 +70,7 @@ export function OutboundTrendChart({ data }: { data: OutboundDailyPoint[] }) {
 export function MessagesByHourChart({ data }: { data: MessagesByHourPoint[] }) {
   const hasData = data.some((d) => d.inbound + d.outbound > 0);
   if (!hasData) {
-    return (
-      <div className="h-56 flex items-center justify-center text-sm text-zinc-400">
-        Sin mensajes en las últimas 24h
-      </div>
-    );
+    return <ChartEmpty label="Sin mensajes en las últimas 24h" />;
   }
   const chartData = data.map((d) => ({
     label: `${d.hour.toString().padStart(2, '0')}:00`,
@@ -78,10 +84,14 @@ export function MessagesByHourChart({ data }: { data: MessagesByHourPoint[] }) {
         <CartesianGrid {...gridProps} />
         <XAxis dataKey="label" {...axisProps} interval={2} />
         <YAxis {...axisProps} width={32} />
-        <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(99,102,241,0.06)' }} />
-        <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-        <Bar dataKey="Entrantes" stackId="m" fill={chartPalette.indigo} />
-        <Bar dataKey="Salientes" stackId="m" fill={chartPalette.cyan} radius={[4, 4, 0, 0]} />
+        <Tooltip contentStyle={tooltipStyle} cursor={tooltipCursor} />
+        <Legend
+          iconType="circle"
+          iconSize={8}
+          wrapperStyle={{ fontSize: 12, paddingTop: 10, fontWeight: 500 }}
+        />
+        <Bar dataKey="Entrantes" stackId="m" fill={chartPalette.violet} {...chartAnim} />
+        <Bar dataKey="Salientes" stackId="m" fill={chartPalette.sky} radius={[6, 6, 0, 0]} {...chartAnim} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -90,11 +100,7 @@ export function MessagesByHourChart({ data }: { data: MessagesByHourPoint[] }) {
 export function ConversationStatusChart({ data }: { data: ConversationStatusBreakdown }) {
   const total = data.active + data.handoff + data.closed;
   if (total === 0) {
-    return (
-      <div className="h-56 flex items-center justify-center text-sm text-zinc-400">
-        Sin conversaciones
-      </div>
-    );
+    return <ChartEmpty label="Sin conversaciones" />;
   }
   const chartData = [
     { name: 'Activas', value: data.active },
@@ -112,10 +118,12 @@ export function ConversationStatusChart({ data }: { data: ConversationStatusBrea
               data={chartData}
               dataKey="value"
               nameKey="name"
-              innerRadius={62}
-              outerRadius={92}
-              paddingAngle={2}
+              innerRadius={58}
+              outerRadius={88}
+              paddingAngle={3}
+              cornerRadius={6}
               stroke="none"
+              {...chartAnim}
             >
               {chartData.map((d) => (
                 <Cell key={d.name} fill={STATUS_COLORS[d.name as keyof typeof STATUS_COLORS]} />
@@ -124,8 +132,12 @@ export function ConversationStatusChart({ data }: { data: ConversationStatusBrea
           </PieChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-2xl font-semibold tabular-nums">{total}</span>
-          <span className="text-[11px] text-zinc-500 uppercase tracking-wider">Total</span>
+          <span className="text-[26px] font-bold leading-none tabular-nums text-zinc-900">
+            {total}
+          </span>
+          <span className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+            Total
+          </span>
         </div>
       </div>
       <ul className="mt-4 space-y-1.5 text-xs">
@@ -138,7 +150,7 @@ export function ConversationStatusChart({ data }: { data: ConversationStatusBrea
               />
               {d.name}
             </span>
-            <span className="tabular-nums font-medium">{d.value}</span>
+            <span className="font-bold tabular-nums text-zinc-800">{d.value}</span>
           </li>
         ))}
       </ul>

@@ -196,7 +196,7 @@ export function RemindersPipeline({
           placeholder="Buscar paciente, tratamiento o cita…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full max-w-sm rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-sm placeholder:text-zinc-400 focus:border-zinc-300 focus:outline-none"
+          className="w-full max-w-sm rounded-md border border-[--color-border] bg-white px-3 py-1.5 text-sm placeholder:text-zinc-400 focus:border-zinc-300 focus:outline-none"
         />
         <span className="text-xs text-zinc-500">{filtered.length} reminders</span>
         <span className="ml-auto text-[11px] text-zinc-400">
@@ -221,7 +221,7 @@ export function RemindersPipeline({
                   Scroll vertical interno por columna. */}
               <div className="flex flex-col gap-2 overflow-y-auto pr-1" style={{ maxHeight: 480 }}>
                 {items.length === 0 ? (
-                  <div className="rounded-md border border-dashed border-zinc-200 p-3 text-center text-xs text-zinc-400">
+                  <div className="rounded-md border border-dashed border-[--color-border] p-3 text-center text-xs text-zinc-400">
                     Vacío
                   </div>
                 ) : (
@@ -273,7 +273,7 @@ function ReminderCard({
   return (
     <Card
       onClick={onClick}
-      className="cursor-pointer p-3 hover:shadow-md hover:border-zinc-300 transition-all"
+      className="cursor-pointer p-3 hover:shadow-md hover:border-brand-200 transition-all"
     >
       <div className="flex items-start justify-between gap-2">
         <span className="text-sm font-medium text-zinc-800 truncate">{name}</span>

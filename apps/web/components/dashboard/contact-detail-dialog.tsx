@@ -184,7 +184,7 @@ export function ContactDetailDialog({
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-[800px] p-0 gap-0 overflow-hidden">
-        <DialogHeader className="px-4 sm:px-6 pt-5 pb-4 border-b border-zinc-100">
+        <DialogHeader className="px-4 sm:px-6 pt-5 pb-4 border-b border-[--color-border-subtle]">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <DialogTitle className="text-lg flex items-center gap-3 min-w-0">
               <User className="h-5 w-5 text-violet-600 shrink-0" />
@@ -217,7 +217,7 @@ export function ContactDetailDialog({
           )}
         </DialogHeader>
 
-        <div className="flex items-center gap-1 px-4 sm:px-6 border-b border-zinc-100 overflow-x-auto">
+        <div className="flex items-center gap-1 px-4 sm:px-6 border-b border-[--color-border-subtle] overflow-x-auto">
           <TabButton active={tab === 'datos'} onClick={() => setTab('datos')}>
             <User className="h-3.5 w-3.5" /> Datos
           </TabButton>
@@ -317,7 +317,7 @@ export function ContactDetailDialog({
                           key={c.id}
                           href={`/dashboard/calls/${c.id}`}
                           onClick={onClose}
-                          className="block rounded-lg border border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50 p-4 transition-colors"
+                          className="block rounded-lg border border-[--color-border] hover:border-brand-200 hover:bg-brand-50/50 p-4 transition-colors"
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex-1 min-w-0">
@@ -354,7 +354,7 @@ export function ContactDetailDialog({
                         return (
                           <div
                             key={a.id}
-                            className="rounded-lg border border-zinc-200 p-4 flex items-start gap-3"
+                            className="rounded-lg border border-[--color-border] p-4 flex items-start gap-3"
                           >
                             <div
                               className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${

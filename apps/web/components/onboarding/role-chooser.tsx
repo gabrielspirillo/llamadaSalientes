@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight, Building2, Users } from 'lucide-react';
 import { useState } from 'react';
 
 const clerkAppearance = {
-  elements: { card: 'shadow-none border border-zinc-200/70' },
+  elements: { card: 'shadow-none border border-[--color-border]' },
 };
 
 type Mode = 'choose' | 'owner' | 'worker';
@@ -57,7 +57,7 @@ export function RoleChooser() {
   return (
     <div className="w-full">
       <div className="mb-8 text-center">
-        <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-black">
+        <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#7139e8,#a855f7_60%,#ec4899)] shadow-[0_12px_28px_-12px_rgba(113,57,232,0.9)]">
           <span className="text-lg font-semibold text-white">F</span>
         </div>
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
@@ -99,7 +99,7 @@ function RoleCard({
     <button
       type="button"
       onClick={onClick}
-      className="group flex items-center gap-4 rounded-2xl border border-zinc-200/70 bg-white p-5 text-left transition-colors hover:border-zinc-300 hover:bg-zinc-50"
+      className="group flex items-center gap-4 rounded-2xl border border-[--color-border] bg-white p-5 text-left transition-colors hover:border-brand-200 hover:bg-brand-50/50"
     >
       <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
         {icon}

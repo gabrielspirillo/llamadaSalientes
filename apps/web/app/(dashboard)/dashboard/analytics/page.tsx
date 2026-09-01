@@ -8,13 +8,16 @@ import { WhatsappModule } from '@/components/dashboard/modules/whatsapp-module';
 import { ModuleUnavailable } from '@/components/dashboard/modules/module-error';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
+import { Card, CardTopbar } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/feedback';
+import { Reveal } from '@/components/ui/motion';
+import { StatTile } from '@/components/ui/stat';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { type AnalyticsRange, getAnalytics } from '@/lib/data/analytics';
 import { formatDuration } from '@/lib/data/calls-list';
 import { getCurrentTenant } from '@/lib/tenant';
 import {
-  ArrowUpRight,
+  BarChart3,
   Calendar,
   Clock,
   MessageCircle,
@@ -38,12 +41,14 @@ export default async function AnalyticsPage({
   return (
     <>
       <PageHeader
+        eyebrow="Rendimiento"
         title="Analytics"
         description="Métricas reales por módulo: entrantes, salientes y WhatsApp."
+        icon={<BarChart3 className="h-5 w-5" />}
       />
 
       <Tabs defaultValue={tab}>
-        <TabsList className="overflow-x-auto max-w-full">
+        <TabsList className="max-w-full">
           <TabsTrigger value="outbound">
             <PhoneOutgoing className="h-3.5 w-3.5 mr-1.5" />
             Salientes
@@ -95,7 +100,7 @@ async function InboundAnalytics({
   return (
     <>
       <div className="flex justify-end mb-4">
-        <div className="inline-flex items-center rounded-full border border-zinc-200 bg-white p-1 text-xs">
+        <div className="inline-flex items-center rounded-full border border-[--color-border] bg-white p-1 text-xs">
           <RangePill
             href="/dashboard/analytics?tab=inbound&range=today"
             active={range === 'today'}
@@ -114,84 +119,110 @@ async function InboundAnalytics({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-        <BigStat
-          label="Total llamadas"
-          value={String(data.total)}
-          delta={data.total === 0 ? '—' : 'período actual'}
-          icon={<PhoneCall className="h-4 w-4" />}
-        />
-        <BigStat
-          label="AHT promedio"
-          value={formatDuration(data.avgDurationSec)}
-          delta="—"
-          icon={<Clock className="h-4 w-4" />}
-        />
-        <BigStat
-          label="Citas creadas"
-          value={String(data.booked)}
-          delta={
-            data.total === 0
-              ? '—'
-              : `${Math.round((data.booked / Math.max(1, data.total)) * 100)}% del total`
-          }
-          icon={<Calendar className="h-4 w-4" />}
-        />
-        <BigStat
-          label="Containment"
-          value={`${data.containment}%`}
-          delta={`${data.transferred} transferidas`}
-          icon={<TrendingUp className="h-4 w-4" />}
-        />
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+        <Reveal delay={0}>
+          <StatTile
+            label="Total llamadas"
+            numeric={data.total}
+            hint="Período actual"
+            icon={<PhoneCall className="h-4 w-4" />}
+            tone="grape"
+            trend={data.byHour.length > 1 ? data.byHour.map((h) => h.calls) : undefined}
+          />
+        </Reveal>
+        <Reveal delay={70}>
+          <StatTile
+            label="AHT promedio"
+            value={formatDuration(data.avgDurationSec)}
+            hint="Duración media"
+            icon={<Clock className="h-4 w-4" />}
+            tone="sky"
+          />
+        </Reveal>
+        <Reveal delay={140}>
+          <StatTile
+            label="Citas creadas"
+            numeric={data.booked}
+            hint={
+              data.total === 0
+                ? 'Sin llamadas en el rango'
+                : `${Math.round((data.booked / Math.max(1, data.total)) * 100)}% del total`
+            }
+            icon={<Calendar className="h-4 w-4" />}
+            tone="mint"
+            progress={data.total === 0 ? 0 : (data.booked / Math.max(1, data.total)) * 100}
+          />
+        </Reveal>
+        <Reveal delay={210}>
+          <StatTile
+            label="Containment"
+            numeric={data.containment}
+            suffix="%"
+            hint={`${data.transferred} transferidas`}
+            icon={<TrendingUp className="h-4 w-4" />}
+            tone="blossom"
+            progress={data.containment}
+          />
+        </Reveal>
       </div>
 
       {data.total === 0 ? (
         <Card>
-          <div className="p-12 text-center">
-            <p className="text-base font-semibold tracking-tight">Sin datos en este rango</p>
-            <p className="text-sm text-zinc-500 mt-1">
-              Cuando llegue la primera llamada, los gráficos se llenan automáticamente.
-            </p>
-          </div>
+          <EmptyState
+            icon={<BarChart3 className="h-5 w-5" />}
+            title="Sin datos en este rango"
+            description="Cuando llegue la primera llamada, los gráficos se llenan automáticamente."
+          />
         </Card>
       ) : (
         <div className="space-y-6">
           {range !== 'today' && (
-            <Card>
-              <div className="flex items-center justify-between p-6 pb-2">
-                <div>
-                  <h3 className="text-base font-semibold tracking-tight">Tendencia diaria</h3>
-                  <p className="text-sm text-zinc-500 mt-0.5">Llamadas apiladas por intención</p>
+            <Reveal>
+              <Card>
+                <CardTopbar
+                  icon={<TrendingUp className="h-4 w-4" />}
+                  tone="grape"
+                  title="Tendencia diaria"
+                  subtitle="Llamadas apiladas por intención"
+                  action={<Badge tone="violet">{range === '7d' ? '7 días' : '30 días'}</Badge>}
+                />
+                <div className="px-4 pb-6 sm:px-6">
+                  <CallsTrendChart data={data.byDay} />
                 </div>
-                <Badge>{range === '7d' ? '7 días' : '30 días'}</Badge>
-              </div>
-              <div className="px-6 pb-6 pt-4">
-                <CallsTrendChart data={data.byDay} />
-              </div>
-            </Card>
+              </Card>
+            </Reveal>
           )}
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
             <Card className="xl:col-span-2">
-              <div className="flex items-center justify-between p-4 sm:p-6 pb-2">
-                <div>
-                  <h3 className="text-base font-semibold tracking-tight">Llamadas por hora</h3>
-                  <p className="text-sm text-zinc-500 mt-0.5">Distribución del período</p>
-                </div>
-                <Badge>
-                  {range === 'today' ? 'Hoy' : range === '7d' ? '7 días' : '30 días'}
-                </Badge>
-              </div>
-              <div className="px-4 sm:px-6 pb-4 sm:pb-6 pt-4">
+              <CardTopbar
+                icon={<Clock className="h-4 w-4" />}
+                tone="sky"
+                title="Llamadas por hora"
+                subtitle="Distribución del período"
+                action={
+                  <Badge tone="info">
+                    {range === 'today' ? 'Hoy' : range === '7d' ? '7 días' : '30 días'}
+                  </Badge>
+                }
+              />
+              <div className="px-4 pb-4 pt-2 sm:px-6 sm:pb-6">
                 <div className="overflow-x-auto"><div className="flex items-end gap-1 sm:gap-1.5 h-48 sm:h-56 min-w-[540px] sm:min-w-0">
-                  {data.byHour.map((h) => (
-                    <div key={h.hour} className="flex-1 flex flex-col items-center gap-1.5 sm:gap-2 min-w-0">
+                  {data.byHour.map((h, i) => (
+                    <div
+                      key={h.hour}
+                      className="group/bar flex min-w-0 flex-1 flex-col items-center gap-1.5 sm:gap-2"
+                    >
                       <div
-                        className="w-full rounded-t-md bg-gradient-to-b from-zinc-900 to-zinc-700 transition-all hover:from-blue-600 hover:to-blue-500 min-h-[2px]"
-                        style={{ height: `${(h.calls / maxByHour) * 100}%` }}
+                        className="min-h-[3px] w-full origin-bottom rounded-t-lg bg-[linear-gradient(180deg,#a855f7,#7139e8)] transition-[filter,transform] duration-300 hover:brightness-110 group-hover/bar:scale-x-110"
+                        style={{
+                          height: `${(h.calls / maxByHour) * 100}%`,
+                          animation: 'grow-y 700ms cubic-bezier(0.22,1,0.36,1) both',
+                          animationDelay: `${i * 22}ms`,
+                        }}
                         title={`${h.hour}:00 — ${h.calls} llamadas`}
                       />
-                      <span className="text-[9px] sm:text-[10px] text-zinc-400 tabular-nums">
+                      <span className="text-[9px] tabular-nums text-zinc-400 sm:text-[10px]">
                         {h.hour.toString().padStart(2, '0')}
                       </span>
                     </div>
@@ -202,13 +233,15 @@ async function InboundAnalytics({
             </Card>
 
             <Card>
-              <div className="p-4 sm:p-6">
-                <h3 className="text-base font-semibold tracking-tight">Por intención</h3>
-                <p className="text-sm text-zinc-500 mt-0.5">Distribución</p>
-                <div className="mt-4">
-                  <IntentDonut data={data.intents} />
-                </div>
-                <div className="mt-4 pt-4 border-t border-zinc-100">
+              <CardTopbar
+                icon={<BarChart3 className="h-4 w-4" />}
+                tone="blossom"
+                title="Por intención"
+                subtitle="Distribución del período"
+              />
+              <div className="px-4 pb-5 sm:px-6 sm:pb-6">
+                <IntentDonut data={data.intents} />
+                <div className="mt-4 border-t border-[--color-border-subtle] pt-4">
                   <IntentBarList data={data.intents} />
                 </div>
               </div>
@@ -224,41 +257,13 @@ function RangePill({ href, active, label }: { href: string; active: boolean; lab
   return (
     <Link
       href={href}
-      className={`px-3.5 py-2 rounded-full transition-colors ${
-        active ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:text-zinc-900'
+      className={`rounded-full px-3.5 py-2 font-semibold transition-all duration-300 ${
+        active
+          ? 'bg-[linear-gradient(120deg,#7139e8,#8b5cf6)] text-white shadow-[0_6px_18px_-8px_rgba(113,57,232,0.8)]'
+          : 'text-zinc-500 hover:bg-brand-50 hover:text-brand-700'
       }`}
     >
       {label}
     </Link>
-  );
-}
-
-function BigStat({
-  label,
-  value,
-  delta,
-  icon,
-}: {
-  label: string;
-  value: string;
-  delta: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <Card className="p-4 sm:p-5">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-zinc-500">{label}</p>
-        <div className="h-7 w-7 inline-flex items-center justify-center rounded-lg bg-zinc-100 text-zinc-600">
-          {icon}
-        </div>
-      </div>
-      <div className="mt-3 flex items-baseline gap-2">
-        <span className="text-2xl sm:text-3xl font-semibold tracking-tight tabular-nums">{value}</span>
-        <span className="inline-flex items-center gap-0.5 text-xs font-medium text-zinc-500">
-          <ArrowUpRight className="h-3 w-3" />
-          {delta}
-        </span>
-      </div>
-    </Card>
   );
 }

@@ -124,7 +124,7 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
     <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-7.5rem)] -mx-4 sm:mx-0">
       {/* Centro: cabecera + thread + composer */}
       <div className="flex min-w-0 flex-1 flex-col h-[calc(100vh-7.5rem)] lg:h-auto">
-        <div className="flex items-center justify-between border-b border-zinc-200 bg-white px-4 py-3">
+        <div className="flex items-center justify-between border-b border-[--color-border] bg-white px-4 py-3">
           <div className="min-w-0">
             <div className="flex items-center gap-3">
               <Link
@@ -175,7 +175,7 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
           senderUserEmails={Object.fromEntries(senderUserMap)}
         />
 
-        <div className="border-t border-zinc-200 bg-white p-3">
+        <div className="border-t border-[--color-border] bg-white p-3">
           <MessageComposer
             conversationId={row.conv.id}
             disabled={row.conv.status === 'CLOSED'}

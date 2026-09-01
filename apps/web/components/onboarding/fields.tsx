@@ -39,7 +39,7 @@ export function Select({ className, ...props }: React.SelectHTMLAttributes<HTMLS
   return (
     <select
       className={cn(
-        'flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/15 focus-visible:border-zinc-300 disabled:opacity-50 transition-colors',
+        'flex h-10 w-full rounded-xl border border-[--color-border] bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/25 focus-visible:border-zinc-300 disabled:opacity-50 transition-colors',
         className,
       )}
       {...props}

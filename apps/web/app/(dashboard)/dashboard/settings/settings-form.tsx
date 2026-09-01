@@ -198,7 +198,7 @@ export function SettingsForm({
                     id="defaultLanguage"
                     name="defaultLanguage"
                     defaultValue={initial.defaultLanguage}
-                    className="mt-2 flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/15"
+                    className="mt-2 flex h-10 w-full rounded-xl border border-[--color-border] bg-white px-3.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/25"
                   >
                     <option value="es">Español</option>
                     <option value="en">English</option>

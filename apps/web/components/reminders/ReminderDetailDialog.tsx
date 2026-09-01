@@ -124,7 +124,7 @@ export function ReminderDetailDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative z-10 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
-        <div className="flex items-start justify-between border-b border-zinc-100 p-5">
+        <div className="flex items-start justify-between border-b border-[--color-border-subtle] p-5">
           <div className="min-w-0">
             <h2 className="text-lg font-semibold text-zinc-900 truncate">
               {vars.contact?.fullName || vars.contact?.firstName || 'Paciente'}
@@ -184,13 +184,13 @@ export function ReminderDetailDialog({
         </div>
 
         {reminder.failureReason && (
-          <div className="border-t border-zinc-100 p-5">
+          <div className="border-t border-[--color-border-subtle] p-5">
             <p className="text-xs font-medium text-rose-600">⚠ Error</p>
             <p className="mt-1 text-sm text-rose-700">{reminder.failureReason}</p>
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-2 border-t border-zinc-100 p-5">
+        <div className="flex flex-wrap items-center gap-2 border-t border-[--color-border-subtle] p-5">
           <Button size="sm" onClick={() => mark('confirm')} disabled={busy}>
             Marcar como confirmado
           </Button>

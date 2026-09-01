@@ -172,7 +172,7 @@ export function AudioPlayer({ callId }: Props) {
           <button
             type="button"
             onClick={togglePlay}
-            className="h-12 w-12 inline-flex items-center justify-center rounded-full bg-black text-white hover:bg-zinc-800 transition-colors active:scale-95 shrink-0"
+            className="h-12 w-12 shrink-0 inline-flex items-center justify-center rounded-full bg-[linear-gradient(120deg,#7139e8,#a855f7)] text-white shadow-[0_10px_26px_-10px_rgba(113,57,232,0.85)] transition-all duration-300 hover:scale-105 active:scale-95"
           >
             {playing ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
           </button>

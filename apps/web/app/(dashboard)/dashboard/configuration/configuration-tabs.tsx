@@ -28,7 +28,7 @@ export function ConfigurationTabs({
 }) {
   const TABS = showModulesTab ? [...BASE_TABS, MODULES_TAB] : BASE_TABS;
   return (
-    <div className="mb-6 border-b border-zinc-200">
+    <div className="mb-6 border-b border-[--color-border]">
       <nav className="-mb-px flex flex-wrap gap-1">
         {TABS.map((t) => {
           const Icon = t.icon;
@@ -41,7 +41,7 @@ export function ConfigurationTabs({
                 'inline-flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors',
                 isActive
                   ? 'border-zinc-900 text-zinc-900'
-                  : 'border-transparent text-zinc-500 hover:border-zinc-300 hover:text-zinc-800',
+                  : 'border-transparent text-zinc-500 hover:border-brand-200 hover:text-zinc-800',
               )}
             >
               <Icon className="h-4 w-4" />

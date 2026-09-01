@@ -108,7 +108,7 @@ export default async function CallDetailPage({
               <h3 className="text-base font-semibold tracking-tight">Transcripción</h3>
               {transcript && <Badge>cifrada · AES-256</Badge>}
             </div>
-            <div className="border-t border-zinc-100 px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5 max-h-[60vh] sm:max-h-[480px] overflow-y-auto">
+            <div className="border-t border-[--color-border-subtle] px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5 max-h-[60vh] sm:max-h-[480px] overflow-y-auto">
               {transcriptTurns.length === 0 ? (
                 <div className="text-center py-8 text-sm text-zinc-500">
                   La transcripción aparecerá cuando termine el procesamiento.

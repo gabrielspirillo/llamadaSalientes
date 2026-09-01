@@ -32,7 +32,7 @@ export function HistoryTable({
 }) {
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-zinc-200/70 bg-white p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="rounded-xl border border-[--color-border] bg-white p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <div className="text-xs uppercase tracking-wide text-zinc-500">Citas adelantadas</div>
           <div className="text-2xl font-semibold text-zinc-900">{totals.count}</div>
@@ -59,7 +59,7 @@ export function HistoryTable({
           ofertas.
         </p>
       ) : (
-        <div className="rounded-xl border border-zinc-200/70 overflow-hidden bg-white">
+        <div className="rounded-xl border border-[--color-border] overflow-hidden bg-white">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-sm">
               <thead className="bg-zinc-50 text-zinc-600 text-xs uppercase tracking-wide">
@@ -72,7 +72,7 @@ export function HistoryTable({
                   <th className="text-right px-4 py-2.5">Revenue</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100">
+              <tbody className="divide-y divide-[--color-border-subtle]">
                 {rows.map((r) => {
                   const oldT = new Date(r.oldAppointmentTime);
                   const newT = r.newAppointmentTime ? new Date(r.newAppointmentTime) : null;
@@ -87,7 +87,7 @@ export function HistoryTable({
                       timeZone: tz,
                     });
                   return (
-                    <tr key={r.id} className="hover:bg-zinc-50/60">
+                    <tr key={r.id} className="hover:bg-brand-50/50">
                       <td className="px-4 py-3 font-medium text-zinc-900">{r.patientName}</td>
                       <td className="px-4 py-3">
                         <div className="text-xs text-zinc-500">{fmt(oldT)}</div>

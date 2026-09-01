@@ -88,7 +88,7 @@ export default async function TeamPage() {
       )}
 
       <Card>
-        <div className="divide-y divide-zinc-100">
+        <div className="divide-y divide-[--color-border-subtle]">
           {memberships.data.length === 0 && invitations.data.length === 0 ? (
             <div className="p-10 text-center text-sm text-zinc-500">
               Aún no hay miembros. Usá “Invitar miembro” para sumar a tu equipo.

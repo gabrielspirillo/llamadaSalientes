@@ -169,7 +169,7 @@ export function ContactsGrid({ initial }: { initial: Contact[] }) {
             return (
               <Card
                 key={c.id}
-                className="overflow-hidden hover:shadow-lg hover:border-zinc-300 cursor-pointer transition-all"
+                className="overflow-hidden hover:shadow-lg hover:border-brand-200 cursor-pointer transition-all"
                 onClick={() => setOpenContactId(c.id)}
               >
                 <div className="p-4 sm:p-5">

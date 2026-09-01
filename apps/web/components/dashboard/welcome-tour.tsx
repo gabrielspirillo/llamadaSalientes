@@ -329,7 +329,7 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
           {/* Puntero hacia el ítem */}
           {beakTop !== null && (
             <span
-              className="absolute -left-1.5 h-3 w-3 rotate-45 rounded-[3px] border-b border-l border-zinc-200 bg-white"
+              className="absolute -left-1.5 h-3 w-3 rotate-45 rounded-[3px] border-b border-l border-[--color-border] bg-white"
               style={{ top: beakTop }}
             />
           )}

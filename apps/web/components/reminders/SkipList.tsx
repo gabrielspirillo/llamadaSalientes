@@ -16,7 +16,7 @@ const REASON_LABEL: Record<string, string> = {
 
 const REASON_TONE: Record<string, string> = {
   no_phone: 'bg-amber-50 text-amber-700 border-amber-200',
-  past_due: 'bg-zinc-100 text-zinc-600 border-zinc-200',
+  past_due: 'bg-zinc-100 text-zinc-600 border-[--color-border]',
   no_rules: 'bg-blue-50 text-blue-700 border-blue-200',
   no_whatsapp: 'bg-amber-50 text-amber-700 border-amber-200',
   no_voice_agent: 'bg-amber-50 text-amber-700 border-amber-200',
@@ -24,7 +24,7 @@ const REASON_TONE: Record<string, string> = {
   quiet_hours_full_day: 'bg-indigo-50 text-indigo-700 border-indigo-200',
   opt_out: 'bg-rose-50 text-rose-700 border-rose-200',
   appointment_cancelled: 'bg-rose-50 text-rose-700 border-rose-200',
-  duplicate: 'bg-zinc-100 text-zinc-600 border-zinc-200',
+  duplicate: 'bg-zinc-100 text-zinc-600 border-[--color-border]',
 };
 
 function fmtAbsolute(d: Date | string | null | undefined): string {
@@ -52,7 +52,7 @@ export function SkipList({ skipped }: { skipped: SkipRow[] }) {
       {skipped.map((s) => {
         const reasonLabel = REASON_LABEL[s.reason] ?? s.reason;
         const reasonClass =
-          REASON_TONE[s.reason] ?? 'bg-zinc-100 text-zinc-600 border-zinc-200';
+          REASON_TONE[s.reason] ?? 'bg-zinc-100 text-zinc-600 border-[--color-border]';
         return (
           <Card key={s.id} className="p-3">
             <div className="flex items-center justify-between gap-2">

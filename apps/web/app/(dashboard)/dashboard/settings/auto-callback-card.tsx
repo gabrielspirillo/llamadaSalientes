@@ -89,7 +89,7 @@ export function AutoCallbackCard({ intakeUrl, intakeKey, ghlWebhookUrl, location
                 {showKey ? 'Ocultar' : 'Mostrar'}
               </button>
             </div>
-            <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2">
+            <div className="flex items-center gap-2 rounded-lg border border-[--color-border] bg-zinc-50 px-3 py-2">
               <code className="flex-1 truncate text-xs font-mono text-zinc-700">
                 {showKey ? intakeKey : '••••••••••••••••••••••••••••••••'}
               </code>
@@ -195,7 +195,7 @@ function CopyableField({
   return (
     <div>
       <span className="text-xs font-medium text-zinc-600">{label}</span>
-      <div className="mt-1.5 flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2">
+      <div className="mt-1.5 flex items-center gap-2 rounded-lg border border-[--color-border] bg-zinc-50 px-3 py-2">
         <code className="flex-1 truncate text-xs font-mono text-zinc-700">{value}</code>
         <button
           type="button"
@@ -215,5 +215,5 @@ function CopyableField({
 }
 
 function Divider() {
-  return <div className="my-5 border-t border-zinc-100" />;
+  return <div className="my-5 border-t border-[--color-border-subtle]" />;
 }
