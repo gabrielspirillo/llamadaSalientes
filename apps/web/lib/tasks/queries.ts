@@ -274,10 +274,10 @@ export async function loadTaskStats(
 
   const [closedRows] = await db
     .select({
-      doneThisWeek: sql<number>`count(*) filter (where ${tasks.completedAt} >= ${weekAgo})::int`,
+      doneThisWeek: sql<number>`count(*) filter (where ${tasks.completedAt} >= ${weekAgo.toISOString()})::int`,
       avgHours: sql<
         number | null
-      >`avg(extract(epoch from (${tasks.completedAt} - ${tasks.createdAt})) / 3600) filter (where ${tasks.completedAt} >= ${monthAgo})`,
+      >`avg(extract(epoch from (${tasks.completedAt} - ${tasks.createdAt})) / 3600) filter (where ${tasks.completedAt} >= ${monthAgo.toISOString()})`,
     })
     .from(tasks)
     .where(and(eq(tasks.tenantId, tenantId), eq(tasks.status, 'DONE')));
