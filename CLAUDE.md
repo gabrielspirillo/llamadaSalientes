@@ -231,7 +231,41 @@ Estos quedan como TODO para futuras sesiones:
 3. Pasar Clerk de **test keys** a **production keys** cuando se acerque el cutover real.
 4. Borrar org **huérfana** `org_3DPj5m8J9lGStm3zXUpQzKBWdFd` en Clerk (creada pre-fix del webhook; no tiene tenant en BD).
 5. Verificar bug del agente outbound — primera prueba devolvió `dial_no_answer` con `duration_ms=0`; sospecha saldo Zadarma bajo o país de destino no habilitado. Verificar saldo + historial Zadarma cabinet.
+6. ⚠️ **Repegar las URLs de los webhooks de GHL con su token.** Los webhooks de GoHighLevel ahora exigen un token por tenant y rechazan con 401 sin él. Al primer intento fallido, el contenedor loguea la URL exacta a configurar (`[ghl-webhook] token inválido o ausente ... Configurá esta URL en GHL: ...`). Va en GHL → Settings → Integrations → Webhooks, para los dos endpoints (`/contact` y `/appointment`).
+7. **Reconectar las instancias de Evolution.** El webhook de Evolution también lleva token; se registra solo al crear o reconectar la instancia desde el panel, pero las instancias ya existentes siguen apuntando a la URL vieja y devolverán 401. Reconectarlas desde `/dashboard/whatsapp/integrations`.
+8. **Confirmar la persistencia de Redis en Dokploy** (AOF o RDB en `cliniq-redis`). Los `reminder-send` son jobs *delayed* y viven sólo en Redis: sin persistencia, un reinicio los borra. Ya hay una red de seguridad (`reconcileOverdueReminders`, dentro del barrido diario) que re-encola los `SCHEDULED` vencidos, pero es una red, no un sustituto.
+9. Rotar `ENCRYPTION_KEY` invalida los tokens de webhook (se derivan de ella) — hay que repetir los pasos 6 y 7 después de rotarla.
+
+## Seguridad: invariantes que no se negocian
+
+Escrito después de una auditoría que encontró varias de estas rotas. Antes de tocar estas zonas, leer esto.
+
+- **Todo webhook público verifica antes de tocar la BD.** Los proveedores que firman (Clerk/svix, Retell, Twilio, Meta Cloud, Zadarma) se validan con su firma; los que no firman (GHL, Evolution) exigen el token por tenant de `lib/webhooks/tenant-token.ts`. Un identificador que manda el propio emisor (`locationId`, `instance`) NO es autenticación: es público o adivinable.
+- **La verificación de firma nunca es condicional.** Un `if (signature) { ...verificar... }` se salta omitiendo el campo. Si el tenant tiene secret, la firma es obligatoria.
+- **Los gates de rol normalizan antes de comparar.** Clerk guarda `member` / `org:admin`, no nuestros tres roles. Comparar el valor crudo contra la tabla de orden da `undefined < 2` → `false` y deja pasar a cualquiera. Usar siempre `normalizeRole()` de `lib/tasks/auth.ts`.
+- **Esconder un botón no protege nada.** Toda ruta y toda Server Action que escriba valida el rol en el servidor (`denyUnlessRole()` de `lib/auth/api-guard.ts`).
+- **Toda query lleva `tenant_id` en el `WHERE`**, lecturas y escrituras, incluso cuando el id viene de una fila ya validada. Es defensa en profundidad y además es lo que hace que se usen los índices, que lideran por `tenant_id`.
+- **Los ids de usuario que llegan del cliente se validan contra la membresía del tenant** antes de darles acceso a nada (`upsertMembers` en `lib/messaging/channels.ts`). El fan-out de realtime publica a `im:user:<id>` sin tenant en la clave.
+- **Los datos de paciente no van a los logs.** Los payloads de webhook se guardan con `redactWebhookPayload()`: la transcripción y la grabación se cifran en `calls`, volcarlas en claro en `webhook_logs` anula ese cifrado.
+- **Todo endpoint público que gasta dinero lleva rate-limit por IP y tope global** (`lib/queue/rate-limit.ts`). Un límite por número de teléfono no sirve: se rotan números.
+
+## Colas: invariantes
+
+- **La clave del caché de pasos incluye `job.timestamp`** (`stepScope()`). Varios jobIds son estables por entidad (`rem-send-<reminderId>`), así que sin el timestamp una corrida nueva lee los pasos de la anterior. Ese bug hacía que un recordatorio reagendado no se enviara nunca.
+- **Un envío externo y su marca en BD no comparten `step.run`.** Si falla la escritura, el reintento le vuelve a mandar el mensaje al paciente.
+- **Un guard de "ya procesado" que lee y después actúa necesita lock** (`acquireLock()` de `lib/queue/lock.ts`) si el efecto ocurre antes de escribir la marca.
+- **Toda llamada externa lleva timeout.** BullMQ renueva el lock mientras el handler está vivo, así que un fetch colgado no se marca stalled: inmoviliza el slot para siempre.
+- **Los repeatables se registran con `upsertRepeatable()`**, que limpia la programación anterior: la clave de BullMQ deriva del patrón, así que cambiarlo deja la vieja corriendo en paralelo.
+
+## Rendimiento: lo que no hay que volver a romper
+
+- **Nada del panel arranca en `opacity: 0` esperando a la hidratación.** El subárbol del dashboard lleva `data-instant-reveal` y se pinta visible; el reveal por scroll queda para la landing. Ese patrón hacía que el LCP real del panel fuera el fin de la hidratación.
+- **Toda ruta del panel tiene `loading.tsx`.** Con rutas `force-dynamic` y sin él, el navegador se queda en la pantalla anterior durante todo el trabajo de servidor.
+- **Nada de una query por fila.** El preview del inbox de WhatsApp eran 101 queries por render, refrescadas cada 8 s.
+- **Las pestañas que son Server Components se resuelven por URL, no con `TabsContent`**: Radix sólo oculta con CSS, así que se ejecutan y se envían todas.
+- **La auto-provisión no bloquea el render** salvo la primera vez; el resto va a `after()` o al cron del worker.
+- **`recharts` y todo lo pesado entran por `next/dynamic`** (`components/dashboard/charts-lazy.tsx`).
 
 ---
 
-**Última actualización**: 2026-09-01 (módulo Mensajes: chat interno en tiempo real integrado con Tareas, Waitlist, Contactos, Llamadas y Analytics).
+**Última actualización**: 2026-09-01 (auditoría con agentes de verificación: webhooks firmados, gates de rol, idempotencia de colas, migraciones huérfanas recuperadas, índices, carga percibida del panel y CI en verde).

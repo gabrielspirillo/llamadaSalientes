@@ -53,9 +53,30 @@ async function upsertMembers(
   const unique = [...new Set(userIds.filter(Boolean))];
   if (unique.length === 0) return;
 
+  // Los ids llegan del cliente (abrir un DM, invitar a un canal) y sólo se
+  // comprobaba que fueran uuids. El fan-out de realtime publica a
+  // `im:user:<id>` sin tenant en la clave, así que meter aquí el id de alguien
+  // de OTRA clínica le hacía llegar los mensajes por SSE. Se filtra contra la
+  // membresía real del tenant.
+  const allowed = await db
+    .select({ userId: tenantMemberships.userId })
+    .from(tenantMemberships)
+    .where(
+      and(eq(tenantMemberships.tenantId, tenantId), inArray(tenantMemberships.userId, unique)),
+    );
+  const valid = allowed.map((r) => r.userId);
+  if (valid.length !== unique.length) {
+    console.warn('[messaging] se descartaron usuarios ajenos al tenant', {
+      tenantId,
+      channelId,
+      descartados: unique.length - valid.length,
+    });
+  }
+  if (valid.length === 0) return;
+
   await db
     .insert(imChannelMembers)
-    .values(unique.map((userId) => ({ channelId, userId, tenantId, role })))
+    .values(valid.map((userId) => ({ channelId, userId, tenantId, role })))
     .onConflictDoUpdate({
       target: [imChannelMembers.channelId, imChannelMembers.userId],
       set: { leftAt: null },

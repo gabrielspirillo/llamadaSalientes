@@ -30,12 +30,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const to = params.To ?? '?';
   const body = params.Body ?? '';
 
+  // El cuerpo NO se loguea: por acá pasan OTPs y mensajes de pacientes, y los
+  // logs del contenedor no tienen ni redacción ni retención.
   console.log('[twilio-sms-passthrough]', {
     from,
     to,
     sid: params.MessageSid,
     bodyLen: body.length,
-    body: body.slice(0, 200),
   });
 
   const forwardTo = req.nextUrl.searchParams.get('forward');

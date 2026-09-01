@@ -5,6 +5,7 @@ import { db } from '@/lib/db/client';
 import { outboundTargets, webhookLogs } from '@/lib/db/schema';
 import { sendQueueEvent } from '@/lib/queue/client';
 import { verifyRetellSignature } from '@/lib/retell/verify';
+import { redactWebhookPayload } from '@/lib/webhooks/redact';
 import { and, eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -69,13 +70,26 @@ export async function POST(req: NextRequest) {
 
   const signatureValid = await verifyRetellSignature(rawBody, signature, apiKey);
 
-  // Loguear siempre para auditoria, incluso si la firma falla
-  await db.insert(webhookLogs).values({
-    source: 'retell',
-    signatureValid,
-    statusCode: signatureValid ? 200 : 401,
-    body: JSON.parse(rawBody.toString('utf8')) as Record<string, unknown>,
-  });
+  // Loguear siempre para auditoría, incluso si la firma falla. El payload va
+  // redactado: la transcripción y la grabación son datos de salud y se guardan
+  // cifradas en `calls`; volcarlas en claro acá anulaba ese cifrado.
+  let logged: unknown = null;
+  try {
+    logged = redactWebhookPayload(JSON.parse(rawBody.toString('utf8')));
+  } catch {
+    logged = { error: 'body no es JSON válido' };
+  }
+  await db
+    .insert(webhookLogs)
+    .values({
+      source: 'retell',
+      signatureValid,
+      statusCode: signatureValid ? 200 : 401,
+      body: logged as Record<string, unknown>,
+    })
+    .catch((err) => {
+      console.warn('[retell-webhook] no se pudo escribir el log', (err as Error).message);
+    });
 
   if (!signatureValid) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });

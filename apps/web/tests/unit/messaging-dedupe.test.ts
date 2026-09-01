@@ -181,6 +181,9 @@ describe('ensureDmChannel — dedupe_key simétrica', () => {
 
   it('el canal se crea como DM y suma a los dos como OWNER', async () => {
     dbState.insertReturns = [[{ id: 'dm-1' }]];
+    // El INSERT devuelve fila, así que no hay findByDedupeKey: el único SELECT
+    // es la validación de miembros del tenant que hace upsertMembers.
+    dbState.selectReturns = [[{ userId: 'u-a' }, { userId: 'u-b' }]];
     await ensureDmChannel({ tenantId: 't1', userIdA: 'u-b', userIdB: 'u-a' });
 
     expect(channelInsert()).toMatchObject({ tenantId: 't1', kind: 'DM' });
@@ -303,7 +306,11 @@ describe('ensureContextChannel — dedupe_key estable por (tipo, id)', () => {
 
   it('sin miembros ni autor, suma a todo el tenant', async () => {
     dbState.insertReturns = [[{ id: 'ctx-1' }]];
-    dbState.selectReturns = [[{ userId: 'u-1' }, { userId: 'u-2' }]];
+    // 1) allTenantUserIds  2) validación de miembros del tenant
+    dbState.selectReturns = [
+      [{ userId: 'u-1' }, { userId: 'u-2' }],
+      [{ userId: 'u-1' }, { userId: 'u-2' }],
+    ];
 
     await ensureContextChannel({
       tenantId: 't1',
@@ -321,7 +328,7 @@ describe('ensureContextChannel — dedupe_key estable por (tipo, id)', () => {
 describe('ensureSlugChannel — dedupe_key `slug:<slug>`', () => {
   it('un canal sembrado se crea con nombre, tema y tono del catálogo', async () => {
     dbState.insertReturns = [[{ id: 'ch-urg' }]];
-    dbState.selectReturns = [[{ userId: 'u-1' }]];
+    dbState.selectReturns = [[{ userId: 'u-1' }], [{ userId: 'u-1' }]];
 
     await ensureSlugChannel({ tenantId: 't1', slug: 'urgencias' });
 
@@ -393,6 +400,9 @@ describe('createChannel', () => {
 
   it('el creador entra como OWNER y no se duplica si también viene en la lista', async () => {
     dbState.insertReturns = [[{ id: 'ch-1' }]];
+    // Dos llamadas a upsertMembers (autor como OWNER y el resto como MEMBER),
+    // cada una valida contra tenant_memberships.
+    dbState.selectReturns = [[{ userId: 'u-1' }], [{ userId: 'u-2' }]];
     await createChannel({
       tenantId: 't1',
       kind: 'GROUP',

@@ -325,6 +325,49 @@ export async function removeMentionEscalateJob(mentionId: string): Promise<void>
 // extra. Se registran al arrancar el worker; el jobId fijo los hace idempotentes.
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Registra un repeatable y borra cualquier programación previa del mismo
+ * nombre.
+ *
+ * La clave de un repeatable en BullMQ deriva de (nombre, jobId, patrón, tz).
+ * El jobId fijo hace idempotente registrarlo en cada arranque, pero cambiar el
+ * patrón genera una clave NUEVA y deja la vieja viva: las dos corren en
+ * paralelo, duplicando el trabajo, y nada las limpia.
+ */
+async function upsertRepeatable(
+  queueName: QueueName,
+  jobName: string,
+  pattern: string,
+  jobId: string,
+): Promise<void> {
+  const queue = getQueue(queueName);
+
+  for (const existing of await queue.getRepeatableJobs()) {
+    const stale = existing.name === jobName && existing.pattern !== pattern;
+    if (stale) {
+      await queue.removeRepeatableByKey(existing.key).catch(() => undefined);
+      console.log('[queue] repeatable huérfano eliminado', {
+        job: jobName,
+        pattern: existing.pattern,
+      });
+    }
+  }
+
+  await queue.add(
+    jobName,
+    {},
+    {
+      ...DEFAULT_OPTS,
+      repeat: { pattern },
+      // Sin attempts, un fallo transitorio pierde la corrida entera y el
+      // próximo tick puede ser dentro de 24 h.
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 30_000 },
+      jobId,
+    },
+  );
+}
+
 export async function scheduleTaskCrons(): Promise<void> {
   if (!env.REDIS_URL) {
     console.log('[queue] sin REDIS_URL, crons de tareas no registrados');
@@ -333,25 +376,19 @@ export async function scheduleTaskCrons(): Promise<void> {
 
   // Cada 15 minutos: cubre clínicas en zonas horarias distintas sin depender
   // de a qué hora arrancó el worker.
-  await getQueue('task-routines-tick').add(
+  await upsertRepeatable(
     'task-routines-tick',
-    {},
-    {
-      ...DEFAULT_OPTS,
-      repeat: { pattern: '*/15 * * * *' },
-      jobId: 'task-routines-tick-cron',
-    },
+    'task-routines-tick',
+    '*/15 * * * *',
+    'task-routines-tick-cron',
   );
 
   // Una vez al día a las 06:10 UTC: antes de que abra la primera clínica.
-  await getQueue('task-daily-sweep').add(
+  await upsertRepeatable(
     'task-daily-sweep',
-    {},
-    {
-      ...DEFAULT_OPTS,
-      repeat: { pattern: '10 6 * * *' },
-      jobId: 'task-daily-sweep-cron',
-    },
+    'task-daily-sweep',
+    '10 6 * * *',
+    'task-daily-sweep-cron',
   );
 }
 
@@ -371,25 +408,14 @@ export async function scheduleMessagingCrons(): Promise<void> {
   // Cada 30 minutos: el job mira la timezone de cada clínica y publica el
   // resumen sólo a las que les son las 08:00. El `dedupe_key` por día impide
   // que dos ticks dentro de la misma ventana publiquen dos veces.
-  await getQueue('im-digest').add(
-    'im-digest',
-    {},
-    {
-      ...DEFAULT_OPTS,
-      repeat: { pattern: '*/30 * * * *' },
-      jobId: 'im-digest-cron',
-    },
-  );
+  await upsertRepeatable('im-digest', 'im-digest', '*/30 * * * *', 'im-digest-cron');
 
   // 04:40 UTC: hueco muerto entre el último turno europeo y la apertura.
   // El borrado por lotes puede tardar y no queremos competir con el tráfico.
-  await getQueue('im-retention-sweep').add(
+  await upsertRepeatable(
     'im-retention-sweep',
-    {},
-    {
-      ...DEFAULT_OPTS,
-      repeat: { pattern: '40 4 * * *' },
-      jobId: 'im-retention-sweep-cron',
-    },
+    'im-retention-sweep',
+    '40 4 * * *',
+    'im-retention-sweep-cron',
   );
 }

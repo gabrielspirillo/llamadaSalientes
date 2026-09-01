@@ -41,7 +41,7 @@ export async function GET(
     const { id } = await params;
     if (!idSchema.safeParse(id).success) throw new MessagingNotFoundError('Canal');
 
-    await requireChannelMember(auth, id);
+    const member = await requireChannelMember(auth, id);
 
     const parsed = listSchema.safeParse({
       before: req.nextUrl.searchParams.get('before') ?? undefined,
@@ -55,6 +55,9 @@ export async function GET(
     if (parsed.data.parentId) {
       const replies = await loadReplies({
         tenantId: auth.tenantId,
+        // El canal cuya membresía se validó arriba; sin él bastaba conocer el
+        // uuid de un mensaje para leer un hilo de otro canal.
+        channelId: member.channelId,
         parentId: parsed.data.parentId,
         userId: auth.userId,
       });

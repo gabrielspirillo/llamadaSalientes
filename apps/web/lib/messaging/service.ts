@@ -341,10 +341,19 @@ export async function sendMessage(input: SendMessageInput): Promise<{
     }
 
     if (input.parentId) {
+      // El parentId viene del cliente: acotar por tenant y por canal para que
+      // no se pueda incrementar el contador de un hilo de otra clínica ni
+      // colgar respuestas de un hilo de otro canal.
       await tx
         .update(imMessages)
         .set({ replyCount: sql`${imMessages.replyCount} + 1` })
-        .where(eq(imMessages.id, input.parentId));
+        .where(
+          and(
+            eq(imMessages.id, input.parentId),
+            eq(imMessages.tenantId, input.tenantId),
+            eq(imMessages.channelId, input.channelId),
+          ),
+        );
     }
 
     return msg;

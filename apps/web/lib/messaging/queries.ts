@@ -466,11 +466,23 @@ export async function loadReplies(a: {
   tenantId: string;
   parentId: string;
   userId: string;
+  /** Canal cuya membresía ya validó el handler. */
+  channelId: string;
 }): Promise<ImMessageDTO[]> {
+  // Filtrar también por canal, no sólo por parentId: la membresía se valida
+  // sobre el canal de la URL, así que sin esto bastaba conocer el uuid de un
+  // mensaje para leer las respuestas de un hilo de un canal privado o de un
+  // DM ajeno.
   const rows = await db
     .select()
     .from(imMessages)
-    .where(and(eq(imMessages.tenantId, a.tenantId), eq(imMessages.parentId, a.parentId)))
+    .where(
+      and(
+        eq(imMessages.tenantId, a.tenantId),
+        eq(imMessages.channelId, a.channelId),
+        eq(imMessages.parentId, a.parentId),
+      ),
+    )
     .orderBy(asc(imMessages.createdAt), asc(imMessages.id))
     .limit(REPLIES_LIMIT);
 

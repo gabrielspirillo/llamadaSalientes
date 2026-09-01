@@ -14,6 +14,7 @@ import {
   onAppointmentNoShow,
 } from '@/lib/tasks/hooks';
 import { autoEnqueueOnNewAppointment, enqueueOfferForCancelledSlot } from '@/lib/waitlist/engine';
+import { redactWebhookPayload } from '@/lib/webhooks/redact';
 import {
   ghlWebhookUrlFor,
   readWebhookToken,
@@ -90,7 +91,8 @@ export async function POST(req: NextRequest) {
       event: eventType ?? apt.status ?? 'unknown',
       signatureValid: null,
       statusCode: 200,
-      body: payload as Record<string, unknown>,
+      // El payload trae datos de paciente; se redacta lo sensible.
+      body: redactWebhookPayload(payload) as Record<string, unknown>,
     })
     .catch(() => undefined);
 

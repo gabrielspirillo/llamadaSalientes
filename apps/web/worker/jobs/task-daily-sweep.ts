@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type { StepRunner } from '@/lib/queue/step';
+import { reconcileOverdueReminders } from '@/lib/reminders/reconcile';
 import { listActiveTenantIds, runDailySweepsForTenant } from '@/lib/tasks/materialize';
 
 /**
@@ -13,8 +14,23 @@ import { listActiveTenantIds, runDailySweepsForTenant } from '@/lib/tasks/materi
 export async function processTaskDailySweepJob(
   _data: Record<string, never>,
   step: StepRunner,
-): Promise<{ tenants: number; pendingTreatment: number; inactive: number; failed: number }> {
+): Promise<{
+  tenants: number;
+  pendingTreatment: number;
+  inactive: number;
+  failed: number;
+  remindersRequeued: number;
+}> {
   const tenantIds = await step.run('list-tenants', async () => listActiveTenantIds());
+
+  // Red de seguridad de los recordatorios: son jobs delayed y viven sólo en
+  // Redis, así que un reinicio sin persistencia los borra sin dejar rastro.
+  const { requeued: remindersRequeued } = await step
+    .run('reconcile-reminders', async () => reconcileOverdueReminders())
+    .catch((err) => {
+      console.error('[task-daily-sweep] reconciliación de recordatorios falló', err);
+      return { requeued: 0 };
+    });
 
   let pendingTreatment = 0;
   let inactive = 0;
@@ -42,5 +58,5 @@ export async function processTaskDailySweepJob(
     }
   }
 
-  return { tenants: tenantIds.length, pendingTreatment, inactive, failed };
+  return { tenants: tenantIds.length, pendingTreatment, inactive, failed, remindersRequeued };
 }

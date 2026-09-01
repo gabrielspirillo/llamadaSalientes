@@ -3,6 +3,7 @@ import { db } from '@/lib/db/client';
 import { calls } from '@/lib/db/schema';
 import { env } from '@/lib/env';
 import { buildDemoOverrideFromEnv, withGhlOverride } from '@/lib/ghl/override-context';
+import { clientIp, consumeRateLimit } from '@/lib/queue/rate-limit';
 import { and, eq, gte } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -18,6 +19,10 @@ const bodySchema = z.object({
 // Ventana mínima entre dos llamadas demo al mismo número. Evita spam y
 // re-trigger accidental cuando el usuario hace doble click.
 const RATE_LIMIT_SECONDS = 60;
+
+// Topes que acotan el gasto: por IP y hora, y un techo global diario.
+const DEMO_CALLS_PER_IP_PER_HOUR = 3;
+const DEMO_CALLS_PER_DAY = 200;
 
 function resolveAllowedOrigin(req: NextRequest): string {
   const origin = req.headers.get('origin') ?? '';
@@ -89,6 +94,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: 'Número de teléfono inválido. Usá formato internacional, ej: +34611223344.' },
       { status: 422, headers },
+    );
+  }
+
+  // Rate-limit por IP y tope diario global. El límite por número no alcanza:
+  // rotando números se vacía el saldo de telefonía y se usa la demo para
+  // llamar a terceros con nuestro caller ID.
+  const ip = clientIp(req);
+  const [perIp, perDay] = await Promise.all([
+    consumeRateLimit(`demo-call:ip:${ip}`, DEMO_CALLS_PER_IP_PER_HOUR, 3600),
+    consumeRateLimit('demo-call:global', DEMO_CALLS_PER_DAY, 86400),
+  ]);
+  if (!perIp.allowed || !perDay.allowed) {
+    console.warn('[demo-call] rate limit alcanzado', {
+      ip,
+      perIp: perIp.allowed,
+      global: perDay.allowed,
+    });
+    return NextResponse.json(
+      {
+        error: 'Se alcanzó el límite de llamadas de prueba. Probá de nuevo más tarde.',
+        reason: 'rate_limited',
+      },
+      { status: 429, headers },
     );
   }
 

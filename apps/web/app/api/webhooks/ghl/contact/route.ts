@@ -1,6 +1,7 @@
 import { triggerCallback } from '@/lib/calls/trigger-callback';
 import { db } from '@/lib/db/client';
 import { ghlIntegrations, webhookLogs } from '@/lib/db/schema';
+import { redactWebhookPayload } from '@/lib/webhooks/redact';
 import {
   ghlWebhookUrlFor,
   readWebhookToken,
@@ -88,7 +89,8 @@ export async function POST(req: NextRequest) {
       event: payload.type ?? 'unknown',
       signatureValid: null,
       statusCode: 200,
-      body: payload as Record<string, unknown>,
+      // El payload trae datos de paciente; se redacta lo sensible.
+      body: redactWebhookPayload(payload) as Record<string, unknown>,
     })
     .catch(() => undefined);
 
