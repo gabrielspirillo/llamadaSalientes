@@ -22,7 +22,7 @@ import {
   Stethoscope,
   TrendingDown,
 } from 'lucide-react';
-import { NoShowTrendChart, TopTreatmentsChart } from './analytics-global-charts';
+import { NoShowTrendChart, TopTreatmentsChart } from './charts-lazy';
 
 function formatMoney(cents: number, currency: string): string {
   try {

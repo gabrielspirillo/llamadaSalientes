@@ -3,10 +3,11 @@ import { MessagesWorkspace } from '@/components/messaging/MessagesWorkspace';
 import { db } from '@/lib/db/client';
 import { tenantMemberships, users } from '@/lib/db/schema';
 import { internalUserIdFor, loadRail } from '@/lib/messaging/queries';
-import { seedMessagingForTenant } from '@/lib/messaging/seed';
+import { hasSeededChannels, seedMessagingForTenant } from '@/lib/messaging/seed';
 import type { ImRailDTO } from '@/lib/messaging/types';
 import { normalizeRole } from '@/lib/tasks/auth';
 import { getCurrentTenant } from '@/lib/tenant';
+import { after } from 'next/server';
 import { and, eq } from 'drizzle-orm';
 import { MessageSquare } from 'lucide-react';
 
@@ -24,9 +25,20 @@ export const dynamic = 'force-dynamic';
 export default async function MessagesPage() {
   const { tenant, userId: clerkUserId } = await getCurrentTenant();
 
-  await seedMessagingForTenant(tenant.id, tenant.clerkOrganizationId).catch((err) => {
-    console.warn('[messages-page] seed falló', (err as Error).message);
-  });
+  // El seed sincroniza miembros contra la API de Clerk y recorre los canales
+  // base uno por uno: cientos de ms en CADA entrada a Mensajes, para no hacer
+  // nada en el 99% de las visitas. Va al background salvo la primera vez, que
+  // es cuando el rail estaría vacío sin él.
+  const seeded = await hasSeededChannels(tenant.id).catch(() => false);
+  const seed = () =>
+    seedMessagingForTenant(tenant.id, tenant.clerkOrganizationId).catch((err) => {
+      console.warn('[messages-page] seed falló', (err as Error).message);
+    });
+  if (seeded) {
+    after(() => seed());
+  } else {
+    await seed();
+  }
 
   let currentUserId: string | null = null;
   try {

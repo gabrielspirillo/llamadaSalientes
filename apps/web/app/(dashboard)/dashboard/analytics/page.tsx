@@ -2,7 +2,7 @@ import {
   CallsTrendChart,
   IntentBarList,
   IntentDonut,
-} from '@/components/dashboard/analytics-charts';
+} from '@/components/dashboard/charts-lazy';
 import { MessagingAnalyticsPanel } from '@/components/dashboard/messaging-analytics';
 import { ModuleUnavailable } from '@/components/dashboard/modules/module-error';
 import { OutboundModule } from '@/components/dashboard/modules/outbound-module';
@@ -13,7 +13,7 @@ import { Card, CardTopbar } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/feedback';
 import { Reveal } from '@/components/ui/motion';
 import { StatTile } from '@/components/ui/stat';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SegmentedNav } from '@/components/ui/tabs';
 import { type AnalyticsRange, getAnalytics } from '@/lib/data/analytics';
 import { getMessagingAnalytics } from '@/lib/data/analytics/messaging';
 import { formatDuration } from '@/lib/data/calls-list';
@@ -30,6 +30,13 @@ import {
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
+
+const TABS = [
+  { value: 'outbound', label: 'Salientes', icon: PhoneOutgoing },
+  { value: 'inbound', label: 'Entrantes', icon: Phone },
+  { value: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
+  { value: 'team', label: 'Equipo', icon: Users },
+] as const;
 
 export default async function AnalyticsPage({
   searchParams,
@@ -51,42 +58,30 @@ export default async function AnalyticsPage({
         icon={<BarChart3 className="h-5 w-5" />}
       />
 
-      <Tabs defaultValue={tab}>
-        <TabsList className="max-w-full">
-          <TabsTrigger value="outbound">
-            <PhoneOutgoing className="h-3.5 w-3.5 mr-1.5" />
-            Salientes
-          </TabsTrigger>
-          <TabsTrigger value="inbound">
-            <Phone className="h-3.5 w-3.5 mr-1.5" />
-            Entrantes
-          </TabsTrigger>
-          <TabsTrigger value="whatsapp">
-            <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
-            WhatsApp
-          </TabsTrigger>
-          <TabsTrigger value="team">
-            <Users className="h-3.5 w-3.5 mr-1.5" />
-            Equipo
-          </TabsTrigger>
-        </TabsList>
+      {/* Pestañas por URL, no por estado de cliente.
+          Con las Tabs de Radix los cuatro TabsContent eran Server Components
+          ya resueltos: se ejecutaban las consultas de las cuatro pestañas y se
+          mandaba el HTML de las cuatro, viéndose una. El `?tab=` ya existía;
+          ahora además decide qué se consulta. */}
+      <SegmentedNav
+        className="mb-5"
+        activeValue={tab}
+        items={TABS.map((t) => ({
+          value: t.value,
+          label: (
+            <>
+              <t.icon className="mr-1.5 h-3.5 w-3.5" />
+              {t.label}
+            </>
+          ),
+          href: `/dashboard/analytics?tab=${t.value}&range=${range}`,
+        }))}
+      />
 
-        <TabsContent value="outbound">
-          <OutboundModule tenantId={tenant.id} />
-        </TabsContent>
-
-        <TabsContent value="inbound">
-          <InboundAnalytics tenantId={tenant.id} range={range} />
-        </TabsContent>
-
-        <TabsContent value="whatsapp">
-          <WhatsappModule tenantId={tenant.id} />
-        </TabsContent>
-
-        <TabsContent value="team">
-          <TeamAnalytics tenantId={tenant.id} range={range} />
-        </TabsContent>
-      </Tabs>
+      {tab === 'outbound' && <OutboundModule tenantId={tenant.id} />}
+      {tab === 'inbound' && <InboundAnalytics tenantId={tenant.id} range={range} />}
+      {tab === 'whatsapp' && <WhatsappModule tenantId={tenant.id} />}
+      {tab === 'team' && <TeamAnalytics tenantId={tenant.id} range={range} />}
     </>
   );
 }

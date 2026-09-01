@@ -333,6 +333,20 @@ export const SYSTEM_TEMPLATES: SystemTemplate[] = [
  * No reescribe las existentes — si la clínica editó "Apertura", su versión
  * manda. Solo rellena los huecos (plantillas nuevas del catálogo incluidas).
  */
+/**
+ * ¿El tenant ya tiene el catálogo sembrado? Una query barata que le permite a
+ * la página decidir si necesita provisionar de forma bloqueante (primera
+ * visita) o puede mandarlo al background.
+ */
+export async function hasSystemTemplates(tenantId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: taskTemplates.id })
+    .from(taskTemplates)
+    .where(eq(taskTemplates.tenantId, tenantId))
+    .limit(1);
+  return !!row;
+}
+
 export async function seedSystemTemplates(tenantId: string): Promise<number> {
   const existing = await db
     .select({ key: taskTemplates.key })

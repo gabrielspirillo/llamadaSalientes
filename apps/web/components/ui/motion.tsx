@@ -10,6 +10,9 @@ import * as React from 'react';
 
 type RevealDirection = 'up' | 'left' | 'right' | 'scale';
 
+/** Tope del escalonado: 5 × 60ms = 300ms hasta el último elemento. */
+const MAX_STAGGER_INDEX = 5;
+
 /**
  * Revela su contenido cuando entra en viewport. Reemplaza a framer-motion
  * para el 95% de los casos con coste ~0.
@@ -95,7 +98,9 @@ export function Stagger({
               style: {
                 ...((child as React.ReactElement<{ style?: React.CSSProperties }>).props.style ??
                   {}),
-                ['--i' as string]: i,
+                // Clampeado: sin tope, el ítem 30 de una lista aparece casi
+                // dos segundos tarde y se lee como lista rota.
+                ['--i' as string]: Math.min(i, MAX_STAGGER_INDEX),
               },
             })
           : child,

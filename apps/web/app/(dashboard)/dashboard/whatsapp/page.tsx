@@ -82,32 +82,50 @@ export default async function WhatsappConversationsPage() {
     )
     .limit(100);
 
-  // Para preview: traer último mensaje de cada conversación. Versión simple,
-  // una query por conversación (OK hasta ~100). Si crece se mueve a subquery.
-  const previews = await Promise.all(
-    rows.map(async (r) => {
-      const last = await db
-        .select({
-          contentText: whatsappMessages.contentText,
-          direction: whatsappMessages.direction,
-          createdAt: whatsappMessages.createdAt,
-        })
-        .from(whatsappMessages)
-        .where(eq(whatsappMessages.conversationId, r.id))
-        .orderBy(desc(whatsappMessages.createdAt))
-        .limit(1);
-      return { id: r.id, last: last[0] ?? null };
-    }),
-  );
-  const previewMap = new Map(previews.map((p) => [p.id, p.last]));
+  // Preview: último mensaje de cada conversación en UNA query.
+  //
+  // Antes era un Promise.all con una query por conversación: hasta 101 queries
+  // por render, y la página se auto-refresca, así que eran ~750 queries por
+  // minuto y por operador con la bandeja abierta. `DISTINCT ON` resuelve lo
+  // mismo de una, apoyado en whatsapp_messages_conv_created_idx.
+  const conversationIds = rows.map((r) => r.id);
+  const previewMap = new Map<
+    string,
+    { contentText: string | null; direction: string; createdAt: Date } | null
+  >();
+
+  if (conversationIds.length > 0) {
+    const previews = await db.execute<{
+      conversation_id: string;
+      content_text: string | null;
+      direction: string;
+      created_at: Date;
+    }>(sql`
+      SELECT DISTINCT ON (m.conversation_id)
+        m.conversation_id, m.content_text, m.direction, m.created_at
+      FROM whatsapp_messages m
+      WHERE m.conversation_id IN ${conversationIds}
+      ORDER BY m.conversation_id, m.created_at DESC
+    `);
+
+    for (const p of previews) {
+      previewMap.set(p.conversation_id, {
+        contentText: p.content_text,
+        direction: p.direction,
+        createdAt: new Date(p.created_at),
+      });
+    }
+  }
 
   const unreadTotal = rows.reduce((acc, r) => acc + (r.unreadCount ?? 0), 0);
 
   return (
     <div className="flex flex-col">
-      {/* Refresca la lista periódicamente para reordenar y mostrar mensajes
-          nuevos sin recargar a mano (la página es server-render). */}
-      <AutoRefresh intervalMs={8000} />
+      {/* Refresca la lista para reordenar y mostrar mensajes nuevos sin
+          recargar a mano (la página es server-render). A 8s cada refresco
+          re-ejecutaba las queries del listado completo: es un intervalo de
+          polling, no de tiempo real — para eso está el SSE del hilo. */}
+      <AutoRefresh intervalMs={30000} />
 
       <PageHeader
         eyebrow="Bandeja de entrada"

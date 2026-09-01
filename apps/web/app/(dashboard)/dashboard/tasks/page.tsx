@@ -15,8 +15,9 @@ import {
   loadTaskStats,
   loadTemplates,
 } from '@/lib/tasks/queries';
-import { seedSystemTemplates } from '@/lib/tasks/templates';
+import { hasSystemTemplates, seedSystemTemplates } from '@/lib/tasks/templates';
 import { getCurrentTenant } from '@/lib/tenant';
+import { after } from 'next/server';
 import { and, eq } from 'drizzle-orm';
 import { ClipboardCheck, DatabaseZap } from 'lucide-react';
 
@@ -34,13 +35,24 @@ export default async function TasksPage() {
   const { tenant, userId: clerkUserId } = await getCurrentTenant();
 
   try {
-    await seedSystemTemplates(tenant.id);
-    await ensureAutomationRules(tenant.id);
-    // Si el worker todavía no pasó (clínica recién activada, o redeploy), las
-    // rutinas de hoy se materializan acá mismo. El dedupe evita duplicados.
-    await materializeRoutinesForTenant(tenant.id).catch((err) => {
-      console.warn('[tasks-page] materialize falló', (err as Error).message);
-    });
+    // La auto-provisión bloquea el render SÓLO la primera vez, que es cuando
+    // hace falta para que el tablero no arranque vacío. Después se manda al
+    // background con `after()`: son tres escrituras + una materialización que
+    // no aportan nada al render y que sumaban cientos de ms a cada visita.
+    // El cron `task-routines-tick` cubre igual el caso del worker.
+    const provisioned = await hasSystemTemplates(tenant.id).catch(() => false);
+    const provision = async () => {
+      await seedSystemTemplates(tenant.id);
+      await ensureAutomationRules(tenant.id);
+      await materializeRoutinesForTenant(tenant.id).catch((err) => {
+        console.warn('[tasks-page] materialize falló', (err as Error).message);
+      });
+    };
+    if (provisioned) {
+      after(() => provision().catch(() => undefined));
+    } else {
+      await provision();
+    }
 
     const currentUserId = await internalUserIdFor(clerkUserId);
 
@@ -55,6 +67,8 @@ export default async function TasksPage() {
 
     const role = normalizeRole(membershipRow?.role);
 
+    // loadTaskStats necesita el tablero, pero el resto no: iba fuera del
+    // Promise.all y agregaba un round-trip de más.
     const [board, members, templates, rules] = await Promise.all([
       loadBoardTasks(tenant.id),
       loadTaskMembers(tenant.id, tenant.clerkOrganizationId),

@@ -1,8 +1,25 @@
 import 'server-only';
+import { eq } from 'drizzle-orm';
 
+import { db } from '@/lib/db/client';
+import { imChannels } from '@/lib/db/schema';
 import { ensureSlugChannel } from '@/lib/messaging/channels';
 import { SEED_CHANNELS } from '@/lib/messaging/constants';
 import { listTenantMembersSynced } from '@/lib/tenant-members';
+
+/**
+ * ¿El tenant ya tiene canales? Permite a la página sembrar de forma
+ * bloqueante sólo en la primera visita y mandar el resto al background.
+ * Devuelve false si las tablas `im_` todavía no existen.
+ */
+export async function hasSeededChannels(tenantId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: imChannels.id })
+    .from(imChannels)
+    .where(eq(imChannels.tenantId, tenantId))
+    .limit(1);
+  return !!row;
+}
 
 /**
  * Siembra los canales del tenant en la primera visita al módulo, igual que

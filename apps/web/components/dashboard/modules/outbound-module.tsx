@@ -1,4 +1,4 @@
-import { OutboundTrendChart } from '@/components/dashboard/analytics-module-charts';
+import { OutboundTrendChart } from '@/components/dashboard/charts-lazy';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardTopbar } from '@/components/ui/card';

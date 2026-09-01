@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/cn';
 import * as TabsPrimitive from '@radix-ui/react-tabs';
+import Link from 'next/link';
 import * as React from 'react';
 
 export const Tabs = TabsPrimitive.Root;
@@ -63,7 +64,7 @@ export function SegmentedNav({
   activeValue,
   className,
 }: {
-  items: Array<{ value: string; label: string; href: string; count?: number }>;
+  items: Array<{ value: string; label: React.ReactNode; href: string; count?: number }>;
   activeValue: string;
   className?: string;
 }) {
@@ -77,9 +78,12 @@ export function SegmentedNav({
       {items.map((it) => {
         const active = it.value === activeValue;
         return (
-          <a
+          <Link
             key={it.value}
             href={it.href}
+            // Navegación cliente: con <a> cada cambio de pestaña recargaba la
+            // página entera.
+            prefetch={false}
             className={cn(
               'inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-[14px] font-semibold transition-all duration-300',
               active
@@ -98,7 +102,7 @@ export function SegmentedNav({
                 {it.count}
               </span>
             )}
-          </a>
+          </Link>
         );
       })}
     </div>

@@ -508,6 +508,12 @@ html.js [data-reveal] {
   transition-delay: var(--reveal-delay, 0ms);
   will-change: opacity, transform;
 }
+/* El `will-change` sólo vale mientras falta revelar: dejarlo puesto en las
+   ~50 zonas vivas del tablero promueve otras tantas capas de composición de
+   forma permanente, y eso se paga en memoria de GPU y en jank al scrollear. */
+html.js [data-reveal].is-revealed {
+  will-change: auto;
+}
 html.js [data-reveal="left"] {
   transform: translate3d(-22px, 0, 0);
 }
@@ -522,14 +528,31 @@ html.js [data-reveal].is-revealed {
   transform: none;
 }
 
+/* Dentro del panel el contenido se pinta visible desde el primer frame.
+   `[data-reveal]` arrancaba en opacity:0 y sólo se revelaba tras hidratar +
+   disparar el IntersectionObserver, así que el LCP real del dashboard era el
+   fin de la hidratación: casi todo el tablero está en el primer viewport y no
+   hay nada que "revelar al scrollear". La animación de entrada la sigue dando
+   `.enter-page` sobre <main>, una sola en vez de cincuenta.
+   La landing conserva el reveal por scroll, que ahí sí tiene sentido. */
+[data-instant-reveal] [data-reveal] {
+  opacity: 1;
+  transform: none;
+  transition: none;
+  will-change: auto;
+}
+
 /* Escalonado automático por índice (--i inline) */
 .stagger > * {
   animation: fade-up 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
   animation-delay: calc(var(--stagger-step, 60ms) * var(--i, 0));
 }
 
+/* Sin `both`: con fill-mode backwards el contenido se queda en el estado
+   inicial (opacity 0) antes de arrancar, y se sumaba al retraso percibido en
+   cada navegación. */
 .enter-page {
-  animation: fade-up 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: fade-up 260ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 /* ============================================================================
@@ -634,6 +657,11 @@ html.js [data-reveal].is-revealed {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
+    /* Sin esto, `.stagger > *` sigue esperando su animation-delay: la
+       animación no corre pero el contenido queda invisible mientras tanto,
+       hasta casi dos segundos en las listas largas. */
+    animation-delay: 0s !important;
+    transition-delay: 0s !important;
   }
   html.js [data-reveal] {
     opacity: 1 !important;

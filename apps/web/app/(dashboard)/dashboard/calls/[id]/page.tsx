@@ -1,6 +1,7 @@
 import { AudioPlayer } from '@/components/dashboard/audio-player';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardTopbar } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/feedback';
 import { Reveal } from '@/components/ui/motion';
 import { Avatar } from '@/components/ui/stat';
 import { formatDuration, getCall, getCallTranscript } from '@/lib/data/calls-list';
@@ -19,6 +20,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { Suspense } from 'react';
 
 const INTENT_META: Record<
   string,
@@ -184,9 +186,15 @@ export default async function CallDetailPage({
               />
               <div className="px-5 pb-5 sm:px-6 sm:pb-6">
                 {call.summary ? (
-                  <p className="text-[14px] leading-relaxed text-zinc-700">
-                    {await ensureSpanish(call.summary)}
-                  </p>
+                  // La traducción puede caer en una llamada a Gemini; dentro
+                  // del JSX bloqueaba el render del Server Component entero,
+                  // así que la ficha de la llamada no se pintaba hasta que el
+                  // LLM contestara. Con Suspense el resto se manda ya.
+                  <Suspense
+                    fallback={<Skeleton className="h-16 w-full rounded-xl" />}
+                  >
+                    <SummaryText text={call.summary} />
+                  </Suspense>
                 ) : (
                   <p className="text-[14px] text-zinc-500">
                     El resumen se genera solo en cuanto termina de procesarse la llamada.
@@ -255,6 +263,10 @@ export default async function CallDetailPage({
       </div>
     </>
   );
+}
+
+async function SummaryText({ text }: { text: string }) {
+  return <p className="text-[14px] leading-relaxed text-zinc-700">{await ensureSpanish(text)}</p>;
 }
 
 async function ensureSpanish(text: string): Promise<string> {

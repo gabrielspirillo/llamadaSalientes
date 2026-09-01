@@ -1,7 +1,7 @@
 import {
   ConversationStatusChart,
   MessagesByHourChart,
-} from '@/components/dashboard/analytics-module-charts';
+} from '@/components/dashboard/charts-lazy';
 import { Button } from '@/components/ui/button';
 import { Card, CardTopbar } from '@/components/ui/card';
 import { EmptyState as UiEmptyState } from '@/components/ui/feedback';

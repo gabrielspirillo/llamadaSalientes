@@ -50,24 +50,22 @@ export default async function DashboardLayout({ children }: { children: React.Re
   let tasksBadge = 0;
   let messagesBadge = 0;
   if (tenantCtx) {
-    let internalUserId: string | null = null;
-    try {
-      internalUserId = await internalUserIdFor(userId);
-      tasksBadge = await countActionableTasks(tenantCtx.tenant.id, internalUserId);
-    } catch {
-      tasksBadge = 0;
-    }
+    const internalUserId = await internalUserIdFor(userId).catch(() => null);
 
-    // Badge de Mensajes: no leídos míos. Si las tablas im_ todavía no existen
-    // (migración 0019 sin aplicar) el panel entero tiene que seguir dibujándose,
-    // así que el fallo se traga acá y el badge queda en 0.
     if (internalUserId) {
-      try {
-        const summary = await unreadSummary(tenantCtx.tenant.id, internalUserId);
-        messagesBadge = summary.totalUnread;
-      } catch {
-        messagesBadge = 0;
-      }
+      // Los dos badges sólo dependen del internalUserId, así que van en
+      // paralelo: encadenados sumaban un round-trip a CADA navegación del
+      // panel. Si las tablas im_ todavía no existen (migración 0019 sin
+      // aplicar) el panel entero tiene que seguir dibujándose, por eso los
+      // fallos se tragan y el badge queda en 0.
+      const [tasks, messages] = await Promise.all([
+        countActionableTasks(tenantCtx.tenant.id, internalUserId).catch(() => 0),
+        unreadSummary(tenantCtx.tenant.id, internalUserId)
+          .then((s) => s.totalUnread)
+          .catch(() => 0),
+      ]);
+      tasksBadge = tasks;
+      messagesBadge = messages;
     }
   }
 
@@ -75,7 +73,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     // El provider envuelve todo el panel: es el dueño único del EventSource de
     // Mensajes y lo consumen el sidebar (badge), la campana y el dock.
     <MessagingProvider>
-      <div className="aurora-canvas flex min-h-screen text-zinc-900">
+      <div data-instant-reveal className="aurora-canvas flex min-h-screen text-zinc-900">
         <DashboardSidebar
           enabledModules={enabledModules}
           isSuperAdmin={isSuperAdmin}
