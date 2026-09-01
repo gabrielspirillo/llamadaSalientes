@@ -13,40 +13,40 @@ export type BoardTone = 'sky' | 'honey' | 'mint' | 'blossom' | 'grape' | 'coral'
 /** Cada tono define el relleno, el borde, el color del título y el del punto. */
 const TONE: Record<BoardTone, { card: string; title: string; dot: string; tag: string }> = {
   sky: {
-    card: 'bg-[#e9f2fd] border-[#d5e6fa]',
-    title: 'text-sky-800',
-    dot: 'bg-sky-500',
-    tag: 'bg-white/70 text-sky-700',
+    card: 'bg-[#e6f0ef] border-[#d3e5e3]',
+    title: 'text-teal-900',
+    dot: 'bg-teal-600',
+    tag: 'bg-white/70 text-teal-800',
   },
   honey: {
-    card: 'bg-[#fdf1e3] border-[#f8e2c6]',
-    title: 'text-amber-800',
-    dot: 'bg-amber-500',
-    tag: 'bg-white/70 text-amber-700',
+    card: 'bg-[#eef3e9] border-[#dfe9d6]',
+    title: 'text-[#4a6b3d]',
+    dot: 'bg-[#7a9c5f]',
+    tag: 'bg-white/70 text-[#4a6b3d]',
   },
   mint: {
-    card: 'bg-[#e6f7ef] border-[#cfeee0]',
-    title: 'text-emerald-800',
-    dot: 'bg-emerald-500',
-    tag: 'bg-white/70 text-emerald-700',
+    card: 'bg-[#e6f4ec] border-[#d1e9dc]',
+    title: 'text-emerald-900',
+    dot: 'bg-emerald-600',
+    tag: 'bg-white/70 text-emerald-800',
   },
   blossom: {
-    card: 'bg-[#fdeaf4] border-[#f8d6e8]',
-    title: 'text-pink-800',
-    dot: 'bg-pink-500',
-    tag: 'bg-white/70 text-pink-700',
+    card: 'bg-[#e4f0ec] border-[#cfe4dd]',
+    title: 'text-brand-900',
+    dot: 'bg-brand-600',
+    tag: 'bg-white/70 text-brand-800',
   },
   grape: {
-    card: 'bg-[#efeafd] border-[#ded4fa]',
-    title: 'text-violet-800',
-    dot: 'bg-violet-500',
-    tag: 'bg-white/70 text-violet-700',
+    card: 'bg-[#e9f2f0] border-[#d6e7e4]',
+    title: 'text-brand-800',
+    dot: 'bg-brand-500',
+    tag: 'bg-white/70 text-brand-700',
   },
   coral: {
-    card: 'bg-[#fdecec] border-[#f8d8d8]',
-    title: 'text-rose-800',
-    dot: 'bg-rose-500',
-    tag: 'bg-white/70 text-rose-700',
+    card: 'bg-[#eef2f1] border-[#e0e6e4]',
+    title: 'text-[#3f544e]',
+    dot: 'bg-[#7a908a]',
+    tag: 'bg-white/70 text-[#3f544e]',
   },
 };
 
@@ -67,11 +67,11 @@ export function BoardColumn({
   return (
     <section className={cn('flex flex-col gap-3', className)}>
       <header className="flex items-center justify-between gap-2 px-1">
-        <h3 className="flex items-center gap-1 text-[13.5px] font-bold tracking-tight text-zinc-700">
+        <h3 className="flex items-center gap-1 text-[16px] font-bold tracking-tight text-zinc-700">
           <ChevronRight className="h-3.5 w-3.5 text-zinc-400" />
           {title}
           {typeof count === 'number' && (
-            <span className="ml-1 rounded-full bg-white px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-zinc-500 ring-1 ring-[--color-border]">
+            <span className="ml-1 rounded-full bg-white px-1.5 py-0.5 text-[12px] font-bold tabular-nums text-zinc-500 ring-1 ring-[--color-border]">
               {count}
             </span>
           )}
@@ -101,7 +101,7 @@ function BoardTag({ label, tone }: { label: string; tone: BoardTone }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold lowercase',
+        'inline-flex items-center rounded-md px-1.5 py-0.5 text-[12px] font-semibold lowercase',
         TONE[tone].tag,
       )}
     >
@@ -150,12 +150,12 @@ export type BoardCardProps = {
 };
 
 const AVATAR_BG = [
-  'bg-violet-200 text-violet-800',
-  'bg-pink-200 text-pink-800',
-  'bg-sky-200 text-sky-800',
+  'bg-brand-200 text-brand-800',
   'bg-emerald-200 text-emerald-800',
-  'bg-amber-200 text-amber-800',
-  'bg-rose-200 text-rose-800',
+  'bg-teal-200 text-teal-800',
+  'bg-brand-100 text-brand-700',
+  'bg-emerald-100 text-emerald-700',
+  'bg-teal-100 text-teal-700',
 ];
 
 function initials(name: string) {
@@ -206,10 +206,10 @@ export function BoardCard({
         <MoreHorizontal className="h-4 w-4 shrink-0 text-zinc-400 opacity-0 transition-opacity group-hover:opacity-100" />
       </div>
 
-      <p className={cn('text-[14.5px] font-semibold leading-snug', t.title)}>{title}</p>
+      <p className={cn('text-[17px] font-semibold leading-snug', t.title)}>{title}</p>
 
       {note && (
-        <p className="mt-1.5 text-[11.5px] leading-relaxed text-zinc-500">
+        <p className="mt-1.5 text-[14px] leading-relaxed text-zinc-500">
           {noteLabel && <span className="font-semibold text-zinc-600">{noteLabel} </span>}
           {note}
         </p>
@@ -220,8 +220,8 @@ export function BoardCard({
       {progress != null && (
         <div className="mt-3">
           <div className="mb-1.5 flex items-center justify-between">
-            <span className="text-[11px] font-medium text-zinc-500">{progressLabel}</span>
-            <span className="text-[11px] font-bold tabular-nums text-zinc-600">
+            <span className="text-[13px] font-medium text-zinc-500">{progressLabel}</span>
+            <span className="text-[13px] font-bold tabular-nums text-zinc-600">
               {Math.round(progress)}%
             </span>
           </div>
@@ -236,7 +236,7 @@ export function BoardCard({
               <span
                 key={`${n}-${i}`}
                 className={cn(
-                  '-ml-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-[9px] font-bold ring-2 ring-white first:ml-0',
+                  '-ml-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold ring-2 ring-white first:ml-0',
                   AVATAR_BG[i % AVATAR_BG.length],
                 )}
                 title={n}
@@ -245,13 +245,13 @@ export function BoardCard({
               </span>
             ))}
             {people.length > 4 && (
-              <span className="-ml-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white text-[9px] font-bold text-zinc-500 ring-2 ring-white">
+              <span className="-ml-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white text-[11px] font-bold text-zinc-500 ring-2 ring-white">
                 +{people.length - 4}
               </span>
             )}
           </div>
           {counts && (
-            <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-500">
+            <div className="flex items-center gap-2 text-[13px] font-medium text-zinc-500">
               {counts.comments != null && (
                 <span className="inline-flex items-center gap-1 rounded-md bg-white/70 px-1.5 py-0.5">
                   <MessageSquareIcon />
@@ -301,7 +301,7 @@ export function BoardChecklist({
   return (
     <ul className="mt-2.5 space-y-1.5">
       {items.map((it) => (
-        <li key={it.label} className="flex items-center gap-2 text-[12px]">
+        <li key={it.label} className="flex items-center gap-2 text-[14px]">
           <span
             className={cn(
               'inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2',

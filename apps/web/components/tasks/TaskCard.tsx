@@ -73,7 +73,7 @@ export function TaskCard({
         {task.labels.slice(0, 2).map((l) => (
           <span
             key={l}
-            className="inline-flex items-center rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-medium text-zinc-500 ring-1 ring-inset ring-white"
+            className="inline-flex items-center rounded-full bg-white/70 px-2 py-0.5 text-[12px] font-medium text-zinc-500 ring-1 ring-inset ring-white"
           >
             #{l}
           </span>
@@ -93,7 +93,7 @@ export function TaskCard({
 
       <h3
         className={cn(
-          'mt-2 text-[13.5px] font-semibold leading-snug text-zinc-800',
+          'mt-2 text-[16px] font-semibold leading-snug text-zinc-800',
           isDone && 'line-through decoration-zinc-400',
         )}
       >
@@ -101,13 +101,13 @@ export function TaskCard({
       </h3>
 
       {task.description && (
-        <p className="mt-1 line-clamp-2 text-[11.5px] leading-relaxed text-zinc-500">
+        <p className="mt-1 line-clamp-2 text-[14px] leading-relaxed text-zinc-500">
           {task.description}
         </p>
       )}
 
       {task.patientName && (
-        <div className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-lg bg-white/70 px-2 py-1 text-[11px] font-medium text-zinc-600">
+        <div className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-lg bg-white/70 px-2 py-1 text-[13px] font-medium text-zinc-600">
           <User className="h-3 w-3 shrink-0 text-zinc-400" />
           <span className="truncate">{task.patientName}</span>
           {task.patientPhone && (
@@ -124,7 +124,7 @@ export function TaskCard({
 
       <div className="mt-3 flex items-center justify-between gap-2">
         <AvatarStack ids={task.assigneeIds} members={members} />
-        <div className="flex items-center gap-2.5 text-[11px] text-zinc-500">
+        <div className="flex items-center gap-2.5 text-[13px] text-zinc-500">
           {task.checklistTotal > 0 && (
             <span className="inline-flex items-center gap-1 tabular-nums">
               <CheckSquare className="h-3 w-3" />

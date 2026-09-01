@@ -91,15 +91,15 @@ export default async function DashboardOverview({
           />
           <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/90 ring-1 ring-inset ring-white/15">
+              <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[13px] font-semibold text-white/90 ring-1 ring-inset ring-white/15">
                 <StatusDot tone="success" />
                 Asistente conectado
                 <Equalizer className="text-emerald-300" />
               </span>
-              <h3 className="mt-4 text-[21px] font-bold leading-snug tracking-tight">
+              <h3 className="mt-4 text-[25px] font-bold leading-snug tracking-tight">
                 Tu asistente de voz atiende todas las llamadas
               </h3>
-              <p className="mt-2 max-w-xl text-[13.5px] leading-relaxed text-white/70">
+              <p className="mt-2 max-w-xl text-[16px] leading-relaxed text-white/70">
                 Contesta el teléfono, reserva citas, las cambia de fecha y recupera las
                 cancelaciones. A cualquier hora, también por WhatsApp.
               </p>

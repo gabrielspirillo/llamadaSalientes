@@ -3,9 +3,9 @@ import { z } from 'zod';
 
 import { badRequest, messagingErrorResponse } from '@/lib/messaging/api';
 import {
-  canPostIn,
   MessagingForbiddenError,
   MessagingNotFoundError,
+  canPostIn,
   requireChannelMember,
   requireMessagingRole,
 } from '@/lib/messaging/auth';

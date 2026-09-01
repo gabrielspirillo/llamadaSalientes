@@ -29,10 +29,8 @@ export function Field({
         {required && <span className="text-rose-500"> *</span>}
       </Label>
       {children}
-      {hint && !error && <p className="text-[11.5px] text-zinc-500">{hint}</p>}
-      {error && (
-        <p className="animate-fade-down text-[11.5px] font-medium text-rose-600">{error}</p>
-      )}
+      {hint && !error && <p className="text-[14px] text-zinc-500">{hint}</p>}
+      {error && <p className="animate-fade-down text-[14px] font-medium text-rose-600">{error}</p>}
     </div>
   );
 }
@@ -53,7 +51,7 @@ export function Select({ className, ...props }: React.SelectHTMLAttributes<HTMLS
 export function CharCount({ value, max }: { value: string; max: number }) {
   const over = value.length > max;
   return (
-    <span className={cn('text-[11px] tabular-nums', over ? 'text-rose-600' : 'text-zinc-400')}>
+    <span className={cn('text-[13px] tabular-nums', over ? 'text-rose-600' : 'text-zinc-400')}>
       {value.length}/{max}
     </span>
   );
@@ -77,7 +75,7 @@ export function IconTextButton({
       onClick={onClick}
       className={cn(
         'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
-        tone === 'danger' ? 'text-rose-600 hover:bg-rose-50' : 'text-brand-700 hover:bg-violet-50',
+        tone === 'danger' ? 'text-rose-600 hover:bg-rose-50' : 'text-brand-700 hover:bg-brand-50',
       )}
     >
       {children}

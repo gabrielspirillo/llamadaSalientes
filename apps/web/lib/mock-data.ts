@@ -280,7 +280,7 @@ export const mockCallsByHour = [
 export const mockIntentBreakdown = [
   { intent: 'Agendar', count: 142, color: 'bg-emerald-500' },
   { intent: 'Reagendar', count: 38, color: 'bg-blue-500' },
-  { intent: 'Precios', count: 67, color: 'bg-violet-500' },
+  { intent: 'Precios', count: 67, color: 'bg-brand-500' },
   { intent: 'Cancelar', count: 21, color: 'bg-amber-500' },
   { intent: 'FAQ', count: 84, color: 'bg-zinc-400' },
   { intent: 'Humano', count: 19, color: 'bg-red-500' },

@@ -48,6 +48,13 @@ export type ImRealtimeEvent =
       totalUnread: number;
       totalMentions: number;
     }
-  | { kind: 'mention.new'; channelId: string; channelName: string; messageId: string; body: string; senderName: string | null };
+  | {
+      kind: 'mention.new';
+      channelId: string;
+      channelName: string;
+      messageId: string;
+      body: string;
+      senderName: string | null;
+    };
 
 export type ImRealtimeEventKind = ImRealtimeEvent['kind'];

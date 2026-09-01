@@ -58,7 +58,7 @@ export function StatsBar({
 
       {stats.perMember.length > 0 && (
         <div className="rounded-2xl border border-zinc-200/80 bg-white p-4 sm:col-span-2 xl:col-span-4">
-          <h3 className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+          <h3 className="mb-3 flex items-center gap-2 text-[13px] font-semibold uppercase tracking-wide text-zinc-400">
             <Repeat className="h-3.5 w-3.5" />
             Carga por persona
           </h3>
@@ -74,14 +74,14 @@ export function StatsBar({
                 >
                   {member && <Avatar member={member} size="sm" ring={false} />}
                   <span className="text-xs font-medium text-zinc-700">{member?.name}</span>
-                  <span className="text-[11px] tabular-nums text-zinc-500">{pm.open} abiertas</span>
+                  <span className="text-[13px] tabular-nums text-zinc-500">{pm.open} abiertas</span>
                   {pm.overdue > 0 && (
-                    <span className="rounded-full bg-red-50 px-1.5 text-[10px] font-semibold tabular-nums text-red-600">
+                    <span className="rounded-full bg-red-50 px-1.5 text-[12px] font-semibold tabular-nums text-red-600">
                       {pm.overdue} vencidas
                     </span>
                   )}
                   {pm.doneThisWeek > 0 && (
-                    <span className="rounded-full bg-emerald-50 px-1.5 text-[10px] font-semibold tabular-nums text-emerald-700">
+                    <span className="rounded-full bg-emerald-50 px-1.5 text-[12px] font-semibold tabular-nums text-emerald-700">
                       {pm.doneThisWeek} ✓
                     </span>
                   )}
@@ -116,14 +116,14 @@ function Tile({
 
   return (
     <div className="rounded-2xl border border-zinc-200/80 bg-white p-4">
-      <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+      <div className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-wide text-zinc-400">
         <span className={toneClass}>{icon}</span>
         {label}
       </div>
       <p className={cn('mt-1.5 text-2xl font-semibold tabular-nums tracking-tight', toneClass)}>
         {value}
       </p>
-      <p className="mt-0.5 text-[11px] text-zinc-500">{hint}</p>
+      <p className="mt-0.5 text-[13px] text-zinc-500">{hint}</p>
     </div>
   );
 }

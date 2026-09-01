@@ -24,14 +24,14 @@ type Contact = {
 };
 
 const GRADIENTS = [
-  'from-brand-500 to-pink-500',
+  'from-brand-500 to-emerald-500',
   'from-blue-500 to-cyan-500',
   'from-emerald-500 to-teal-500',
   'from-amber-500 to-orange-500',
   'from-rose-500 to-red-500',
-  'from-indigo-500 to-purple-500',
+  'from-brand-500 to-brand-500',
   'from-sky-500 to-blue-500',
-  'from-fuchsia-500 to-pink-500',
+  'from-brand-500 to-emerald-500',
 ];
 
 // Tags que NO queremos mostrar (ruido del seeder o propios del sistema)
@@ -179,7 +179,7 @@ export function ContactsGrid({ initial }: { initial: Contact[] }) {
                       {initialsOf(c)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="truncate text-[15px] font-bold tracking-tight text-zinc-900">
+                      <p className="truncate text-[18px] font-bold tracking-tight text-zinc-900">
                         {displayName(c)}
                       </p>
                       <p className="text-xs text-zinc-500 mt-0.5">
@@ -214,7 +214,7 @@ export function ContactsGrid({ initial }: { initial: Contact[] }) {
                         <Tag key={tag}>{tag}</Tag>
                       ))}
                       {tags.length > 4 && (
-                        <span className="text-[11px] text-zinc-400">+{tags.length - 4}</span>
+                        <span className="text-[13px] text-zinc-400">+{tags.length - 4}</span>
                       )}
                     </div>
                   )}

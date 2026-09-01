@@ -37,7 +37,7 @@ type Step = {
 const STEPS: Step[] = [
   {
     icon: Sparkles,
-    tint: 'bg-gradient-to-br from-brand-500 to-fuchsia-500',
+    tint: 'bg-gradient-to-br from-brand-500 to-brand-500',
     eyebrow: 'Bienvenido',
     title: 'Conoce Futura en 1 minuto',
     body: 'Tu asistente con IA atiende las llamadas y los WhatsApp de la clínica las 24 horas del día. Te vamos señalando cada parte del menú para que sepas dónde está todo.',
@@ -53,7 +53,7 @@ const STEPS: Step[] = [
   {
     target: '[data-tour="/dashboard/agent"]',
     icon: Bot,
-    tint: 'bg-gradient-to-br from-brand-500 to-indigo-500',
+    tint: 'bg-gradient-to-br from-brand-500 to-brand-500',
     eyebrow: 'El cerebro',
     title: 'Tu asistente',
     body: 'Aquí configuras cómo habla: su tono, el saludo y a qué número pasa la llamada cuando hace falta una persona.',
@@ -77,7 +77,7 @@ const STEPS: Step[] = [
   {
     target: '[data-tour="/dashboard/treatments"]',
     icon: Stethoscope,
-    tint: 'bg-gradient-to-br from-rose-500 to-pink-500',
+    tint: 'bg-gradient-to-br from-rose-500 to-emerald-500',
     eyebrow: 'Tu clínica',
     title: 'Tratamientos',
     body: 'Añade lo que ofreces, con su duración y sus precios. El asistente los usa para responder y dar cita sin equivocarse.',
@@ -109,7 +109,7 @@ const STEPS: Step[] = [
   {
     target: '[data-tour="/dashboard/analytics"]',
     icon: BarChart3,
-    tint: 'bg-gradient-to-br from-indigo-500 to-violet-500',
+    tint: 'bg-gradient-to-br from-brand-500 to-brand-500',
     eyebrow: 'Resultados',
     title: 'Métricas',
     body: 'Datos reales: cuántas llamadas ha atendido el asistente, cuántas citas se han dado y cómo valoran la atención tus pacientes.',
@@ -318,7 +318,7 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
           />
           {/* Halo violeta que late */}
           <div
-            className={`pointer-events-none absolute rounded-2xl ring-2 ring-violet-400/90 ${glide} ${
+            className={`pointer-events-none absolute rounded-2xl ring-2 ring-brand-400/90 ${glide} ${
               reduced ? '' : 'animate-[tour-pulse_2s_ease-out_infinite]'
             }`}
             style={{ top: hl.top, left: hl.left, width: hl.width, height: hl.height }}
@@ -361,18 +361,18 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
               >
                 <Icon className="h-5 w-5" />
               </span>
-              <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand-500">
+              <span className="text-[12px] font-bold uppercase tracking-[0.16em] text-brand-500">
                 {s.eyebrow}
               </span>
             </div>
 
             <h2
               key={step}
-              className="mt-4 animate-fade-up text-[19px] font-extrabold tracking-tight text-zinc-900"
+              className="mt-4 animate-fade-up text-[23px] font-extrabold tracking-tight text-zinc-900"
             >
               {s.title}
             </h2>
-            <p className="mt-1.5 text-[13.5px] leading-relaxed text-zinc-600">{s.body}</p>
+            <p className="mt-1.5 text-[16px] leading-relaxed text-zinc-600">{s.body}</p>
 
             {/* Progreso */}
             <div className="mt-5 flex items-center gap-1.5">

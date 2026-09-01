@@ -66,11 +66,11 @@ export const TONE_META: Record<ImTone, ToneMeta> = {
   },
   blossom: {
     card: 'blossom',
-    chip: 'bg-pink-100 text-pink-600',
-    text: 'text-pink-700',
-    soft: 'bg-pink-50/70',
-    border: 'border-pink-100',
-    dot: 'bg-pink-500',
+    chip: 'bg-emerald-100 text-emerald-600',
+    text: 'text-emerald-700',
+    soft: 'bg-emerald-50/70',
+    border: 'border-emerald-100',
+    dot: 'bg-emerald-500',
   },
   mint: {
     card: 'mint',
@@ -206,7 +206,7 @@ export function initialsOf(name: string | null | undefined): string {
 /** Color estable por identificador — la misma persona siempre sale igual. */
 const AVATAR_TONES = [
   'bg-brand-100 text-brand-700',
-  'bg-pink-100 text-pink-700',
+  'bg-emerald-100 text-emerald-700',
   'bg-sky-100 text-sky-700',
   'bg-emerald-100 text-emerald-700',
   'bg-amber-100 text-amber-700',
@@ -609,7 +609,7 @@ export function RichText({
   const blocks = parseBlocks(text ?? '');
 
   return (
-    <div className={cn('space-y-2 text-[13.5px] leading-relaxed', className)}>
+    <div className={cn('space-y-2 text-[16px] leading-relaxed', className)}>
       {blocks.map((block, bi) => {
         const key = `b${bi}-${block.type}`;
 
@@ -617,7 +617,7 @@ export function RichText({
           return (
             <pre
               key={key}
-              className="scrollbar-none overflow-x-auto rounded-[14px] border border-[--color-border] bg-[#fbfaff] p-3 font-mono text-[12px] leading-relaxed text-zinc-700"
+              className="scrollbar-none overflow-x-auto rounded-[14px] border border-[--color-border] bg-[#fbfaff] p-3 font-mono text-[14px] leading-relaxed text-zinc-700"
             >
               <code>{block.lines.join('\n')}</code>
             </pre>

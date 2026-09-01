@@ -19,12 +19,12 @@ import { AlertTriangle, Clock } from 'lucide-react';
 const FALLBACK_AVATAR_COLOR = 'bg-zinc-100 text-zinc-700';
 
 const AVATAR_COLORS = [
-  'bg-sky-100 text-sky-700',
-  'bg-emerald-100 text-emerald-700',
-  'bg-amber-100 text-amber-700',
-  'bg-violet-100 text-violet-700',
-  'bg-rose-100 text-rose-700',
-  'bg-orange-100 text-orange-700',
+  'bg-brand-100 text-brand-800',
+  'bg-emerald-100 text-emerald-800',
+  'bg-teal-100 text-teal-800',
+  'bg-brand-200 text-brand-800',
+  'bg-emerald-200 text-emerald-800',
+  'bg-teal-200 text-teal-800',
 ];
 
 function colorFor(seed: string): string {
@@ -44,10 +44,10 @@ export function Avatar({
 }) {
   const dim =
     size === 'xs'
-      ? 'h-5 w-5 text-[9px]'
+      ? 'h-5 w-5 text-[11px]'
       : size === 'md'
         ? 'h-9 w-9 text-xs'
-        : 'h-6 w-6 text-[10px]';
+        : 'h-6 w-6 text-[12px]';
   return (
     <span
       title={member.name}
@@ -79,7 +79,7 @@ export function AvatarStack({
     .filter((m): m is TaskMember => !!m);
   if (resolved.length === 0) {
     return (
-      <span className="inline-flex h-6 items-center rounded-full bg-zinc-100 px-2 text-[10px] font-medium text-zinc-500">
+      <span className="inline-flex h-6 items-center rounded-full bg-zinc-100 px-2 text-[12px] font-medium text-zinc-500">
         Sin responsable
       </span>
     );
@@ -92,7 +92,7 @@ export function AvatarStack({
         <Avatar key={m.userId} member={m} size={size} />
       ))}
       {rest > 0 && (
-        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-zinc-200 text-[10px] font-semibold text-zinc-600 ring-2 ring-white">
+        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-zinc-200 text-[12px] font-semibold text-zinc-600 ring-2 ring-white">
           +{rest}
         </span>
       )}
@@ -117,7 +117,7 @@ export function ChecklistProgress({
   const filled = Math.round((done / total) * segments);
   return (
     <div className="mt-2.5">
-      <div className="flex items-center justify-between text-[11px] font-medium text-zinc-500">
+      <div className="flex items-center justify-between text-[13px] font-medium text-zinc-500">
         <span>Progreso</span>
         <span className="tabular-nums">{pct}%</span>
       </div>
@@ -150,7 +150,7 @@ export function CategoryChip({
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset',
+        'inline-flex items-center rounded-full px-2 py-0.5 text-[12px] font-semibold ring-1 ring-inset',
         variant === 'card' ? meta.chip : 'bg-zinc-50 text-zinc-600 ring-zinc-200',
       )}
     >
@@ -165,7 +165,7 @@ export function PriorityChip({ priority }: { priority: TaskPriority }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset',
+        'inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[12px] font-semibold ring-1 ring-inset',
         meta.chip,
       )}
     >
@@ -215,7 +215,7 @@ export function DueChip({
   const tone = dueTone(dueAt, now);
   return (
     <span
-      className={cn('inline-flex items-center gap-1 text-[11px] font-medium', DUE_TONE_CLASS[tone])}
+      className={cn('inline-flex items-center gap-1 text-[13px] font-medium', DUE_TONE_CLASS[tone])}
     >
       <Clock className="h-3 w-3" />
       {tone === 'overdue' ? `vencida · ${label}` : label}

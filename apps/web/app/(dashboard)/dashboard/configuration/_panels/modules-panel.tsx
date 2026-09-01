@@ -32,7 +32,7 @@ export async function ModulesPanel() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-[18px] font-bold tracking-tight text-zinc-900">Módulos por tenant</h2>
+        <h2 className="text-[22px] font-bold tracking-tight text-zinc-900">Módulos por tenant</h2>
         <p className="text-sm text-zinc-500">
           Activar / desactivar módulos contratables. El bloqueo es visual: las APIs y webhooks
           siguen procesando aunque el módulo esté apagado.
@@ -41,7 +41,7 @@ export async function ModulesPanel() {
 
       <div className="overflow-x-auto rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)]">
         <table className="w-full text-sm">
-          <thead className="border-b border-[--color-border] bg-[#fafbfb] text-left text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+          <thead className="border-b border-[--color-border] bg-[#fafbfb] text-left text-[12px] font-bold uppercase tracking-[0.14em] text-zinc-400">
             <tr>
               <th className="px-4 py-3">Tenant</th>
               {MODULE_KEYS.map((key) => (
@@ -62,7 +62,7 @@ export async function ModulesPanel() {
                       <span className="font-medium text-zinc-900">
                         {row.name}
                         {isDemo && (
-                          <span className="ml-2 inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                          <span className="ml-2 inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[13px] font-medium text-emerald-700">
                             demo
                           </span>
                         )}

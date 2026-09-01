@@ -1666,12 +1666,7 @@ export const imContextTypeEnum = pgEnum('im_context_type', [
 
 export const imSenderKindEnum = pgEnum('im_sender_kind', ['USER', 'SYSTEM', 'BOT']);
 
-export const imMessageKindEnum = pgEnum('im_message_kind', [
-  'TEXT',
-  'SYSTEM',
-  'EVENT',
-  'DECISION',
-]);
+export const imMessageKindEnum = pgEnum('im_message_kind', ['TEXT', 'SYSTEM', 'EVENT', 'DECISION']);
 
 export const imMemberRoleEnum = pgEnum('im_member_role', ['OWNER', 'MEMBER']);
 
@@ -1777,10 +1772,7 @@ export const imMessages = pgTable(
     replyCount: integer('reply_count').notNull().default(0),
     contextType: imContextTypeEnum('context_type'),
     contextId: text('context_id'),
-    contextPayload: jsonb('context_payload')
-      .$type<Record<string, unknown>>()
-      .notNull()
-      .default({}),
+    contextPayload: jsonb('context_payload').$type<Record<string, unknown>>().notNull().default({}),
     attachments: jsonb('attachments').$type<ImAttachment[]>().notNull().default([]),
     actions: jsonb('actions').$type<ImAction[]>().notNull().default([]),
     eventKey: text('event_key'),

@@ -4,40 +4,45 @@
  */
 export const chartPalette = {
   brand: '#37766a',
-  violet: '#5fa896',
-  lilac: '#a78bfa',
-  pink: '#ec4899',
-  cyan: '#06b6d4',
-  sky: '#0ea5e9',
+  green: '#479183',
+  sage: '#6bc2a4',
+  teal: '#3d8b8b',
+  deepTeal: '#2b6f6f',
+  moss: '#8bbf9f',
   emerald: '#10b981',
+  slate: '#8a9a95',
+  zinc: '#a1a1aa',
+  /* Señales, no decoración: solo para aviso y error. */
   amber: '#f59e0b',
   rose: '#f43f5e',
-  blue: '#3b82f6',
-  slate: '#64748b',
-  zinc: '#a1a1aa',
-  // Alias heredado — algunos gráficos lo referencian por nombre.
-  indigo: '#6366f1',
+  /* Alias heredados para no romper gráficos que los referencian por nombre. */
+  violet: '#479183',
+  lilac: '#6bc2a4',
+  pink: '#2f8f7a',
+  sky: '#3d8b8b',
+  cyan: '#5fb0b0',
+  blue: '#2b6f6f',
+  indigo: '#37766a',
 } as const;
 
 /** Orden de series: contraste alto entre vecinos, sin repetir tono. */
 export const chartSequence = [
-  chartPalette.violet,
-  chartPalette.pink,
-  chartPalette.sky,
-  chartPalette.emerald,
-  chartPalette.amber,
   chartPalette.brand,
-  chartPalette.rose,
-  chartPalette.cyan,
+  chartPalette.sage,
+  chartPalette.teal,
+  chartPalette.moss,
+  chartPalette.deepTeal,
+  chartPalette.green,
+  chartPalette.emerald,
   chartPalette.slate,
 ];
 
 export const axisProps = {
-  stroke: '#c9c4dc',
+  stroke: '#c2c9c7',
   fontSize: 11,
   tickLine: false,
   axisLine: false,
-  tick: { fill: '#8f8aa6' },
+  tick: { fill: '#8a918f' },
 } as const;
 
 export const gridProps = {
@@ -48,7 +53,7 @@ export const gridProps = {
 
 export const tooltipStyle = {
   backgroundColor: 'rgba(255,255,255,0.96)',
-  border: '1px solid #ebe8f6',
+  border: '1px solid #e6e9e9',
   borderRadius: 14,
   boxShadow: '0 18px 40px -18px rgba(20,33,29,0.35)',
   fontSize: 12,

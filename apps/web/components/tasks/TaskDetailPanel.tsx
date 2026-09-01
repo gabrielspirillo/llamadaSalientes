@@ -188,24 +188,24 @@ export function TaskDetailPanel({
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span
                     className={cn(
-                      'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset',
+                      'inline-flex items-center rounded-full px-2 py-0.5 text-[12px] font-semibold ring-1 ring-inset',
                       CATEGORY_META[task.category].chip,
                     )}
                   >
                     {CATEGORY_META[task.category].label}
                   </span>
                   {task.source === 'AUTOMATION' && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-600">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-[12px] font-medium text-zinc-600">
                       <Bot className="h-3 w-3" /> automática
                     </span>
                   )}
                   {task.source === 'ROUTINE' && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-600">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-[12px] font-medium text-zinc-600">
                       <Repeat className="h-3 w-3" /> rutina
                     </span>
                   )}
                   {task.requiresEvidence && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium text-brand-700 ring-1 ring-inset ring-brand-200">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[12px] font-medium text-brand-700 ring-1 ring-inset ring-brand-200">
                       <ShieldCheck className="h-3 w-3" /> exige evidencia
                     </span>
                   )}
@@ -519,7 +519,7 @@ export function TaskDetailPanel({
                       >
                         {c.body}
                       </p>
-                      <p className="mt-0.5 text-[11px] text-zinc-400">
+                      <p className="mt-0.5 text-[13px] text-zinc-400">
                         {c.authorName ? `${c.authorName} · ` : ''}
                         {new Date(c.createdAt).toLocaleString('es-ES', {
                           day: '2-digit',
@@ -704,7 +704,7 @@ function ContextThread({
       <ul className="max-h-64 space-y-3 overflow-y-auto px-3 py-3">
         {messages.map((m) => (
           <li key={m.id} className="text-sm">
-            <p className="text-[11px] font-medium text-zinc-400">
+            <p className="text-[13px] font-medium text-zinc-400">
               {m.senderKind === 'USER' ? (m.senderName ?? 'Alguien') : 'Cliniq'} ·{' '}
               {new Date(m.createdAt).toLocaleString('es-ES', {
                 day: '2-digit',
@@ -739,14 +739,14 @@ function ContextThread({
           {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </Button>
       </form>
-      {threadError && <p className="px-3 pb-2 text-[11px] text-red-600">{threadError}</p>}
+      {threadError && <p className="px-3 pb-2 text-[13px] text-red-600">{threadError}</p>}
     </div>
   );
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+    <h3 className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-zinc-400">
       {children}
     </h3>
   );
@@ -757,7 +757,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   // biome no puede verificar la asociación. El <span> hace de título visual.
   return (
     <div className="block">
-      <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+      <span className="mb-1 block text-[13px] font-semibold uppercase tracking-wide text-zinc-400">
         {label}
       </span>
       {children}

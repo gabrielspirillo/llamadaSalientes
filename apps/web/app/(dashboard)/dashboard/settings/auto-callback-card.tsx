@@ -27,7 +27,7 @@ export function AutoCallbackCard({ intakeUrl, intakeKey, ghlWebhookUrl, location
     <Card>
       <div className="p-4 sm:p-6">
         <div className="flex items-center justify-between mb-1">
-          <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900 flex items-center gap-2">
+          <h3 className="text-[18px] font-semibold tracking-tight text-zinc-900 flex items-center gap-2">
             <PhoneCall className="h-4 w-4 text-brand-600" /> Devolución de llamada automática
           </h3>
           <Badge tone="success">Activo</Badge>
@@ -56,7 +56,7 @@ export function AutoCallbackCard({ intakeUrl, intakeKey, ghlWebhookUrl, location
             {locationId && (
               <>
                 {' '}
-                Tu Location ID es <code className="text-[11px]">{locationId}</code>.
+                Tu Location ID es <code className="text-[13px]">{locationId}</code>.
               </>
             )}
           </p>
@@ -84,7 +84,7 @@ export function AutoCallbackCard({ intakeUrl, intakeKey, ghlWebhookUrl, location
               <button
                 type="button"
                 onClick={() => setShowKey((v) => !v)}
-                className="text-[11px] text-zinc-500 hover:text-zinc-900"
+                className="text-[13px] text-zinc-500 hover:text-zinc-900"
               >
                 {showKey ? 'Ocultar' : 'Mostrar'}
               </button>
@@ -106,7 +106,7 @@ export function AutoCallbackCard({ intakeUrl, intakeKey, ghlWebhookUrl, location
                 )}
               </button>
             </div>
-            <p className="text-[11px] text-zinc-500 mt-1.5">
+            <p className="text-[13px] text-zinc-500 mt-1.5">
               Esta clave se genera de forma determinista y no se guarda en texto plano. Para
               cambiarla hay que rotar la ENCRYPTION_KEY del proyecto.
             </p>
@@ -116,7 +116,7 @@ export function AutoCallbackCard({ intakeUrl, intakeKey, ghlWebhookUrl, location
             <summary className="text-xs font-medium text-brand-600 hover:text-brand-700 cursor-pointer inline-flex items-center gap-1">
               Ver ejemplo de uso (curl)
             </summary>
-            <pre className="mt-2 rounded-xl bg-[#14211d] text-zinc-100 text-[11px] p-3 overflow-x-auto leading-relaxed">{`curl -X POST '${intakeUrl}' \\
+            <pre className="mt-2 rounded-xl bg-[#14211d] text-zinc-100 text-[13px] p-3 overflow-x-auto leading-relaxed">{`curl -X POST '${intakeUrl}' \\
   -H 'Authorization: Bearer ${intakeKey.slice(0, 12)}...' \\
   -H 'Content-Type: application/json' \\
   -d '{
@@ -166,12 +166,12 @@ function Section({
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
-        <span className="h-5 w-5 rounded-full bg-zinc-900 text-white text-[11px] font-semibold inline-flex items-center justify-center">
+        <span className="h-5 w-5 rounded-full bg-zinc-900 text-white text-[13px] font-semibold inline-flex items-center justify-center">
           {number}
         </span>
         <div>
           <p className="text-sm font-medium">{title}</p>
-          <p className="text-[11px] text-zinc-500">{subtitle}</p>
+          <p className="text-[13px] text-zinc-500">{subtitle}</p>
         </div>
       </div>
       <div className="ml-7">{children}</div>

@@ -159,10 +159,10 @@ export function ConversationStatusChart({ data }: { data: ConversationStatusBrea
           </PieChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-[26px] font-bold leading-none tabular-nums text-zinc-900">
+          <span className="text-[31px] font-bold leading-none tabular-nums text-zinc-900">
             {total}
           </span>
-          <span className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+          <span className="mt-1 text-[12px] font-bold uppercase tracking-[0.16em] text-zinc-400">
             Total
           </span>
         </div>

@@ -159,7 +159,7 @@ export default async function WhatsappConversationsPage() {
                     <div className="relative shrink-0">
                       <Avatar name={name} size={42} />
                       {unread && (
-                        <span className="absolute -right-1 -top-1 inline-flex min-w-[18px] items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-bold text-white ring-2 ring-white">
+                        <span className="absolute -right-1 -top-1 inline-flex min-w-[18px] items-center justify-center rounded-full bg-emerald-500 px-1 text-[12px] font-bold text-white ring-2 ring-white">
                           {r.unreadCount > 99 ? '99+' : r.unreadCount}
                         </span>
                       )}
@@ -169,7 +169,7 @@ export default async function WhatsappConversationsPage() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex min-w-0 items-center gap-2">
                           <p
-                            className={`truncate text-[14px] ${
+                            className={`truncate text-[17px] ${
                               unread
                                 ? 'font-extrabold text-zinc-900'
                                 : 'font-semibold text-zinc-800'
@@ -183,13 +183,13 @@ export default async function WhatsappConversationsPage() {
                             </Badge>
                           )}
                         </div>
-                        <span className="shrink-0 text-[11px] text-zinc-400">
+                        <span className="shrink-0 text-[13px] text-zinc-400">
                           {relativeTime(r.lastMsgAt)}
                         </span>
                       </div>
 
                       <p
-                        className={`mt-0.5 line-clamp-1 text-[12.5px] ${
+                        className={`mt-0.5 line-clamp-1 text-[15px] ${
                           unread ? 'text-zinc-700' : 'text-zinc-500'
                         }`}
                       >
@@ -201,10 +201,10 @@ export default async function WhatsappConversationsPage() {
 
                       <div className="mt-2 flex flex-wrap items-center gap-1.5">
                         <Badge tone={badge.tone}>{badge.label}</Badge>
-                        <span className="rounded-lg bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-500">
+                        <span className="rounded-lg bg-zinc-100 px-1.5 py-0.5 text-[12px] font-semibold text-zinc-500">
                           {channelLabel(r.channel)}
                         </span>
-                        <span className="hidden text-[11px] tabular-nums text-zinc-400 sm:inline">
+                        <span className="hidden text-[13px] tabular-nums text-zinc-400 sm:inline">
                           {r.contactPhone}
                         </span>
                       </div>

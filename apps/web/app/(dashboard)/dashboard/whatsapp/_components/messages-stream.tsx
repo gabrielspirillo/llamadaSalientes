@@ -121,7 +121,7 @@ export function MessagesStream({ conversationId, initialMessages, senderUserEmai
       {empty ? (
         <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
           <span className="inline-flex h-12 w-12 animate-float items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#e9f9f2,#effaf5)]" />
-          <p className="text-[13px] text-zinc-500">Sin mensajes aún.</p>
+          <p className="text-[16px] text-zinc-500">Sin mensajes aún.</p>
         </div>
       ) : (
         <ul className="space-y-2.5">
@@ -157,15 +157,15 @@ function MessageBubble({
 
   return (
     <li
-      className={`max-w-[85%] animate-fade-up px-3.5 py-2.5 text-[13.5px] leading-relaxed sm:max-w-[70%] ${containerCls}`}
+      className={`max-w-[85%] animate-fade-up px-3.5 py-2.5 text-[16px] leading-relaxed sm:max-w-[70%] ${containerCls}`}
     >
       {isInternal && (
-        <div className="mb-1 text-[10px] font-semibold uppercase text-amber-700">
+        <div className="mb-1 text-[12px] font-semibold uppercase text-amber-700">
           Nota interna{authorEmail ? ` · ${authorEmail}` : ''}
         </div>
       )}
       {!isInternal && isOutbound && authorEmail && (
-        <div className="mb-0.5 text-[10px] font-medium text-emerald-100">{authorEmail}</div>
+        <div className="mb-0.5 text-[12px] font-medium text-emerald-100">{authorEmail}</div>
       )}
       {m.mediaUrl && m.type === 'IMAGE' && (
         // eslint-disable-next-line @next/next/no-img-element
@@ -193,7 +193,7 @@ function MessageBubble({
         {m.contentText ?? (m.mediaUrl ? '' : `[${m.type}]`)}
       </div>
       <div
-        className={`mt-1 flex items-center gap-2 text-[10px] ${
+        className={`mt-1 flex items-center gap-2 text-[12px] ${
           isOutbound && !isInternal ? 'text-emerald-100' : 'text-zinc-500'
         }`}
       >
@@ -208,7 +208,7 @@ function TypingBubble() {
   return (
     <li className="mr-auto max-w-[60%] animate-fade-up rounded-2xl rounded-bl-md border border-[--color-border] bg-white px-3.5 py-2.5 shadow-[var(--shadow-soft)]">
       <div className="flex items-center gap-2 text-zinc-500">
-        <span className="text-[11px] font-medium">Agente escribiendo</span>
+        <span className="text-[13px] font-medium">Agente escribiendo</span>
         <span className="inline-flex gap-1">
           <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-400 [animation-delay:-0.3s]" />
           <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-400 [animation-delay:-0.15s]" />

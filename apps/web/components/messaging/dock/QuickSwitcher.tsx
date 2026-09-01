@@ -121,7 +121,7 @@ export function QuickSwitcher() {
       onClick={() => setOpen(false)}
     >
       <div
-        className="w-[520px] max-w-[94vw] animate-pop overflow-hidden rounded-[26px] border border-white/60 bg-white shadow-[0_40px_90px_-30px_rgba(23,20,41,0.55)]"
+        className="w-[520px] max-w-[94vw] animate-pop overflow-hidden rounded-[26px] border border-white/60 bg-white shadow-[0_40px_90px_-30px_rgba(22,26,25,0.55)]"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           if (e.key === 'Escape') {
@@ -145,7 +145,7 @@ export function QuickSwitcher() {
         <div className="relative flex items-center gap-3 border-b border-[--color-border-subtle] px-5 py-4">
           <span
             aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(139,92,246,0.12),transparent_70%)]"
+            className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(95,168,150,0.12),transparent_70%)]"
           />
           <Search className="relative h-4 w-4 shrink-0 text-brand-500" />
           <input
@@ -156,7 +156,7 @@ export function QuickSwitcher() {
               setCursor(0);
             }}
             placeholder="Ir a un canal o a una persona…"
-            className="relative flex-1 bg-transparent text-[15px] outline-none placeholder:text-zinc-400"
+            className="relative flex-1 bg-transparent text-[18px] outline-none placeholder:text-zinc-400"
           />
           <button
             type="button"
@@ -205,7 +205,7 @@ export function QuickSwitcher() {
                     </span>
                     {r.type === 'person' && r.online && <StatusDot tone="success" />}
                     {r.type === 'channel' && r.unread > 0 && (
-                      <span className="inline-flex min-w-[20px] shrink-0 items-center justify-center rounded-full bg-brand-600 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-white">
+                      <span className="inline-flex min-w-[20px] shrink-0 items-center justify-center rounded-full bg-brand-600 px-1.5 py-0.5 text-[12px] font-semibold tabular-nums text-white">
                         {r.unread > 99 ? '99+' : r.unread}
                       </span>
                     )}
@@ -216,7 +216,7 @@ export function QuickSwitcher() {
           )}
         </div>
 
-        <div className="flex items-center justify-between border-t border-[--color-border-subtle] bg-[#fbfaff] px-5 py-2.5 text-[11px] text-zinc-400">
+        <div className="flex items-center justify-between border-t border-[--color-border-subtle] bg-[#fbfaff] px-5 py-2.5 text-[13px] text-zinc-400">
           <span>↑↓ para moverte · ↵ para abrir · Esc para cerrar</span>
           <span className="tabular-nums">⌘J</span>
         </div>

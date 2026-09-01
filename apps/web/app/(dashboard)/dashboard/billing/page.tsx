@@ -35,27 +35,27 @@ export default function BillingPage() {
             <div className="relative flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/90 ring-1 ring-inset ring-white/15">
+                  <span className="rounded-full bg-white/10 px-3 py-1 text-[13px] font-semibold text-white/90 ring-1 ring-inset ring-white/15">
                     Plan actual
                   </span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/15 px-3 py-1 text-[11px] font-semibold text-emerald-300">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/15 px-3 py-1 text-[13px] font-semibold text-emerald-300">
                     <CheckCircle2 className="h-3 w-3" /> Activo
                   </span>
                 </div>
-                <h3 className="mt-4 text-[34px] font-extrabold leading-none tracking-tight">Pro</h3>
-                <p className="mt-2 text-[13px] text-white/60">
+                <h3 className="mt-4 text-[41px] font-extrabold leading-none tracking-tight">Pro</h3>
+                <p className="mt-2 text-[16px] text-white/60">
                   299 € / mes · Renueva el 1 jun 2026
                 </p>
 
                 <div className="mt-6 max-w-sm">
-                  <div className="mb-2 flex items-center justify-between text-[13px]">
+                  <div className="mb-2 flex items-center justify-between text-[16px]">
                     <span className="text-white/60">Minutos usados este mes</span>
                     <span className="font-bold tabular-nums">387 / 600 min</span>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-white/10">
                     <div className="bar-fill h-full w-[64%] rounded-full bg-[linear-gradient(90deg,#34d399,#a7f3d0)]" />
                   </div>
-                  <p className="mt-2 text-[11px] text-white/50">
+                  <p className="mt-2 text-[13px] text-white/50">
                     Quedan 213 min · Cada minuto extra, 0,20 €
                   </p>
                 </div>
@@ -89,12 +89,12 @@ export default function BillingPage() {
             />
             <div className="px-5 pb-5 sm:px-6 sm:pb-6">
               <div className="flex items-center gap-3 rounded-2xl border border-[--color-border] bg-[#fafbfb] p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]">
-                <div className="flex h-10 w-14 items-center justify-center rounded-lg bg-[linear-gradient(135deg,#37766a,#5fa896)] text-[11px] font-bold tracking-wide text-white">
+                <div className="flex h-10 w-14 items-center justify-center rounded-lg bg-[linear-gradient(135deg,#37766a,#5fa896)] text-[13px] font-bold tracking-wide text-white">
                   VISA
                 </div>
                 <div>
-                  <p className="text-[14px] font-bold tabular-nums text-zinc-900">•••• 4242</p>
-                  <p className="text-[12px] text-zinc-500">Expira 09/27</p>
+                  <p className="text-[17px] font-bold tabular-nums text-zinc-900">•••• 4242</p>
+                  <p className="text-[14px] text-zinc-500">Expira 09/27</p>
                 </div>
               </div>
               <Button variant="secondary" size="sm" className="mt-4 w-full">
@@ -125,11 +125,11 @@ export default function BillingPage() {
               className="flex items-center justify-between gap-3 p-4 sm:p-5 hover:bg-zinc-50 transition-colors"
             >
               <div className="min-w-0">
-                <p className="truncate font-mono text-[13px] font-bold text-zinc-900">{i.id}</p>
-                <p className="mt-0.5 text-[12px] text-zinc-500">{i.date}</p>
+                <p className="truncate font-mono text-[16px] font-bold text-zinc-900">{i.id}</p>
+                <p className="mt-0.5 text-[14px] text-zinc-500">{i.date}</p>
               </div>
               <div className="flex shrink-0 items-center gap-2 sm:gap-4">
-                <span className="text-[13px] font-bold tabular-nums text-zinc-800">{i.amount}</span>
+                <span className="text-[16px] font-bold tabular-nums text-zinc-800">{i.amount}</span>
                 <Badge tone="success" className="hidden sm:inline-flex">
                   Pagada
                 </Badge>

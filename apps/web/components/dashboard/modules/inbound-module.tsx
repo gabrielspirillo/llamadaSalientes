@@ -138,17 +138,17 @@ export async function InboundModule({ tenantId }: { tenantId: string }) {
                             />
                           </div>
                           <div className="min-w-0">
-                            <p className="truncate text-[14px] font-semibold text-zinc-800">
+                            <p className="truncate text-[17px] font-semibold text-zinc-800">
                               {c.fromNumber ?? 'Llamada anónima'}
                             </p>
-                            <p className="truncate text-[12px] text-zinc-500">
+                            <p className="truncate text-[14px] text-zinc-500">
                               {c.summary ?? `Sin resumen aún · ${formatRelativeTime(c.startedAt)}`}
                             </p>
                           </div>
                         </div>
                         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
                           <IntentBadge intent={c.intent ?? 'otro'} />
-                          <span className="hidden w-14 text-right text-[12px] tabular-nums text-zinc-400 sm:inline">
+                          <span className="hidden w-14 text-right text-[14px] tabular-nums text-zinc-400 sm:inline">
                             {formatDuration(c.durationSeconds)}
                           </span>
                         </div>
@@ -173,7 +173,7 @@ export async function InboundModule({ tenantId }: { tenantId: string }) {
               />
               <div className="px-5 pb-5 sm:px-6 sm:pb-6">
                 {upcoming.length === 0 ? (
-                  <p className="text-[12.5px] leading-relaxed text-zinc-500">
+                  <p className="text-[15px] leading-relaxed text-zinc-500">
                     Cuando el agente agende una cita, aparece acá.
                   </p>
                 ) : (
@@ -185,10 +185,10 @@ export async function InboundModule({ tenantId }: { tenantId: string }) {
                       <li key={u.callId} className="flex gap-3" style={{ ['--i' as string]: i }}>
                         <Avatar name={u.patientName ?? u.phone ?? 'Paciente'} size={32} />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-[13.5px] font-semibold text-zinc-800">
+                          <p className="truncate text-[16px] font-semibold text-zinc-800">
                             {u.patientName ?? u.phone ?? 'Paciente'}
                           </p>
-                          <p className="truncate text-[11.5px] text-zinc-500">
+                          <p className="truncate text-[14px] text-zinc-500">
                             {u.treatmentName ?? 'Cita'} ·{' '}
                             {u.startTime.toLocaleString('es-ES', {
                               weekday: 'short',
@@ -225,7 +225,7 @@ export async function InboundModule({ tenantId }: { tenantId: string }) {
                   </Badge>
                 }
               />
-              <div className="space-y-2.5 px-5 pb-5 text-[13px] sm:px-6 sm:pb-6">
+              <div className="space-y-2.5 px-5 pb-5 text-[16px] sm:px-6 sm:pb-6">
                 <Row label="Llamadas hoy" value={String(stats.callsToday)} />
                 <Row label="Llamadas ayer" value={String(stats.callsYesterday)} />
                 <Row label="Containment" value={`${stats.containmentRate}%`} />
@@ -311,7 +311,7 @@ function QuickAction({
   return (
     <Link
       href={href}
-      className="group/qa flex items-center gap-3 rounded-2xl border border-[--color-border] px-3.5 py-2.5 text-[13px] font-medium text-zinc-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:bg-zinc-50 hover:text-brand-700"
+      className="group/qa flex items-center gap-3 rounded-2xl border border-[--color-border] px-3.5 py-2.5 text-[16px] font-medium text-zinc-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:bg-zinc-50 hover:text-brand-700"
     >
       <span className="text-zinc-400 transition-colors group-hover/qa:text-brand-500">{icon}</span>
       <span>{label}</span>
@@ -342,8 +342,8 @@ function MotivoBars({ motivos }: { motivos: Array<{ motivo: string; count: numbe
     agendar: { label: 'Agendar', color: 'bg-emerald-500' },
     reagendar: { label: 'Reagendar', color: 'bg-sky-500' },
     cancelar: { label: 'Cancelar', color: 'bg-amber-500' },
-    consulta: { label: 'Consulta', color: 'bg-violet-500' },
-    pregunta: { label: 'Consulta', color: 'bg-violet-500' },
+    consulta: { label: 'Consulta', color: 'bg-brand-500' },
+    pregunta: { label: 'Consulta', color: 'bg-brand-500' },
     queja: { label: 'Queja', color: 'bg-rose-500' },
     otro: { label: 'Otro', color: 'bg-zinc-400' },
     sin_clasificar: { label: 'Sin clasificar', color: 'bg-zinc-300' },
@@ -359,7 +359,7 @@ function MotivoBars({ motivos }: { motivos: Array<{ motivo: string; count: numbe
         const pct = Math.round((m.count / total) * 100);
         return (
           <div key={m.motivo}>
-            <div className="mb-1.5 flex items-center justify-between text-[12px]">
+            <div className="mb-1.5 flex items-center justify-between text-[14px]">
               <div className="flex items-center gap-2">
                 <span className={`h-2 w-2 rounded-full ${meta.color}`} />
                 <span className="font-semibold text-zinc-700">{meta.label}</span>

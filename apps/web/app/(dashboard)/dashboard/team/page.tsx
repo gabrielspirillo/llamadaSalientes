@@ -131,8 +131,8 @@ export default async function TeamPage() {
                 <div className="flex min-w-0 items-center gap-3">
                   <Avatar name={userName} src={m.publicUserData?.imageUrl} size={40} />
                   <div className="min-w-0">
-                    <p className="truncate text-[14px] font-bold text-zinc-900">{userName}</p>
-                    <p className="truncate text-[12px] text-zinc-500">{email}</p>
+                    <p className="truncate text-[17px] font-bold text-zinc-900">{userName}</p>
+                    <p className="truncate text-[14px] text-zinc-500">{email}</p>
                   </div>
                 </div>
                 <Badge tone={role.tone} className="shrink-0">
@@ -148,12 +148,12 @@ export default async function TeamPage() {
               className="flex items-center justify-between gap-3 p-4 transition-colors duration-200 hover:bg-zinc-50 sm:p-5"
             >
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-[13px] font-bold text-zinc-400 ring-2 ring-white">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-[16px] font-bold text-zinc-400 ring-2 ring-white">
                   {initials(inv.emailAddress)}
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-[14px] font-bold text-zinc-900">{inv.emailAddress}</p>
-                  <p className="truncate text-[12px] text-zinc-500">
+                  <p className="truncate text-[17px] font-bold text-zinc-900">{inv.emailAddress}</p>
+                  <p className="truncate text-[14px] text-zinc-500">
                     Invitación enviada · {new Date(inv.createdAt).toLocaleDateString('es-ES')}
                   </p>
                 </div>

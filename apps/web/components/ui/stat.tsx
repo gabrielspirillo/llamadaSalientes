@@ -13,16 +13,16 @@ export type StatTone = 'grape' | 'blossom' | 'mint' | 'sky' | 'honey' | 'coral';
 
 const TONE: Record<StatTone, { chip: string; bar: string; glow: string; stroke: string }> = {
   grape: {
-    chip: 'bg-violet-100 text-violet-600',
+    chip: 'bg-brand-100 text-brand-600',
     bar: 'bg-[linear-gradient(90deg,#37766a,#5fa896)]',
-    glow: 'from-violet-200/60',
+    glow: 'from-brand-200/60',
     stroke: '#5fa896',
   },
   blossom: {
-    chip: 'bg-pink-100 text-pink-600',
-    bar: 'bg-[linear-gradient(90deg,#db2777,#f472b6)]',
-    glow: 'from-pink-200/60',
-    stroke: '#ec4899',
+    chip: 'bg-emerald-100 text-emerald-600',
+    bar: 'bg-[linear-gradient(90deg,#2f8f7a,#6bc2a4)]',
+    glow: 'from-emerald-200/60',
+    stroke: '#2f8f7a',
   },
   mint: {
     chip: 'bg-emerald-100 text-emerald-600',
@@ -31,10 +31,10 @@ const TONE: Record<StatTone, { chip: string; bar: string; glow: string; stroke: 
     stroke: '#10b981',
   },
   sky: {
-    chip: 'bg-sky-100 text-sky-600',
-    bar: 'bg-[linear-gradient(90deg,#0284c7,#38bdf8)]',
-    glow: 'from-sky-200/60',
-    stroke: '#0ea5e9',
+    chip: 'bg-teal-100 text-teal-700',
+    bar: 'bg-[linear-gradient(90deg,#2b6f6f,#5fb0b0)]',
+    glow: 'from-teal-200/60',
+    stroke: '#3d8b8b',
   },
   honey: {
     chip: 'bg-amber-100 text-amber-600',
@@ -108,7 +108,7 @@ export function StatTile({
       />
 
       <div className="relative flex items-start justify-between gap-3">
-        <p className="text-[13px] font-medium text-zinc-500">{label}</p>
+        <p className="text-[16px] font-medium text-zinc-500">{label}</p>
         {icon && (
           <span
             className={cn(
@@ -122,7 +122,7 @@ export function StatTile({
       </div>
 
       <div className="relative mt-3 flex items-baseline gap-2">
-        <span className="text-[28px] font-bold leading-none tracking-tight text-zinc-900 sm:text-[32px]">
+        <span className="text-[34px] font-bold leading-none tracking-tight text-zinc-900 sm:text-[38px]">
           {numeric != null ? (
             <AnimatedNumber value={numeric} decimals={decimals} suffix={suffix} />
           ) : (
@@ -132,7 +132,7 @@ export function StatTile({
         {delta != null && (
           <span
             className={cn(
-              'inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-bold',
+              'inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[13px] font-bold',
               dir === 'up' && 'bg-emerald-50 text-emerald-600',
               dir === 'down' && 'bg-rose-50 text-rose-600',
               dir === 'flat' && 'bg-zinc-100 text-zinc-500',
@@ -146,7 +146,7 @@ export function StatTile({
         )}
       </div>
 
-      {hint && <p className="relative mt-1.5 text-[11px] text-zinc-400">{hint}</p>}
+      {hint && <p className="relative mt-1.5 text-[13px] text-zinc-400">{hint}</p>}
 
       {trend && trend.length > 1 && (
         <div className="relative mt-3 -mb-1">
@@ -246,7 +246,7 @@ export function ProgressBar({
   return (
     <div className={cn('w-full', className)}>
       {showLabel && (
-        <div className="mb-1.5 flex items-center justify-between text-[11px]">
+        <div className="mb-1.5 flex items-center justify-between text-[13px]">
           <span className="font-medium text-zinc-500">Progreso</span>
           <span className="font-bold tabular-nums text-zinc-700">{pct}%</span>
         </div>
@@ -278,8 +278,8 @@ export function ProgressDots({
 }) {
   const filled = Math.round((Math.max(0, Math.min(100, value)) / 100) * total);
   const dotColor: Record<StatTone, string> = {
-    grape: 'bg-violet-500',
-    blossom: 'bg-pink-500',
+    grape: 'bg-brand-500',
+    blossom: 'bg-emerald-500',
     mint: 'bg-emerald-500',
     sky: 'bg-sky-500',
     honey: 'bg-amber-500',
@@ -346,7 +346,7 @@ export function ProgressRing({
           className="animate-draw"
         />
       </svg>
-      <span className="absolute text-[12px] font-bold tabular-nums text-zinc-800">
+      <span className="absolute text-[14px] font-bold tabular-nums text-zinc-800">
         {label ?? `${Math.round(pct)}%`}
       </span>
     </div>
@@ -355,12 +355,12 @@ export function ProgressRing({
 
 /** Pila de avatares con iniciales y colores estables (como la referencia). */
 const AVATAR_BG = [
-  'bg-violet-200 text-violet-700',
-  'bg-pink-200 text-pink-700',
-  'bg-sky-200 text-sky-700',
-  'bg-emerald-200 text-emerald-700',
-  'bg-amber-200 text-amber-700',
-  'bg-rose-200 text-rose-700',
+  'bg-brand-200 text-brand-800',
+  'bg-emerald-200 text-emerald-800',
+  'bg-teal-200 text-teal-800',
+  'bg-brand-100 text-brand-700',
+  'bg-emerald-100 text-emerald-700',
+  'bg-teal-100 text-teal-700',
 ];
 
 export function Avatar({

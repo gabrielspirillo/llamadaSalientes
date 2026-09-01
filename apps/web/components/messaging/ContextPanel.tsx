@@ -112,7 +112,7 @@ export function ContextPanel({
   if (!channel) {
     return (
       <Card tone="glass" className={cn('flex h-full min-h-0 flex-col overflow-hidden', className)}>
-        <p className="px-5 py-10 text-center text-[12.5px] text-zinc-500">
+        <p className="px-5 py-10 text-center text-[15px] text-zinc-500">
           Elegí un canal para ver su contexto.
         </p>
       </Card>
@@ -153,7 +153,7 @@ export function ContextPanel({
 
         {channel.topic && (
           <Section title="Tema">
-            <p className="text-[12.5px] leading-relaxed text-zinc-600">{channel.topic}</p>
+            <p className="text-[15px] leading-relaxed text-zinc-600">{channel.topic}</p>
           </Section>
         )}
 
@@ -186,17 +186,17 @@ export function ContextPanel({
                       onClick={() => onJumpToMessage(p.id)}
                       className="block w-full text-left"
                     >
-                      <span className="block text-[12px] font-semibold text-amber-900">
+                      <span className="block text-[14px] font-semibold text-amber-900">
                         {p.senderName ?? 'Futura'}
                       </span>
-                      <span className="mt-0.5 block text-[12px] leading-relaxed text-amber-900/80">
+                      <span className="mt-0.5 block text-[14px] leading-relaxed text-amber-900/80">
                         {plainPreview(p.body, 120)}
                       </span>
                     </button>
                     <button
                       type="button"
                       onClick={() => onTogglePin(p)}
-                      className="mt-1.5 text-[10.5px] font-semibold text-amber-700 underline underline-offset-2 hover:text-amber-800"
+                      className="mt-1.5 text-[13px] font-semibold text-amber-700 underline underline-offset-2 hover:text-amber-800"
                     >
                       Quitar de fijados
                     </button>
@@ -220,14 +220,14 @@ export function ContextPanel({
                 >
                   <PersonAvatar name={m.name} seed={m.userId} size={26} />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[12.5px] font-medium text-zinc-800">
+                    <span className="block truncate text-[15px] font-medium text-zinc-800">
                       {m.name}
                       {m.userId === currentUserId && (
-                        <span className="ml-1 text-[10.5px] font-normal text-zinc-400">(vos)</span>
+                        <span className="ml-1 text-[13px] font-normal text-zinc-400">(vos)</span>
                       )}
                     </span>
                     {status?.statusText && (
-                      <span className="block truncate text-[10.5px] text-zinc-400">
+                      <span className="block truncate text-[13px] text-zinc-400">
                         {status.statusEmoji ? `${status.statusEmoji} ` : ''}
                         {status.statusText}
                       </span>
@@ -242,7 +242,7 @@ export function ContextPanel({
               );
             })}
             {members.length === 0 && (
-              <li className="px-1.5 py-2 text-[12px] text-zinc-400">Sin miembros cargados.</li>
+              <li className="px-1.5 py-2 text-[14px] text-zinc-400">Sin miembros cargados.</li>
             )}
           </ul>
         </Section>
@@ -272,10 +272,10 @@ export function ContextPanel({
                       )}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[12px] font-medium text-zinc-700">
+                      <span className="block truncate text-[14px] font-medium text-zinc-700">
                         {att.name}
                       </span>
-                      <span className="block text-[10px] text-zinc-400">
+                      <span className="block text-[12px] text-zinc-400">
                         {formatBytes(att.size)}
                       </span>
                     </span>
@@ -289,7 +289,7 @@ export function ContextPanel({
 
         {/* Actividad */}
         <Section title="Actividad">
-          <dl className="space-y-1.5 text-[12px]">
+          <dl className="space-y-1.5 text-[14px]">
             <Row label="Mensajes" value={String(channel.messageCount)} />
             {channel.lastMessageAt && (
               <Row label="Último" value={formatDateTime(channel.lastMessageAt)} />
@@ -318,7 +318,7 @@ function Section({
   return (
     <section>
       <div className="mb-1.5 flex items-center justify-between gap-2">
-        <h3 className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+        <h3 className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.16em] text-zinc-400">
           <span className="h-2.5 w-1 rounded-full bg-[linear-gradient(180deg,#37766a,#6bc2a4)]" />
           {title}
         </h3>
@@ -384,10 +384,10 @@ function EntityCard({
           <Sparkles className="h-4 w-4" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[14px] font-bold tracking-tight text-zinc-900">{name}</p>
-          {subtitle && <p className="mt-0.5 truncate text-[12px] text-zinc-600">{subtitle}</p>}
+          <p className="truncate text-[17px] font-bold tracking-tight text-zinc-900">{name}</p>
+          {subtitle && <p className="mt-0.5 truncate text-[14px] text-zinc-600">{subtitle}</p>}
           {phone && (
-            <p className="mt-0.5 truncate text-[12px] font-medium text-zinc-500">{phone}</p>
+            <p className="mt-0.5 truncate text-[14px] font-medium text-zinc-500">{phone}</p>
           )}
           {nextAppointment && (
             <Badge tone="violet" size="sm" className="mt-1.5">

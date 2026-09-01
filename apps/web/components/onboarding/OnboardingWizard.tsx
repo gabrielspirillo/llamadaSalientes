@@ -173,10 +173,10 @@ export function OnboardingWizard({
   if (!tenant && !selfRegister && !authenticated) {
     return (
       <div className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center">
-        <h1 className="text-[22px] font-extrabold tracking-tight text-zinc-900">
+        <h1 className="text-[26px] font-extrabold tracking-tight text-zinc-900">
           Enlace incompleto
         </h1>
-        <p className="mt-2 text-[13px] leading-relaxed text-zinc-500">
+        <p className="mt-2 text-[16px] leading-relaxed text-zinc-500">
           Este enlace no identifica a ninguna clínica. Pídenos el enlace correcto para completar tus
           datos.
         </p>
@@ -192,12 +192,12 @@ export function OnboardingWizard({
       {/* Header + progreso */}
       <header className="mb-6">
         <div className="mb-6 flex items-center gap-1.5">
-          <span className="text-[19px] font-extrabold leading-none tracking-tight text-[#0f1f2e]">
+          <span className="text-[23px] font-extrabold leading-none tracking-tight text-[#0f1f2e]">
             FUTURA
           </span>
           <span className="inline-block h-2 w-2 rounded-full bg-[#5fa896]" />
           <span className="mx-0.5 text-zinc-300">·</span>
-          <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+          <span className="text-[13px] font-bold uppercase tracking-[0.14em] text-zinc-400">
             Alta de clínica
           </span>
         </div>
@@ -211,7 +211,7 @@ export function OnboardingWizard({
               <li key={st.n} className="flex flex-1 items-center gap-1.5">
                 <span
                   title={st.title}
-                  className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold transition-all duration-500 ${
+                  className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[13px] font-bold transition-all duration-500 ${
                     done
                       ? 'bg-[linear-gradient(120deg,#37766a,#5fa896)] text-white'
                       : active
@@ -238,10 +238,10 @@ export function OnboardingWizard({
         </ol>
 
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-500">
+          <p className="text-[13px] font-bold uppercase tracking-[0.14em] text-brand-500">
             Paso {step} de {STEPS.length} · {progress}%
           </p>
-          <h1 className="mt-1 text-[24px] font-extrabold tracking-tight text-zinc-900 sm:text-[28px]">
+          <h1 className="mt-1 text-[29px] font-extrabold tracking-tight text-zinc-900 sm:text-[34px]">
             {current.title}
           </h1>
         </div>
@@ -266,7 +266,7 @@ export function OnboardingWizard({
       </main>
 
       {submitError && (
-        <p className="mt-4 animate-fade-up rounded-2xl border border-rose-100 bg-rose-50/80 px-4 py-3 text-[13px] text-rose-700">
+        <p className="mt-4 animate-fade-up rounded-2xl border border-rose-100 bg-rose-50/80 px-4 py-3 text-[16px] text-rose-700">
           {submitError}
         </p>
       )}

@@ -30,7 +30,7 @@ export function EnterButton({ tenantId }: { tenantId: string }) {
         {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
         Gestionar
       </Button>
-      {error && <span className="text-[11px] text-rose-600">{error}</span>}
+      {error && <span className="text-[13px] text-rose-600">{error}</span>}
     </div>
   );
 }

@@ -93,7 +93,7 @@ export default async function FuturaPanelPage() {
         description="Gestiona las clínicas de la plataforma: activa las altas nuevas y controla sus módulos."
       />
 
-      <p className="mb-5 text-[11.5px] text-zinc-400">
+      <p className="mb-5 text-[14px] text-zinc-400">
         Tu tenant (Futura):{' '}
         <code className="rounded-lg bg-brand-50 px-1.5 py-0.5 font-mono text-brand-600">
           {realTenant.id}
@@ -109,7 +109,7 @@ export default async function FuturaPanelPage() {
       </div>
 
       {clinics.length === 0 ? (
-        <div className="rounded-[22px] border border-[--color-border] bg-white p-12 text-center text-[13px] text-zinc-500 shadow-[var(--shadow-soft)]">
+        <div className="rounded-[22px] border border-[--color-border] bg-white p-12 text-center text-[16px] text-zinc-500 shadow-[var(--shadow-soft)]">
           Todavía no hay clínicas registradas.
         </div>
       ) : (
@@ -129,7 +129,7 @@ export default async function FuturaPanelPage() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-[15px] font-bold tracking-tight text-zinc-900">
+                      <h3 className="text-[18px] font-bold tracking-tight text-zinc-900">
                         {c.name}
                       </h3>
                       <Badge tone={meta.tone}>{meta.label}</Badge>
@@ -153,7 +153,7 @@ export default async function FuturaPanelPage() {
 
                 {/* Módulos por clínica */}
                 <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-[--color-border-subtle] pt-4">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+                  <span className="text-[12px] font-bold uppercase tracking-[0.14em] text-zinc-400">
                     Módulos
                   </span>
                   {MODULE_KEYS.map((key) => (
@@ -191,8 +191,8 @@ function StatCard({
     <div
       className={`rounded-[22px] border border-[--color-border] bg-gradient-to-br ${ring} to-white p-5 shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-lifted)]`}
     >
-      <p className="text-[13px] font-medium text-zinc-500">{label}</p>
-      <p className="mt-2 text-[32px] font-bold leading-none tracking-tight tabular-nums text-zinc-900">
+      <p className="text-[16px] font-medium text-zinc-500">{label}</p>
+      <p className="mt-2 text-[38px] font-bold leading-none tracking-tight tabular-nums text-zinc-900">
         {value}
       </p>
     </div>

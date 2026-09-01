@@ -16,7 +16,7 @@ export async function TelephonyPanel() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-[18px] font-bold tracking-tight text-zinc-900">Telefonía</h2>
+        <h2 className="text-[22px] font-bold tracking-tight text-zinc-900">Telefonía</h2>
         <p className="text-sm text-zinc-500">
           Provider, caller ID saliente y número entrante propios del tenant.
         </p>

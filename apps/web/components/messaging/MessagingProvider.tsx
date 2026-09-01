@@ -692,7 +692,7 @@ function NotificationToasts({
       {toasts.map((t) => (
         <div
           key={t.id}
-          className="glass pointer-events-auto flex animate-slide-right items-start gap-3 rounded-[22px] p-3 shadow-[0_24px_60px_-24px_rgba(23,20,41,0.55)]"
+          className="glass pointer-events-auto flex animate-slide-right items-start gap-3 rounded-[22px] p-3 shadow-[0_24px_60px_-24px_rgba(22,26,25,0.55)]"
         >
           <span
             className={cn(
@@ -716,11 +716,11 @@ function NotificationToasts({
             }}
             className="min-w-0 flex-1 text-left"
           >
-            <p className="truncate text-[13px] font-semibold text-zinc-900">{t.title}</p>
+            <p className="truncate text-[16px] font-semibold text-zinc-900">{t.title}</p>
             {t.detail && (
-              <p className="mt-0.5 line-clamp-2 text-[12px] text-zinc-500">{t.detail}</p>
+              <p className="mt-0.5 line-clamp-2 text-[14px] text-zinc-500">{t.detail}</p>
             )}
-            <p className="mt-1 text-[11px] font-semibold text-brand-600">Ir al hilo</p>
+            <p className="mt-1 text-[13px] font-semibold text-brand-600">Ir al hilo</p>
           </button>
           <button
             type="button"

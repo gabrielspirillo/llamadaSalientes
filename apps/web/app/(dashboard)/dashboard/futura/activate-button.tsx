@@ -34,7 +34,7 @@ export function ActivateButton({ tenantId, active }: { tenantId: string; active:
         {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
         Activar
       </Button>
-      {error && <span className="text-[11px] text-rose-600">{error}</span>}
+      {error && <span className="text-[13px] text-rose-600">{error}</span>}
     </div>
   );
 }

@@ -53,7 +53,7 @@ export function AgentPersonaForm({ initial }: Props) {
           placeholder="Por ejemplo: tono cálido y cercano. Menciona la promoción de blanqueamiento cuando encaje. Trata de usted a las personas mayores."
           className="mt-1 w-full rounded-lg border border-[--color-border] px-3 py-1.5 text-sm"
         />
-        <span className="mt-1 block text-[11px] text-zinc-400">
+        <span className="mt-1 block text-[13px] text-zinc-400">
           Afina el tono y el foco del agente. No anula las reglas de seguridad, los datos oficiales
           ni los protocolos de urgencia y de paso a una persona. ({persona.length}/2000)
         </span>

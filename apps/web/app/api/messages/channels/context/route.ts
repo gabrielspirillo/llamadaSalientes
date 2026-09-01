@@ -27,9 +27,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return badRequest(parsed.error.issues);
 
-    const memberUserIds = Array.from(
-      new Set([...(parsed.data.memberUserIds ?? []), auth.userId]),
-    );
+    const memberUserIds = Array.from(new Set([...(parsed.data.memberUserIds ?? []), auth.userId]));
 
     const { id } = await ensureContextChannel({
       tenantId: auth.tenantId,

@@ -79,7 +79,7 @@ export function KanbanBoard({
             <header className="flex items-center gap-2 px-3.5 py-3">
               <span className={cn('h-1.5 w-1.5 rounded-full', meta.dot)} />
               <h2 className="text-sm font-semibold text-zinc-800">{meta.label}</h2>
-              <span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-zinc-500 ring-1 ring-inset ring-zinc-200">
+              <span className="rounded-full bg-white px-1.5 py-0.5 text-[12px] font-semibold tabular-nums text-zinc-500 ring-1 ring-inset ring-zinc-200">
                 {column.length}
               </span>
               {canEdit && (

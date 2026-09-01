@@ -24,7 +24,7 @@ export default function SignUpPage() {
       </div>
 
       <AuthAside eyebrow="Lo que incluye">
-        <h2 className="text-[28px] font-extrabold leading-tight tracking-tight">
+        <h2 className="text-[34px] font-extrabold leading-tight tracking-tight">
           Tu asistente de voz,
           <br />
           atendiendo llamadas esta semana.
@@ -33,7 +33,7 @@ export default function SignUpPage() {
           {BENEFITS.map((b, i) => (
             <li
               key={b}
-              className="flex animate-fade-up items-start gap-3 text-[14px] text-white/90"
+              className="flex animate-fade-up items-start gap-3 text-[17px] text-white/90"
               style={{ animationDelay: `${200 + i * 90}ms` }}
             >
               <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-400" />

@@ -131,7 +131,7 @@ export function SettingsForm({
         <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           <Card>
             <div className="p-4 sm:p-6 space-y-5">
-              <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">
+              <h3 className="text-[18px] font-semibold tracking-tight text-zinc-900">
                 Información general
               </h3>
 
@@ -240,7 +240,7 @@ export function SettingsForm({
 
           <Card>
             <div className="p-4 sm:p-6">
-              <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900 mb-4">
+              <h3 className="text-[18px] font-semibold tracking-tight text-zinc-900 mb-4">
                 Horarios de atención
               </h3>
               <div className="space-y-2">
@@ -289,7 +289,7 @@ export function SettingsForm({
 
           <Card>
             <div className="p-4 sm:p-6">
-              <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">
+              <h3 className="text-[18px] font-semibold tracking-tight text-zinc-900">
                 Texto de consentimiento
               </h3>
               <p className="text-sm text-zinc-500 mt-1 mb-4">
@@ -312,7 +312,7 @@ export function SettingsForm({
 
           <Card>
             <div className="p-4 sm:p-6">
-              <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">Consejos</h3>
+              <h3 className="text-[18px] font-semibold tracking-tight text-zinc-900">Consejos</h3>
               <ul className="mt-3 space-y-2 text-sm text-zinc-600">
                 <li>• La zona horaria determina las horas que el agente le dice al paciente.</li>
                 <li>
