@@ -148,7 +148,7 @@ export async function InboundModule({ tenantId }: { tenantId: string }) {
                         </div>
                         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
                           <IntentBadge intent={c.intent ?? 'otro'} />
-                          <span className="hidden w-14 text-right text-[13px] tabular-nums text-zinc-400 sm:inline">
+                          <span className="hidden w-14 text-right text-[13px] tabular-nums text-zinc-500 sm:inline">
                             {formatDuration(c.durationSeconds)}
                           </span>
                         </div>

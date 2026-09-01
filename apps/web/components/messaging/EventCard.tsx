@@ -137,7 +137,7 @@ export function EventCard({
             </div>
           )}
 
-          <p className="mt-2.5 text-[12px] font-medium text-zinc-400" suppressHydrationWarning>
+          <p className="mt-2.5 text-[12px] font-medium text-zinc-500" suppressHydrationWarning>
             {formatClock(message.createdAt)}
           </p>
         </div>

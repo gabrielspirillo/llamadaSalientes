@@ -3,15 +3,15 @@ import { and, eq } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import { tenants, waitlistOffers } from '@/lib/db/schema';
-import type { QueueJobs } from '@/lib/queue/queues';
 import { sendQueueEvent } from '@/lib/queue/client';
+import type { QueueJobs } from '@/lib/queue/queues';
 import type { StepRunner } from '@/lib/queue/step';
 import { buildVarsForOffer } from '@/lib/waitlist/engine';
-import {
-  sendWaitlistWhatsApp,
-  deriveContactDisplayNameFromWaitlistVars,
-} from '@/lib/waitlist/send-whatsapp';
 import { sendWaitlistVoice } from '@/lib/waitlist/send-voice';
+import {
+  deriveContactDisplayNameFromWaitlistVars,
+  sendWaitlistWhatsApp,
+} from '@/lib/waitlist/send-whatsapp';
 
 // Handler de la queue 'waitlist-offer-send'.
 //
@@ -47,7 +47,11 @@ export async function processWaitlistOfferSendJob(
     }
 
     // Patch clinic.name desde tenants.name si la clínica no tiene name aparte.
-    const [t] = await db.select({ name: tenants.name }).from(tenants).where(eq(tenants.id, tenantId)).limit(1);
+    const [t] = await db
+      .select({ name: tenants.name })
+      .from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .limit(1);
     if (t?.name) vars.clinic.name = t.name;
 
     const displayName = deriveContactDisplayNameFromWaitlistVars(vars);

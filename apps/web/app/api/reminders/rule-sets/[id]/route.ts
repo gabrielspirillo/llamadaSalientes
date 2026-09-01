@@ -18,7 +18,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
-  let auth;
+  let auth: Awaited<ReturnType<typeof requireReminderRole>>;
   try {
     auth = await requireReminderRole('admin');
   } catch (err) {
@@ -43,7 +43,7 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
-  let auth;
+  let auth: Awaited<ReturnType<typeof requireReminderRole>>;
   try {
     auth = await requireReminderRole('admin');
   } catch (err) {

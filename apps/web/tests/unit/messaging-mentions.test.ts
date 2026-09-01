@@ -20,7 +20,9 @@ describe('normalizeMentionKey', () => {
   });
 
   it('recorta espacios de los bordes pero conserva los internos', () => {
-    expect(normalizeMentionKey('  Ana Gómez  ')).toBe('ana gómez'.normalize('NFD').replace(/\p{M}+/gu, ''));
+    expect(normalizeMentionKey('  Ana Gómez  ')).toBe(
+      'ana gómez'.normalize('NFD').replace(/\p{M}+/gu, ''),
+    );
     expect(normalizeMentionKey('  Ana Gómez  ')).toBe('ana gomez');
   });
 
@@ -121,7 +123,17 @@ describe('extractMentionTokens', () => {
   });
 
   it('detecta los alias de canal completo', () => {
-    for (const alias of ['todos', 'todas', 'canal', 'equipo', 'everyone', 'channel', 'all', 'here', 'aqui']) {
+    for (const alias of [
+      'todos',
+      'todas',
+      'canal',
+      'equipo',
+      'everyone',
+      'channel',
+      'all',
+      'here',
+      'aqui',
+    ]) {
       const res = extractMentionTokens(`@${alias} reunión a las 9`);
       expect(res.everyone, alias).toBe(true);
       expect(res.tokens, alias).toEqual([]);

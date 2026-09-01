@@ -87,10 +87,11 @@ export function TemplatesEditor({
     [activeWhatsappScope],
   );
 
-  const [activeScope, setActiveScope] = useState<DriverScope>(scopes[0]!);
+  const [activeScope, setActiveScope] = useState<DriverScope>(() => scopes[0] ?? 'voice_retell');
 
   useEffect(() => {
-    if (!scopes.includes(activeScope)) setActiveScope(scopes[0]!);
+    const first = scopes[0];
+    if (first && !scopes.includes(activeScope)) setActiveScope(first);
   }, [scopes, activeScope]);
 
   const current = initialTemplates.find((t) => t.driverScope === activeScope) ?? null;
@@ -304,7 +305,9 @@ export function TemplatesEditor({
               rows={6}
               value={freeText}
               onChange={(e) => setFreeText(e.target.value)}
-              placeholder={`Hola {{contact.firstName}}, se ha quedado libre un hueco antes de tu cita del {{oldAppointment.dateTime}}. ¿Quieres adelantarla al {{newSlot.dateTime}}?`}
+              placeholder={
+                'Hola {{contact.firstName}}, se ha quedado libre un hueco antes de tu cita del {{oldAppointment.dateTime}}. ¿Quieres adelantarla al {{newSlot.dateTime}}?'
+              }
             />
           </label>
         ) : null}

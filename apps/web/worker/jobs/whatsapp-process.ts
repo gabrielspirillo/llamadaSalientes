@@ -8,22 +8,19 @@ import {
   whatsappConversations,
   whatsappMessages,
 } from '@/lib/db/schema';
+import { updateLeadMemory } from '@/lib/memory/lead-memory';
 import { acquireLock } from '@/lib/queue/lock';
-import type { StepRunner } from '@/lib/queue/step';
 import type { QueueJobs } from '@/lib/queue/queues';
+import type { StepRunner } from '@/lib/queue/step';
 import { runWhatsappAgent } from '@/lib/whatsapp/agent';
 import { processInboundMessages } from '@/lib/whatsapp/agent/multimodal';
 import { writeAgentRun } from '@/lib/whatsapp/agent/persist-run';
 import type { AgentInput, AgentOutput, HistoryTurn } from '@/lib/whatsapp/agent/types';
-import { updateLeadMemory } from '@/lib/memory/lead-memory';
 import { syncWhatsappContactAvatar } from '@/lib/whatsapp/contacts/sync-avatar';
 import { syncWhatsappContactWithGhl } from '@/lib/whatsapp/contacts/sync-ghl';
 import { buildConnector } from '@/lib/whatsapp/factory';
 import { sendAgentResponse } from '@/lib/whatsapp/outbound/send-response';
-import {
-  publishTypingStart,
-  publishTypingStop,
-} from '@/lib/whatsapp/realtime/publisher';
+import { publishTypingStart, publishTypingStop } from '@/lib/whatsapp/realtime/publisher';
 import type { WhatsAppConnector } from '@/lib/whatsapp/types';
 
 /**
@@ -510,9 +507,7 @@ async function applyHandoffFlags(
 
 // Lee el flag remindersResume del context de la conversación. Si está
 // expirado, devuelve null. Si el shape no matchea, devuelve null.
-function readRemindersResume(
-  context: Record<string, unknown>,
-): AgentInput['remindersResume'] {
+function readRemindersResume(context: Record<string, unknown>): AgentInput['remindersResume'] {
   const raw = context.remindersResume;
   if (!raw || typeof raw !== 'object') return null;
   const r = raw as Partial<NonNullable<AgentInput['remindersResume']>>;

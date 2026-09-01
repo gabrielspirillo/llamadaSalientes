@@ -183,7 +183,7 @@ export function MessageBubble(props: MessageBubbleProps) {
         {grouped ? (
           <time
             suppressHydrationWarning
-            className="hidden select-none text-[11px] font-medium leading-5 text-zinc-400 group-hover:block"
+            className="hidden select-none text-[11px] font-medium leading-5 text-zinc-500 group-hover:block"
           >
             {formatClock(message.createdAt)}
           </time>
@@ -206,10 +206,10 @@ export function MessageBubble(props: MessageBubbleProps) {
                 {message.senderKind === 'BOT' ? 'bot' : 'sistema'}
               </span>
             )}
-            <time suppressHydrationWarning className="text-[12px] font-medium text-zinc-400">
+            <time suppressHydrationWarning className="text-[12px] font-medium text-zinc-500">
               {formatClock(message.createdAt)}
             </time>
-            {message.editedAt && <span className="text-[11px] italic text-zinc-400">editado</span>}
+            {message.editedAt && <span className="text-[11px] italic text-zinc-500">editado</span>}
             {message.pinned && (
               <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-amber-600">
                 <Pin className="h-2.5 w-2.5" /> fijado
@@ -219,7 +219,7 @@ export function MessageBubble(props: MessageBubbleProps) {
         )}
 
         {deleted ? (
-          <p className="text-[14px] italic text-zinc-400">Mensaje eliminado</p>
+          <p className="text-[14px] italic text-zinc-500">Mensaje eliminado</p>
         ) : editing ? (
           <div className="animate-zoom-in">
             <textarea
@@ -253,7 +253,7 @@ export function MessageBubble(props: MessageBubbleProps) {
               >
                 Cancelar
               </Button>
-              <span className="text-[12px] text-zinc-400">Esc para cancelar</span>
+              <span className="text-[12px] text-zinc-500">Esc para cancelar</span>
             </div>
           </div>
         ) : (
@@ -523,7 +523,7 @@ function AttachmentGrid({ attachments }: { attachments: ImAttachment[] }) {
           </span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[14px] font-semibold text-zinc-800">{a.name}</span>
-            <span className="block text-[12px] text-zinc-400">{formatBytes(a.size)}</span>
+            <span className="block text-[12px] text-zinc-500">{formatBytes(a.size)}</span>
           </span>
           <Download className="h-3.5 w-3.5 shrink-0 text-zinc-300 transition-colors group-hover/file:text-brand-500" />
         </a>

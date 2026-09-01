@@ -149,13 +149,13 @@ export function DashboardTopbar({
             type="button"
             onClick={() => setSearchOpen(true)}
             className={cn(
-              'group hidden items-center gap-2.5 rounded-full border border-[--color-border] bg-white/80 px-4 py-2.5 text-sm text-zinc-400',
+              'group hidden items-center gap-2.5 rounded-full border border-[--color-border] bg-white/80 px-4 py-2.5 text-sm text-zinc-500',
               'w-full max-w-md transition-all duration-300 hover:border-brand-200 hover:bg-white hover:shadow-[0_10px_26px_-16px_rgba(20,33,29,0.5)] md:flex',
             )}
           >
             <Search className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:text-brand-500" />
             <span className="truncate">Buscar llamadas, pacientes, mensajes…</span>
-            <kbd className="ml-auto shrink-0 rounded-lg bg-zinc-100 px-1.5 py-0.5 text-[11px] font-semibold text-zinc-400">
+            <kbd className="ml-auto shrink-0 rounded-lg bg-zinc-100 px-1.5 py-0.5 text-[11px] font-semibold text-zinc-500">
               ⌘K
             </kbd>
           </button>
@@ -281,14 +281,16 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex animate-fade-in items-start justify-center bg-[#14211d]/25 pt-[10vh] backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="w-[620px] max-w-[95vw] animate-pop overflow-hidden rounded-[26px] border border-white/70 bg-white/90 shadow-[0_40px_90px_-30px_rgba(20,33,29,0.4)] backdrop-blur-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-50 flex animate-fade-in items-start justify-center bg-[#14211d]/25 pt-[10vh] backdrop-blur-sm">
+      {/* El fondo es un botón, no un div con onClick: así se puede cerrar con
+          teclado y no sólo con el ratón. Va detrás del panel con -z-10. */}
+      <button
+        type="button"
+        aria-label="Cerrar la búsqueda"
+        className="absolute inset-0 -z-10 cursor-default"
+        onClick={onClose}
+      />
+      <div className="w-[620px] max-w-[95vw] animate-pop overflow-hidden rounded-[26px] border border-white/70 bg-white/90 shadow-[0_40px_90px_-30px_rgba(20,33,29,0.4)] backdrop-blur-2xl">
         <div className="relative flex items-center gap-3 border-b border-[--color-border-subtle] px-5 py-4">
           <span
             aria-hidden
@@ -300,9 +302,10 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Buscar por número, paciente, resumen, tratamiento, mensaje…"
-            className="relative flex-1 bg-transparent text-[16px] outline-none placeholder:text-zinc-400"
+            className="relative flex-1 bg-transparent text-[16px] outline-none placeholder:text-zinc-500"
           />
           <button
+            type="button"
             onClick={onClose}
             aria-label="Cerrar"
             className="relative rounded-full p-1.5 text-zinc-400 transition-all hover:rotate-90 hover:bg-zinc-100 hover:text-zinc-700"
@@ -319,7 +322,7 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
               description="Mínimo 2 caracteres. Buscamos en llamadas, contactos, tratamientos y mensajes del equipo."
             />
           ) : loading && hits.length === 0 ? (
-            <div className="px-6 py-14 text-center text-sm text-zinc-400">
+            <div className="px-6 py-14 text-center text-sm text-zinc-500">
               <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
               <p className="mt-3">Buscando…</p>
             </div>
@@ -355,7 +358,7 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
                       <p className="truncate text-xs text-zinc-500">{h.subtitle}</p>
                     </div>
                     {h.when && (
-                      <span className="shrink-0 text-xs tabular-nums text-zinc-400">
+                      <span className="shrink-0 text-xs tabular-nums text-zinc-500">
                         {new Date(h.when).toLocaleDateString('es-ES', {
                           day: '2-digit',
                           month: '2-digit',
@@ -370,7 +373,7 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
           )}
         </div>
 
-        <div className="flex items-center justify-between border-t border-[--color-border-subtle] bg-[#fafbfb] px-5 py-2.5 text-[12px] text-zinc-400">
+        <div className="flex items-center justify-between border-t border-[--color-border-subtle] bg-[#fafbfb] px-5 py-2.5 text-[12px] text-zinc-500">
           <span>↵ para abrir · Esc para cerrar</span>
           <span className="tabular-nums">{hits.length} resultados</span>
         </div>
@@ -601,7 +604,7 @@ function NotificationsBell({
             {messagingReady && tab === 'mentions' ? (
               <MentionsInbox />
             ) : loading && visible.length === 0 ? (
-              <div className="px-6 py-10 text-center text-sm text-zinc-400">Cargando…</div>
+              <div className="px-6 py-10 text-center text-sm text-zinc-500">Cargando…</div>
             ) : visible.length === 0 ? (
               <EmptyState
                 icon={<MessageCircle className="h-5 w-5" />}
@@ -633,7 +636,7 @@ function NotificationsBell({
                             )}
                           </div>
                           <p className="truncate text-xs text-zinc-500">{n.detail}</p>
-                          <p className="mt-0.5 text-[12px] text-zinc-400">{timeAgo(n.createdAt)}</p>
+                          <p className="mt-0.5 text-[12px] text-zinc-500">{timeAgo(n.createdAt)}</p>
                         </div>
                       </Link>
                       <button

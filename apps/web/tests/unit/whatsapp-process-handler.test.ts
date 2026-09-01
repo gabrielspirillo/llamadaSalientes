@@ -238,7 +238,11 @@ describe('whatsappProcess handler', () => {
       errorText: null,
       traceId: null,
     });
-    mocks.sendAgentResponse.mockResolvedValue({ messageId: 'out-1', externalId: 'wamid-1', kind: 'text' });
+    mocks.sendAgentResponse.mockResolvedValue({
+      messageId: 'out-1',
+      externalId: 'wamid-1',
+      kind: 'text',
+    });
     const out = (await runHandler()) as { ok: boolean };
     expect(out.ok).toBe(true);
     expect(mocks.runWhatsappAgent).toHaveBeenCalledTimes(1);

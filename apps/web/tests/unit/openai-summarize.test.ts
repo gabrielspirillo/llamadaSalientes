@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeAll, afterEach } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
 

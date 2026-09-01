@@ -230,8 +230,8 @@ export function MyDayView({
               >
                 {g.title}
               </h2>
-              <span className="text-xs tabular-nums text-zinc-400">{g.items.length}</span>
-              {g.hint && <span className="text-xs text-zinc-400">· {g.hint}</span>}
+              <span className="text-xs tabular-nums text-zinc-500">{g.items.length}</span>
+              {g.hint && <span className="text-xs text-zinc-500">· {g.hint}</span>}
             </div>
             <ul className="space-y-2">
               {g.items.map((t) => (
@@ -373,7 +373,7 @@ export function WeekView({
                   </li>
                 ))}
                 {d.items.length > 6 && (
-                  <li className="px-1 text-[12px] text-zinc-400">+{d.items.length - 6} más</li>
+                  <li className="px-1 text-[12px] text-zinc-500">+{d.items.length - 6} más</li>
                 )}
                 {d.items.length === 0 && <li className="px-1 py-2 text-[12px] text-zinc-300">—</li>}
               </ul>
@@ -386,7 +386,7 @@ export function WeekView({
         <section>
           <h2 className="mb-2 text-sm font-semibold text-zinc-800">
             Sin fecha{' '}
-            <span className="font-normal text-zinc-400">
+            <span className="font-normal text-zinc-500">
               · no aparecen en ningún día hasta que les pongas una fecha
             </span>
           </h2>
@@ -480,7 +480,7 @@ export function PatientsView({
                 {g.phone}
               </a>
             )}
-            <span className="ml-auto text-[12px] tabular-nums text-zinc-400">
+            <span className="ml-auto text-[12px] tabular-nums text-zinc-500">
               {g.items.length} pendiente{g.items.length === 1 ? '' : 's'}
             </span>
           </header>

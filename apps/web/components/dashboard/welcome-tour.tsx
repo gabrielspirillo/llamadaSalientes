@@ -299,6 +299,7 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
   return (
     <div
       className="fixed inset-0 z-[60]"
+      // biome-ignore lint/a11y/useSemanticElements: overlay propio del tour; no usa showModal() ni el top-layer del <dialog> nativo
       role="dialog"
       aria-modal="true"
       aria-label="Tutorial de bienvenida"
@@ -420,7 +421,7 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
                 </button>
               )}
 
-              <span className="text-xs tabular-nums text-zinc-400">
+              <span className="text-xs tabular-nums text-zinc-500">
                 {step + 1} / {STEPS.length}
               </span>
 

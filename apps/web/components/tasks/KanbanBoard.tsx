@@ -130,7 +130,7 @@ export function KanbanBoard({
               {isTarget && target.index >= column.length && draggingId && <DropPlaceholder />}
 
               {column.length === 0 && !draggingId && (
-                <p className="px-1 py-6 text-center text-xs text-zinc-400">
+                <p className="px-1 py-6 text-center text-xs text-zinc-500">
                   {status === 'TODO' ? 'Sin pendientes aquí' : meta.hint}
                 </p>
               )}

@@ -52,8 +52,8 @@ export async function getInboundAnalytics(tenantId: string, range: AnalyticsRang
   const byHour = Array.from({ length: 24 }, (_, h) => ({ hour: h, calls: 0 }));
   for (const r of rows) {
     if (r.startedAt) {
-      const h = new Date(r.startedAt).getHours();
-      byHour[h]!.calls += 1;
+      const bucket = byHour[new Date(r.startedAt).getHours()];
+      if (bucket) bucket.calls += 1;
     }
   }
 
@@ -88,7 +88,8 @@ export async function getInboundAnalytics(tenantId: string, range: AnalyticsRang
     const key = new Date(r.startedAt).toISOString().slice(0, 10);
     const idx = dayIndex.get(key);
     if (idx === undefined) continue;
-    const day = days[idx]!;
+    const day = days[idx];
+    if (!day) continue;
     day.calls += 1;
     if (r.intent === 'agendar') day.agendar += 1;
     else if (r.intent === 'cancelar') day.cancelar += 1;

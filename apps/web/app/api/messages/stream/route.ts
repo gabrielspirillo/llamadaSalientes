@@ -23,7 +23,7 @@ const HEARTBEAT_MS = 15_000;
 const PRESENCE_MS = 20_000;
 
 export async function GET(req: Request): Promise<Response> {
-  let auth;
+  let auth: Awaited<ReturnType<typeof requireMessagingRole>>;
   try {
     auth = await requireMessagingRole('viewer');
   } catch {

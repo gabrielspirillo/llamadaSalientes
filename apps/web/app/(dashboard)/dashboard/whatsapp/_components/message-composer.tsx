@@ -194,7 +194,8 @@ export function MessageComposer({ conversationId, disabled }: Props) {
       }
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        applyQuickReply(slashResults[slashIndex]!);
+        const picked = slashResults[slashIndex];
+        if (picked) applyQuickReply(picked);
         return;
       }
       if (e.key === 'Escape') {
@@ -239,7 +240,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
       mr.onstop = () => {
         const blob = new Blob(audioChunksRef.current, { type: mr.mimeType });
         setAudioBlob(blob);
-        stream.getTracks().forEach((t) => t.stop());
+        for (const t of stream.getTracks()) t.stop();
       };
       mediaRecorderRef.current = mr;
       mr.start();
@@ -318,7 +319,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
       {/* Slash command popup */}
       {slashOpen && slashResults.length > 0 && (
         <div className="absolute bottom-full left-3 right-3 z-20 mb-1 max-h-60 overflow-y-auto rounded-2xl border border-[--color-border] bg-white shadow-lg">
-          <p className="border-b border-[--color-border-subtle] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+          <p className="border-b border-[--color-border-subtle] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">
             Respuestas rápidas · ↑↓ para navegar, Enter para usar
           </p>
           <ul>
@@ -343,6 +344,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
       {/* Audio preview */}
       {audioBlob && (
         <div className="flex items-center gap-2 border-b border-[--color-border-subtle] bg-[#fafbfb] px-3 py-2">
+          {/* biome-ignore lint/a11y/useMediaCaption: previsualización de la nota de voz que se acaba de grabar */}
           <audio src={URL.createObjectURL(audioBlob)} controls className="h-8 flex-1" />
           <button
             type="button"
@@ -389,6 +391,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
             title="Emoji"
           >
             <svg
+              aria-hidden="true"
               width="18"
               height="18"
               viewBox="0 0 24 24"
@@ -413,6 +416,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
                 title="Adjuntar archivo"
               >
                 <svg
+                  aria-hidden="true"
                   width="18"
                   height="18"
                   viewBox="0 0 24 24"
@@ -445,6 +449,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
                   title="Grabar audio"
                 >
                   <svg
+                    aria-hidden="true"
                     width="18"
                     height="18"
                     viewBox="0 0 24 24"
@@ -472,7 +477,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
           )}
 
           <div className="ml-auto flex items-center gap-2">
-            <span className="text-[11px] text-zinc-400">
+            <span className="text-[11px] text-zinc-500">
               {isNote ? 'Solo visible para tu equipo' : 'Ctrl+Enter para enviar'}
             </span>
             <button

@@ -5,6 +5,7 @@ import { useRef, useState, useTransition } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Callout } from '@/components/ui/feedback';
 
 type RuleSet = {
   id: string;
@@ -54,64 +55,93 @@ export function RulesEditor(props: {
   const [rules, setRules] = useState(props.initialRules);
   const [templates, setTemplates] = useState(props.initialTemplates);
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const global = ruleSets.find((r) => r.scope === 'GLOBAL') ?? null;
 
+  /**
+   * Envuelve una mutación para que un fallo se VEA.
+   *
+   * Antes, si la respuesta no era ok o se caía la red, no se actualizaba el
+   * estado y no se avisaba nada: el campo volvía a su valor anterior y la
+   * persona se quedaba creyendo que había guardado. En la pantalla que decide
+   * cuándo se contacta a los pacientes, eso es lo más caro que puede pasar.
+   */
+  async function mutate(what: string, fn: () => Promise<void>): Promise<void> {
+    try {
+      setError(null);
+      await fn();
+    } catch (err) {
+      console.error(`[reminders] ${what} falló`, err);
+      setError(`No se pudo ${what}. Revisá la conexión y probá de nuevo.`);
+    }
+  }
+
+  async function readError(res: Response): Promise<string> {
+    const data = (await res.json().catch(() => null)) as { error?: string } | null;
+    return data?.error ?? `HTTP ${res.status}`;
+  }
+
   async function createGlobal() {
-    startTransition(async () => {
-      const res = await fetch('/api/reminders/rule-sets', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ scope: 'GLOBAL' }),
-      });
-      if (res.ok) {
+    startTransition(() => {
+      void mutate('crear el conjunto de reglas', async () => {
+        const res = await fetch('/api/reminders/rule-sets', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ scope: 'GLOBAL' }),
+        });
+        if (!res.ok) throw new Error(await readError(res));
         const data = await res.json();
         setRuleSets((rs) => [...rs, data.ruleSet]);
-      }
+      });
     });
   }
 
   async function addRule(ruleSetId: string) {
-    startTransition(async () => {
-      const res = await fetch('/api/reminders/rules', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          ruleSetId,
-          offsetMinutes: 1440,
-          primaryChannel: 'WHATSAPP',
-          label: '24h antes',
-          order: rules.filter((r) => r.ruleSetId === ruleSetId).length,
-        }),
-      });
-      if (res.ok) {
+    startTransition(() => {
+      void mutate('crear la regla', async () => {
+        const res = await fetch('/api/reminders/rules', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            ruleSetId,
+            offsetMinutes: 1440,
+            primaryChannel: 'WHATSAPP',
+            label: '24h antes',
+            order: rules.filter((r) => r.ruleSetId === ruleSetId).length,
+          }),
+        });
+        if (!res.ok) throw new Error(await readError(res));
         const data = await res.json();
         setRules((r) => [...r, data.rule]);
-      }
+      });
     });
   }
 
   async function patchRule(id: string, patch: Partial<Rule>) {
-    startTransition(async () => {
-      const res = await fetch(`/api/reminders/rules/${id}`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(patch),
-      });
-      if (res.ok) {
+    startTransition(() => {
+      void mutate('guardar la regla', async () => {
+        const res = await fetch(`/api/reminders/rules/${id}`, {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(patch),
+        });
+        if (!res.ok) throw new Error(await readError(res));
         const data = await res.json();
         setRules((r) => r.map((x) => (x.id === id ? { ...x, ...data.rule } : x)));
-      }
+      });
     });
   }
 
   async function deleteRule(id: string) {
-    startTransition(async () => {
-      const res = await fetch(`/api/reminders/rules/${id}`, { method: 'DELETE' });
-      if (res.ok) {
+    startTransition(() => {
+      void mutate('eliminar la regla', async () => {
+        const res = await fetch(`/api/reminders/rules/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error(await readError(res));
         setRules((r) => r.filter((x) => x.id !== id));
         setTemplates((t) => t.filter((x) => x.ruleId !== id));
-      }
+      });
     });
   }
 
@@ -120,7 +150,7 @@ export function RulesEditor(props: {
       const existing = templates.find(
         (t) => t.ruleId === ruleId && t.driverScope === body.driverScope,
       );
-      const url = existing ? `/api/reminders/templates/${existing.id}` : `/api/reminders/templates`;
+      const url = existing ? `/api/reminders/templates/${existing.id}` : '/api/reminders/templates';
       const method = existing ? 'PATCH' : 'POST';
       const payload = existing ? body : { ruleId, ...body };
       const res = await fetch(url, {
@@ -135,8 +165,8 @@ export function RulesEditor(props: {
           return [...without, data.template];
         });
       } else {
-        alert(`No se ha podido guardar la plantilla: ${data.error ?? 'error desconocido'}`);
         console.error('[upsertTemplate] failed', { status: res.status, data });
+        setError(`No se pudo guardar la plantilla: ${data.error ?? 'error desconocido'}.`);
       }
     });
   }
@@ -152,22 +182,23 @@ export function RulesEditor(props: {
     const data = await res.json().catch(() => ({}));
     console.debug('[reminders] backfill response', { status: res.status, data });
     if (res.ok && data.ok) {
-      alert(
-        `✓ Recordatorios programados.\n\n` +
-          `Citas procesadas: ${data.appointmentsProcessed}\n` +
-          `Recordatorios programados: ${data.scheduled}\n` +
-          `Omitidos: ${data.skipped}\n` +
-          (data.errors ? `Errores: ${data.errors}\n` : ''),
+      setError(null);
+      setNotice(
+        `Recordatorios programados. Citas procesadas: ${data.appointmentsProcessed} · Programados: ${data.scheduled} · Omitidos: ${data.skipped}${data.errors ? ` · Errores: ${data.errors}` : ''}`,
       );
     } else {
-      alert(
-        `No se han podido programar los recordatorios.\n\nMotivo: ${data.error ?? 'error desconocido'}`,
-      );
+      setNotice(null);
+      setError(`No se pudieron programar los recordatorios: ${data.error ?? 'error desconocido'}.`);
     }
   }
 
   return (
     <div className="space-y-8">
+      {/* role="alert" para que un lector de pantalla también se entere de que
+          la operación falló, no sólo quien está mirando. */}
+      {error && <Callout tone="danger">{error}</Callout>}
+      {notice && <Callout tone="success">{notice}</Callout>}
+
       <section className="rounded-lg border border-[--color-border] bg-zinc-50 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">

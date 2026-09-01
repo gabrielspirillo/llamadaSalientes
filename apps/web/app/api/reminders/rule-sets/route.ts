@@ -17,7 +17,7 @@ const createSchema = z.object({
 });
 
 export async function GET(): Promise<NextResponse> {
-  let auth;
+  let auth: Awaited<ReturnType<typeof requireReminderRole>>;
   try {
     auth = await requireReminderRole('viewer');
   } catch (err) {
@@ -31,7 +31,7 @@ export async function GET(): Promise<NextResponse> {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  let auth;
+  let auth: Awaited<ReturnType<typeof requireReminderRole>>;
   try {
     auth = await requireReminderRole('admin');
   } catch (err) {

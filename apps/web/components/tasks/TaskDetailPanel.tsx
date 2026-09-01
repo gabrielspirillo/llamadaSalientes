@@ -350,7 +350,7 @@ export function TaskDetailPanel({
                   const v = e.target.value;
                   if (v !== (task.description ?? '')) void patch({ description: v || null });
                 }}
-                className="w-full resize-y rounded-xl border border-zinc-200 px-3 py-2 text-sm leading-relaxed text-zinc-700 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none"
+                className="w-full resize-y rounded-xl border border-zinc-200 px-3 py-2 text-sm leading-relaxed text-zinc-700 placeholder:text-zinc-500 focus:border-zinc-400 focus:outline-none"
               />
             </section>
 
@@ -408,7 +408,7 @@ export function TaskDetailPanel({
               <SectionTitle>
                 Lista de comprobación
                 {task.checklistTotal > 0 && (
-                  <span className="ml-2 font-normal text-zinc-400 tabular-nums">
+                  <span className="ml-2 font-normal text-zinc-500 tabular-nums">
                     {task.checklistDone}/{task.checklistTotal}
                   </span>
                 )}
@@ -469,7 +469,7 @@ export function TaskDetailPanel({
                     value={newItem}
                     onChange={(e) => setNewItem(e.target.value)}
                     placeholder="Añadir paso"
-                    className="flex-1 border-0 border-b border-transparent bg-transparent py-1 text-sm placeholder:text-zinc-400 focus:border-zinc-300 focus:outline-none"
+                    className="flex-1 border-0 border-b border-transparent bg-transparent py-1 text-sm placeholder:text-zinc-500 focus:border-zinc-300 focus:outline-none"
                   />
                 </form>
               )}
@@ -519,7 +519,7 @@ export function TaskDetailPanel({
                       >
                         {c.body}
                       </p>
-                      <p className="mt-0.5 text-[12px] text-zinc-400">
+                      <p className="mt-0.5 text-[12px] text-zinc-500">
                         {c.authorName ? `${c.authorName} · ` : ''}
                         {new Date(c.createdAt).toLocaleString('es-ES', {
                           day: '2-digit',
@@ -532,7 +532,7 @@ export function TaskDetailPanel({
                   </li>
                 ))}
                 {task.comments.length === 0 && (
-                  <li className="text-xs text-zinc-400">Todavía no ha pasado nada aquí.</li>
+                  <li className="text-xs text-zinc-500">Todavía no ha pasado nada aquí.</li>
                 )}
               </ul>
             </section>
@@ -569,7 +569,7 @@ export function TaskDetailPanel({
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 placeholder="Escribir un comentario…"
-                className="flex-1 rounded-full border border-zinc-200 px-3.5 py-2 text-sm placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none"
+                className="flex-1 rounded-full border border-zinc-200 px-3.5 py-2 text-sm placeholder:text-zinc-500 focus:border-zinc-400 focus:outline-none"
               />
               <Button type="submit" size="icon" variant="primary" aria-label="Comentar">
                 <Send className="h-4 w-4" />
@@ -704,7 +704,7 @@ function ContextThread({
       <ul className="max-h-64 space-y-3 overflow-y-auto px-3 py-3">
         {messages.map((m) => (
           <li key={m.id} className="text-sm">
-            <p className="text-[12px] font-medium text-zinc-400">
+            <p className="text-[12px] font-medium text-zinc-500">
               {m.senderKind === 'USER' ? (m.senderName ?? 'Alguien') : 'Cliniq'} ·{' '}
               {new Date(m.createdAt).toLocaleString('es-ES', {
                 day: '2-digit',
@@ -717,7 +717,7 @@ function ContextThread({
           </li>
         ))}
         {messages.length === 0 && (
-          <li className="text-xs text-zinc-400">
+          <li className="text-xs text-zinc-500">
             Nadie escribió todavía. Lo que se hable acá queda con la tarea.
           </li>
         )}
@@ -733,7 +733,7 @@ function ContextThread({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Escribile al equipo…"
-          className="flex-1 rounded-full border border-zinc-200 px-3 py-1.5 text-sm placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none"
+          className="flex-1 rounded-full border border-zinc-200 px-3 py-1.5 text-sm placeholder:text-zinc-500 focus:border-zinc-400 focus:outline-none"
         />
         <Button type="submit" size="icon" variant="primary" disabled={sending} aria-label="Enviar">
           {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -746,7 +746,7 @@ function ContextThread({
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-zinc-400">
+    <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-zinc-500">
       {children}
     </h3>
   );
@@ -757,7 +757,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   // biome no puede verificar la asociación. El <span> hace de título visual.
   return (
     <div className="block">
-      <span className="mb-1 block text-[12px] font-semibold uppercase tracking-wide text-zinc-400">
+      <span className="mb-1 block text-[12px] font-semibold uppercase tracking-wide text-zinc-500">
         {label}
       </span>
       {children}

@@ -157,7 +157,7 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
               </div>
               <Link
                 href="/dashboard/whatsapp/quick-replies"
-                className="mt-0.5 inline-flex items-center gap-1 text-[13px] text-zinc-400 transition-colors hover:text-brand-600"
+                className="mt-0.5 inline-flex items-center gap-1 text-[13px] text-zinc-500 transition-colors hover:text-brand-600"
               >
                 <Zap className="h-3 w-3" />
                 Respuestas rápidas

@@ -20,6 +20,7 @@ import {
   driverScopeForWhatsAppMode,
   resolveTemplate,
 } from '@/lib/reminders/template-resolver';
+import type { ReminderVars } from '@/lib/reminders/variables';
 import { buildReminderVars, interpolate } from '@/lib/reminders/variables';
 
 export const runtime = 'nodejs';
@@ -34,7 +35,7 @@ const inputSchema = z.object({
 // Devuelve el contenido renderizado del reminder para una regla + cita opcional.
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  let auth;
+  let auth: Awaited<ReturnType<typeof requireReminderRole>>;
   try {
     auth = await requireReminderRole('viewer');
   } catch (err) {
@@ -104,7 +105,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     .limit(1);
 
   // 5. Vars: sample o cita real.
-  let vars;
+  let vars: ReminderVars;
   if (parsed.data.sampleGhlAppointmentId) {
     const [appt] = await db
       .select()

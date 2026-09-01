@@ -156,7 +156,7 @@ export function QuickSwitcher() {
               setCursor(0);
             }}
             placeholder="Ir a un canal o a una persona…"
-            className="relative flex-1 bg-transparent text-[16px] outline-none placeholder:text-zinc-400"
+            className="relative flex-1 bg-transparent text-[16px] outline-none placeholder:text-zinc-500"
           />
           <button
             type="button"
@@ -216,7 +216,7 @@ export function QuickSwitcher() {
           )}
         </div>
 
-        <div className="flex items-center justify-between border-t border-[--color-border-subtle] bg-[#fbfaff] px-5 py-2.5 text-[12px] text-zinc-400">
+        <div className="flex items-center justify-between border-t border-[--color-border-subtle] bg-[#fbfaff] px-5 py-2.5 text-[12px] text-zinc-500">
           <span>↑↓ para moverte · ↵ para abrir · Esc para cerrar</span>
           <span className="tabular-nums">⌘J</span>
         </div>

@@ -124,8 +124,8 @@ export function IntentDonut({ data }: { data: Intent[] }) {
             stroke="none"
             {...chartAnim}
           >
-            {chartData.map((_, i) => (
-              <Cell key={i} fill={chartSequence[i % chartSequence.length]} />
+            {chartData.map((d, i) => (
+              <Cell key={d.name} fill={chartSequence[i % chartSequence.length]} />
             ))}
           </Pie>
         </PieChart>
@@ -134,7 +134,7 @@ export function IntentDonut({ data }: { data: Intent[] }) {
         <span className="text-[28px] font-bold leading-none tabular-nums text-zinc-900">
           {total}
         </span>
-        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">
           Total
         </span>
       </div>

@@ -52,5 +52,22 @@
   },
   "organizeImports": {
     "enabled": true
-  }
+  },
+  "overrides": [
+    {
+      "include": ["**/tests/**", "**/scripts/**", "apps/web/worker/preload.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noNonNullAssertion": "off"
+          },
+          "suspicious": {
+            "noExplicitAny": "off",
+            "noThenProperty": "off",
+            "noArrayIndexKey": "off"
+          }
+        }
+      }
+    }
+  ]
 }

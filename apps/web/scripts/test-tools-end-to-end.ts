@@ -3,8 +3,8 @@
 import { createDecipheriv } from 'node:crypto';
 import path from 'node:path';
 import { config } from 'dotenv';
-import { drizzle } from 'drizzle-orm/postgres-js';
 import { eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from '../lib/db/schema';
 import { ghlIntegrations, tenants } from '../lib/db/schema';
@@ -30,7 +30,7 @@ type GhlSlot = { startTime: string; endTime: string };
 // COPIA EXACTA del parser en lib/ghl/calendars.ts
 function parseSlots(data: Record<string, unknown>): GhlSlot[] {
   if (Array.isArray((data as { slots?: GhlSlot[] }).slots)) {
-    return ((data as { slots: GhlSlot[] }).slots) ?? [];
+    return (data as { slots: GhlSlot[] }).slots ?? [];
   }
   const dateKeyRegex = /^\d{4}-\d{2}-\d{2}$/;
   const allSlots: GhlSlot[] = [];
@@ -48,7 +48,8 @@ function parseSlots(data: Record<string, unknown>): GhlSlot[] {
 }
 
 function formatSlots(slots: GhlSlot[]): string {
-  if (slots.length === 0) return 'No hay disponibilidad en esa fecha. Proponé al paciente otra fecha.';
+  if (slots.length === 0)
+    return 'No hay disponibilidad en esa fecha. Proponé al paciente otra fecha.';
   const formatted = slots
     .slice(0, 4)
     .map((s) =>
@@ -70,12 +71,14 @@ async function main() {
 
   try {
     const [tenant] = await db.select().from(tenants).limit(1);
+    if (!tenant) throw new Error('No hay ningún tenant en la base');
     const [row] = await db
       .select()
       .from(ghlIntegrations)
-      .where(eq(ghlIntegrations.tenantId, tenant!.id))
+      .where(eq(ghlIntegrations.tenantId, tenant.id))
       .limit(1);
-    const token = decrypt(row!.accessTokenEnc);
+    if (!row) throw new Error('El tenant no tiene integración de GHL');
+    const token = decrypt(row.accessTokenEnc);
     const blanqCalId = 'pz4SqN6ndM0VxYFsV1bP'; // Blanqueamiento
 
     for (let offset = 1; offset <= 5; offset++) {

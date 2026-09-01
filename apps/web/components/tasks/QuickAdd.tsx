@@ -112,9 +112,9 @@ export function QuickAdd({
             if (e.key === 'Escape') onCancel?.();
           }}
           placeholder="Llamar a María mañana 10:30 #paciente !alta @lucia"
-          className="min-w-0 flex-1 border-0 bg-transparent text-sm placeholder:text-zinc-400 focus:outline-none"
+          className="min-w-0 flex-1 border-0 bg-transparent text-sm placeholder:text-zinc-500 focus:outline-none"
         />
-        <span className="hidden shrink-0 text-[11px] text-zinc-400 sm:inline">
+        <span className="hidden shrink-0 text-[11px] text-zinc-500 sm:inline">
           en {STATUS_META[status].label}
         </span>
         <Button type="submit" size="sm" disabled={busy || !parsed.title.trim()}>

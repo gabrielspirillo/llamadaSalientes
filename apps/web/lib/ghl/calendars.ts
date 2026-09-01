@@ -77,18 +77,18 @@ export async function resolveCalendarId(
     const words = options.treatmentName
       .toLowerCase()
       .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '') // quitar acentos
+      .replace(/\p{M}/gu, '') // quitar acentos
       .split(/[^a-z0-9]+/)
       .filter((w) => w.length >= 4 && !['para', 'cita', 'dental', 'consulta'].includes(w));
 
     if (words.length > 0) {
       const ilikes = words.map((w) => ilike(treatments.name, `%${w}%`));
-      const search = ilikes.length === 1 ? ilikes[0]! : or(...ilikes);
+      const search = ilikes.length === 1 ? ilikes[0] : or(...ilikes);
 
       const rows = await db
         .select({ ghlCalendarId: treatments.ghlCalendarId, name: treatments.name })
         .from(treatments)
-        .where(and(eq(treatments.tenantId, tenantId), search!))
+        .where(and(eq(treatments.tenantId, tenantId), search))
         .limit(1);
 
       const id = rows[0]?.ghlCalendarId;

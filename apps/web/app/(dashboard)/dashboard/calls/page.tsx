@@ -172,7 +172,7 @@ export default async function CallsPage({
                             <p className="truncate text-[15px] font-semibold text-zinc-800">
                               {display}
                             </p>
-                            <span className="shrink-0 text-[12px] tabular-nums text-zinc-400">
+                            <span className="shrink-0 text-[12px] tabular-nums text-zinc-500">
                               {c.startedAt
                                 ? new Date(c.startedAt).toLocaleString('es-ES', {
                                     day: '2-digit',

@@ -14,9 +14,10 @@ export async function encodeBlobToMp3(blob: Blob): Promise<Blob> {
   const arrayBuf = await blob.arrayBuffer();
   // AudioContext está disponible en navegadores modernos. Si no, el caller
   // debería detectar y mostrar error antes de llamar a esta función.
-  const AudioCtx: typeof AudioContext =
+  const AudioCtx: typeof AudioContext | undefined =
     window.AudioContext ??
-    (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext!;
+    (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioCtx) throw new Error('Este navegador no soporta AudioContext');
   const ctx = new AudioCtx();
   let audioBuffer: AudioBuffer;
   try {
@@ -49,7 +50,7 @@ export async function encodeBlobToMp3(blob: Blob): Promise<Blob> {
 function float32ToInt16(input: Float32Array): Int16Array {
   const out = new Int16Array(input.length);
   for (let i = 0; i < input.length; i++) {
-    const s = Math.max(-1, Math.min(1, input[i]!));
+    const s = Math.max(-1, Math.min(1, input[i] ?? 0));
     out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
   }
   return out;

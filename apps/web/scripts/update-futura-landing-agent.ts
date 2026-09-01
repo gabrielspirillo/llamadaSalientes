@@ -145,8 +145,7 @@ const REGISTER_PATIENT_TOOL = {
 const GET_PATIENT_INFO_TOOL = {
   type: 'custom' as const,
   name: 'get_patient_info',
-  description:
-    'Busca un contacto en el CRM por teléfono. Devuelve contact_id + nombre si existe.',
+  description: 'Busca un contacto en el CRM por teléfono. Devuelve contact_id + nombre si existe.',
   url: TOOLS_WEBHOOK_URL,
   speak_during_execution: true,
   speak_after_execution: false,
@@ -208,7 +207,9 @@ const ALL_TOOLS = [
 async function main() {
   const apiKey = process.env.RETELL_API_KEY;
   if (!apiKey) {
-    console.error('❌ RETELL_API_KEY no está seteada. Ejecutá con:\n  RETELL_API_KEY=key_... pnpm tsx apps/web/scripts/update-futura-landing-agent.ts');
+    console.error(
+      '❌ RETELL_API_KEY no está seteada. Ejecutá con:\n  RETELL_API_KEY=key_... pnpm tsx apps/web/scripts/update-futura-landing-agent.ts',
+    );
     process.exit(1);
   }
 
@@ -216,26 +217,33 @@ async function main() {
 
   // 1. Leer el agente para obtener el llm_id
   console.log(`→ Leyendo agente ${AGENT_ID}...`);
-  // biome-ignore lint/suspicious/noExplicitAny: SDK types incomplete
   const agent = await (client as any).agent.retrieve(AGENT_ID);
   const llmId: string | undefined = agent.response_engine?.llm_id;
 
   if (!llmId) {
-    console.error('❌ No pude obtener llm_id del agente. response_engine:', JSON.stringify(agent.response_engine));
+    console.error(
+      '❌ No pude obtener llm_id del agente. response_engine:',
+      JSON.stringify(agent.response_engine),
+    );
     process.exit(1);
   }
   console.log(`  ✓ llm_id = ${llmId}`);
 
   // 2. Leer el LLM actual (para logging)
   console.log(`→ Leyendo LLM ${llmId}...`);
-  // biome-ignore lint/suspicious/noExplicitAny: SDK types incomplete
   const llm = await (client as any).llm.retrieve(llmId);
-  console.log('  Prompt actual (primeros 200 chars):', (llm.general_prompt ?? '').slice(0, 200), '...');
-  console.log('  Tools actuales:', (llm.general_tools ?? []).map((t: { name?: string }) => t.name).join(', ') || '(ninguna)');
+  console.log(
+    '  Prompt actual (primeros 200 chars):',
+    (llm.general_prompt ?? '').slice(0, 200),
+    '...',
+  );
+  console.log(
+    '  Tools actuales:',
+    (llm.general_tools ?? []).map((t: { name?: string }) => t.name).join(', ') || '(ninguna)',
+  );
 
   // 3. Actualizar el LLM
   console.log(`→ Actualizando LLM ${llmId}...`);
-  // biome-ignore lint/suspicious/noExplicitAny: SDK types incomplete
   await (client as any).llm.update(llmId, {
     general_prompt: GENERAL_PROMPT,
     general_tools: ALL_TOOLS,

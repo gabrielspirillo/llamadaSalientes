@@ -95,7 +95,9 @@ export function initials(c: GhlContact): string {
 }
 
 // Paleta de gradients para avatars (determinista por contactId)
-const AVATAR_GRADIENTS = [
+// Tupla no vacía a propósito: así el fallback `?? AVATAR_GRADIENTS[0]` es un
+// string y no hace falta un non-null assertion.
+const AVATAR_GRADIENTS: readonly [string, ...string[]] = [
   'from-brand-600 to-brand-400',
   'from-emerald-600 to-emerald-400',
   'from-teal-600 to-teal-400',
@@ -109,5 +111,5 @@ const AVATAR_GRADIENTS = [
 export function avatarGradient(c: GhlContact): string {
   let hash = 0;
   for (const ch of c.id) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
-  return AVATAR_GRADIENTS[hash % AVATAR_GRADIENTS.length]!;
+  return AVATAR_GRADIENTS[hash % AVATAR_GRADIENTS.length] ?? AVATAR_GRADIENTS[0];
 }

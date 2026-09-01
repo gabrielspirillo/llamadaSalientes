@@ -10,9 +10,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  // Sin zoom en mobile: evita el pinch-zoom que desarma el layout.
-  maximumScale: 1,
-  userScalable: false,
+  // El pinch-zoom queda habilitado: bloquearlo incumple WCAG 1.4.4 y deja el
+  // panel inusable en móvil para cualquiera con presbicia. Si el layout se
+  // desarma con zoom, eso se arregla en el layout.
   viewportFit: 'cover',
 };
 

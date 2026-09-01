@@ -1,8 +1,8 @@
 import { createDecipheriv } from 'node:crypto';
 import path from 'node:path';
 import { config } from 'dotenv';
-import { drizzle } from 'drizzle-orm/postgres-js';
 import { eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from '../lib/db/schema';
 import { ghlIntegrations, tenants } from '../lib/db/schema';
@@ -33,10 +33,7 @@ async function main() {
   const db = drizzle(sql, { schema });
 
   try {
-    const [tenant] = await db
-      .select({ id: tenants.id, name: tenants.name })
-      .from(tenants)
-      .limit(1);
+    const [tenant] = await db.select({ id: tenants.id, name: tenants.name }).from(tenants).limit(1);
     if (!tenant) throw new Error('No tenant');
 
     const [row] = await db

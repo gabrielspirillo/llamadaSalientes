@@ -66,7 +66,7 @@ export function InsightsPanel() {
           </div>
         )}
 
-        {data && data.message && <p className="text-sm text-zinc-500 italic">{data.message}</p>}
+        {data?.message && <p className="text-sm text-zinc-500 italic">{data.message}</p>}
 
         {data && !data.message && (
           <div className="space-y-5">

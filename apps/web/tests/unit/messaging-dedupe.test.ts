@@ -120,6 +120,7 @@ vi.mock('@/lib/messaging/queries', () => ({
   toMessageDTO: (row: Record<string, unknown>) => ({ id: row.id, senderName: null }),
 }));
 
+import { imChannelMembers, imChannels, imMessages } from '@/lib/db/schema';
 import {
   createChannel,
   ensureContextChannel,
@@ -127,7 +128,6 @@ import {
   ensureSlugChannel,
 } from '@/lib/messaging/channels';
 import { SEED_CHANNELS } from '@/lib/messaging/constants';
-import { imChannelMembers, imChannels, imMessages } from '@/lib/db/schema';
 
 beforeEach(() => {
   dbState.inserts = [];
@@ -426,8 +426,10 @@ describe('sendMessage — idempotencia por partida doble', () => {
       dedupeKey: 'evt:call.missed:call-1',
     });
 
-    const insert = dbState.inserts.find((c) => c.table === imMessages)!
-      .values as Record<string, unknown>;
+    const insert = dbState.inserts.find((c) => c.table === imMessages)?.values as Record<
+      string,
+      unknown
+    >;
     expect(insert).toMatchObject({
       clientNonce: 'nonce-abc',
       dedupeKey: 'evt:call.missed:call-1',
@@ -494,9 +496,10 @@ describe('sendMessage — idempotencia por partida doble', () => {
 // ─── Claves de evento del bot ───────────────────────────────────────────────
 
 describe('bot — claves `evt:<evento>:<entidad>`', () => {
-  const sendMessage = vi.fn(
-    async (_input: Record<string, unknown>) => ({ id: 'msg-1', created: true }),
-  );
+  const sendMessage = vi.fn(async (_input: Record<string, unknown>) => ({
+    id: 'msg-1',
+    created: true,
+  }));
 
   async function loadBot(): Promise<typeof import('@/lib/messaging/bot')> {
     vi.resetModules();
@@ -522,7 +525,7 @@ describe('bot — claves `evt:<evento>:<entidad>`', () => {
     });
 
     expect(sendMessage).toHaveBeenCalledTimes(1);
-    expect(sendMessage.mock.calls[0]![0]).toMatchObject({
+    expect(sendMessage.mock.calls[0]?.[0]).toMatchObject({
       dedupeKey: 'evt:appointment.cancelled:appt-9',
       eventKey: 'appointment.cancelled',
       senderKind: 'BOT',
@@ -538,7 +541,7 @@ describe('bot — claves `evt:<evento>:<entidad>`', () => {
       title: 'Resumen del día',
     });
 
-    expect(sendMessage.mock.calls[0]![0]).toMatchObject({
+    expect(sendMessage.mock.calls[0]?.[0]).toMatchObject({
       dedupeKey: 'evt:analytics.daily_digest:t1',
     });
   });
@@ -553,7 +556,7 @@ describe('bot — claves `evt:<evento>:<entidad>`', () => {
       dedupeKey: 'evt:call.missed:call-1:reintento',
     });
 
-    expect(sendMessage.mock.calls[0]![0]).toMatchObject({
+    expect(sendMessage.mock.calls[0]?.[0]).toMatchObject({
       dedupeKey: 'evt:call.missed:call-1:reintento',
     });
   });
@@ -567,7 +570,7 @@ describe('bot — claves `evt:<evento>:<entidad>`', () => {
       patientName: 'Marta',
       phone: '+34600111222',
     });
-    expect(sendMessage.mock.calls[0]![0]).toMatchObject({
+    expect(sendMessage.mock.calls[0]?.[0]).toMatchObject({
       dedupeKey: 'evt:call.missed:call-7',
     });
 
@@ -582,7 +585,7 @@ describe('bot — claves `evt:<evento>:<entidad>`', () => {
       phone: null,
       transferredUnanswered: true,
     });
-    expect(sendMessage.mock.calls[0]![0]).toMatchObject({
+    expect(sendMessage.mock.calls[0]?.[0]).toMatchObject({
       dedupeKey: 'evt:call.transferred_unanswered:call-7',
     });
   });
@@ -596,7 +599,7 @@ describe('bot — claves `evt:<evento>:<entidad>`', () => {
       patientName: 'Marta',
       phone: null,
     });
-    const primera = sendMessage.mock.calls[0]![0] as unknown as { dedupeKey: string };
+    const primera = sendMessage.mock.calls[0]?.[0] as unknown as { dedupeKey: string };
 
     sendMessage.mockClear();
     dbState.insertReturns = [[{ id: 'canal-1' }]];
@@ -608,7 +611,7 @@ describe('bot — claves `evt:<evento>:<entidad>`', () => {
       patientName: 'Marta',
       phone: null,
     });
-    const segunda = sendMessage.mock.calls[0]![0] as unknown as { dedupeKey: string };
+    const segunda = sendMessage.mock.calls[0]?.[0] as unknown as { dedupeKey: string };
 
     expect(segunda.dedupeKey).toBe(primera.dedupeKey);
   });
@@ -621,7 +624,7 @@ describe('bot — claves `evt:<evento>:<entidad>`', () => {
       slotStart: new Date('2026-03-03T10:00:00Z'),
     });
 
-    expect(sendMessage.mock.calls[0]![0]).toMatchObject({
+    expect(sendMessage.mock.calls[0]?.[0]).toMatchObject({
       dedupeKey: 'evt:waitlist.slot_open:slot-3',
     });
   });
@@ -637,7 +640,7 @@ describe('bot — claves `evt:<evento>:<entidad>`', () => {
     });
 
     const hoy = new Date().toISOString().slice(0, 10);
-    expect(sendMessage.mock.calls[0]![0]).toMatchObject({
+    expect(sendMessage.mock.calls[0]?.[0]).toMatchObject({
       dedupeKey: `evt:wa.handoff:conv-4:${hoy}`,
     });
   });

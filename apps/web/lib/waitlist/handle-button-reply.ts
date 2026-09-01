@@ -25,10 +25,11 @@ export function parseWaitlistButtonId(
 ): { action: WaitlistButtonAction; offerId: string } | null {
   if (!buttonId) return null;
   const m = BUTTON_RE.exec(buttonId);
-  if (!m) return null;
+  const offerId = m?.[2];
+  if (!m || !offerId) return null;
   return {
-    action: m[1]!.toLowerCase() as WaitlistButtonAction,
-    offerId: m[2]!,
+    action: m[1]?.toLowerCase() as WaitlistButtonAction,
+    offerId,
   };
 }
 

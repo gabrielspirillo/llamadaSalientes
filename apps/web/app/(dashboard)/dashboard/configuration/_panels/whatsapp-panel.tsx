@@ -131,7 +131,7 @@ export async function WhatsappPanel() {
 
           <TwilioConnectionForm
             initial={
-              twilio && twilio.twilioAccountSid && twilio.twilioFromNumber
+              twilio?.twilioAccountSid && twilio.twilioFromNumber
                 ? {
                     accountSid: twilio.twilioAccountSid,
                     fromNumber: twilio.twilioFromNumber,
@@ -145,15 +145,20 @@ export async function WhatsappPanel() {
   );
 }
 
+const NOT_CONFIGURED_BADGE = {
+  label: 'No configurado',
+  cls: 'bg-zinc-100 text-zinc-500',
+};
+
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     CONNECTED: { label: 'Conectado', cls: 'bg-emerald-100 text-emerald-800' },
     PENDING: { label: 'Pendiente', cls: 'bg-amber-100 text-amber-800' },
     DISCONNECTED: { label: 'Desconectado', cls: 'bg-zinc-100 text-zinc-600' },
     ERROR: { label: 'Error', cls: 'bg-rose-100 text-rose-700' },
-    NOT_CONFIGURED: { label: 'No configurado', cls: 'bg-zinc-100 text-zinc-500' },
+    NOT_CONFIGURED: NOT_CONFIGURED_BADGE,
   };
-  const { label, cls } = map[status] ?? map.NOT_CONFIGURED!;
+  const { label, cls } = map[status] ?? NOT_CONFIGURED_BADGE;
   return (
     <span className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${cls}`}>{label}</span>
   );

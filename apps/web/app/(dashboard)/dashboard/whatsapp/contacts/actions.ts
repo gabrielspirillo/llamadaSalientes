@@ -185,8 +185,9 @@ export async function addContactNote(input: unknown): Promise<ActionResult<{ id:
     })
     .returning({ id: whatsappContactNotes.id });
 
+  if (!row) return fail('No se pudo guardar la nota');
   revalidatePath(`/dashboard/whatsapp/contacts/${parsed.data.contactId}`);
-  return ok({ id: row!.id });
+  return ok({ id: row.id });
 }
 
 const deleteNoteSchema = z.object({ id: z.string().uuid(), contactId: z.string().uuid() });

@@ -194,7 +194,7 @@ export function MessagingAnalyticsPanel({ data }: { data: MessagingAnalytics | n
                                 <span className="block truncate font-semibold text-zinc-800">
                                   {p.name}
                                 </span>
-                                <span className="block truncate text-[12px] text-zinc-400">
+                                <span className="block truncate text-[12px] text-zinc-500">
                                   {p.email}
                                 </span>
                               </span>

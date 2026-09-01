@@ -7,9 +7,9 @@ import { hasSeededChannels, seedMessagingForTenant } from '@/lib/messaging/seed'
 import type { ImRailDTO } from '@/lib/messaging/types';
 import { normalizeRole } from '@/lib/tasks/auth';
 import { getCurrentTenant } from '@/lib/tenant';
-import { after } from 'next/server';
 import { and, eq } from 'drizzle-orm';
 import { MessageSquare } from 'lucide-react';
+import { after } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 

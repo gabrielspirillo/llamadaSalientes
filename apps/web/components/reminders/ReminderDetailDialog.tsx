@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Callout } from '@/components/ui/feedback';
 import type { Reminder, Rule } from './Pipeline';
 
 type Vars = {
@@ -74,6 +75,7 @@ export function ReminderDetailDialog({
     tone: 'neutral' as const,
   };
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -100,14 +102,18 @@ export function ReminderDetailDialog({
     )
       return;
     setBusy(true);
-    const res = await fetch(`/api/reminders/${reminder.id}/mark`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ action }),
-    });
-    const data = await res.json().catch(() => ({}));
-    setBusy(false);
-    if (res.ok) {
+    setError(null);
+    try {
+      const res = await fetch(`/api/reminders/${reminder.id}/mark`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setError(`No se pudo marcar: ${data.error ?? 'error desconocido'}.`);
+        return;
+      }
       // Optimistic update: aplicar el cambio al state del Pipeline ya mismo
       // para que la card se mueva de columna sin esperar al próximo poll.
       const newStatus =
@@ -121,14 +127,25 @@ export function ReminderDetailDialog({
         respondedAt: new Date().toISOString(),
       });
       onClose();
-    } else {
-      alert(`No se ha podido marcar.\n\nMotivo: ${data.error ?? 'error desconocido'}`);
+    } catch (err) {
+      console.error('[reminders] marcar falló', err);
+      setError('No se pudo marcar. Revisá la conexión y probá de nuevo.');
+    } finally {
+      // En el finally a propósito: con setBusy(false) en la ruta feliz, un
+      // corte de red dejaba los tres botones deshabilitados para siempre y
+      // había que recargar la página.
+      setBusy(false);
     }
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <button
+        type="button"
+        aria-label="Cerrar"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
       <div className="relative z-10 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
         <div className="flex items-start justify-between border-b border-[--color-border-subtle] p-5">
           <div className="min-w-0">
@@ -142,6 +159,7 @@ export function ReminderDetailDialog({
           <div className="flex items-center gap-2 shrink-0">
             <Badge tone={status.tone}>{status.label}</Badge>
             <button
+              type="button"
               onClick={onClose}
               className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
               aria-label="Cerrar"
@@ -205,7 +223,16 @@ export function ReminderDetailDialog({
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-2 border-t border-[--color-border-subtle] p-5">
+        {error && (
+          <div className="px-5 pt-4">
+            <Callout tone="danger">{error}</Callout>
+          </div>
+        )}
+
+        <div
+          className="flex flex-wrap items-center gap-2 border-t border-[--color-border-subtle] p-5"
+          aria-busy={busy}
+        >
           <Button size="sm" onClick={() => mark('confirm')} disabled={busy}>
             Marcar como confirmado
           </Button>

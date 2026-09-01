@@ -518,7 +518,7 @@ function PatientTeamThread({ contactId, label }: { contactId: string; label: str
       <ul className="max-h-72 space-y-3 overflow-y-auto px-3 py-3">
         {messages.map((m) => (
           <li key={m.id} className="text-sm">
-            <p className="text-[12px] font-medium text-zinc-400">
+            <p className="text-[12px] font-medium text-zinc-500">
               {m.senderKind === 'USER' ? (m.senderName ?? 'Alguien') : 'Cliniq'} ·{' '}
               {fmtDateTime(m.createdAt)}
             </p>
@@ -526,7 +526,7 @@ function PatientTeamThread({ contactId, label }: { contactId: string; label: str
           </li>
         ))}
         {messages.length === 0 && (
-          <li className="text-xs text-zinc-400">
+          <li className="text-xs text-zinc-500">
             Todavía no hay notas del equipo sobre esta persona.
           </li>
         )}

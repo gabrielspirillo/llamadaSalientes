@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { config } from 'dotenv';
-import { drizzle } from 'drizzle-orm/postgres-js';
 import { eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from '../lib/db/schema';
 import { phoneNumbers, tenants } from '../lib/db/schema';
@@ -61,10 +61,7 @@ async function main() {
         console.log(`✅ ${e164} ya está vinculado a ${tenant.name}`);
         return;
       }
-      await db
-        .update(phoneNumbers)
-        .set({ tenantId: tenant.id })
-        .where(eq(phoneNumbers.e164, e164));
+      await db.update(phoneNumbers).set({ tenantId: tenant.id }).where(eq(phoneNumbers.e164, e164));
       console.log(`✅ ${e164} reasignado a ${tenant.name}`);
       return;
     }

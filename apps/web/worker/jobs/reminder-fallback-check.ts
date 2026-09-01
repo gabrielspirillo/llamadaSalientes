@@ -11,7 +11,7 @@ import {
 import type { QueueJobs } from '@/lib/queue/queues';
 import type { StepRunner } from '@/lib/queue/step';
 import { sendVoiceReminder } from '@/lib/reminders/send-voice';
-import { sendWhatsAppReminder, deriveContactDisplayName } from '@/lib/reminders/send-whatsapp';
+import { deriveContactDisplayName, sendWhatsAppReminder } from '@/lib/reminders/send-whatsapp';
 import type { ReminderVars } from '@/lib/reminders/variables';
 
 // Handler de la queue 'reminder-fallback-check'.
@@ -32,10 +32,7 @@ export async function processReminderFallbackCheckJob(
       .select()
       .from(appointmentReminders)
       .where(
-        and(
-          eq(appointmentReminders.tenantId, tenantId),
-          eq(appointmentReminders.id, reminderId),
-        ),
+        and(eq(appointmentReminders.tenantId, tenantId), eq(appointmentReminders.id, reminderId)),
       )
       .limit(1);
 
@@ -88,9 +85,7 @@ export async function processReminderFallbackCheckJob(
 
     // Vars del snapshot.
     const snapshot = (rem.payloadSnapshot ?? {}) as { vars?: ReminderVars };
-    const vars: ReminderVars | null = snapshot.vars
-      ? { ...snapshot.vars, reminderId }
-      : null;
+    const vars: ReminderVars | null = snapshot.vars ? { ...snapshot.vars, reminderId } : null;
     if (!vars || !vars.contact.phone) return { status: 'failed', reason: 'no_vars' };
 
     const displayName = deriveContactDisplayName(vars);
@@ -152,10 +147,7 @@ async function publishReminderNoResponse(tenantId: string, reminderId: string): 
       })
       .from(appointmentReminders)
       .where(
-        and(
-          eq(appointmentReminders.tenantId, tenantId),
-          eq(appointmentReminders.id, reminderId),
-        ),
+        and(eq(appointmentReminders.tenantId, tenantId), eq(appointmentReminders.id, reminderId)),
       )
       .limit(1);
     if (!rem) return;

@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic';
 // Devuelve el pipeline de reminders del tenant para la UI.
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  let auth;
+  let auth: Awaited<ReturnType<typeof requireReminderRole>>;
   try {
     auth = await requireReminderRole('viewer');
   } catch (err) {
@@ -29,8 +29,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const sp = req.nextUrl.searchParams;
   const status = sp.get('status') ?? undefined;
   const channel = sp.get('channel') ?? undefined;
-  const from = sp.get('from') ? new Date(sp.get('from')!) : null;
-  const to = sp.get('to') ? new Date(sp.get('to')!) : null;
+  const fromRaw = sp.get('from');
+  const toRaw = sp.get('to');
+  const from = fromRaw ? new Date(fromRaw) : null;
+  const to = toRaw ? new Date(toRaw) : null;
   const include = sp.get('include') ?? '';
 
   const conds = [eq(appointmentReminders.tenantId, tenantId)];

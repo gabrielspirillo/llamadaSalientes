@@ -169,7 +169,7 @@ export function MessagesDock() {
                     <span className="block truncate text-[14px] font-bold tracking-tight text-zinc-900">
                       {current?.name ?? 'Mensajes'}
                     </span>
-                    <span className="block truncate text-[11px] text-zinc-400">
+                    <span className="block truncate text-[11px] text-zinc-500">
                       {totalUnread > 0 ? `${totalUnread} sin leer` : 'Al día'}
                     </span>
                   </span>
@@ -184,7 +184,7 @@ export function MessagesDock() {
                 {pickerOpen && (
                   <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-[280px] animate-fade-down overflow-y-auto rounded-2xl border border-white/60 bg-white p-1.5 shadow-[0_30px_70px_-30px_rgba(22,26,25,0.5)]">
                     {ordered.length === 0 ? (
-                      <p className="px-3 py-4 text-center text-[13px] text-zinc-400">
+                      <p className="px-3 py-4 text-center text-[13px] text-zinc-500">
                         Todavía no hay canales.
                       </p>
                     ) : (
@@ -351,7 +351,7 @@ function DockSettings({
 
   return (
     <div className="scrollbar-none min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
-      <p className="px-1 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-400">Avisos</p>
+      <p className="px-1 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Avisos</p>
 
       <div className="flex items-center gap-3 rounded-2xl bg-white p-3 ring-1 ring-[--color-border]">
         <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-100 text-brand-600">
@@ -417,7 +417,7 @@ function DockSettings({
         </div>
       </div>
 
-      <p className="px-1 pt-1 text-[12px] leading-relaxed text-zinc-400">
+      <p className="px-1 pt-1 text-[12px] leading-relaxed text-zinc-500">
         El contador del título de la pestaña y el badge del menú están siempre activos: son los
         avisos que no interrumpen.
       </p>

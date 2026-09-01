@@ -2,15 +2,11 @@ import 'server-only';
 import { and, eq } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
-import {
-  appointmentReminders,
-  appointmentsCache,
-  reminderRules,
-} from '@/lib/db/schema';
-import type { QueueJobs } from '@/lib/queue/queues';
+import { appointmentReminders, appointmentsCache, reminderRules } from '@/lib/db/schema';
 import { sendQueueEvent } from '@/lib/queue/client';
+import type { QueueJobs } from '@/lib/queue/queues';
 import type { StepRunner } from '@/lib/queue/step';
-import { sendWhatsAppReminder, deriveContactDisplayName } from '@/lib/reminders/send-whatsapp';
+import { deriveContactDisplayName, sendWhatsAppReminder } from '@/lib/reminders/send-whatsapp';
 import type { ReminderVars } from '@/lib/reminders/variables';
 
 // Handler de la queue 'reminder-send'.
@@ -30,10 +26,7 @@ export async function processReminderSendJob(
       .select()
       .from(appointmentReminders)
       .where(
-        and(
-          eq(appointmentReminders.tenantId, tenantId),
-          eq(appointmentReminders.id, reminderId),
-        ),
+        and(eq(appointmentReminders.tenantId, tenantId), eq(appointmentReminders.id, reminderId)),
       )
       .limit(1);
 
@@ -75,9 +68,7 @@ export async function processReminderSendJob(
 
     // 4. Extraer vars del snapshot. Rellenar reminderId real (estaba como placeholder).
     const snapshot = (rem.payloadSnapshot ?? {}) as { vars?: ReminderVars };
-    const vars: ReminderVars | null = snapshot.vars
-      ? { ...snapshot.vars, reminderId }
-      : null;
+    const vars: ReminderVars | null = snapshot.vars ? { ...snapshot.vars, reminderId } : null;
 
     if (!vars) {
       await markStatus(reminderId, 'FAILED', 'no_vars_snapshot');
@@ -157,10 +148,7 @@ export async function processReminderSendJob(
         updatedAt: new Date(),
       })
       .where(
-        and(
-          eq(appointmentReminders.tenantId, tenantId),
-          eq(appointmentReminders.id, reminderId),
-        ),
+        and(eq(appointmentReminders.tenantId, tenantId), eq(appointmentReminders.id, reminderId)),
       );
 
     // 7. Encolar fallback-check si la regla lo tiene.

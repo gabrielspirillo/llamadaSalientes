@@ -85,13 +85,16 @@ export function PlaygroundPanel() {
         className="h-[420px] overflow-y-auto rounded-xl border border-[--color-border] bg-[#fafbfb] p-4"
       >
         {turns.length === 0 ? (
-          <p className="text-sm text-zinc-400">
+          <p className="text-sm text-zinc-500">
             Escribe un mensaje como lo haría un paciente para ver cómo responde el agente.
           </p>
         ) : (
           <ul className="space-y-3">
             {turns.map((t, i) => (
-              <li key={i} className={t.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
+              <li
+                key={`${t.role}-${i}-${t.content.slice(0, 24)}`}
+                className={t.role === 'user' ? 'flex justify-end' : 'flex justify-start'}
+              >
                 <div className="max-w-[80%]">
                   <div
                     className={`whitespace-pre-line rounded-2xl px-3 py-2 text-sm ${
@@ -106,7 +109,7 @@ export function PlaygroundPanel() {
                 </div>
               </li>
             ))}
-            {pending && <li className="text-xs text-zinc-400">El agente está pensando…</li>}
+            {pending && <li className="text-xs text-zinc-500">El agente está pensando…</li>}
           </ul>
         )}
       </div>
@@ -164,7 +167,7 @@ function TraceDetails({ trace }: { trace: PlaygroundResult }) {
               <div className="font-medium">tools:</div>
               <ul className="space-y-0.5">
                 {trace.toolsCalled.map((tc, i) => (
-                  <li key={i} className="break-all">
+                  <li key={`${tc.name}-${i}`} className="break-all">
                     {tc.ok ? '✓' : '✗'} <code>{tc.name}</code>({JSON.stringify(tc.args)}) →{' '}
                     {tc.result.slice(0, 120)}
                   </li>

@@ -15,11 +15,7 @@ import 'dotenv/config';
 import { and, eq, gte, inArray, sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
-import {
-  appointmentsCache,
-  treatments,
-  waitlistEntries,
-} from '@/lib/db/schema';
+import { appointmentsCache, treatments, waitlistEntries } from '@/lib/db/schema';
 import { getOrCreateWaitlistSettings } from '@/lib/waitlist/settings';
 
 async function main() {
@@ -35,9 +31,7 @@ async function main() {
     process.exit(0);
   }
 
-  const minStart = new Date(
-    Date.now() + settings.minAppointmentDistanceDays * 24 * 60 * 60 * 1000,
-  );
+  const minStart = new Date(Date.now() + settings.minAppointmentDistanceDays * 24 * 60 * 60 * 1000);
 
   const eligibleTreatments = await db
     .select({ id: treatments.id })

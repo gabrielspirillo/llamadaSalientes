@@ -243,7 +243,7 @@ export function DockThread({ channelId }: { channelId: string }) {
                   >
                     <span className="whitespace-pre-wrap break-words">{m.body}</span>
                   </div>
-                  <p className="mt-0.5 text-[11px] tabular-nums text-zinc-400">
+                  <p className="mt-0.5 text-[11px] tabular-nums text-zinc-500">
                     {m.failed ? 'No se pudo enviar' : hourOf(m.createdAt)}
                   </p>
                 </div>
@@ -253,7 +253,7 @@ export function DockThread({ channelId }: { channelId: string }) {
         )}
 
         {peers.length > 0 && (
-          <p className="px-1 text-[12px] italic text-zinc-400">
+          <p className="px-1 text-[12px] italic text-zinc-500">
             {peers.length === 1
               ? `${peers[0]?.name} está escribiendo…`
               : `${peers.length} personas están escribiendo…`}

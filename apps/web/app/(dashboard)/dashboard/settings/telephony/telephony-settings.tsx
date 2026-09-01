@@ -345,7 +345,7 @@ function ZadarmaCredentialsForm({
           </div>
           <div className="md:col-span-2">
             <Label htmlFor="zd-webhook">
-              Webhook Secret <span className="text-xs text-zinc-400">(opcional)</span>
+              Webhook Secret <span className="text-xs text-zinc-500">(opcional)</span>
             </Label>
             <Input
               id="zd-webhook"

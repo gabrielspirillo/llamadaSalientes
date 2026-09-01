@@ -148,7 +148,7 @@ export default async function CallDetailPage({
                     const turnId = `tr-${i}`;
                     return (
                       <div key={turnId} className="flex gap-2 sm:gap-3">
-                        <div className="hidden sm:block text-xs text-zinc-400 tabular-nums pt-1.5 w-12 shrink-0">
+                        <div className="hidden sm:block text-xs text-zinc-500 tabular-nums pt-1.5 w-12 shrink-0">
                           {turn.t}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -190,9 +190,7 @@ export default async function CallDetailPage({
                   // del JSX bloqueaba el render del Server Component entero,
                   // así que la ficha de la llamada no se pintaba hasta que el
                   // LLM contestara. Con Suspense el resto se manda ya.
-                  <Suspense
-                    fallback={<Skeleton className="h-16 w-full rounded-xl" />}
-                  >
+                  <Suspense fallback={<Skeleton className="h-16 w-full rounded-xl" />}>
                     <SummaryText text={call.summary} />
                   </Suspense>
                 ) : (

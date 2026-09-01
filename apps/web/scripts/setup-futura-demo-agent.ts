@@ -52,7 +52,7 @@ async function main() {
     .limit(1);
   if (!phone) {
     console.warn(
-      `⚠️  Sin número Twilio activo en phone_numbers para este tenant. La llamada va a fallar con reason=no_phone hasta que cargues uno.`,
+      '⚠️  Sin número Twilio activo en phone_numbers para este tenant. La llamada va a fallar con reason=no_phone hasta que cargues uno.',
     );
   } else {
     console.log(`✓ Número Twilio activo: ${phone.e164}`);
@@ -66,7 +66,7 @@ async function main() {
     .limit(1);
   if (!ghl) {
     console.warn(
-      `⚠️  GHL no conectado para este tenant. El agente NO va a poder agendar la demo. Conectalo desde /dashboard → Integraciones → GoHighLevel.`,
+      '⚠️  GHL no conectado para este tenant. El agente NO va a poder agendar la demo. Conectalo desde /dashboard → Integraciones → GoHighLevel.',
     );
   } else {
     console.log(`✓ GHL conectado (locationId=${ghl.locationId})`);
@@ -87,7 +87,7 @@ async function main() {
   console.log('\n✅ Listo. Pegá esto en Vercel → Environment Variables:\n');
   console.log(`FUTURA_DEMO_TENANT_ID=${tenantId}`);
   console.log(
-    `FUTURA_DEMO_ALLOWED_ORIGINS=https://cliniq.futuradigital.es,https://www.cliniq.futuradigital.es\n`,
+    'FUTURA_DEMO_ALLOWED_ORIGINS=https://cliniq.futuradigital.es,https://www.cliniq.futuradigital.es\n',
   );
 }
 

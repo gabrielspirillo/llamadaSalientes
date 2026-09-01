@@ -278,7 +278,7 @@ export function ContactSidebar({
               ))}
             </dl>
           )}
-          <p className="mt-2 text-[11px] text-zinc-400">
+          <p className="mt-2 text-[11px] text-zinc-500">
             Actualizada {new Date(leadMemory.updatedAt).toLocaleString()}
           </p>
         </div>
@@ -438,6 +438,7 @@ export function ContactSidebar({
                   aria-label={`Quitar ${t.label}`}
                 >
                   <svg
+                    aria-hidden="true"
                     width="12"
                     height="12"
                     viewBox="0 0 24 24"
@@ -477,7 +478,7 @@ export function ContactSidebar({
         )}
 
         {localTags.length === 0 && tagPool.length === 0 && !newTagOpen && (
-          <p className="mt-3 text-xs text-zinc-400">
+          <p className="mt-3 text-xs text-zinc-500">
             No hay etiquetas todavía. Crea la primera arriba.
           </p>
         )}

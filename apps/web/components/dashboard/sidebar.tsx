@@ -394,7 +394,12 @@ export function DashboardSidebarMobile({
       )}
       aria-hidden={!open}
     >
-      <div className="absolute inset-0 bg-[#14211d]/40 backdrop-blur-md" onClick={onClose} />
+      <button
+        type="button"
+        aria-label="Cerrar el menú"
+        className="absolute inset-0 bg-[#14211d]/40 backdrop-blur-md"
+        onClick={onClose}
+      />
       <aside
         className={cn(
           'absolute inset-y-0 left-0 flex w-[280px] max-w-[85vw] flex-col shadow-[0_40px_90px_-30px_rgba(20,33,29,0.6)]',

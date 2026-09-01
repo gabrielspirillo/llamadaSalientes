@@ -269,7 +269,7 @@ export function SettingsForm({
                             onChange={(e) => setDayHours(d.key, 'open', e.target.value)}
                             className="w-28 sm:w-32"
                           />
-                          <span className="text-zinc-400 text-sm">a</span>
+                          <span className="text-zinc-500 text-sm">a</span>
                           <Input
                             type="time"
                             value={h.close}
@@ -278,7 +278,7 @@ export function SettingsForm({
                           />
                         </>
                       ) : (
-                        <span className="text-sm text-zinc-400">Cerrado</span>
+                        <span className="text-sm text-zinc-500">Cerrado</span>
                       )}
                     </div>
                   );

@@ -220,7 +220,9 @@ export async function bookAppointment(
     }
 
     // 2. Resolver contactId. Si el agente nos pasa basura, intentar lookup por phone.
-    let contactId: string | null = looksLikeGhlId(args.contact_id) ? args.contact_id! : null;
+    const rawContactId = args.contact_id;
+    let contactId: string | null =
+      rawContactId && looksLikeGhlId(rawContactId) ? rawContactId : null;
     if (!contactId && args.phone) {
       const found = await lookupContactByPhone(tenantId, args.phone);
       if (found) contactId = found.id;
@@ -288,7 +290,7 @@ export async function bookAppointment(
     }
 
     return {
-      result: `Cita agendada correctamente. El paciente va a recibir confirmación.`,
+      result: 'Cita agendada correctamente. El paciente va a recibir confirmación.',
     };
   } catch (err) {
     console.error('[book_appointment]', err);
@@ -438,7 +440,7 @@ function priceRange(
 }
 
 function normalize(s: string): string {
-  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  return s.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '');
 }
 
 export async function listTreatments(tenantId: string): Promise<ToolResult> {

@@ -234,6 +234,7 @@ export function BoardCard({
           <div className="flex items-center">
             {people.slice(0, 4).map((n, i) => (
               <span
+                // biome-ignore lint/suspicious/noArrayIndexKey: avatares de sólo lectura; los nombres pueden repetirse y no hay estado por elemento que perder al reordenar
                 key={`${n}-${i}`}
                 className={cn(
                   '-ml-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold ring-2 ring-white first:ml-0',

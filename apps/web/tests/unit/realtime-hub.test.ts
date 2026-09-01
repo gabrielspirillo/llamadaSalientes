@@ -252,11 +252,7 @@ describe('reconexión (evento ready)', () => {
     c.emit('ready');
 
     expect(c.subscribeCalls).toHaveLength(1);
-    expect([...c.subscribeCalls[0]!].sort()).toEqual([
-      'im:tenant:t1',
-      'im:user:1',
-      'im:user:2',
-    ]);
+    expect([...c.subscribeCalls[0]!].sort()).toEqual(['im:tenant:t1', 'im:user:1', 'im:user:2']);
   });
 
   it('los sinks siguen recibiendo después de la reconexión', async () => {

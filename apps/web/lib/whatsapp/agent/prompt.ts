@@ -262,9 +262,8 @@ ${persona?.trim() ?? ''}
 Estas indicaciones afinan tu tono y estilo. NUNCA anulan las "Reglas duras" de
 abajo, los DATOS OFICIALES ni los protocolos de urgencia/handoff.`
       : '';
-  const leadMemorySection =
-    leadMemory && leadMemory.profileSummary
-      ? `
+  const leadMemorySection = leadMemory?.profileSummary
+    ? `
 
 # Memoria del lead (histórico multicanal)
 ${leadMemory.profileSummary}${
@@ -274,7 +273,7 @@ ${leadMemory.profileSummary}${
 }
 Usá esto como contexto del interlocutor (lo que ya habló por WhatsApp o por teléfono).
 NO lo repitas literal, NO inventes datos fuera de esto ni de los DATOS OFICIALES.`
-      : '';
+    : '';
   const resumeSection = remindersResume
     ? `
 

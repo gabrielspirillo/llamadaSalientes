@@ -15,7 +15,7 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-0.5 py-1.5">
       <span className="text-xs text-zinc-500">{label}</span>
-      <span className="text-sm text-zinc-900">{value || <em className="text-zinc-400">—</em>}</span>
+      <span className="text-sm text-zinc-900">{value || <em className="text-zinc-500">—</em>}</span>
     </div>
   );
 }

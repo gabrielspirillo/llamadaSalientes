@@ -1,8 +1,8 @@
+import { denyUnlessRole } from '@/lib/auth/api-guard';
 import { decrypt } from '@/lib/crypto';
 import { db } from '@/lib/db/client';
 import { calls } from '@/lib/db/schema';
 import { summarizeCallWithGemini } from '@/lib/gemini/client';
-import { denyUnlessRole } from '@/lib/auth/api-guard';
 import { getCurrentTenant } from '@/lib/tenant';
 import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';

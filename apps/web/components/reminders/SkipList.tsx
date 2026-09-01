@@ -41,7 +41,7 @@ function fmtAbsolute(d: Date | string | null | undefined): string {
 export function SkipList({ skipped }: { skipped: SkipRow[] }) {
   if (skipped.length === 0) {
     return (
-      <Card className="p-4 text-center text-xs text-zinc-400">
+      <Card className="p-4 text-center text-xs text-zinc-500">
         Últimamente no se ha omitido ningún recordatorio.
       </Card>
     );
@@ -61,7 +61,7 @@ export function SkipList({ skipped }: { skipped: SkipRow[] }) {
               >
                 {reasonLabel}
               </span>
-              <span className="text-[12px] text-zinc-400 shrink-0">{fmtAbsolute(s.createdAt)}</span>
+              <span className="text-[12px] text-zinc-500 shrink-0">{fmtAbsolute(s.createdAt)}</span>
             </div>
             <p className="mt-2 text-sm font-medium text-zinc-800 truncate">
               {s.treatmentName ?? 'Cita sin tratamiento'}
@@ -72,7 +72,7 @@ export function SkipList({ skipped }: { skipped: SkipRow[] }) {
               </p>
             )}
             <p
-              className="mt-1 truncate font-mono text-[11px] text-zinc-400"
+              className="mt-1 truncate font-mono text-[11px] text-zinc-500"
               title={s.ghlAppointmentId}
             >
               {s.ghlAppointmentId}

@@ -2,8 +2,8 @@
 // poblando y qué no después de cada call.
 import path from 'node:path';
 import { config } from 'dotenv';
-import { drizzle } from 'drizzle-orm/postgres-js';
 import { desc, eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from '../lib/db/schema';
 import { calls, tenants } from '../lib/db/schema';
@@ -38,16 +38,24 @@ async function main() {
       console.log(`Retell:            ${c.retellCallId}`);
       console.log(`From / To:         ${c.fromNumber ?? '(null)'}  →  ${c.toNumber ?? '(null)'}`);
       console.log(`Status:            ${c.status ?? '(null)'}`);
-      console.log(`Started / Ended:   ${c.startedAt?.toISOString() ?? '(null)'}  /  ${c.endedAt?.toISOString() ?? '(null)'}`);
+      console.log(
+        `Started / Ended:   ${c.startedAt?.toISOString() ?? '(null)'}  /  ${c.endedAt?.toISOString() ?? '(null)'}`,
+      );
       console.log(`Duration:          ${c.durationSeconds ?? '(null)'}s`);
       console.log(`Intent:            ${c.intent ?? '(null)'}`);
       console.log(`Sentiment:         ${c.sentiment ?? '(null)'}`);
       console.log(`Transferred:       ${c.transferred ?? false}`);
-      console.log(`Summary:           ${c.summary ? c.summary.slice(0, 120) + (c.summary.length > 120 ? '…' : '') : '(null)'}`);
-      console.log(`Transcript:        ${c.transcriptEnc ? '[' + c.transcriptEnc.length + ' chars cifrados]' : '(null)'}`);
+      console.log(
+        `Summary:           ${c.summary ? c.summary.slice(0, 120) + (c.summary.length > 120 ? '…' : '') : '(null)'}`,
+      );
+      console.log(
+        `Transcript:        ${c.transcriptEnc ? `[${c.transcriptEnc.length} chars cifrados]` : '(null)'}`,
+      );
       console.log(`Recording R2:      ${c.recordingR2Key ?? '(null)'}`);
       console.log(`GHL Contact:       ${c.ghlContactId ?? '(null)'}`);
-      console.log(`CustomData:        ${Object.keys(cd).length > 0 ? JSON.stringify(cd) : '(empty)'}`);
+      console.log(
+        `CustomData:        ${Object.keys(cd).length > 0 ? JSON.stringify(cd) : '(empty)'}`,
+      );
     }
 
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');

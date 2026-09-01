@@ -47,8 +47,11 @@ export function TwilioConnectionForm({ initial }: Props) {
   return (
     <form onSubmit={onSubmit} className="space-y-3">
       <div>
-        <label className="mb-1 block text-xs font-medium text-zinc-700">Account SID</label>
+        <label htmlFor="account-sid" className="mb-1 block text-xs font-medium text-zinc-700">
+          Account SID
+        </label>
         <input
+          id="account-sid"
           type="text"
           value={accountSid}
           onChange={(e) => setAccountSid(e.target.value)}
@@ -58,10 +61,11 @@ export function TwilioConnectionForm({ initial }: Props) {
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-zinc-700">
+        <label htmlFor="auth-token" className="mb-1 block text-xs font-medium text-zinc-700">
           Auth Token <span className="text-zinc-400">(se cifra al guardar)</span>
         </label>
         <input
+          id="auth-token"
           type="password"
           value={authToken}
           onChange={(e) => setAuthToken(e.target.value)}
@@ -71,10 +75,11 @@ export function TwilioConnectionForm({ initial }: Props) {
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-zinc-700">
+        <label htmlFor="from-number" className="mb-1 block text-xs font-medium text-zinc-700">
           Número remitente (E.164)
         </label>
         <input
+          id="from-number"
           type="text"
           value={fromNumber}
           onChange={(e) => setFromNumber(e.target.value)}

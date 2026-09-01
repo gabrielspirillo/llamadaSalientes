@@ -1,8 +1,8 @@
 import { createDecipheriv } from 'node:crypto';
 import path from 'node:path';
 import { config } from 'dotenv';
-import { drizzle } from 'drizzle-orm/postgres-js';
 import { and, eq, ilike } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from '../lib/db/schema';
 import { ghlIntegrations, tenants, treatments } from '../lib/db/schema';
@@ -33,14 +33,16 @@ async function main() {
 
   try {
     const [tenant] = await db.select().from(tenants).limit(1);
+    if (!tenant) throw new Error('No hay ningún tenant en la base');
     const [row] = await db
       .select()
       .from(ghlIntegrations)
-      .where(eq(ghlIntegrations.tenantId, tenant!.id))
+      .where(eq(ghlIntegrations.tenantId, tenant.id))
       .limit(1);
 
-    const token = decrypt(row!.accessTokenEnc);
-    const locationId = row!.locationId;
+    if (!row) throw new Error('El tenant no tiene integración de GHL');
+    const token = decrypt(row.accessTokenEnc);
+    const locationId = row.locationId;
 
     // 1) Listar calendarios de GHL
     const res = await fetch(
@@ -68,11 +70,16 @@ async function main() {
     const allTreatments = await db
       .select({ id: treatments.id, name: treatments.name, currentCal: treatments.ghlCalendarId })
       .from(treatments)
-      .where(eq(treatments.tenantId, tenant!.id));
+      .where(eq(treatments.tenantId, tenant.id));
 
     console.log(`\n🦷 ${allTreatments.length} tratamientos en DB`);
 
-    const matches: { treatmentId: string; treatmentName: string; calendarId: string; calendarName: string }[] = [];
+    const matches: {
+      treatmentId: string;
+      treatmentName: string;
+      calendarId: string;
+      calendarName: string;
+    }[] = [];
     let defaultCalendarId: string | null = null;
     for (const cal of calendars) {
       // "Citas generales" / "Limpieza" etc → default es el más genérico
@@ -85,9 +92,7 @@ async function main() {
     for (const t of allTreatments) {
       // Buscamos calendario cuyo nombre contiene palabras del tratamiento
       const treatmentWord = t.name.toLowerCase().split(/\s+/)[0]; // "Limpieza dental" → "limpieza"
-      const exact = calendars.find((c) =>
-        c.name?.toLowerCase().includes(treatmentWord ?? ''),
-      );
+      const exact = calendars.find((c) => c.name?.toLowerCase().includes(treatmentWord ?? ''));
       const calendarId = exact?.id ?? defaultCalendarId;
       const calendarName = exact?.name ?? '(default)';
       if (!calendarId) continue;
@@ -111,7 +116,7 @@ async function main() {
       await db
         .update(treatments)
         .set({ ghlCalendarId: m.calendarId })
-        .where(and(eq(treatments.tenantId, tenant!.id), eq(treatments.id, m.treatmentId)));
+        .where(and(eq(treatments.tenantId, tenant.id), eq(treatments.id, m.treatmentId)));
       updates++;
     }
 

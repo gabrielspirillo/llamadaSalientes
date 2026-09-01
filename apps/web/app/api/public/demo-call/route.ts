@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
   // después en /api/retell/tools cuando el agente llame a sus tools.
   const ghlOverride = buildDemoOverrideFromEnv();
 
-  let result;
+  let result: Awaited<ReturnType<typeof triggerCallback>>;
   try {
     const run = () =>
       triggerCallback({

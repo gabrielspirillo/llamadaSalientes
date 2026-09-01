@@ -49,6 +49,7 @@ function dedupeAndSort(messages: Message[]): Message[] {
 export function MessagesStream({ conversationId, initialMessages, senderUserEmails }: Props) {
   const [messages, setMessages] = useState<Message[]>(() => dedupeAndSort(initialMessages));
   const [isAgentTyping, setIsAgentTyping] = useState(false);
+  const [connected, setConnected] = useState(true);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomAnchorRef = useRef<HTMLDivElement>(null);
@@ -100,9 +101,15 @@ export function MessagesStream({ conversationId, initialMessages, senderUserEmai
     es.addEventListener('typing.start', () => setIsAgentTyping(true));
     es.addEventListener('typing.stop', () => setIsAgentTyping(false));
 
+    es.addEventListener('open', () => setConnected(true));
+
     es.addEventListener('error', () => {
-      // EventSource reintenta solo; no cerramos manualmente para permitir
-      // recuperación automática.
+      // EventSource reintenta solo, así que no cerramos: sólo lo reflejamos.
+      // Antes el handler estaba vacío y, si el stream moría de verdad (Redis
+      // caído, un proxy que corta), la bandeja se quedaba muda pero con
+      // aspecto de viva: recepción creía que no llegaban mensajes de
+      // pacientes.
+      setConnected(false);
     });
 
     return () => {
@@ -118,6 +125,11 @@ export function MessagesStream({ conversationId, initialMessages, senderUserEmai
       onScroll={onScroll}
       className="flex-1 overflow-y-auto bg-[linear-gradient(180deg,#fafdfb_0%,#f6f5fb_100%)] p-4"
     >
+      {!connected && (
+        <output className="sticky top-0 z-10 mx-auto mb-3 block w-fit rounded-full bg-amber-50 px-3 py-1 text-[12px] font-semibold text-amber-800 shadow-sm">
+          Reconectando… los mensajes nuevos pueden tardar
+        </output>
+      )}
       {empty ? (
         <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
           <span className="inline-flex h-12 w-12 animate-float items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#e9f9f2,#effaf5)]" />
@@ -172,9 +184,11 @@ function MessageBubble({
         <img src={m.mediaUrl} alt="adjunto" className="mb-1.5 max-h-72 rounded-xl" />
       )}
       {m.mediaUrl && m.type === 'AUDIO' && (
+        // biome-ignore lint/a11y/useMediaCaption: nota de voz enviada por el paciente; no existe pista de subtítulos que ofrecer
         <audio src={m.mediaUrl} controls className="mb-1 w-full" />
       )}
       {m.mediaUrl && m.type === 'VIDEO' && (
+        // biome-ignore lint/a11y/useMediaCaption: vídeo enviado por el paciente; no existe pista de subtítulos que ofrecer
         <video src={m.mediaUrl} controls className="mb-1.5 max-h-72 rounded-xl" />
       )}
       {m.mediaUrl && m.type === 'PDF' && (

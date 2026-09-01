@@ -73,7 +73,9 @@ describe('payloads que el cliente envía de verdad', () => {
     const payload = {
       body: '',
       parentId: null,
-      attachments: [{ key: 'tenants/t/messaging/a.png', name: 'a.png', mime: 'image/png', size: 10 }],
+      attachments: [
+        { key: 'tenants/t/messaging/a.png', name: 'a.png', mime: 'image/png', size: 10 },
+      ],
     };
     expect(postMessageSchema.safeParse(payload).success).toBe(true);
   });

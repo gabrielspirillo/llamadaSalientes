@@ -40,7 +40,7 @@ export function PageHeader({
         )}
         <div className="min-w-0">
           {eyebrow && (
-            <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-400">
+            <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500">
               {eyebrow}
             </p>
           )}

@@ -25,7 +25,7 @@ const MAX_DAYS_AHEAD = 180;
 const MAX_TIMEOUT_MS = 60_000;
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  let auth;
+  let auth: Awaited<ReturnType<typeof requireReminderRole>>;
   try {
     auth = await requireReminderRole('admin');
   } catch (err) {
@@ -62,9 +62,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       scheduled: 0,
       skipped: 0,
       errors: 0,
-      message:
-        'No se encontraron citas futuras en GHL. Verificá que el location tenga calendars con eventos en los próximos ' +
-        `${daysAhead} días, o que la integración GHL del tenant esté activa.`,
+      message: `No se encontraron citas futuras en GHL. Verificá que el location tenga calendars con eventos en los próximos ${daysAhead} días, o que la integración GHL del tenant esté activa.`,
       daysAhead,
     });
   }

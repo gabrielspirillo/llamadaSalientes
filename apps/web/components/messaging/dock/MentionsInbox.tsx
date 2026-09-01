@@ -71,7 +71,7 @@ export function MentionsInbox({
           </div>
 
           <p className="mt-1.5 line-clamp-2 text-[14px] leading-snug text-zinc-600">{m.body}</p>
-          <p className="mt-1 text-[12px] text-zinc-400">{timeAgo(m.createdAt)}</p>
+          <p className="mt-1 text-[12px] text-zinc-500">{timeAgo(m.createdAt)}</p>
 
           <div className="mt-2 flex items-center gap-1.5">
             {onGoToMessage ? (

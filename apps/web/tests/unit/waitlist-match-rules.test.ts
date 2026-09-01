@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  type MatchSettings,
+  type SlotForMatching,
+  type WaitlistEntryForMatching,
   durationFits,
   evaluateMatch,
   sameDentist,
   sameTreatment,
   slotIsEarlierEnoughThanEntry,
   withinTimeWindow,
-  type MatchSettings,
-  type SlotForMatching,
-  type WaitlistEntryForMatching,
 } from '@/lib/waitlist/match-rules';
 
 const TX_A = 'tx-a';
@@ -148,11 +148,10 @@ describe('evaluateMatch', () => {
   });
   it('rechaza por dentista distinto cuando requireSameDentist=true', () => {
     expect(
-      evaluateMatch(
-        makeEntry({ assignedDentistId: 'X' }),
-        makeSlot(),
-        { ...settings, requireSameDentist: true },
-      ).eligible,
+      evaluateMatch(makeEntry({ assignedDentistId: 'X' }), makeSlot(), {
+        ...settings,
+        requireSameDentist: true,
+      }).eligible,
     ).toBe(false);
   });
   it('rechaza por fuera de ventana cuando respectTimeWindow=true', () => {

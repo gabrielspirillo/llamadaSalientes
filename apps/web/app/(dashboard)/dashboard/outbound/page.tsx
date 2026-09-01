@@ -85,7 +85,7 @@ export default async function OutboundPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
                         <p className="truncate text-[15px] font-bold text-zinc-900">{c.name}</p>
-                        <span className="text-[12px] text-zinc-400 shrink-0">
+                        <span className="text-[12px] text-zinc-500 shrink-0">
                           {new Date(c.createdAt).toLocaleDateString('es-ES')}
                         </span>
                       </div>

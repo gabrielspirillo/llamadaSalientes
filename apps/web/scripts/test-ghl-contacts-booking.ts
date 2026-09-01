@@ -2,8 +2,8 @@
 import { createDecipheriv } from 'node:crypto';
 import path from 'node:path';
 import { config } from 'dotenv';
-import { drizzle } from 'drizzle-orm/postgres-js';
 import { eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from '../lib/db/schema';
 import { ghlIntegrations, tenants } from '../lib/db/schema';
@@ -48,13 +48,15 @@ async function main() {
 
   try {
     const [tenant] = await db.select().from(tenants).limit(1);
+    if (!tenant) throw new Error('No hay ningún tenant en la base');
     const [row] = await db
       .select()
       .from(ghlIntegrations)
-      .where(eq(ghlIntegrations.tenantId, tenant!.id))
+      .where(eq(ghlIntegrations.tenantId, tenant.id))
       .limit(1);
-    const token = decrypt(row!.accessTokenEnc);
-    const locationId = row!.locationId;
+    if (!row) throw new Error('El tenant no tiene integración de GHL');
+    const token = decrypt(row.accessTokenEnc);
+    const locationId = row.locationId;
 
     console.log('\n=== 1) Buscar contacto por teléfono (variante /contacts/search) ===');
     await ghl(

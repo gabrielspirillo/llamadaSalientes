@@ -298,14 +298,14 @@ function TemplateCard({
               </li>
             ))}
             {template.items.length === 0 && (
-              <li className="text-xs text-zinc-400">Sin pasos definidos.</li>
+              <li className="text-xs text-zinc-500">Sin pasos definidos.</li>
             )}
           </ol>
 
           {isAdmin && (
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block">
-                <span className="mb-1 block text-[12px] font-semibold uppercase tracking-wide text-zinc-400">
+                <span className="mb-1 block text-[12px] font-semibold uppercase tracking-wide text-zinc-500">
                   Hora
                 </span>
                 <input
@@ -321,7 +321,7 @@ function TemplateCard({
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-[12px] font-semibold uppercase tracking-wide text-zinc-400">
+                <span className="mb-1 block text-[12px] font-semibold uppercase tracking-wide text-zinc-500">
                   Responsable por defecto
                 </span>
                 <select
@@ -383,7 +383,7 @@ function RuleRow({
             >
               {PRIORITY_META[rule.priority as TaskPriority].label}
             </span>
-            <span className="text-[12px] text-zinc-400">
+            <span className="text-[12px] text-zinc-500">
               vence en {formatOffset(rule.dueOffsetMinutes)}
             </span>
           </div>
@@ -395,7 +395,7 @@ function RuleRow({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-3">
-          <span className="text-[12px] tabular-nums text-zinc-400">
+          <span className="text-[12px] tabular-nums text-zinc-500">
             {rule.generatedLast30d} en 30 días
           </span>
           <input
@@ -423,7 +423,7 @@ function RuleRow({
           {open && (
             <div className="mt-3 grid gap-3 border-t border-zinc-100 pt-3 sm:grid-cols-3">
               <label className="block sm:col-span-3">
-                <span className="mb-1 block text-[12px] font-semibold uppercase tracking-wide text-zinc-400">
+                <span className="mb-1 block text-[12px] font-semibold uppercase tracking-wide text-zinc-500">
                   Título de la tarea
                 </span>
                 <input
@@ -436,12 +436,12 @@ function RuleRow({
                   }}
                   className="w-full rounded-lg border border-zinc-200 px-2.5 py-1.5 text-sm"
                 />
-                <span className="mt-1 block text-[11px] text-zinc-400">
+                <span className="mt-1 block text-[11px] text-zinc-500">
                   Variables: {'{{patientName}}'} {'{{phone}}'} {'{{date}}'} {'{{treatment}}'}
                 </span>
               </label>
               <label className="block">
-                <span className="mb-1 block text-[12px] font-semibold uppercase tracking-wide text-zinc-400">
+                <span className="mb-1 block text-[12px] font-semibold uppercase tracking-wide text-zinc-500">
                   Plazo (minutos)
                 </span>
                 <input
@@ -460,7 +460,7 @@ function RuleRow({
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-[12px] font-semibold uppercase tracking-wide text-zinc-400">
+                <span className="mb-1 block text-[12px] font-semibold uppercase tracking-wide text-zinc-500">
                   Se asigna a
                 </span>
                 <select
@@ -479,7 +479,7 @@ function RuleRow({
               </label>
               {rule.trigger === 'PATIENT_INACTIVE' && (
                 <label className="block">
-                  <span className="mb-1 block text-[12px] font-semibold uppercase tracking-wide text-zinc-400">
+                  <span className="mb-1 block text-[12px] font-semibold uppercase tracking-wide text-zinc-500">
                     Meses sin venir
                   </span>
                   <input
@@ -578,7 +578,7 @@ function PostOpSection({ isAdmin }: { isAdmin: boolean }) {
       )}
 
       {loading ? (
-        <p className="text-xs text-zinc-400">Cargando tratamientos…</p>
+        <p className="text-xs text-zinc-500">Cargando tratamientos…</p>
       ) : items.length === 0 ? (
         <EmptyState
           title="Sin tratamientos cargados"

@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  applyQuietHours,
-  type WorkingHours,
-} from '@/lib/reminders/quiet-hours';
+import { type WorkingHours, applyQuietHours } from '@/lib/reminders/quiet-hours';
 
 const MADRID: WorkingHours = {
   monday: { open: '09:00', close: '18:00' },

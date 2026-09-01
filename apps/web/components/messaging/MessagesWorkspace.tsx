@@ -1,10 +1,7 @@
 'use client';
 
+import { ChannelMembersDialog, NewChannelDialog } from '@/components/messaging/ChannelDialogs';
 import { ChannelRail } from '@/components/messaging/ChannelRail';
-import {
-  ChannelMembersDialog,
-  NewChannelDialog,
-} from '@/components/messaging/ChannelDialogs';
 import { Composer } from '@/components/messaging/Composer';
 import { ContextPanel } from '@/components/messaging/ContextPanel';
 import { MessageThread } from '@/components/messaging/MessageThread';

@@ -93,8 +93,8 @@ export function TopTreatmentsChart({ data }: { data: TopTreatment[] }) {
               stroke="none"
               {...chartAnim}
             >
-              {chartData.map((_, i) => (
-                <Cell key={i} fill={chartSequence[i % chartSequence.length]} />
+              {chartData.map((d, i) => (
+                <Cell key={d.name} fill={chartSequence[i % chartSequence.length]} />
               ))}
             </Pie>
           </PieChart>
@@ -103,7 +103,7 @@ export function TopTreatmentsChart({ data }: { data: TopTreatment[] }) {
           <span className="text-[28px] font-bold tabular-nums leading-none text-zinc-900">
             {total}
           </span>
-          <span className="mt-1 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+          <span className="mt-1 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
             Citas
           </span>
         </div>

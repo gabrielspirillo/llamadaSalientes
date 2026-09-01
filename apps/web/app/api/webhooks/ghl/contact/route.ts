@@ -1,7 +1,11 @@
 import { triggerCallback } from '@/lib/calls/trigger-callback';
 import { db } from '@/lib/db/client';
 import { ghlIntegrations, webhookLogs } from '@/lib/db/schema';
-import { ghlWebhookUrlFor, readWebhookToken, verifyWebhookToken } from '@/lib/webhooks/tenant-token';
+import {
+  ghlWebhookUrlFor,
+  readWebhookToken,
+  verifyWebhookToken,
+} from '@/lib/webhooks/tenant-token';
 import { eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -63,7 +67,6 @@ export async function POST(req: NextRequest) {
       { status: 404 },
     );
   }
-
 
   // Sin firma del proveedor, el `locationId` es el único "auth" y es público:
   // aparece en URLs y formularios de GHL. Exigimos el token por tenant antes

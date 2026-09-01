@@ -1,6 +1,6 @@
+import { denyUnlessRole } from '@/lib/auth/api-guard';
 import { getCampaign } from '@/lib/data/outbound-campaigns';
 import { dispatchCampaign } from '@/lib/outbound/dispatch-batch';
-import { denyUnlessRole } from '@/lib/auth/api-guard';
 import { getCurrentTenant } from '@/lib/tenant';
 import { type NextRequest, NextResponse } from 'next/server';
 

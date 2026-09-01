@@ -3,8 +3,8 @@
 import { createDecipheriv } from 'node:crypto';
 import path from 'node:path';
 import { config } from 'dotenv';
+import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
-import { and, eq, isNull, isNotNull } from 'drizzle-orm';
 import postgres from 'postgres';
 import * as schema from '../lib/db/schema';
 import { calls } from '../lib/db/schema';
@@ -44,7 +44,9 @@ async function gemini(transcript: string) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: SUMMARY_SYSTEM }] },
-        contents: [{ role: 'user', parts: [{ text: `Transcript:\n${transcript.slice(0, 8000)}` }] }],
+        contents: [
+          { role: 'user', parts: [{ text: `Transcript:\n${transcript.slice(0, 8000)}` }] },
+        ],
         generationConfig: { temperature: 0.2, responseMimeType: 'application/json' },
       }),
     },
@@ -107,7 +109,10 @@ async function main() {
         );
         ok++;
       } catch (err) {
-        console.error(`  ❌ ${r.retellCallId.slice(0, 22)}:`, err instanceof Error ? err.message : err);
+        console.error(
+          `  ❌ ${r.retellCallId.slice(0, 22)}:`,
+          err instanceof Error ? err.message : err,
+        );
         fail++;
       }
     }

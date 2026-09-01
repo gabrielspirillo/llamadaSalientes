@@ -28,10 +28,10 @@ export const CallsTrendChart = dynamic(
   { ssr: false, loading },
 );
 
-export const IntentDonut = dynamic(
-  () => import('./analytics-charts').then((m) => m.IntentDonut),
-  { ssr: false, loading },
-);
+export const IntentDonut = dynamic(() => import('./analytics-charts').then((m) => m.IntentDonut), {
+  ssr: false,
+  loading,
+});
 
 export const IntentBarList = dynamic(
   () => import('./analytics-charts').then((m) => m.IntentBarList),

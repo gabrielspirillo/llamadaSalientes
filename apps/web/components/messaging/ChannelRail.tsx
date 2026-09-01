@@ -117,7 +117,7 @@ export function ChannelRail({
           }
         />
         <div className="mt-2.5 flex items-center justify-between px-1">
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">
             {connected ? (
               <>
                 <Equalizer className="text-emerald-500" />
@@ -282,7 +282,7 @@ function RailSection({
   return (
     <section className="mb-4 last:mb-0">
       <div className="mb-1.5 flex items-center justify-between gap-2 px-3">
-        <h3 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+        <h3 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
           <span className="h-2.5 w-1 rounded-full bg-[linear-gradient(180deg,#37766a,#6bc2a4)]" />
           {title}
         </h3>
@@ -371,7 +371,7 @@ function RailChannel({
             {channel.lastMessageAt && (
               <time
                 suppressHydrationWarning
-                className="shrink-0 text-[11px] font-medium text-zinc-400"
+                className="shrink-0 text-[11px] font-medium text-zinc-500"
               >
                 {timeAgo(channel.lastMessageAt)}
               </time>

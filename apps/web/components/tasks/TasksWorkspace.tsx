@@ -240,7 +240,7 @@ export function TasksWorkspace({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Buscar tarea o paciente"
-              className="w-full rounded-full border border-zinc-200 bg-white py-2 pl-9 pr-3 text-sm placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none"
+              className="w-full rounded-full border border-zinc-200 bg-white py-2 pl-9 pr-3 text-sm placeholder:text-zinc-500 focus:border-zinc-400 focus:outline-none"
             />
           </div>
 
@@ -350,7 +350,7 @@ export function TasksWorkspace({
           })}
         </nav>
 
-        <div className="flex items-center gap-2 text-xs text-zinc-400">
+        <div className="flex items-center gap-2 text-xs text-zinc-500">
           {refreshing && <Loader2 className="h-3 w-3 animate-spin" />}
           <span>En vivo · cada 45s</span>
         </div>
@@ -458,7 +458,7 @@ function FilterGroup({
 }) {
   return (
     <div className="flex items-center gap-1.5">
-      <span className="text-[12px] font-semibold uppercase tracking-wide text-zinc-400">
+      <span className="text-[12px] font-semibold uppercase tracking-wide text-zinc-500">
         {label}
       </span>
       <div className="flex flex-wrap gap-1">

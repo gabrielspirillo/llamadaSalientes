@@ -1,4 +1,5 @@
 import { recordAudit } from '@/lib/audit';
+import { denyUnlessRole } from '@/lib/auth/api-guard';
 import {
   getTelephonyProvider,
   getTenantTelephony,
@@ -6,7 +7,6 @@ import {
   getZadarmaClientFor,
   upsertTenantTelephony,
 } from '@/lib/data/tenant-telephony';
-import { denyUnlessRole } from '@/lib/auth/api-guard';
 import { getCurrentTenant } from '@/lib/tenant';
 import { TwilioApiError } from '@/lib/twilio/client';
 import { ZadarmaApiError } from '@/lib/zadarma/client';
@@ -61,7 +61,10 @@ export async function GET() {
           pendingPhoneNumber: telephony.callerIdE164,
         });
       }
-      const first = matches[0]!;
+      const first = matches[0];
+      if (!first) {
+        return NextResponse.json({ verified: false, pendingPhoneNumber: telephony.callerIdE164 });
+      }
       const updated = await upsertTenantTelephony(tenant.id, {
         callerIdE164: first.phone_number,
         callerIdSid: first.sid,

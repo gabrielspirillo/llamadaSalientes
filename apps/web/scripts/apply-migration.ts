@@ -17,9 +17,9 @@ async function main() {
   }
   const arg = process.argv[2];
   const file = arg
-    ? (path.isAbsolute(arg)
-        ? arg
-        : path.resolve(__dirname, '../../../supabase/migrations', arg))
+    ? path.isAbsolute(arg)
+      ? arg
+      : path.resolve(__dirname, '../../../supabase/migrations', arg)
     : path.resolve(__dirname, '../../../supabase/migrations/0000_init.sql');
   const sqlText = fs.readFileSync(file, 'utf8');
   console.log(`→ applying ${path.basename(file)} (${sqlText.length} bytes)`);

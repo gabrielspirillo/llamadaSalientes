@@ -46,8 +46,11 @@ export function CloudConnectionForm({ initial }: Props) {
   return (
     <form onSubmit={onSubmit} className="space-y-3">
       <div>
-        <label className="mb-1 block text-xs font-medium text-zinc-700">Phone Number ID</label>
+        <label htmlFor="phone-number-id" className="mb-1 block text-xs font-medium text-zinc-700">
+          Phone Number ID
+        </label>
         <input
+          id="phone-number-id"
           type="text"
           value={phoneNumberId}
           onChange={(e) => setPhoneNumberId(e.target.value)}
@@ -56,8 +59,11 @@ export function CloudConnectionForm({ initial }: Props) {
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-zinc-700">WABA ID</label>
+        <label htmlFor="waba-id" className="mb-1 block text-xs font-medium text-zinc-700">
+          WABA ID
+        </label>
         <input
+          id="waba-id"
           type="text"
           value={wabaId}
           onChange={(e) => setWabaId(e.target.value)}
@@ -66,10 +72,11 @@ export function CloudConnectionForm({ initial }: Props) {
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-zinc-700">
+        <label htmlFor="access-token" className="mb-1 block text-xs font-medium text-zinc-700">
           Access Token <span className="text-zinc-400">(se cifra al guardar)</span>
         </label>
         <input
+          id="access-token"
           type="password"
           value={accessToken}
           onChange={(e) => setAccessToken(e.target.value)}
@@ -79,10 +86,11 @@ export function CloudConnectionForm({ initial }: Props) {
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-zinc-700">
+        <label htmlFor="app-secret" className="mb-1 block text-xs font-medium text-zinc-700">
           App Secret <span className="text-zinc-400">(se cifra al guardar)</span>
         </label>
         <input
+          id="app-secret"
           type="password"
           value={appSecret}
           onChange={(e) => setAppSecret(e.target.value)}

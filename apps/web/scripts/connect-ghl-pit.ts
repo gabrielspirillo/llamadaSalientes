@@ -1,8 +1,8 @@
 import { createCipheriv, randomBytes } from 'node:crypto';
 import path from 'node:path';
 import { config } from 'dotenv';
-import { drizzle } from 'drizzle-orm/postgres-js';
 import { eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from '../lib/db/schema';
 import { ghlIntegrations, tenants } from '../lib/db/schema';
@@ -92,10 +92,7 @@ async function main() {
       .limit(1);
 
     if (existing[0]) {
-      await db
-        .update(ghlIntegrations)
-        .set(values)
-        .where(eq(ghlIntegrations.tenantId, tenant.id));
+      await db.update(ghlIntegrations).set(values).where(eq(ghlIntegrations.tenantId, tenant.id));
       console.log(`✅ GHL PIT actualizado para ${tenant.name} (location ${locationId})`);
     } else {
       await db.insert(ghlIntegrations).values(values);

@@ -81,6 +81,9 @@ export function Callout({
   } as const;
   return (
     <div
+      // Un aviso de error tiene que anunciarse solo: si no, quien usa lector de
+      // pantalla no se entera de que la acción falló.
+      role={tone === 'danger' ? 'alert' : undefined}
       className={cn(
         'flex gap-3 rounded-[18px] border p-4 text-[14px] leading-relaxed',
         tones[tone],
@@ -114,7 +117,7 @@ export function SectionTitle({
   return (
     <div className={cn('mb-4 flex items-end justify-between gap-4', className)}>
       <div className="min-w-0">
-        <h2 className="flex items-center gap-2 text-[14px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+        <h2 className="flex items-center gap-2 text-[14px] font-bold uppercase tracking-[0.14em] text-zinc-500">
           <span className="h-3 w-1 rounded-full bg-[linear-gradient(180deg,#37766a,#6bc2a4)]" />
           {title}
         </h2>

@@ -141,7 +141,7 @@ export function ThreadPanel({
 
           <div className="my-3 flex items-center gap-3 px-4">
             <span className="h-px flex-1 bg-[--color-border]" />
-            <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-zinc-400">
+            <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-zinc-500">
               {replies.length === 0
                 ? 'Sin respuestas'
                 : `${replies.length} ${replies.length === 1 ? 'respuesta' : 'respuestas'}`}

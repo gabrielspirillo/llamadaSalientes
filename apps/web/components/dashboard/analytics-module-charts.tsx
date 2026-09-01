@@ -162,7 +162,7 @@ export function ConversationStatusChart({ data }: { data: ConversationStatusBrea
           <span className="text-[28px] font-bold leading-none tabular-nums text-zinc-900">
             {total}
           </span>
-          <span className="mt-1 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+          <span className="mt-1 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
             Total
           </span>
         </div>

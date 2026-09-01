@@ -241,11 +241,11 @@ export function ContextPanel({
                     <span className="block truncate text-[14px] font-medium text-zinc-800">
                       {m.name}
                       {m.userId === currentUserId && (
-                        <span className="ml-1 text-[12px] font-normal text-zinc-400">(vos)</span>
+                        <span className="ml-1 text-[12px] font-normal text-zinc-500">(vos)</span>
                       )}
                     </span>
                     {status?.statusText && (
-                      <span className="block truncate text-[12px] text-zinc-400">
+                      <span className="block truncate text-[12px] text-zinc-500">
                         {status.statusEmoji ? `${status.statusEmoji} ` : ''}
                         {status.statusText}
                       </span>
@@ -260,7 +260,7 @@ export function ContextPanel({
               );
             })}
             {members.length === 0 && (
-              <li className="px-1.5 py-2 text-[13px] text-zinc-400">Sin miembros cargados.</li>
+              <li className="px-1.5 py-2 text-[13px] text-zinc-500">Sin miembros cargados.</li>
             )}
           </ul>
         </Section>
@@ -293,7 +293,7 @@ export function ContextPanel({
                       <span className="block truncate text-[13px] font-medium text-zinc-700">
                         {att.name}
                       </span>
-                      <span className="block text-[11px] text-zinc-400">
+                      <span className="block text-[11px] text-zinc-500">
                         {formatBytes(att.size)}
                       </span>
                     </span>
@@ -336,7 +336,7 @@ function Section({
   return (
     <section>
       <div className="mb-1.5 flex items-center justify-between gap-2">
-        <h3 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+        <h3 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
           <span className="h-2.5 w-1 rounded-full bg-[linear-gradient(180deg,#37766a,#6bc2a4)]" />
           {title}
         </h3>

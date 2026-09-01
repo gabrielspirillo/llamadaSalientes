@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
 import { Check, Hash, Lock, Search, Users, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -75,7 +75,7 @@ function PeoplePicker({
       />
       <ul className="max-h-52 space-y-0.5 overflow-y-auto rounded-2xl border border-[--color-border] bg-white/70 p-1.5">
         {list.length === 0 && (
-          <li className="px-2 py-6 text-center text-[13px] text-zinc-400">{emptyLabel}</li>
+          <li className="px-2 py-6 text-center text-[13px] text-zinc-500">{emptyLabel}</li>
         )}
         {list.map((p) => {
           const on = selected.has(p.userId);
@@ -95,7 +95,7 @@ function PeoplePicker({
                   <span className="block truncate text-[13.5px] font-medium text-zinc-800">
                     {p.name}
                   </span>
-                  <span className="block truncate text-[11.5px] text-zinc-400">{p.email}</span>
+                  <span className="block truncate text-[11.5px] text-zinc-500">{p.email}</span>
                 </span>
                 <span
                   className={cn(
@@ -254,7 +254,7 @@ export function NewChannelDialog({
           <div className="space-y-1.5">
             <Label>
               Miembros{' '}
-              <span className="font-normal text-zinc-400">
+              <span className="font-normal text-zinc-500">
                 {kind === 'PUBLIC'
                   ? '· en un canal público entra todo el equipo'
                   : selected.size > 0
@@ -355,10 +355,7 @@ export function ChannelMembersDialog({
   }, [open, channel?.id]);
 
   const memberIds = useMemo(() => new Set(channel?.memberIds ?? []), [channel?.memberIds]);
-  const members = useMemo(
-    () => people.filter((p) => memberIds.has(p.userId)),
-    [people, memberIds],
-  );
+  const members = useMemo(() => people.filter((p) => memberIds.has(p.userId)), [people, memberIds]);
 
   const call = async (body: Record<string, string[]>) => {
     if (!channel) return;
@@ -408,11 +405,11 @@ export function ChannelMembersDialog({
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label>
-              Dentro <span className="font-normal text-zinc-400">· {members.length}</span>
+              Dentro <span className="font-normal text-zinc-500">· {members.length}</span>
             </Label>
             <ul className="max-h-44 space-y-0.5 overflow-y-auto rounded-2xl border border-[--color-border] bg-white/70 p-1.5">
               {members.length === 0 && (
-                <li className="px-2 py-6 text-center text-[13px] text-zinc-400">
+                <li className="px-2 py-6 text-center text-[13px] text-zinc-500">
                   Sin miembros cargados.
                 </li>
               )}
@@ -426,10 +423,10 @@ export function ChannelMembersDialog({
                     <span className="block truncate text-[13.5px] font-medium text-zinc-800">
                       {p.name}
                       {p.userId === me?.userId && (
-                        <span className="ml-1 text-[11.5px] font-normal text-zinc-400">(tú)</span>
+                        <span className="ml-1 text-[11.5px] font-normal text-zinc-500">(tú)</span>
                       )}
                     </span>
-                    <span className="block truncate text-[11.5px] text-zinc-400">{p.email}</span>
+                    <span className="block truncate text-[11.5px] text-zinc-500">{p.email}</span>
                   </span>
                   <button
                     type="button"

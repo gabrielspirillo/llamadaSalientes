@@ -34,10 +34,11 @@ export function parseReminderButtonId(
 ): { action: ReminderButtonAction; reminderId: string } | null {
   if (!buttonId) return null;
   const m = BUTTON_RE.exec(buttonId);
-  if (!m) return null;
+  const reminderId = m?.[2];
+  if (!m || !reminderId) return null;
   return {
-    action: m[1]!.toLowerCase() as ReminderButtonAction,
-    reminderId: m[2]!,
+    action: m[1]?.toLowerCase() as ReminderButtonAction,
+    reminderId,
   };
 }
 

@@ -355,7 +355,7 @@ export function Composer({
       {/* Popover de comandos / menciones */}
       {menu && options.length > 0 && (
         <div className="absolute bottom-full left-0 z-30 mb-2 w-full max-w-md animate-zoom-in overflow-hidden rounded-[18px] border border-[--color-border] bg-white/95 shadow-[var(--shadow-lifted)] backdrop-blur-xl">
-          <div className="flex items-center gap-1.5 border-b border-[--color-border-subtle] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+          <div className="flex items-center gap-1.5 border-b border-[--color-border-subtle] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">
             {menu.kind === '/' ? <Zap className="h-3 w-3" /> : <AtSign className="h-3 w-3" />}
             {menu.kind === '/' ? 'Comandos' : 'Mencionar a'}
           </div>
@@ -379,7 +379,7 @@ export function Composer({
                     <span className="block truncate text-[13px] text-zinc-500">{opt.hint}</span>
                   </span>
                   {i === activeIndex && (
-                    <span className="shrink-0 rounded-md bg-white px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zinc-400 ring-1 ring-[--color-border]">
+                    <span className="shrink-0 rounded-md bg-white px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zinc-500 ring-1 ring-[--color-border]">
                       Enter
                     </span>
                   )}
@@ -494,7 +494,7 @@ export function Composer({
         </Button>
       </div>
 
-      <p className="mt-1.5 px-2 text-[12px] text-zinc-400">
+      <p className="mt-1.5 px-2 text-[12px] text-zinc-500">
         <kbd className="rounded bg-zinc-100 px-1 font-sans font-semibold">Enter</kbd> envía ·{' '}
         <kbd className="rounded bg-zinc-100 px-1 font-sans font-semibold">Shift+Enter</kbd> salta de
         línea

@@ -65,7 +65,11 @@ export function StepClinic({ form, mutate, errors }: StepProps) {
       <Field label="Teléfonos de contacto" required error={errors['clinic.phones']}>
         <div className="flex flex-col gap-2">
           {form.clinic.phones.map((phone, i) => (
-            <div key={i} className="flex items-center gap-2">
+            <div
+              // biome-ignore lint/suspicious/noArrayIndexKey: lista posicional que se edita por índice (d.clinic.phones[i]); una clave por valor rompe con teléfonos repetidos o vacíos mientras se tipea
+              key={i}
+              className="flex items-center gap-2"
+            >
               <Input
                 value={phone}
                 inputMode="tel"
@@ -207,7 +211,7 @@ export function StepHours({ form, mutate, errors }: StepProps) {
                       }
                       className="w-28"
                     />
-                    <span className="text-zinc-400 text-sm">a</span>
+                    <span className="text-zinc-500 text-sm">a</span>
                     <Input
                       type="time"
                       value={row.close}
@@ -220,7 +224,7 @@ export function StepHours({ form, mutate, errors }: StepProps) {
                     />
                   </div>
                 ) : (
-                  <span className="text-sm text-zinc-400">Cerrado</span>
+                  <span className="text-sm text-zinc-500">Cerrado</span>
                 )}
               </div>
               {errors[`hours.${day}`] && (

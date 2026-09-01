@@ -183,7 +183,7 @@ export default async function ContactDetailPage({ params }: Props) {
             <div className="min-w-0">
               <h1 className="truncate text-xl font-semibold text-zinc-900">{fullName}</h1>
               <p className="text-sm text-zinc-500">{contact.phoneE164}</p>
-              <p className="mt-1 text-xs text-zinc-400">
+              <p className="mt-1 text-xs text-zinc-500">
                 Creado {formatRelative(contact.createdAt)} · Última actividad{' '}
                 {conversations[0]?.lastMsgAt ? formatRelative(conversations[0].lastMsgAt) : '—'}
               </p>

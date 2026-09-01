@@ -93,7 +93,7 @@ export default async function FuturaPanelPage() {
         description="Gestiona las clínicas de la plataforma: activa las altas nuevas y controla sus módulos."
       />
 
-      <p className="mb-5 text-[13px] text-zinc-400">
+      <p className="mb-5 text-[13px] text-zinc-500">
         Tu tenant (Futura):{' '}
         <code className="rounded-lg bg-brand-50 px-1.5 py-0.5 font-mono text-brand-600">
           {realTenant.id}
@@ -153,7 +153,7 @@ export default async function FuturaPanelPage() {
 
                 {/* Módulos por clínica */}
                 <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-[--color-border-subtle] pt-4">
-                  <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">
                     Módulos
                   </span>
                   {MODULE_KEYS.map((key) => (

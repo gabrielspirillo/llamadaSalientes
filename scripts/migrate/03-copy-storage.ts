@@ -21,11 +21,7 @@
  * - Concurrencia: 4 descargas/subidas en paralelo.
  */
 
-import {
-  HeadObjectCommand,
-  PutObjectCommand,
-  S3Client,
-} from '@aws-sdk/client-s3';
+import { HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 
 type SupabaseListItem = { name: string; metadata?: { mimetype?: string; size?: number } };
 
@@ -61,22 +57,19 @@ async function listSupabase(prefix = ''): Promise<SupabaseListItem[]> {
   const queue: string[] = [prefix];
   while (queue.length) {
     const current = queue.shift()!;
-    const res = await fetch(
-      `${SUPABASE_URL}/storage/v1/object/list/${SUPABASE_BUCKET}`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prefix: current,
-          limit: 1000,
-          offset: 0,
-          sortBy: { column: 'name', order: 'asc' },
-        }),
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/list/${SUPABASE_BUCKET}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json',
       },
-    );
+      body: JSON.stringify({
+        prefix: current,
+        limit: 1000,
+        offset: 0,
+        sortBy: { column: 'name', order: 'asc' },
+      }),
+    });
     if (!res.ok) throw new Error(`list ${current}: ${res.status} ${await res.text()}`);
     const rows = (await res.json()) as SupabaseListItem[];
     for (const r of rows) {
@@ -90,10 +83,9 @@ async function listSupabase(prefix = ''): Promise<SupabaseListItem[]> {
 }
 
 async function downloadFromSupabase(path: string): Promise<{ body: Buffer; contentType: string }> {
-  const res = await fetch(
-    `${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${path}`,
-    { headers: { Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } },
-  );
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${path}`, {
+    headers: { Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+  });
   if (!res.ok) throw new Error(`get ${path}: ${res.status}`);
   const buf = Buffer.from(await res.arrayBuffer());
   const ct = res.headers.get('content-type') ?? 'application/octet-stream';

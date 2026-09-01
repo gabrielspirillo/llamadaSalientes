@@ -133,7 +133,7 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
               <th className="px-4 py-2 font-medium">Atajo</th>
               <th className="px-4 py-2 font-medium">Texto</th>
               <th className="px-4 py-2 font-medium">Actualizado</th>
-              <th className="px-4 py-2"></th>
+              <th className="px-4 py-2" />
             </tr>
           </thead>
           <tbody className="divide-y divide-[--color-border-subtle]">

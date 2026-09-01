@@ -181,7 +181,7 @@ export function OutboundQuickCall() {
                   placeholder="nombre_variable"
                   className="flex-1 font-mono text-xs"
                 />
-                <span className="text-zinc-400 text-sm">=</span>
+                <span className="text-zinc-500 text-sm">=</span>
                 <Input
                   value={v.value}
                   onChange={(e) => updateVar(v.id, { value: e.target.value })}

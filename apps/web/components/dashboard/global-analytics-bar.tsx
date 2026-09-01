@@ -122,7 +122,7 @@ export async function GlobalAnalyticsBar({
         <Reveal>
           <Card className="mb-4 overflow-hidden p-0">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-3 p-4 sm:px-5">
-              <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+              <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
                 Revenue por canal · mes en curso
               </span>
               <div className="flex flex-wrap gap-2">

@@ -213,7 +213,7 @@ export function RemindersPipeline({
           className="h-11 w-full max-w-sm rounded-[14px] border border-[--color-border] bg-white px-4 text-sm transition-[border-color,box-shadow] duration-300 placeholder:text-zinc-400 hover:border-brand-200 focus-visible:border-brand-400 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/12"
         />
         <span className="text-xs text-zinc-500">{filtered.length} recordatorios</span>
-        <span className="ml-auto text-[12px] text-zinc-400">
+        <span className="ml-auto text-[12px] text-zinc-500">
           Actualizado{' '}
           {new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' }).format(
             lastRefresh,
@@ -230,7 +230,7 @@ export function RemindersPipeline({
               {/* Scroll vertical interno por columna: ~4 tarjetas visibles. */}
               <div className="flex flex-col gap-3 overflow-y-auto pr-1" style={{ maxHeight: 520 }}>
                 {items.length === 0 ? (
-                  <div className="rounded-[18px] border border-dashed border-[--color-border-strong] p-5 text-center text-[12px] text-zinc-400">
+                  <div className="rounded-[18px] border border-dashed border-[--color-border-strong] p-5 text-center text-[12px] text-zinc-500">
                     Sin recordatorios
                   </div>
                 ) : (
@@ -252,7 +252,7 @@ export function RemindersPipeline({
       </div>
 
       <div className="mt-8">
-        <h2 className="mb-3 flex items-center gap-2 text-[14px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+        <h2 className="mb-3 flex items-center gap-2 text-[14px] font-bold uppercase tracking-[0.14em] text-zinc-500">
           <span className="h-3 w-1 rounded-full bg-[linear-gradient(180deg,#37766a,#6bc2a4)]" />
           Omitidos ({skipped.length})
         </h2>

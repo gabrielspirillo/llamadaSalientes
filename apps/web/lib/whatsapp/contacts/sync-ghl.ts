@@ -77,7 +77,7 @@ export async function syncWhatsappContactWithGhl(
       console.warn('[wa-ghl-sync] hydrate appointments failed', {
         tenantId,
         contactId,
-        ghlContactId: ghlContact!.id,
+        ghlContactId: ghlContact?.id,
         err: (err as Error).message,
       });
     });

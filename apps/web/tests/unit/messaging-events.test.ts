@@ -3,12 +3,7 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import {
-  presenceKey,
-  tenantChannel,
-  typingKey,
-  userChannel,
-} from '@/lib/messaging/events';
+import { presenceKey, tenantChannel, typingKey, userChannel } from '@/lib/messaging/events';
 
 // Estas cuatro funciones son el contrato de nombres entre procesos: la web
 // publica y el worker escucha (y viceversa). Un cambio de formato NO rompe

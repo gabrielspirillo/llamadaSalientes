@@ -73,7 +73,6 @@ const TRANSFER_TOOL = {
 };
 
 async function ensureLlm(client: Retell, existingLlmId: string | null): Promise<string> {
-  // biome-ignore lint/suspicious/noExplicitAny: SDK params shape
   const payload: any = {
     model: 'gpt-4o-mini',
     general_prompt: OUTBOUND_PROMPT,
@@ -84,13 +83,11 @@ async function ensureLlm(client: Retell, existingLlmId: string | null): Promise<
 
   if (existingLlmId) {
     console.log(`→ Actualizando LLM existente ${existingLlmId}`);
-    // biome-ignore lint/suspicious/noExplicitAny: SDK
     await (client as any).llm.update(existingLlmId, payload);
     return existingLlmId;
   }
 
   console.log('→ Creando Retell LLM nuevo');
-  // biome-ignore lint/suspicious/noExplicitAny: SDK
   const llm = await (client as any).llm.create(payload);
   console.log(`  ✓ LLM creado: ${llm.llm_id}`);
   return llm.llm_id as string;
@@ -101,7 +98,6 @@ async function ensureAgent(
   llmId: string,
   existingAgentId: string | null,
 ): Promise<string> {
-  // biome-ignore lint/suspicious/noExplicitAny: SDK params shape
   const payload: any = {
     response_engine: { type: 'retell-llm', llm_id: llmId },
     voice_id: '11labs-Adrian',
@@ -111,13 +107,11 @@ async function ensureAgent(
 
   if (existingAgentId) {
     console.log(`→ Actualizando agente existente ${existingAgentId}`);
-    // biome-ignore lint/suspicious/noExplicitAny: SDK
     await (client as any).agent.update(existingAgentId, payload);
     return existingAgentId;
   }
 
   console.log('→ Creando Retell agent nuevo');
-  // biome-ignore lint/suspicious/noExplicitAny: SDK
   const agent = await (client as any).agent.create(payload);
   console.log(`  ✓ Agent creado: ${agent.agent_id}`);
   return agent.agent_id as string;

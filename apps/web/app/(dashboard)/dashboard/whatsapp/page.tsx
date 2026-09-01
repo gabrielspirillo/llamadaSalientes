@@ -201,7 +201,7 @@ export default async function WhatsappConversationsPage() {
                             </Badge>
                           )}
                         </div>
-                        <span className="shrink-0 text-[12px] text-zinc-400">
+                        <span className="shrink-0 text-[12px] text-zinc-500">
                           {relativeTime(r.lastMsgAt)}
                         </span>
                       </div>
@@ -222,7 +222,7 @@ export default async function WhatsappConversationsPage() {
                         <span className="rounded-lg bg-zinc-100 px-1.5 py-0.5 text-[11px] font-semibold text-zinc-500">
                           {channelLabel(r.channel)}
                         </span>
-                        <span className="hidden text-[12px] tabular-nums text-zinc-400 sm:inline">
+                        <span className="hidden text-[12px] tabular-nums text-zinc-500 sm:inline">
                           {r.contactPhone}
                         </span>
                       </div>

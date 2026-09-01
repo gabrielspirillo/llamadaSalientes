@@ -334,7 +334,7 @@ export function MessageThread({
                     {newDay && (
                       <li className="my-3 flex items-center gap-3 px-4">
                         <span className="h-px flex-1 bg-[--color-border]" />
-                        <span className="rounded-full bg-white px-3 py-0.5 text-[12px] font-bold uppercase tracking-[0.1em] text-zinc-400 ring-1 ring-[--color-border]">
+                        <span className="rounded-full bg-white px-3 py-0.5 text-[12px] font-bold uppercase tracking-[0.1em] text-zinc-500 ring-1 ring-[--color-border]">
                           {formatDayDivider(m.createdAt)}
                         </span>
                         <span className="h-px flex-1 bg-[--color-border]" />

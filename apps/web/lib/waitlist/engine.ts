@@ -69,9 +69,12 @@ export async function enqueueOfferForCancelledSlot(
       ),
     )
     .limit(1);
-  if (existing.length > 0) {
-    const e = existing[0]!;
-    return { ok: false, reason: `slot_has_active_offer_${e.status.toLowerCase()}` };
+  const [existingOffer] = existing;
+  if (existingOffer) {
+    return {
+      ok: false,
+      reason: `slot_has_active_offer_${existingOffer.status.toLowerCase()}`,
+    };
   }
 
   // TTL: skip si está muy cerca.

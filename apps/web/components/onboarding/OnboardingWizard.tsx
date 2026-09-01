@@ -197,7 +197,7 @@ export function OnboardingWizard({
           </span>
           <span className="inline-block h-2 w-2 rounded-full bg-[#5fa896]" />
           <span className="mx-0.5 text-zinc-300">·</span>
-          <span className="text-[12px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+          <span className="text-[12px] font-bold uppercase tracking-[0.14em] text-zinc-500">
             Alta de clínica
           </span>
         </div>

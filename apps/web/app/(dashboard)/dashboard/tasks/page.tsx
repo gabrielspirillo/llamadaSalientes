@@ -17,9 +17,9 @@ import {
 } from '@/lib/tasks/queries';
 import { hasSystemTemplates, seedSystemTemplates } from '@/lib/tasks/templates';
 import { getCurrentTenant } from '@/lib/tenant';
-import { after } from 'next/server';
 import { and, eq } from 'drizzle-orm';
 import { ClipboardCheck, DatabaseZap } from 'lucide-react';
+import { after } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 

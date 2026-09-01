@@ -100,10 +100,11 @@ export async function addInternalNote(input: unknown): Promise<ActionResult<{ id
     .set({ updatedAt: new Date() })
     .where(eq(whatsappConversations.id, parsed.data.conversationId));
 
-  if (row) await publishMessageEvent(row);
+  if (!row) return fail('No se pudo guardar la nota');
+  await publishMessageEvent(row);
 
   revalidate(parsed.data.conversationId);
-  return ok({ id: row!.id });
+  return ok({ id: row.id });
 }
 
 // ─── AI agent toggle ─────────────────────────────────────────────────────
@@ -229,8 +230,9 @@ export async function createTag(input: unknown): Promise<ActionResult<{ id: stri
       .insert(whatsappTags)
       .values({ tenantId: tenant.id, label: parsed.data.label, color: parsed.data.color })
       .returning({ id: whatsappTags.id });
+    if (!row) return fail('No se pudo crear la etiqueta');
     revalidatePath('/dashboard/whatsapp');
-    return ok({ id: row!.id });
+    return ok({ id: row.id });
   } catch (err) {
     const msg = (err as Error).message;
     if (msg.includes('whatsapp_tags_tenant_label_unique')) {
@@ -309,8 +311,9 @@ export async function createQuickReply(input: unknown): Promise<ActionResult<{ i
       .insert(whatsappQuickReplies)
       .values({ tenantId: tenant.id, shortcut: parsed.data.shortcut, text: parsed.data.text })
       .returning({ id: whatsappQuickReplies.id });
+    if (!row) return fail('No se pudo crear la respuesta rápida');
     revalidatePath('/dashboard/whatsapp/quick-replies');
-    return ok({ id: row!.id });
+    return ok({ id: row.id });
   } catch (err) {
     const msg = (err as Error).message;
     if (msg.includes('whatsapp_quick_replies_tenant_shortcut_unique')) {

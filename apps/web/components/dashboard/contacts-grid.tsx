@@ -23,7 +23,9 @@ type Contact = {
   lastActivity?: string | null;
 };
 
-const GRADIENTS = [
+// Tupla no vacía a propósito: así el fallback `?? GRADIENTS[0]` es un
+// string y no hace falta un non-null assertion.
+const GRADIENTS: readonly [string, ...string[]] = [
   'from-brand-500 to-emerald-500',
   'from-blue-500 to-cyan-500',
   'from-emerald-500 to-teal-500',
@@ -40,7 +42,7 @@ const HIDDEN_TAGS = new Set(['seed-dentalflow', 'sin-tratamiento-activo', 'con-s
 function gradientFor(id: string): string {
   let hash = 0;
   for (const ch of id) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
-  return GRADIENTS[hash % GRADIENTS.length]!;
+  return GRADIENTS[hash % GRADIENTS.length] ?? GRADIENTS[0];
 }
 
 function cap(s: string): string {
@@ -55,7 +57,7 @@ function displayName(c: Contact): string {
   const first = (c.firstName ?? '').trim();
   const last = (c.lastName ?? '').trim();
   if (first || last) {
-    const fname = first ? cap(first.split(/\s+/)[0]!) : '';
+    const fname = first ? cap(first.split(/\s+/)[0] ?? first) : '';
     const lInitial = last ? `${last.charAt(0).toUpperCase()}.` : '';
     return [fname, lInitial].filter(Boolean).join(' ') || 'Sin nombre';
   }
@@ -214,7 +216,7 @@ export function ContactsGrid({ initial }: { initial: Contact[] }) {
                         <Tag key={tag}>{tag}</Tag>
                       ))}
                       {tags.length > 4 && (
-                        <span className="text-[12px] text-zinc-400">+{tags.length - 4}</span>
+                        <span className="text-[12px] text-zinc-500">+{tags.length - 4}</span>
                       )}
                     </div>
                   )}

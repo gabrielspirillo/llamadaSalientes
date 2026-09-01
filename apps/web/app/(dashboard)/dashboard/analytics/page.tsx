@@ -1,8 +1,4 @@
-import {
-  CallsTrendChart,
-  IntentBarList,
-  IntentDonut,
-} from '@/components/dashboard/charts-lazy';
+import { CallsTrendChart, IntentBarList, IntentDonut } from '@/components/dashboard/charts-lazy';
 import { MessagingAnalyticsPanel } from '@/components/dashboard/messaging-analytics';
 import { ModuleUnavailable } from '@/components/dashboard/modules/module-error';
 import { OutboundModule } from '@/components/dashboard/modules/outbound-module';
@@ -281,7 +277,7 @@ async function InboundAnalytics({
                           }}
                           title={`${h.hour}:00 — ${h.calls} llamadas`}
                         />
-                        <span className="text-[10px] tabular-nums text-zinc-400 sm:text-[11px]">
+                        <span className="text-[10px] tabular-nums text-zinc-500 sm:text-[11px]">
                           {h.hour.toString().padStart(2, '0')}
                         </span>
                       </div>

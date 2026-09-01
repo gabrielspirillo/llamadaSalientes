@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  detectDiagnosis,
-  detectInjection,
-  redactPii,
-} from '@/lib/whatsapp/agent/guardrails';
+import { detectDiagnosis, detectInjection, redactPii } from '@/lib/whatsapp/agent/guardrails';
 
 describe('detectInjection', () => {
   it('detecta intentos de inyección/jailbreak (es/en)', () => {

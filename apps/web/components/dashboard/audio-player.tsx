@@ -119,7 +119,7 @@ export function AudioPlayer({ callId }: Props) {
     <div>
       {/* Audio element siempre montado. Sin esto, el ref es null cuando
           asignamos src durante load(). */}
-      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+      {/* biome-ignore lint/a11y/useMediaCaption: grabación de una llamada telefónica; no hay pista de subtítulos que ofrecer */}
       <audio ref={audioRef} preload="metadata" className="hidden" />
 
       {loadState === 'idle' && (
@@ -198,7 +198,7 @@ export function AudioPlayer({ callId }: Props) {
               <Button variant="ghost" size="sm" onClick={() => seek(10)}>
                 +10s
               </Button>
-              <span className="text-xs text-zinc-400 ml-auto">
+              <span className="text-xs text-zinc-500 ml-auto">
                 {playing ? 'Reproduciendo' : 'Pausado'}
               </span>
             </div>

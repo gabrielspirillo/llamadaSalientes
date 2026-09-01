@@ -38,7 +38,7 @@ export async function searchAll(tenantId: string, q: string, limit = 10): Promis
           ilike(calls.summary, like),
           ilike(calls.intent, like),
           ilike(calls.retellCallId, like),
-        )!,
+        ),
       ),
     )
     .orderBy(desc(calls.startedAt))
@@ -50,7 +50,7 @@ export async function searchAll(tenantId: string, q: string, limit = 10): Promis
     .where(
       and(
         eq(treatments.tenantId, tenantId),
-        or(ilike(treatments.name, like), ilike(treatments.description, like))!,
+        or(ilike(treatments.name, like), ilike(treatments.description, like)),
       ),
     )
     .limit(5);

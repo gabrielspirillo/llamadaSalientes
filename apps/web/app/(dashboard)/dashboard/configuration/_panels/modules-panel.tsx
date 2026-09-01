@@ -41,7 +41,7 @@ export async function ModulesPanel() {
 
       <div className="overflow-x-auto rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)]">
         <table className="w-full text-sm">
-          <thead className="border-b border-[--color-border] bg-[#fafbfb] text-left text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+          <thead className="border-b border-[--color-border] bg-[#fafbfb] text-left text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">
             <tr>
               <th className="px-4 py-3">Tenant</th>
               {MODULE_KEYS.map((key) => (

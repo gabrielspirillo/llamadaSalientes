@@ -94,7 +94,7 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
         enabled: v.enabled,
       })
       .returning({ id: waitlistMessageTemplates.id });
-    return NextResponse.json({ ok: true, id: inserted!.id });
+    return NextResponse.json({ ok: true, id: inserted?.id });
   } catch (err) {
     return errResp(err);
   }

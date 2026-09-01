@@ -51,7 +51,7 @@ export function Select({ className, ...props }: React.SelectHTMLAttributes<HTMLS
 export function CharCount({ value, max }: { value: string; max: number }) {
   const over = value.length > max;
   return (
-    <span className={cn('text-[12px] tabular-nums', over ? 'text-rose-600' : 'text-zinc-400')}>
+    <span className={cn('text-[12px] tabular-nums', over ? 'text-rose-600' : 'text-zinc-500')}>
       {value.length}/{max}
     </span>
   );

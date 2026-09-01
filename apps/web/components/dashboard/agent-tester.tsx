@@ -222,7 +222,7 @@ export function AgentTester() {
             )}
           </div>
 
-          <p className="text-xs text-zinc-400 mt-5">
+          <p className="text-xs text-zinc-500 mt-5">
             Tu navegador pedirá permiso para usar el micrófono.
           </p>
         </div>

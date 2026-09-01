@@ -146,7 +146,7 @@ export function StatTile({
         )}
       </div>
 
-      {hint && <p className="relative mt-1.5 text-[12px] text-zinc-400">{hint}</p>}
+      {hint && <p className="relative mt-1.5 text-[12px] text-zinc-500">{hint}</p>}
 
       {trend && trend.length > 1 && (
         <div className="relative mt-3 -mb-1">

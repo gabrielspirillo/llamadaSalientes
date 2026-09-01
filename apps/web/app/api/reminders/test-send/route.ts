@@ -20,6 +20,7 @@ import {
   driverScopeForWhatsAppMode,
   resolveTemplate,
 } from '@/lib/reminders/template-resolver';
+import type { ReminderVars } from '@/lib/reminders/variables';
 import { buildReminderVars } from '@/lib/reminders/variables';
 
 export const runtime = 'nodejs';
@@ -36,7 +37,7 @@ const inputSchema = z.object({
 // No persiste en appointment_reminders — es solo para validar template/canal.
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  let auth;
+  let auth: Awaited<ReturnType<typeof requireReminderRole>>;
   try {
     auth = await requireReminderRole('admin');
   } catch (err) {
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     .where(eq(clinicSettings.tenantId, tenantId))
     .limit(1);
 
-  let vars;
+  let vars: ReminderVars;
   if (parsed.data.sampleGhlAppointmentId) {
     const [appt] = await db
       .select()

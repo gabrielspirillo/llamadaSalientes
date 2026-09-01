@@ -29,14 +29,14 @@ vi.mock('@/lib/tenant', () => ({
 }));
 
 import {
-  canPostIn,
+  type MessagingAuthContext,
   MessagingForbiddenError,
+  type MessagingRole,
   NotChannelMemberError,
+  canPostIn,
   requireChannelManager,
   requireChannelMember,
   requireMessagingRole,
-  type MessagingAuthContext,
-  type MessagingRole,
 } from '@/lib/messaging/auth';
 import { IM_CHANNEL_KINDS } from '@/lib/messaging/constants';
 
@@ -77,13 +77,7 @@ describe('canPostIn — matriz rol × tipo de canal', () => {
   }
 
   it('cubre los 5 kinds declarados en constants (si se agrega uno, este test lo caza)', () => {
-    expect([...IM_CHANNEL_KINDS].sort()).toEqual([
-      'CONTEXT',
-      'DM',
-      'GROUP',
-      'PRIVATE',
-      'PUBLIC',
-    ]);
+    expect([...IM_CHANNEL_KINDS].sort()).toEqual(['CONTEXT', 'DM', 'GROUP', 'PRIVATE', 'PUBLIC']);
   });
 
   it('un kind desconocido bloquea al viewer y deja pasar al resto', () => {

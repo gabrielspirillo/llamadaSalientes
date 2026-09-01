@@ -1,10 +1,10 @@
+import { Buffer } from 'node:buffer';
+import { createHash, createHmac } from 'node:crypto';
 import {
   buildSortedParamsString,
   buildZadarmaSignature,
   verifyZadarmaWebhookSignature,
 } from '@/lib/zadarma/signing';
-import { createHash, createHmac } from 'node:crypto';
-import { Buffer } from 'node:buffer';
 import { describe, expect, it } from 'vitest';
 
 const USER_KEY = 'user_abc';
@@ -94,8 +94,7 @@ describe('verifyZadarmaWebhookSignature', () => {
     const fields = 'a';
     const secret = 's';
     const md5hex = createHash('md5').update(`${fields}${secret}`).digest('hex');
-    const tampered =
-      Buffer.from(md5hex, 'utf8').toString('base64').slice(0, -1) + 'X';
+    const tampered = `${Buffer.from(md5hex, 'utf8').toString('base64').slice(0, -1)}X`;
     expect(verifyZadarmaWebhookSignature(fields, secret, tampered)).toBe(false);
   });
 

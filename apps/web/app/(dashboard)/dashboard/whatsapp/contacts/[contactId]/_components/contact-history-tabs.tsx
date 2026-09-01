@@ -328,13 +328,13 @@ function Notas({ contactId, notes }: { contactId: string; notes: NoteItem[] }) {
           {error ? (
             <span className="text-xs text-rose-700">{error}</span>
           ) : (
-            <span className="text-[11px] text-zinc-400">Admite formato Markdown</span>
+            <span className="text-[11px] text-zinc-500">Admite formato Markdown</span>
           )}
           <button
             type="button"
             onClick={handleAdd}
             disabled={pending || body.trim().length === 0}
-            className="text-sm font-medium text-emerald-600 hover:text-emerald-700 disabled:text-zinc-400"
+            className="text-sm font-medium text-emerald-600 hover:text-emerald-700 disabled:text-zinc-500"
           >
             {pending ? 'Guardando…' : 'Guardar nota'}
           </button>
@@ -469,9 +469,9 @@ function Combinar({ contactId }: { contactId: string }) {
         placeholder="Buscar por nombre o teléfono…"
         className="w-full rounded-lg border border-[--color-border] px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
       />
-      {searching && <p className="text-[12px] text-zinc-400">Buscando…</p>}
+      {searching && <p className="text-[12px] text-zinc-500">Buscando…</p>}
       {!searching && query.trim().length >= 2 && results.length === 0 && (
-        <p className="text-[12px] text-zinc-400">Sin resultados.</p>
+        <p className="text-[12px] text-zinc-500">Sin resultados.</p>
       )}
       <ul className="space-y-1">
         {results.map((r) => {
@@ -490,7 +490,7 @@ function Combinar({ contactId }: { contactId: string }) {
                 <div className="font-medium text-zinc-900">{r.name ?? '(sin nombre)'}</div>
                 <div className="text-xs text-zinc-500">{r.phoneE164}</div>
                 {r.ghlContactId && (
-                  <div className="mt-0.5 text-[11px] text-zinc-400">
+                  <div className="mt-0.5 text-[11px] text-zinc-500">
                     GHL · {r.ghlContactId.slice(0, 12)}…
                   </div>
                 )}

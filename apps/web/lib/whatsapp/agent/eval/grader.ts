@@ -48,7 +48,7 @@ export function gradeCase(c: EvalCase, output: AgentOutput): CaseResult {
       detail: `esperado ${c.expectUrgent}, obtenido ${output.urgent}`,
     });
   }
-  if (c.expectToolsAny && c.expectToolsAny.length) {
+  if (c.expectToolsAny?.length) {
     const hit = c.expectToolsAny.some((t) => okToolNames.includes(t));
     checks.push({
       name: 'tools_any',
@@ -56,7 +56,7 @@ export function gradeCase(c: EvalCase, output: AgentOutput): CaseResult {
       detail: `esperaba alguna de [${c.expectToolsAny.join(', ')}], llamó [${okToolNames.join(', ') || '—'}]`,
     });
   }
-  if (c.expectToolsNone && c.expectToolsNone.length) {
+  if (c.expectToolsNone?.length) {
     const violated = c.expectToolsNone.filter((t) => allToolNames.includes(t));
     checks.push({
       name: 'tools_none',
