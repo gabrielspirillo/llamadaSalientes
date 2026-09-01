@@ -1,6 +1,10 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { and, asc, eq, inArray } from 'drizzle-orm';
+import { ArrowLeft, Zap } from 'lucide-react';
+
+import { Badge } from '@/components/ui/badge';
+import { Avatar } from '@/components/ui/stat';
 
 import { db } from '@/lib/db/client';
 import {
@@ -121,33 +125,42 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
   }
 
   return (
-    <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-7.5rem)] -mx-4 sm:mx-0">
+    <div className="-mx-4 flex flex-col overflow-hidden rounded-none border-[--color-border] bg-white sm:mx-0 sm:rounded-[22px] sm:border sm:shadow-[var(--shadow-soft)] lg:h-[calc(100vh-9rem)] lg:flex-row">
       {/* Centro: cabecera + thread + composer */}
-      <div className="flex min-w-0 flex-1 flex-col h-[calc(100vh-7.5rem)] lg:h-auto">
-        <div className="flex items-center justify-between border-b border-[--color-border] bg-white px-4 py-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-3">
-              <Link
-                href="/dashboard/whatsapp"
-                className="text-sm text-zinc-500 hover:text-zinc-700"
-              >
-                ← Conversaciones
-              </Link>
+      <div className="flex h-[calc(100vh-9rem)] min-w-0 flex-1 flex-col lg:h-auto">
+        <div className="flex items-center justify-between gap-3 border-b border-[--color-border-subtle] bg-white/80 px-4 py-3 backdrop-blur-xl">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link
+              href="/dashboard/whatsapp"
+              aria-label="Volver a conversaciones"
+              className="group inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-all duration-300 hover:bg-brand-50 hover:text-brand-700"
+            >
+              <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
+            </Link>
+            <Avatar
+              name={row.contact.name ?? row.contact.phoneE164}
+              src={row.contact.avatarUrl}
+              size={40}
+            />
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="truncate text-[16px] font-bold tracking-tight text-zinc-900">
+                  {row.contact.name ?? row.contact.phoneE164}
+                </h1>
+                {row.conv.urgentFlag && (
+                  <Badge tone="danger" size="sm" className="shrink-0 animate-pulse-soft">
+                    URGENTE
+                  </Badge>
+                )}
+              </div>
               <Link
                 href="/dashboard/whatsapp/quick-replies"
-                className="ml-2 text-xs text-zinc-400 hover:text-zinc-600"
+                className="mt-0.5 inline-flex items-center gap-1 text-[11.5px] text-zinc-400 transition-colors hover:text-brand-600"
               >
+                <Zap className="h-3 w-3" />
                 Respuestas rápidas
               </Link>
             </div>
-            <h1 className="mt-1 truncate text-xl font-semibold text-zinc-900">
-              {row.contact.name ?? row.contact.phoneE164}
-            </h1>
-            {row.conv.urgentFlag && (
-              <span className="mt-1 inline-block rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
-                URGENTE
-              </span>
-            )}
           </div>
           <ConversationActions
             conversationId={row.conv.id}
@@ -175,7 +188,7 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
           senderUserEmails={Object.fromEntries(senderUserMap)}
         />
 
-        <div className="border-t border-[--color-border] bg-white p-3">
+        <div className="border-t border-[--color-border-subtle] bg-white p-3">
           <MessageComposer
             conversationId={row.conv.id}
             disabled={row.conv.status === 'CLOSED'}

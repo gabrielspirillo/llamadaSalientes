@@ -124,12 +124,15 @@ export function MessagesStream({
     <div
       ref={scrollContainerRef}
       onScroll={onScroll}
-      className="flex-1 overflow-y-auto bg-zinc-50 p-4"
+      className="flex-1 overflow-y-auto bg-[linear-gradient(180deg,#fbfaff_0%,#f6f5fb_100%)] p-4"
     >
       {empty ? (
-        <p className="text-center text-sm text-zinc-500">Sin mensajes aún.</p>
+        <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
+          <span className="inline-flex h-12 w-12 animate-float items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#e9f9f2,#f4f0ff)]" />
+          <p className="text-[13px] text-zinc-500">Sin mensajes aún.</p>
+        </div>
       ) : (
-        <ul className="space-y-2">
+        <ul className="space-y-2.5">
           {messages.map((m) => (
             <MessageBubble key={m.id} message={m} senderUserEmails={senderUserEmails} />
           ))}
@@ -150,16 +153,20 @@ function MessageBubble({
 }) {
   const isOutbound = m.direction === 'OUTBOUND';
   const isInternal = m.internalNote;
+  // Burbujas: nota interna (ámbar, centrada), saliente (degradado verde) y
+  // entrante (blanca con borde suave). La esquina "pegada" marca el emisor.
   const containerCls = isInternal
-    ? 'mx-auto bg-amber-50 border border-amber-200'
+    ? 'mx-auto bg-amber-50 border border-amber-200 rounded-2xl'
     : isOutbound
-      ? 'ml-auto bg-emerald-500 text-white'
-      : 'mr-auto bg-white border border-[--color-border]';
+      ? 'ml-auto rounded-2xl rounded-br-md bg-[linear-gradient(135deg,#10b981,#34d399)] text-white shadow-[0_8px_20px_-12px_rgba(16,185,129,0.9)]'
+      : 'mr-auto rounded-2xl rounded-bl-md bg-white border border-[--color-border] shadow-[var(--shadow-soft)]';
   const authorEmail = m.senderUserId ? senderUserEmails[m.senderUserId] ?? null : null;
   const timestamp = useMemo(() => new Date(m.createdAt).toLocaleString(), [m.createdAt]);
 
   return (
-    <li className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-3 py-2 text-sm ${containerCls}`}>
+    <li
+      className={`max-w-[85%] animate-fade-up px-3.5 py-2.5 text-[13.5px] leading-relaxed sm:max-w-[70%] ${containerCls}`}
+    >
       {isInternal && (
         <div className="mb-1 text-[10px] font-semibold uppercase text-amber-700">
           Nota interna{authorEmail ? ` · ${authorEmail}` : ''}
@@ -170,13 +177,13 @@ function MessageBubble({
       )}
       {m.mediaUrl && m.type === 'IMAGE' && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={m.mediaUrl} alt="adjunto" className="mb-1 max-h-72 rounded-lg" />
+        <img src={m.mediaUrl} alt="adjunto" className="mb-1.5 max-h-72 rounded-xl" />
       )}
       {m.mediaUrl && m.type === 'AUDIO' && (
         <audio src={m.mediaUrl} controls className="mb-1 w-full" />
       )}
       {m.mediaUrl && m.type === 'VIDEO' && (
-        <video src={m.mediaUrl} controls className="mb-1 max-h-72 rounded-lg" />
+        <video src={m.mediaUrl} controls className="mb-1.5 max-h-72 rounded-xl" />
       )}
       {m.mediaUrl && m.type === 'PDF' && (
         <a
@@ -209,13 +216,13 @@ function MessageBubble({
 
 function TypingBubble() {
   return (
-    <li className="mr-auto max-w-[60%] rounded-2xl border border-[--color-border] bg-white px-3 py-2 text-sm">
+    <li className="mr-auto max-w-[60%] animate-fade-up rounded-2xl rounded-bl-md border border-[--color-border] bg-white px-3.5 py-2.5 shadow-[var(--shadow-soft)]">
       <div className="flex items-center gap-2 text-zinc-500">
-        <span className="text-[11px]">Agente escribiendo</span>
+        <span className="text-[11px] font-medium">Agente escribiendo</span>
         <span className="inline-flex gap-1">
-          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.3s]" />
-          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.15s]" />
-          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400" />
+          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-400 [animation-delay:-0.3s]" />
+          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-400 [animation-delay:-0.15s]" />
+          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-400" />
         </span>
       </div>
     </li>

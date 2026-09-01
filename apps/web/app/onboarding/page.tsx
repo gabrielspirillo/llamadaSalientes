@@ -10,7 +10,7 @@ export default async function OnboardingPage() {
   if (orgId) redirect('/dashboard');
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12 bg-zinc-50">
+    <div className="aurora-canvas flex min-h-screen items-center justify-center px-4 py-8 sm:px-6 sm:py-12">
       <div className="max-w-lg w-full">
         <RoleChooser />
       </div>

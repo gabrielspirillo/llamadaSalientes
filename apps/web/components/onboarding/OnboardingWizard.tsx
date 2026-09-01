@@ -18,7 +18,7 @@ import {
   toPayload,
 } from '@/lib/onboarding/schema';
 import { useClerk } from '@clerk/nextjs';
-import { ArrowLeft, ArrowRight, Loader2, LogOut } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Loader2, LogOut, Sparkles } from 'lucide-react';
 import * as React from 'react';
 
 const STEPS = [
@@ -173,8 +173,8 @@ export function OnboardingWizard({
   if (!tenant && !selfRegister && !authenticated) {
     return (
       <div className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center">
-        <h1 className="text-xl font-semibold text-zinc-900">Link incompleto</h1>
-        <p className="mt-2 text-sm text-zinc-500">
+        <h1 className="text-[22px] font-extrabold tracking-tight text-zinc-900">Link incompleto</h1>
+        <p className="mt-2 text-[13px] leading-relaxed text-zinc-500">
           Este link de onboarding no identifica a ninguna clínica. Pedinos el link correcto para
           completar tus datos.
         </p>
@@ -189,38 +189,66 @@ export function OnboardingWizard({
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-4 py-8 sm:px-6 sm:py-12">
       {/* Header + progreso */}
       <header className="mb-6">
-        <div className="mb-5 flex items-center gap-2">
-          <span className="text-[18px] font-extrabold leading-none tracking-tight text-[#0f1f2e]">
+        <div className="mb-6 flex items-center gap-2.5">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-[13px] bg-[linear-gradient(135deg,#7139e8,#a855f7_60%,#ec4899)] text-white shadow-[0_8px_20px_-8px_rgba(113,57,232,0.9)]">
+            <Sparkles className="h-4 w-4" />
+          </span>
+          <span className="text-[18px] font-extrabold leading-none tracking-tight text-zinc-900">
             FUTURA
           </span>
-          <span className="inline-block h-2 w-2 rounded-full bg-[#5fa896]" />
           <span className="mx-0.5 text-zinc-300">·</span>
-          <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-            Formulario de onboarding
+          <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+            Onboarding
           </span>
         </div>
 
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs font-medium text-violet-700">
-              Paso {step} de {STEPS.length}
-            </p>
-            <h1 className="text-xl font-semibold tracking-tight text-zinc-900 sm:text-2xl">
-              {current.title}
-            </h1>
-          </div>
-        </div>
+        {/* Pasos: puntos conectados que se llenan al avanzar */}
+        <ol className="mb-5 flex items-center gap-1.5" aria-label="Progreso del onboarding">
+          {STEPS.map((st) => {
+            const done = st.n < step;
+            const active = st.n === step;
+            return (
+              <li key={st.n} className="flex flex-1 items-center gap-1.5">
+                <span
+                  title={st.title}
+                  className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold transition-all duration-500 ${
+                    done
+                      ? 'bg-[linear-gradient(120deg,#7139e8,#a855f7)] text-white'
+                      : active
+                        ? 'bg-white text-brand-700 ring-2 ring-brand-400 animate-pulse-ring'
+                        : 'bg-white/70 text-zinc-400 ring-1 ring-[--color-border]'
+                  }`}
+                >
+                  {done ? <Check className="h-3.5 w-3.5" /> : st.n}
+                </span>
+                {st.n < STEPS.length && (
+                  <span className="h-0.5 flex-1 overflow-hidden rounded-full bg-zinc-200">
+                    <span
+                      className="block h-full rounded-full bg-[linear-gradient(90deg,#7139e8,#ec4899)] transition-transform duration-500 ease-out"
+                      style={{
+                        transform: `scaleX(${done ? 1 : 0})`,
+                        transformOrigin: 'left center',
+                      }}
+                    />
+                  </span>
+                )}
+              </li>
+            );
+          })}
+        </ol>
 
-        <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-zinc-200">
-          <div
-            className="h-full rounded-full bg-violet-600 transition-all duration-300 ease-out"
-            style={{ width: `${Math.max(progress, 4)}%` }}
-          />
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-500">
+            Paso {step} de {STEPS.length} · {progress}%
+          </p>
+          <h1 className="mt-1 text-[24px] font-extrabold tracking-tight text-zinc-900 sm:text-[28px]">
+            {current.title}
+          </h1>
         </div>
       </header>
 
       {/* Contenido del paso */}
-      <main key={step} className="flex-1 animate-fade-in">
+      <main key={step} className="flex-1 animate-fade-up">
         {step === 1 && <StepClinic form={form} mutate={mutate} errors={errors} />}
         {step === 2 && <StepHours form={form} mutate={mutate} errors={errors} />}
         {step === 3 && <StepTreatments form={form} mutate={mutate} errors={errors} />}
@@ -238,11 +266,13 @@ export function OnboardingWizard({
       </main>
 
       {submitError && (
-        <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{submitError}</p>
+        <p className="mt-4 animate-fade-up rounded-2xl border border-rose-100 bg-rose-50/80 px-4 py-3 text-[13px] text-rose-700">
+          {submitError}
+        </p>
       )}
 
       {/* Navegación */}
-      <footer className="mt-8 flex items-center justify-between gap-3 border-t border-[--color-border-subtle] pt-5">
+      <footer className="sticky bottom-0 mt-8 flex items-center justify-between gap-3 rounded-t-[22px] border-t border-[--color-border-subtle] bg-white/80 py-4 backdrop-blur-xl">
         {step === 1 ? (
           <Button variant="ghost" onClick={exit} disabled={submitting} type="button">
             <LogOut className="h-4 w-4" /> Salir

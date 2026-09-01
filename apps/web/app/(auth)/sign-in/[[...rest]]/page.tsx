@@ -1,28 +1,50 @@
+import { AuthAside, AuthBrand } from '@/components/auth/auth-aside';
 import { SignIn } from '@clerk/nextjs';
+import { Quote } from 'lucide-react';
 
 export default function SignInPage() {
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 bg-white">
-      <div className="flex items-center justify-center px-4 sm:px-8 py-8 sm:py-12">
-        <SignIn />
-      </div>
-      <div className="hidden lg:flex relative bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 items-center justify-center p-12 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.18),transparent_60%)]" />
-        <div className="relative max-w-md text-white">
-          <p className="text-sm text-zinc-400 mb-4 uppercase tracking-wider">Caso real</p>
-          <h2 className="text-3xl font-semibold leading-tight">
-            "Pasamos de perder 3 de cada 10 llamadas a contestar el 100%. La conversión a cita subió
-            28% en el primer mes."
-          </h2>
-          <div className="mt-8 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-violet-500" />
-            <div>
-              <p className="font-medium">Dra. Patricia Mendoza</p>
-              <p className="text-sm text-zinc-400">Directora · Sonrisa Clínica Estética</p>
-            </div>
+    <div className="grid min-h-screen bg-white lg:grid-cols-2">
+      <div className="relative flex flex-col justify-center px-4 py-10 sm:px-8 sm:py-12">
+        <AuthBrand />
+        <div className="flex flex-1 items-center justify-center">
+          <div className="w-full animate-fade-up">
+            <SignIn />
           </div>
         </div>
       </div>
+
+      <AuthAside eyebrow="Caso real">
+        <Quote className="mb-5 h-8 w-8 text-white/25" />
+        <blockquote className="text-[26px] font-bold leading-snug tracking-tight">
+          Pasamos de perder 3 de cada 10 llamadas a contestar el 100%. La conversión a cita subió
+          28% en el primer mes.
+        </blockquote>
+        <div className="mt-8 flex items-center gap-3">
+          <div className="h-11 w-11 rounded-full bg-[linear-gradient(135deg,#a855f7,#ec4899)] ring-2 ring-white/20" />
+          <div>
+            <p className="text-[14px] font-bold">Dra. Patricia Mendoza</p>
+            <p className="text-[13px] text-white/60">Directora · Sonrisa Clínica Estética</p>
+          </div>
+        </div>
+
+        <dl className="mt-10 grid grid-cols-3 gap-3">
+          {[
+            { k: '100%', v: 'llamadas atendidas' },
+            { k: '+28%', v: 'conversión a cita' },
+            { k: '24/7', v: 'sin descansos' },
+          ].map((s, i) => (
+            <div
+              key={s.k}
+              className="animate-fade-up rounded-2xl bg-white/10 p-3.5 ring-1 ring-inset ring-white/10"
+              style={{ animationDelay: `${300 + i * 120}ms` }}
+            >
+              <dt className="text-[20px] font-extrabold leading-none tracking-tight">{s.k}</dt>
+              <dd className="mt-1.5 text-[11px] leading-tight text-white/60">{s.v}</dd>
+            </div>
+          ))}
+        </dl>
+      </AuthAside>
     </div>
   );
 }
