@@ -328,7 +328,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
                   type="button"
                   onClick={() => applyQuickReply(qr)}
                   className={`block w-full px-3 py-2 text-left text-sm ${
-                    i === slashIndex ? 'bg-emerald-50' : 'hover:bg-brand-50/50'
+                    i === slashIndex ? 'bg-emerald-50' : 'hover:bg-zinc-50'
                   }`}
                 >
                   <div className="font-mono text-xs text-emerald-700">/{qr.shortcut}</div>
@@ -342,7 +342,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
 
       {/* Audio preview */}
       {audioBlob && (
-        <div className="flex items-center gap-2 border-b border-[--color-border-subtle] bg-[#fafdfb] px-3 py-2">
+        <div className="flex items-center gap-2 border-b border-[--color-border-subtle] bg-[#fafbfb] px-3 py-2">
           <audio src={URL.createObjectURL(audioBlob)} controls className="h-8 flex-1" />
           <button
             type="button"
@@ -385,7 +385,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
             type="button"
             onClick={() => setEmojiOpen((v) => !v)}
             disabled={disabled || pending}
-            className="rounded-full p-2 text-zinc-400 transition-all duration-300 hover:scale-110 hover:bg-brand-50 hover:text-brand-600 disabled:opacity-50"
+            className="rounded-full p-2 text-zinc-400 transition-all duration-300 hover:scale-110 hover:bg-zinc-100 hover:text-brand-600 disabled:opacity-50"
             title="Emoji"
           >
             <svg
@@ -441,7 +441,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
                   type="button"
                   onClick={startRecording}
                   disabled={disabled || pending}
-                  className="rounded-full p-2 text-zinc-400 transition-all duration-300 hover:scale-110 hover:bg-brand-50 hover:text-brand-600 disabled:opacity-50"
+                  className="rounded-full p-2 text-zinc-400 transition-all duration-300 hover:scale-110 hover:bg-zinc-100 hover:text-brand-600 disabled:opacity-50"
                   title="Grabar audio"
                 >
                   <svg
@@ -502,7 +502,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
                 insertEmoji(e);
                 setEmojiOpen(false);
               }}
-              className="rounded-lg p-1 text-lg transition-transform duration-200 hover:scale-125 hover:bg-brand-50"
+              className="rounded-lg p-1 text-lg transition-transform duration-200 hover:scale-125 hover:bg-zinc-100"
             >
               {e}
             </button>

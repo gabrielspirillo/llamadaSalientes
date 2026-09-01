@@ -175,7 +175,7 @@ export function TreatmentDialog({
           </div>
 
           {!isEdit && (
-            <div className="rounded-xl border border-[--color-border] bg-[#fafdfb] p-4 space-y-3">
+            <div className="rounded-xl border border-[--color-border] bg-[#fafbfb] p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-brand-600" />
                 <p className="text-sm font-medium">Horarios de atención (opcional)</p>

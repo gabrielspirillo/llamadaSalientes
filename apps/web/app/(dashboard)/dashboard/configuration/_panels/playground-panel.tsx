@@ -82,7 +82,7 @@ export function PlaygroundPanel() {
 
       <div
         ref={listRef}
-        className="h-[420px] overflow-y-auto rounded-xl border border-[--color-border] bg-[#fafdfb] p-4"
+        className="h-[420px] overflow-y-auto rounded-xl border border-[--color-border] bg-[#fafbfb] p-4"
       >
         {turns.length === 0 ? (
           <p className="text-sm text-zinc-400">

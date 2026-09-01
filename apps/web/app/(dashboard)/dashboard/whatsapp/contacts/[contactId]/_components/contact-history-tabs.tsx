@@ -177,7 +177,7 @@ function Historial({
               <li key={c.id}>
                 <Link
                   href={`/dashboard/whatsapp/${c.id}`}
-                  className="flex items-start gap-2 rounded-lg p-2 hover:bg-brand-50/50"
+                  className="flex items-start gap-2 rounded-lg p-2 hover:bg-zinc-50"
                 >
                   <div
                     className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${
@@ -217,7 +217,7 @@ function Historial({
               <li key={c.id}>
                 <Link
                   href={`/dashboard/llamadas/${c.id}`}
-                  className="flex items-start gap-2 rounded-lg p-2 hover:bg-brand-50/50"
+                  className="flex items-start gap-2 rounded-lg p-2 hover:bg-zinc-50"
                 >
                   <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-purple-500" />
                   <div className="min-w-0 flex-1">
@@ -484,7 +484,7 @@ function Combinar({ contactId }: { contactId: string }) {
                 className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                   isSelected
                     ? 'border border-emerald-300 bg-emerald-50'
-                    : 'border border-transparent hover:bg-brand-50/50'
+                    : 'border border-transparent hover:bg-zinc-50'
                 }`}
               >
                 <div className="font-medium text-zinc-900">{r.name ?? '(sin nombre)'}</div>

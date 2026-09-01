@@ -201,7 +201,7 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
                         <button
                           type="button"
                           onClick={() => startEdit(r)}
-                          className="rounded-lg border border-[--color-border] px-2 py-1 text-xs hover:bg-brand-50/50"
+                          className="rounded-lg border border-[--color-border] px-2 py-1 text-xs hover:bg-zinc-50"
                         >
                           Editar
                         </button>

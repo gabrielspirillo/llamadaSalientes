@@ -181,7 +181,7 @@ export async function AgentStatusPanel() {
       </div>
 
       {/* Nota */}
-      <div className="flex items-start gap-3 rounded-[22px] border border-[--color-border] bg-[#fafdfb] p-4 sm:p-5">
+      <div className="flex items-start gap-3 rounded-[22px] border border-[--color-border] bg-[#fafbfb] p-4 sm:p-5">
         <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand-400" />
         <p className="text-[13px] leading-relaxed text-zinc-600">
           Estas conexiones las configura y las mantiene el equipo de{' '}

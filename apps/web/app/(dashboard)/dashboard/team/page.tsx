@@ -126,7 +126,7 @@ export default async function TeamPage() {
             return (
               <div
                 key={m.id}
-                className="flex items-center justify-between gap-3 p-4 transition-colors duration-200 hover:bg-brand-50/40 sm:p-5"
+                className="flex items-center justify-between gap-3 p-4 transition-colors duration-200 hover:bg-zinc-50 sm:p-5"
               >
                 <div className="flex min-w-0 items-center gap-3">
                   <Avatar name={userName} src={m.publicUserData?.imageUrl} size={40} />
@@ -145,7 +145,7 @@ export default async function TeamPage() {
           {invitations.data.map((inv) => (
             <div
               key={inv.id}
-              className="flex items-center justify-between gap-3 p-4 transition-colors duration-200 hover:bg-brand-50/40 sm:p-5"
+              className="flex items-center justify-between gap-3 p-4 transition-colors duration-200 hover:bg-zinc-50 sm:p-5"
             >
               <div className="flex min-w-0 items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-[13px] font-bold text-zinc-400 ring-2 ring-white">

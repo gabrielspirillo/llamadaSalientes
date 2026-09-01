@@ -103,7 +103,7 @@ export function DashboardTopbar({
             type="button"
             onClick={() => setMobileNavOpen(true)}
             aria-label="Abrir menú"
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-zinc-600 transition-all hover:bg-brand-50 hover:text-brand-700 active:scale-95 lg:hidden"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-zinc-600 transition-all hover:bg-zinc-100 hover:text-brand-700 active:scale-95 lg:hidden"
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -156,7 +156,7 @@ export function DashboardTopbar({
             type="button"
             onClick={() => setSearchOpen(true)}
             aria-label="Buscar"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-zinc-600 transition-all hover:bg-brand-50 hover:text-brand-700 active:scale-95 md:hidden"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-zinc-600 transition-all hover:bg-zinc-100 hover:text-brand-700 active:scale-95 md:hidden"
           >
             <Search className="h-4 w-4" />
           </button>
@@ -285,7 +285,7 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
                   <button
                     type="button"
                     onClick={() => onPick(h.href)}
-                    className="group flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-all duration-200 hover:bg-brand-50/70"
+                    className="group flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-all duration-200 hover:bg-zinc-50"
                   >
                     <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-brand-600 ring-1 ring-[--color-border] transition-transform duration-300 group-hover:scale-110">
                       {h.kind === 'call' ? (
@@ -316,7 +316,7 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
           )}
         </div>
 
-        <div className="flex items-center justify-between border-t border-[--color-border-subtle] bg-[#fafdfb] px-5 py-2.5 text-[11px] text-zinc-400">
+        <div className="flex items-center justify-between border-t border-[--color-border-subtle] bg-[#fafbfb] px-5 py-2.5 text-[11px] text-zinc-400">
           <span>↵ para abrir · Esc para cerrar</span>
           <span className="tabular-nums">{hits.length} resultados</span>
         </div>
@@ -356,7 +356,7 @@ function TeamAvatars() {
     <Link
       href="/dashboard/team"
       title="Ver el equipo de la clínica"
-      className="mr-1 hidden items-center rounded-full py-1 pl-1 pr-2 transition-colors duration-300 hover:bg-brand-50 sm:flex"
+      className="mr-1 hidden items-center rounded-full py-1 pl-1 pr-2 transition-colors duration-300 hover:bg-zinc-100 sm:flex"
     >
       {shown.map((m, i) => (
         <span
@@ -467,7 +467,7 @@ function NotificationsBell({
           'relative inline-flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300 active:scale-95',
           open
             ? 'bg-brand-50 text-brand-700'
-            : 'text-zinc-600 hover:bg-brand-50 hover:text-brand-700',
+            : 'text-zinc-600 hover:bg-zinc-100 hover:text-brand-700',
         )}
         aria-label="Notificaciones"
       >
@@ -527,8 +527,8 @@ function NotificationsBell({
                         href={`/dashboard/calls/${n.callId}`}
                         onClick={onClose}
                         className={cn(
-                          'flex items-start gap-3 rounded-2xl px-3 py-3 transition-all duration-200 hover:bg-brand-50/60',
-                          isUnread && 'bg-brand-50/40',
+                          'flex items-start gap-3 rounded-2xl px-3 py-3 transition-all duration-200 hover:bg-zinc-50',
+                          isUnread && 'bg-zinc-50',
                         )}
                       >
                         <span
@@ -564,11 +564,11 @@ function NotificationsBell({
             )}
           </div>
 
-          <div className="shrink-0 border-t border-[--color-border-subtle] bg-[#fafdfb]">
+          <div className="shrink-0 border-t border-[--color-border-subtle] bg-[#fafbfb]">
             <Link
               href="/dashboard/calls"
               onClick={onClose}
-              className="group flex items-center justify-center gap-1.5 py-3 text-xs font-semibold text-zinc-600 transition-colors hover:bg-brand-50 hover:text-brand-700"
+              className="group flex items-center justify-center gap-1.5 py-3 text-xs font-semibold text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-brand-700"
             >
               Ver todas las llamadas
               <ArrowRight className="h-3 w-3 transition-transform duration-300 group-hover:translate-x-1" />

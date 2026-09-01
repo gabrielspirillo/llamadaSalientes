@@ -12,22 +12,22 @@
   --font-display: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
 
   /* --- Canvas y superficies -------------------------------------------- */
-  --color-bg: #f4faf7;
-  --color-canvas: #f4faf7;
+  --color-bg: #f7f8f8;
+  --color-canvas: #f7f8f8;
   --color-surface: #ffffff;
-  --color-surface-2: #fafdfb;
-  --color-surface-3: #eef7f2;
+  --color-surface-2: #fbfcfc;
+  --color-surface-3: #f0f2f2;
   --color-surface-elevated: #ffffff;
 
   /* --- Bordes ----------------------------------------------------------- */
-  --color-border: #e3efe9;
-  --color-border-strong: #cfe4da;
-  --color-border-subtle: #eff6f2;
+  --color-border: #e6e9e9;
+  --color-border-strong: #d5dad9;
+  --color-border-subtle: #eff1f1;
 
   /* --- Texto ------------------------------------------------------------ */
-  --color-fg: #14211d;
-  --color-fg-muted: #63736d;
-  --color-fg-subtle: #9aa8a2;
+  --color-fg: #161a19;
+  --color-fg-muted: #6a706e;
+  --color-fg-subtle: #a0a6a4;
 
   /* --- Marca (verde) ------------------------------------------------------
      Anclada en #5fa896, el verde histórico del logo de FUTURA. */
@@ -74,9 +74,9 @@
   --radius-pill: 9999px;
 
   /* --- Sombras suaves (difusas, sin bordes duros) ----------------------- */
-  --shadow-soft: 0 1px 2px rgba(20, 33, 29, 0.04), 0 8px 24px -12px rgba(20, 33, 29, 0.12);
-  --shadow-lifted: 0 2px 4px rgba(20, 33, 29, 0.04), 0 18px 40px -18px rgba(20, 33, 29, 0.2);
-  --shadow-float: 0 30px 60px -24px rgba(35, 82, 72, 0.32);
+  --shadow-soft: 0 1px 2px rgba(22, 26, 25, 0.04), 0 8px 24px -12px rgba(22, 26, 25, 0.12);
+  --shadow-lifted: 0 2px 4px rgba(22, 26, 25, 0.04), 0 18px 40px -18px rgba(22, 26, 25, 0.2);
+  --shadow-float: 0 30px 60px -24px rgba(22, 26, 25, 0.3);
   --shadow-glow: 0 10px 30px -8px rgba(71, 145, 131, 0.45);
 
   /* --- Animaciones (utilidades animate-*) ------------------------------- */
@@ -354,7 +354,7 @@ body {
   z-index: -1;
   border-radius: 9999px;
   filter: blur(90px);
-  opacity: 0.5;
+  opacity: 0.35;
   pointer-events: none;
 }
 
@@ -363,7 +363,7 @@ body {
   height: 46vw;
   top: -14vw;
   left: -10vw;
-  background: radial-gradient(circle, rgba(95, 168, 150, 0.5), transparent 70%);
+  background: radial-gradient(circle, rgba(95, 168, 150, 0.22), transparent 70%);
   animation: var(--animate-drift);
 }
 
@@ -372,7 +372,7 @@ body {
   height: 40vw;
   bottom: -16vw;
   right: -12vw;
-  background: radial-gradient(circle, rgba(107, 194, 164, 0.4), transparent 70%);
+  background: radial-gradient(circle, rgba(107, 194, 164, 0.16), transparent 70%);
   animation: var(--animate-drift);
   animation-delay: -9s;
   animation-direction: alternate-reverse;
@@ -479,7 +479,7 @@ body {
   transition: opacity 320ms ease;
   background: radial-gradient(
     420px circle at var(--mx, 50%) var(--my, 0%),
-    rgba(95, 168, 150, 0.16),
+    rgba(95, 168, 150, 0.1),
     transparent 60%
   );
   pointer-events: none;
@@ -600,13 +600,13 @@ html.js [data-reveal].is-revealed {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(71, 145, 131, 0.24);
+  background: rgba(22, 26, 25, 0.16);
   border-radius: 9999px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(71, 145, 131, 0.45);
+  background: rgba(22, 26, 25, 0.3);
   background-clip: padding-box;
   border: 2px solid transparent;
 }

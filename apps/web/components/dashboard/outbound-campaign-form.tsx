@@ -151,7 +151,7 @@ export function OutboundCampaignForm() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <label className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-[14px] border border-[--color-border] bg-white transition-colors duration-300 hover:border-brand-200 px-3.5 text-sm hover:bg-brand-50/50">
+          <label className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-[14px] border border-[--color-border] bg-white transition-colors duration-300 hover:border-brand-200 px-3.5 text-sm hover:bg-zinc-50">
             <Upload className="h-4 w-4" />
             Elegir archivo
             <input type="file" accept=".csv,text/csv" onChange={onFile} className="hidden" />

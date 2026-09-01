@@ -80,7 +80,7 @@ export default async function OutboundPage() {
                 <li key={c.id} style={{ ['--i' as string]: Math.min(i, 12) }}>
                   <Link
                     href={`/dashboard/outbound/${c.id}`}
-                    className="flex items-start gap-3 p-4 hover:bg-brand-50/50 transition-colors"
+                    className="flex items-start gap-3 p-4 hover:bg-zinc-50 transition-colors"
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">

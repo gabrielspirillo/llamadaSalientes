@@ -28,7 +28,7 @@ export function TR({ className, ...props }: React.HTMLAttributes<HTMLTableRowEle
   return (
     <tr
       className={cn(
-        'border-b border-[--color-border-subtle] transition-colors duration-200 last:border-b-0 hover:bg-brand-50/40',
+        'border-b border-[--color-border-subtle] transition-colors duration-200 last:border-b-0 hover:bg-zinc-50',
         className,
       )}
       {...props}
@@ -55,6 +55,6 @@ export function TD({ className, ...props }: React.TdHTMLAttributes<HTMLTableCell
 /** Fila de cabecera lista para usar: `<THead><HeadRow>…</HeadRow></THead>`. */
 export function HeadRow({ className, ...props }: React.HTMLAttributes<HTMLTableRowElement>) {
   return (
-    <tr className={cn('border-b border-[--color-border] bg-[#fafdfb]', className)} {...props} />
+    <tr className={cn('border-b border-[--color-border] bg-[#fafbfb]', className)} {...props} />
   );
 }

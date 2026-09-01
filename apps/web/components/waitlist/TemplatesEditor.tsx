@@ -238,7 +238,7 @@ export function TemplatesEditor({
             className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
               activeScope === s
                 ? 'border-zinc-900 bg-zinc-900 text-white'
-                : 'border-[--color-border] bg-white text-zinc-700 hover:bg-brand-50/50'
+                : 'border-[--color-border] bg-white text-zinc-700 hover:bg-zinc-50'
             }`}
           >
             {SCOPE_LABELS[s]}
@@ -247,7 +247,7 @@ export function TemplatesEditor({
       </div>
 
       {channel === 'VOICE' || activeScope === 'whatsapp_evolution' ? (
-        <div className="rounded-lg border border-[--color-border] bg-[#fafdfb] p-3 space-y-2">
+        <div className="rounded-lg border border-[--color-border] bg-[#fafbfb] p-3 space-y-2">
           <div className="text-xs uppercase tracking-wide text-zinc-500">
             Variables disponibles · haz clic para insertarlas donde tengas el cursor
           </div>

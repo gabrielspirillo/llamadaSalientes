@@ -88,7 +88,7 @@ export default function BillingPage() {
               subtitle="Tarjeta asociada a la suscripción"
             />
             <div className="px-5 pb-5 sm:px-6 sm:pb-6">
-              <div className="flex items-center gap-3 rounded-2xl border border-[--color-border] bg-[#fafdfb] p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]">
+              <div className="flex items-center gap-3 rounded-2xl border border-[--color-border] bg-[#fafbfb] p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]">
                 <div className="flex h-10 w-14 items-center justify-center rounded-lg bg-[linear-gradient(135deg,#37766a,#5fa896)] text-[11px] font-bold tracking-wide text-white">
                   VISA
                 </div>
@@ -122,7 +122,7 @@ export default function BillingPage() {
           {invoices.map((i) => (
             <div
               key={i.id}
-              className="flex items-center justify-between gap-3 p-4 sm:p-5 hover:bg-brand-50/50 transition-colors"
+              className="flex items-center justify-between gap-3 p-4 sm:p-5 hover:bg-zinc-50 transition-colors"
             >
               <div className="min-w-0">
                 <p className="truncate font-mono text-[13px] font-bold text-zinc-900">{i.id}</p>

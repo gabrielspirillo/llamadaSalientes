@@ -87,7 +87,7 @@ export default async function DashboardOverview({
         <Card tone="night" className="mb-6 overflow-hidden p-6">
           <div
             aria-hidden
-            className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 animate-float rounded-full bg-[radial-gradient(circle,rgba(107,194,164,0.45),transparent_70%)] blur-2xl"
+            className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 animate-float rounded-full bg-[radial-gradient(circle,rgba(107,194,164,0.28),transparent_70%)] blur-2xl"
           />
           <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">

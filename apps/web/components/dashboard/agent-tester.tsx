@@ -276,7 +276,7 @@ export function AgentTester() {
                   <p
                     className={`rounded-2xl px-4 py-2.5 text-[13.5px] leading-relaxed ${
                       turn.speaker === 'agent'
-                        ? 'rounded-tl-md bg-[#effaf5] text-violet-900'
+                        ? 'rounded-tl-md bg-[#f4f7f6] text-violet-900'
                         : 'rounded-tl-md bg-[#e9f4fe] text-sky-900'
                     }`}
                   >

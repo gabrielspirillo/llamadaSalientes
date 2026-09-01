@@ -331,7 +331,7 @@ function ChatwootBridgeForm() {
           type="button"
           onClick={onDisconnect}
           disabled={pending}
-          className="rounded border border-[--color-border] bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-brand-50/50 disabled:opacity-50"
+          className="rounded border border-[--color-border] bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
         >
           Desactivar conexión
         </button>

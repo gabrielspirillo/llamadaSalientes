@@ -34,13 +34,13 @@ export function PageHeader({
     >
       <div className="flex min-w-0 items-center gap-4">
         {icon && (
-          <span className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#37766a,#5fa896_60%,#6bc2a4)] text-white shadow-[0_10px_26px_-12px_rgba(55,118,106,0.9)] sm:inline-flex">
+          <span className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-700 ring-1 ring-brand-100 sm:inline-flex">
             {icon}
           </span>
         )}
         <div className="min-w-0">
           {eyebrow && (
-            <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-brand-500">
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">
               {eyebrow}
             </p>
           )}
