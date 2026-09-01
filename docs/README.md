@@ -8,6 +8,7 @@ Documentación técnica de **CliniQ / DentalVoice** — SaaS multi-tenant de age
 | [02 — Guía de configuración (Setup)](./02-setup.md) | Clonar, instalar dependencias, levantar Postgres/Redis/MinIO con Docker, env vars y entorno de desarrollo local |
 | [03 — Referencia de API / Endpoints](./03-api-referencia.md) | Autenticación, todos los endpoints REST, webhooks, tools del agente de voz y convenciones de error |
 | [04 — Despliegue (Deployment)](./04-deployment.md) | Build de imágenes Docker, auto-deploy con Dokploy, env de producción, migraciones y rollback |
+| [05 — Mensajería interna del equipo](./05-mensajeria-interna.md) | Investigación y plan: chat interno en tiempo real (SSE + Redis), modelo de datos, API, diseño Aurora e integraciones con Tareas, Waitlist, Contactos, Llamadas y Analytics |
 
 ## Ver esta documentación en la app web
 

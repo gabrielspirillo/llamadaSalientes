@@ -52,6 +52,9 @@ export interface CreateTaskInput {
   ghlAppointmentId?: string | null;
   reminderId?: string | null;
   waitlistEntryId?: string | null;
+  /** Puente con Mensajes: de qué mensaje y de qué canal salió esta tarea. */
+  imChannelId?: string | null;
+  imMessageId?: string | null;
   /** Texto de la primera entrada del timeline. */
   activityNote?: string | null;
 }
@@ -94,6 +97,8 @@ export async function createTask(
       ghlAppointmentId: input.ghlAppointmentId ?? null,
       reminderId: input.reminderId ?? null,
       waitlistEntryId: input.waitlistEntryId ?? null,
+      imChannelId: input.imChannelId ?? null,
+      imMessageId: input.imMessageId ?? null,
     })
     .onConflictDoNothing()
     .returning({ id: tasks.id });
@@ -134,7 +139,44 @@ export async function createTask(
     body: input.activityNote ?? activityForSource(input.source ?? 'MANUAL'),
   });
 
+  // Mensajes: a quien le cae una tarea se le avisa en el chat. Idempotente por
+  // dedupeKey, best-effort — nunca puede tumbar el alta.
+  void notifyAssigned({
+    tenantId: input.tenantId,
+    taskId: row.id,
+    title: input.title,
+    assigneeUserIds: input.assigneeUserIds ?? [],
+    actorUserId: input.createdByUserId ?? null,
+    dueAt: input.dueAt ?? null,
+  });
+
   return { id: row.id, created: true };
+}
+
+/**
+ * Aviso de asignación al módulo Mensajes.
+ *
+ * Aislado en su propia función y sin await en los call sites: el tablero no
+ * puede quedarse esperando a que el chat responda, ni fallar si no responde.
+ * La idempotencia la da el `dedupeKey` por (tarea, persona).
+ */
+function notifyAssigned(args: {
+  tenantId: string;
+  taskId: string;
+  title: string;
+  assigneeUserIds: string[];
+  actorUserId: string | null;
+  dueAt: Date | null;
+}): void {
+  if (args.assigneeUserIds.length === 0) return;
+  void (async () => {
+    try {
+      const { postTaskAssigned } = await import('@/lib/messaging/bot');
+      await postTaskAssigned(args);
+    } catch (err) {
+      console.warn('[tasks] aviso de asignación falló', (err as Error).message);
+    }
+  })();
 }
 
 function activityForSource(source: TaskSource): string {
@@ -258,6 +300,14 @@ export async function updateTask(input: UpdateTaskInput): Promise<void> {
         ? `Asignados actualizados (${input.assigneeUserIds.length})`
         : 'Sin asignar',
     );
+    notifyAssigned({
+      tenantId: input.tenantId,
+      taskId: input.taskId,
+      title: input.title?.trim() || current.title,
+      assigneeUserIds: input.assigneeUserIds,
+      actorUserId: input.actorUserId,
+      dueAt: input.dueAt !== undefined ? input.dueAt : current.dueAt,
+    });
   }
 
   if (notes.length > 0) {
@@ -431,6 +481,29 @@ export async function addComment(args: {
     .update(tasks)
     .set({ updatedAt: new Date() })
     .where(and(eq(tasks.id, args.taskId), eq(tasks.tenantId, args.tenantId)));
+
+  // Mensajes: el comentario también va al hilo `CONTEXT` de la tarea, para que
+  // la conversación viva donde la mira el equipo. Best-effort y sin await.
+  void (async () => {
+    try {
+      const [t] = await db
+        .select({ title: tasks.title })
+        .from(tasks)
+        .where(and(eq(tasks.id, args.taskId), eq(tasks.tenantId, args.tenantId)))
+        .limit(1);
+      const { postTaskThreadComment } = await import('@/lib/messaging/bot');
+      await postTaskThreadComment({
+        tenantId: args.tenantId,
+        taskId: args.taskId,
+        taskTitle: t?.title ?? 'Tarea',
+        authorUserId: args.authorUserId,
+        body: args.body.trim().slice(0, 4000),
+      });
+    } catch (err) {
+      console.warn('[tasks] espejo del comentario al hilo falló', (err as Error).message);
+    }
+  })();
+
   return row.id;
 }
 

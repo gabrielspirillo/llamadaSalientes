@@ -45,6 +45,20 @@ export type QueueJobs = {
   // Tareas: barrido diario sobre datos de estado (presupuestos aceptados sin
   // agendar, pacientes inactivos). No hay webhook que los dispare.
   'task-daily-sweep': Record<string, never>;
+  // Mensajes: tick cada 30 min que publica el resumen diario en #general de
+  // cada clínica cuando en SU timezone son las 08:00. El job decide a quién
+  // le toca, igual que 'task-routines-tick'.
+  'im-digest': Record<string, never>;
+  // Mensajes: escalado de una mención que sigue sin leer pasados N minutos.
+  // Job retardado (delay = escalate_mentions_after_minutes). Apagado por
+  // defecto: la columna arranca en 0 y sin eso no se encola nada.
+  'im-mention-escalate': {
+    tenantId: string;
+    mentionId: string;
+  };
+  // Mensajes: borrado duro de lo que superó la retención del tenant. Es la
+  // pata operativa de la postura RGPD del módulo.
+  'im-retention-sweep': Record<string, never>;
 };
 
 export type QueueName = keyof QueueJobs;
@@ -58,4 +72,7 @@ export const QUEUE_NAMES = [
   'waitlist-offer-expire',
   'task-routines-tick',
   'task-daily-sweep',
+  'im-digest',
+  'im-mention-escalate',
+  'im-retention-sweep',
 ] as const satisfies readonly QueueName[];

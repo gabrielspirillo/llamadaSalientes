@@ -6,6 +6,7 @@ import { upsertCall } from '@/lib/data/calls';
 import { db } from '@/lib/db/client';
 import {
   appointmentReminders,
+  calls,
   reminderConfirmations,
   whatsappContacts,
   whatsappConversations,
@@ -151,12 +152,62 @@ export async function processCallJob(
     return { ok: true };
   });
 
+  // Mensajes: la misma llamada que genera tarea se anuncia en #urgencias con
+  // el resumen y el reproductor. Best-effort — nunca rompe el job.
+  await step.run('publish-call-event', async () => {
+    try {
+      await publishCallEvent(tenantId, retellCallId);
+    } catch (err) {
+      console.warn('[process-call] publish-call-event falló', (err as Error).message);
+    }
+    return { ok: true };
+  });
+
   return {
     tenantId,
     retellCallId,
     recordingR2Key,
     summarized: summary !== null,
   };
+}
+
+/**
+ * Publica la tarjeta de la llamada en el chat interno.
+ *
+ * Mismo criterio de corte que `lib/tasks/hooks.ts:onCallProcessed`: solo se
+ * anuncia lo que exige una reacción humana (cortada, con error o traspaso sin
+ * atender). Una llamada que el agente resolvió sola no es noticia.
+ */
+async function publishCallEvent(tenantId: string, retellCallId: string): Promise<void> {
+  const [call] = await db
+    .select()
+    .from(calls)
+    .where(and(eq(calls.tenantId, tenantId), eq(calls.retellCallId, retellCallId)))
+    .limit(1);
+  if (!call) return;
+
+  const tooShort = (call.durationSeconds ?? 0) < 20;
+  const missed = call.status === 'error' || tooShort;
+  const transferredUnanswered = Boolean(call.transferred) && tooShort;
+  if (!missed && !transferredUnanswered) return;
+
+  const { resolvePatient } = await import('@/lib/tasks/hooks');
+  const patient = await resolvePatient(tenantId, {
+    ghlContactId: call.ghlContactId,
+    phone: call.fromNumber,
+  });
+
+  const { postMissedCall } = await import('@/lib/messaging/bot');
+  await postMissedCall({
+    tenantId,
+    callId: call.id,
+    patientName: patient.name,
+    phone: patient.phone,
+    intent: call.intent,
+    summary: call.summary,
+    startedAt: call.startedAt,
+    transferredUnanswered,
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

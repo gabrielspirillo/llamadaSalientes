@@ -122,8 +122,22 @@ export async function POST(req: NextRequest) {
       ghlContactId: apt.contactId ?? null,
       startTime: apptStart,
     });
+    // Mensajes: la cita cancelada se anuncia en #agenda con Reagendar /
+    // Liberar el hueco. Best-effort, no puede romper el webhook.
+    await publishAppointmentEvent('cancelled', {
+      tenantId: integration.tenantId,
+      ghlAppointmentId: apt.id,
+      ghlContactId: apt.contactId ?? null,
+      startTime: apptStart,
+    });
   } else if (NO_SHOW_STATUSES.has(statusLower)) {
     await onAppointmentNoShow({
+      tenantId: integration.tenantId,
+      ghlAppointmentId: apt.id,
+      ghlContactId: apt.contactId ?? null,
+      startTime: apptStart,
+    });
+    await publishAppointmentEvent('no_show', {
       tenantId: integration.tenantId,
       ghlAppointmentId: apt.id,
       ghlContactId: apt.contactId ?? null,
@@ -214,6 +228,41 @@ export async function POST(req: NextRequest) {
     ...(attribution ? { attribution } : {}),
     waitlist: autoEnqueue.ok ? { entryId: autoEnqueue.entryId } : { skipped: autoEnqueue.reason },
   });
+}
+
+/**
+ * Publica la tarjeta de la cita en el chat interno.
+ *
+ * Best-effort y con try/catch propio, igual que los hooks de Tareas: GHL
+ * reintenta el webhook si devolvemos error, y no queremos reintentos por no
+ * haber podido publicar un mensaje.
+ */
+async function publishAppointmentEvent(
+  kind: 'cancelled' | 'no_show',
+  args: {
+    tenantId: string;
+    ghlAppointmentId: string;
+    ghlContactId: string | null;
+    startTime: Date | null;
+  },
+): Promise<void> {
+  try {
+    const { resolvePatient } = await import('@/lib/tasks/hooks');
+    const patient = await resolvePatient(args.tenantId, { ghlContactId: args.ghlContactId });
+    const { postAppointmentCancelled, postAppointmentNoShow } = await import(
+      '@/lib/messaging/bot'
+    );
+    const post = kind === 'cancelled' ? postAppointmentCancelled : postAppointmentNoShow;
+    await post({
+      tenantId: args.tenantId,
+      ghlAppointmentId: args.ghlAppointmentId,
+      patientName: patient.name,
+      phone: patient.phone,
+      startTime: args.startTime,
+    });
+  } catch (err) {
+    console.warn('[ghl-webhook] publicar evento de cita falló', (err as Error).message);
+  }
 }
 
 // GHL no normaliza el status de asistencia entre cuentas: aceptamos las

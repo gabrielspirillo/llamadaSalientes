@@ -129,6 +129,18 @@ export async function enqueueOfferForCancelledSlot(
   };
 
   const entry = await findNextEligibleEntry(tenantId, slotForMatching, matchSettings);
+
+  // Mensajes: el hueco se anuncia en #agenda pase lo que pase con la oferta
+  // automática. Que el equipo lo vea es lo que permite intervenir a mano.
+  // Best-effort y sin await: no puede demorar ni romper el encolado.
+  void publishSlotOpen({
+    tenantId,
+    cancelledSlotId,
+    slotStart: slot.startTime,
+    candidateEntryId: entry?.id ?? null,
+    skippedReason: entry ? null : 'no_eligible_entry',
+  }).catch(() => undefined);
+
   if (!entry) return { ok: false, reason: 'no_eligible_entry' };
 
   // Determinar canal según channel_mode.
@@ -166,6 +178,49 @@ export async function enqueueOfferForCancelledSlot(
     channel,
     expiresAt: ttl.expiresAt,
   };
+}
+
+/**
+ * Publica el hueco liberado en el chat interno. Best-effort y aislado: si el
+ * módulo Mensajes no está disponible, la waitlist sigue funcionando igual.
+ */
+async function publishSlotOpen(args: {
+  tenantId: string;
+  cancelledSlotId: string;
+  slotStart: Date;
+  candidateEntryId: string | null;
+  skippedReason: string | null;
+}): Promise<void> {
+  try {
+    const { postSlotOpen } = await import('@/lib/messaging/bot');
+    let candidateName: string | null = null;
+    let candidatePhone: string | null = null;
+    if (args.candidateEntryId) {
+      const [cand] = await db
+        .select({ ghlContactId: waitlistEntries.ghlContactId })
+        .from(waitlistEntries)
+        .where(eq(waitlistEntries.id, args.candidateEntryId))
+        .limit(1);
+      if (cand?.ghlContactId) {
+        const { resolvePatient } = await import('@/lib/tasks/hooks');
+        const patient = await resolvePatient(args.tenantId, {
+          ghlContactId: cand.ghlContactId,
+        });
+        candidateName = patient.name;
+        candidatePhone = patient.phone;
+      }
+    }
+    await postSlotOpen({
+      tenantId: args.tenantId,
+      cancelledSlotId: args.cancelledSlotId,
+      slotStart: args.slotStart,
+      candidateName,
+      candidatePhone,
+      skippedReason: args.skippedReason,
+    });
+  } catch (err) {
+    console.warn('[waitlist] publicar slot_open falló', (err as Error).message);
+  }
 }
 
 // Variante con exclusión, para reintentar al siguiente en cola cuando el primer
@@ -538,6 +593,25 @@ export async function markOfferAccepted(args: {
       ghlContactId: entry.ghlContactId,
       slotStart: slot.startTime,
     });
+    // Mensajes: además de la tarea, un grito en #urgencias con mención al
+    // equipo. Best-effort: nunca cambia el resultado de la aceptación.
+    try {
+      const { resolvePatient } = await import('@/lib/tasks/hooks');
+      const { postWaitlistBookFailed } = await import('@/lib/messaging/bot');
+      const patient = await resolvePatient(offer.tenantId, {
+        ghlContactId: entry.ghlContactId,
+      });
+      await postWaitlistBookFailed({
+        tenantId: offer.tenantId,
+        entryId: entry.id,
+        patientName: patient.name,
+        phone: patient.phone,
+        slotStart: slot.startTime,
+        reason: bookRes.result.slice(0, 300),
+      });
+    } catch (err) {
+      console.warn('[waitlist] publicar book_failed falló', (err as Error).message);
+    }
     return { ok: false, reason: 'book_failed' };
   }
 

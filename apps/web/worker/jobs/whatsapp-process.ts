@@ -227,6 +227,25 @@ export async function processWhatsappJob(
         await onWhatsappHandoff({ tenantId, conversationId });
         return { ok: true };
       });
+      // Mensajes: además de la tarea, la tarjeta en el chat con las últimas
+      // líneas y el botón para tomarla. Best-effort, nunca rompe el job.
+      await step.run('publish-handoff-event', async () => {
+        try {
+          const { postWhatsappHandoff } = await import('@/lib/messaging/bot');
+          await postWhatsappHandoff({
+            tenantId,
+            conversationId,
+            patientName: `Contacto ${contactPhoneE164}`,
+            phone: contactPhoneE164,
+            lastLines: [agentInput.userText, agentOutput.responseText]
+              .filter((l): l is string => Boolean(l?.trim()))
+              .map((l) => l.trim().slice(0, 200)),
+          });
+        } catch (err) {
+          console.warn('[wa-process] publish-handoff-event falló', (err as Error).message);
+        }
+        return { ok: true };
+      });
     }
 
     // 8. Enviar outbound (si hay connector y respuesta).

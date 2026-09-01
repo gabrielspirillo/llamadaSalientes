@@ -1,5 +1,6 @@
 'use client';
 
+import { useMessaging } from '@/components/messaging/MessagingProvider';
 import { cn } from '@/lib/cn';
 import { type EnabledModules, isModuleEnabled, moduleForRoute } from '@/lib/modules';
 import { OrganizationSwitcher } from '@clerk/nextjs';
@@ -16,6 +17,7 @@ import {
   ListChecks,
   Lock,
   MessageCircle,
+  MessageSquare,
   PhoneCall,
   PhoneOutgoing,
   Settings,
@@ -44,6 +46,7 @@ const GROUPS: readonly NavGroup[] = [
     title: null,
     items: [
       { href: '/dashboard', label: 'Panel', icon: Home, tone: 'brand' },
+      { href: '/dashboard/messages', label: 'Mensajes', icon: MessageSquare, tone: 'brand' },
       { href: '/dashboard/tasks', label: 'Tareas', icon: ClipboardCheck, tone: 'blossom' },
       { href: '/dashboard/analytics', label: 'Métricas', icon: BarChart3, tone: 'sky' },
     ],
@@ -113,6 +116,7 @@ function NavLink({
   onNavigate,
   tourAnchor,
   badge = 0,
+  badgeLabel,
 }: {
   item: NavItem;
   active: boolean;
@@ -121,6 +125,8 @@ function NavLink({
   tourAnchor?: string;
   /** Contador que se dibuja a la derecha (0 = nada). */
   badge?: number;
+  /** Texto accesible del contador. Sin esto el aria-label decía "tareas". */
+  badgeLabel?: string;
 }) {
   const Icon = item.icon;
   return (
@@ -159,7 +165,7 @@ function NavLink({
       {badge > 0 && (
         <span
           className="inline-flex min-w-[20px] shrink-0 items-center justify-center rounded-full bg-brand-600 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-white"
-          aria-label={`${badge} tareas para hoy o vencidas`}
+          aria-label={badgeLabel ?? `${badge} pendientes en ${item.label}`}
         >
           {badge > 99 ? '99+' : badge}
         </span>
@@ -177,6 +183,7 @@ function SidebarNav({
   isSuperAdmin = false,
   anchorTour = false,
   tasksBadge = 0,
+  messagesBadge = 0,
 }: {
   onNavigate?: () => void;
   enabledModules: EnabledModules;
@@ -184,8 +191,13 @@ function SidebarNav({
   anchorTour?: boolean;
   /** Tareas mías vencidas o para hoy. 0 = no se muestra nada. */
   tasksBadge?: number;
+  /** Mensajes sin leer. Hidrata del server y a partir de ahí manda el stream. */
+  messagesBadge?: number;
 }) {
   const pathname = usePathname();
+  // El contador del server hidrata; después manda el stream del provider.
+  const messaging = useMessaging();
+  const liveMessages = messaging.ready ? messaging.totalUnread : messagesBadge;
 
   return (
     <>
@@ -243,7 +255,20 @@ function SidebarNav({
                     locked={locked}
                     onNavigate={onNavigate}
                     tourAnchor={anchorTour ? it.href : undefined}
-                    badge={it.href === '/dashboard/tasks' ? tasksBadge : 0}
+                    badge={
+                      it.href === '/dashboard/tasks'
+                        ? tasksBadge
+                        : it.href === '/dashboard/messages'
+                          ? liveMessages
+                          : 0
+                    }
+                    badgeLabel={
+                      it.href === '/dashboard/tasks'
+                        ? `${tasksBadge} tareas para hoy o vencidas`
+                        : it.href === '/dashboard/messages'
+                          ? `${liveMessages} mensajes sin leer`
+                          : undefined
+                    }
                   />
                 );
               })}
@@ -307,10 +332,12 @@ export function DashboardSidebar({
   enabledModules,
   isSuperAdmin = false,
   tasksBadge = 0,
+  messagesBadge = 0,
 }: {
   enabledModules: EnabledModules;
   isSuperAdmin?: boolean;
   tasksBadge?: number;
+  messagesBadge?: number;
 }) {
   return (
     <aside
@@ -323,6 +350,7 @@ export function DashboardSidebar({
         enabledModules={enabledModules}
         isSuperAdmin={isSuperAdmin}
         tasksBadge={tasksBadge}
+        messagesBadge={messagesBadge}
         anchorTour
       />
     </aside>
@@ -335,12 +363,14 @@ export function DashboardSidebarMobile({
   enabledModules,
   isSuperAdmin = false,
   tasksBadge = 0,
+  messagesBadge = 0,
 }: {
   open: boolean;
   onClose: () => void;
   enabledModules: EnabledModules;
   isSuperAdmin?: boolean;
   tasksBadge?: number;
+  messagesBadge?: number;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -378,6 +408,7 @@ export function DashboardSidebarMobile({
           enabledModules={enabledModules}
           isSuperAdmin={isSuperAdmin}
           tasksBadge={tasksBadge}
+          messagesBadge={messagesBadge}
         />
       </aside>
     </div>
