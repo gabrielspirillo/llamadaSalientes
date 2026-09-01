@@ -6,6 +6,7 @@ import { useMessaging } from '@/components/messaging/MessagingProvider';
 import { StatusDot } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/feedback';
 import { cn } from '@/lib/cn';
+import type { ImSearchHit } from '@/lib/messaging/types';
 import type { EnabledModules } from '@/lib/modules';
 import { UserButton, useUser } from '@clerk/nextjs';
 import {
@@ -152,7 +153,7 @@ export function DashboardTopbar({
             )}
           >
             <Search className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:text-brand-500" />
-            <span className="truncate">Buscar llamadas, pacientes, tratamientos…</span>
+            <span className="truncate">Buscar llamadas, pacientes, mensajes…</span>
             <kbd className="ml-auto shrink-0 rounded-lg bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-400">
               ⌘K
             </kbd>
@@ -211,6 +212,7 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const { channels } = useMessaging();
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -224,20 +226,51 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
     const ac = new AbortController();
     const t = setTimeout(async () => {
       setLoading(true);
-      try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`, { signal: ac.signal });
-        if (res.ok) {
-          const data = (await res.json()) as { hits: SearchHit[] };
-          setHits(data.hits ?? []);
-        }
-      } catch {}
-      setLoading(false);
+
+      // Canales: se filtran en memoria, ya vienen en el rail.
+      const needle = q.trim().toLowerCase();
+      const channelHits: SearchHit[] = channels
+        .filter((c) => !c.archived && c.name.toLowerCase().includes(needle))
+        .slice(0, 4)
+        .map((c) => ({
+          kind: 'channel' as const,
+          id: c.id,
+          title: c.name,
+          subtitle: c.kind === 'DM' ? 'Mensaje directo' : (c.topic ?? 'Canal del equipo'),
+          href: `/dashboard/messages?channel=${c.id}`,
+          when: null,
+        }));
+
+      // Las dos búsquedas van en paralelo. Que Mensajes falle (migración sin
+      // aplicar, módulo caído) NO puede romper el buscador que ya existía.
+      const [general, messages] = await Promise.all([
+        fetch(`/api/search?q=${encodeURIComponent(q)}`, { signal: ac.signal })
+          .then((r) => (r.ok ? (r.json() as Promise<{ hits?: SearchHit[] }>) : null))
+          .catch(() => null),
+        fetch(`/api/messages/search?q=${encodeURIComponent(q)}&limit=6`, { signal: ac.signal })
+          .then((r) => (r.ok ? (r.json() as Promise<{ hits?: ImSearchHit[] }>) : null))
+          .catch(() => null),
+      ]);
+
+      const messageHits: SearchHit[] = (messages?.hits ?? []).map((h) => ({
+        kind: 'message' as const,
+        id: h.messageId,
+        title: h.snippet,
+        subtitle: `${h.channelName}${h.senderName ? ` \u00b7 ${h.senderName}` : ''}`,
+        href: `/dashboard/messages?channel=${h.channelId}&message=${h.messageId}`,
+        when: h.createdAt,
+      }));
+
+      if (!ac.signal.aborted) {
+        setHits([...channelHits, ...messageHits, ...(general?.hits ?? [])]);
+        setLoading(false);
+      }
     }, 200);
     return () => {
       ac.abort();
       clearTimeout(t);
     };
-  }, [q]);
+  }, [q, channels]);
 
   function onPick(href: string) {
     onClose();
@@ -263,7 +296,7 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
             ref={inputRef}
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar por número, paciente, resumen, tratamiento…"
+            placeholder="Buscar por número, paciente, resumen, tratamiento, mensaje…"
             className="relative flex-1 bg-transparent text-[15px] outline-none placeholder:text-zinc-400"
           />
           <button
@@ -280,7 +313,7 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
             <EmptyState
               icon={<Search className="h-5 w-5" />}
               title="Empezá a escribir"
-              description="Mínimo 2 caracteres. Buscamos en llamadas, contactos y tratamientos."
+              description="Mínimo 2 caracteres. Buscamos en llamadas, contactos, tratamientos y mensajes del equipo."
             />
           ) : loading && hits.length === 0 ? (
             <div className="px-6 py-14 text-center text-sm text-zinc-400">
@@ -306,6 +339,10 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
                         <Phone className="h-4 w-4" />
                       ) : h.kind === 'contact' ? (
                         <Contact className="h-4 w-4" />
+                      ) : h.kind === 'channel' ? (
+                        <Hash className="h-4 w-4" />
+                      ) : h.kind === 'message' ? (
+                        <MessageSquare className="h-4 w-4" />
                       ) : (
                         <Calendar className="h-4 w-4" />
                       )}
