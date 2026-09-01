@@ -1569,6 +1569,10 @@ export const tasks = pgTable(
     reminderId: uuid('reminder_id'),
     waitlistEntryId: uuid('waitlist_entry_id'),
     archivedAt: timestamp('archived_at', { withTimezone: true }),
+    // Puente con el módulo Mensajes: de qué mensaje salió la tarea y cuál es su
+    // hilo de conversación. Ambas nullable — las tareas viejas no tienen.
+    imChannelId: uuid('im_channel_id'),
+    imMessageId: uuid('im_message_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
@@ -1644,6 +1648,283 @@ export const taskComments = pgTable(
   },
   (t) => ({
     taskIdx: index('task_comments_task_idx').on(t.taskId, t.createdAt),
+  }),
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mensajería interna del equipo (módulo Mensajes). Migración 0019.
+//
+// Tiempo real: SSE multiplexado por usuario + Redis pub/sub con fan-out en la
+// escritura. Ver docs/05-mensajeria-interna.md.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const imChannelKindEnum = pgEnum('im_channel_kind', [
+  'PUBLIC',
+  'PRIVATE',
+  'DM',
+  'GROUP',
+  'CONTEXT',
+]);
+
+export const imContextTypeEnum = pgEnum('im_context_type', [
+  'PATIENT',
+  'TASK',
+  'CALL',
+  'WA_CONVERSATION',
+  'WAITLIST_ENTRY',
+  'APPOINTMENT',
+  'CAMPAIGN',
+]);
+
+export const imSenderKindEnum = pgEnum('im_sender_kind', ['USER', 'SYSTEM', 'BOT']);
+
+export const imMessageKindEnum = pgEnum('im_message_kind', [
+  'TEXT',
+  'SYSTEM',
+  'EVENT',
+  'DECISION',
+]);
+
+export const imMemberRoleEnum = pgEnum('im_member_role', ['OWNER', 'MEMBER']);
+
+/** Adjunto guardado en MinIO. Bucket privado: la URL se firma al leer. */
+export type ImAttachment = {
+  key: string;
+  name: string;
+  mime: string;
+  size: number;
+  width?: number;
+  height?: number;
+};
+
+/** Botón de una tarjeta de evento. `href` navega, `action` hace un POST. */
+export type ImAction = {
+  id: string;
+  label: string;
+  tone?: 'primary' | 'secondary' | 'soft' | 'danger';
+  href?: string;
+  action?: string;
+  payload?: Record<string, unknown>;
+};
+
+export const imChannels = pgTable(
+  'im_channels',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    kind: imChannelKindEnum('kind').notNull(),
+    slug: text('slug'),
+    name: text('name'),
+    topic: text('topic'),
+    icon: text('icon'),
+    tone: text('tone').notNull().default('grape'),
+    isSystem: boolean('is_system').notNull().default(false),
+    contextType: imContextTypeEnum('context_type'),
+    contextId: text('context_id'),
+    contextLabel: text('context_label'),
+    dedupeKey: text('dedupe_key'),
+    lastMessageAt: timestamp('last_message_at', { withTimezone: true }),
+    lastMessagePreview: text('last_message_preview'),
+    messageCount: integer('message_count').notNull().default(0),
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
+    createdByUserId: uuid('created_by_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantLastMsgIdx: index('im_channels_tenant_last_msg_idx').on(t.tenantId, t.lastMessageAt),
+    contextIdx: index('im_channels_context_idx').on(t.tenantId, t.contextType, t.contextId),
+  }),
+);
+
+export const imChannelMembers = pgTable(
+  'im_channel_members',
+  {
+    channelId: uuid('channel_id')
+      .references(() => imChannels.id, { onDelete: 'cascade' })
+      .notNull(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    role: imMemberRoleEnum('role').notNull().default('MEMBER'),
+    lastReadAt: timestamp('last_read_at', { withTimezone: true }).defaultNow().notNull(),
+    lastReadMessageId: uuid('last_read_message_id'),
+    // Desnormalizado a propósito: el sidebar se renderiza en cada navegación.
+    unreadCount: integer('unread_count').notNull().default(0),
+    mentionCount: integer('mention_count').notNull().default(0),
+    mutedUntil: timestamp('muted_until', { withTimezone: true }),
+    pinned: boolean('pinned').notNull().default(false),
+    joinedAt: timestamp('joined_at', { withTimezone: true }).defaultNow().notNull(),
+    leftAt: timestamp('left_at', { withTimezone: true }),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.channelId, t.userId] }),
+    userIdx: index('im_members_user_idx').on(t.userId, t.tenantId),
+    tenantIdx: index('im_members_tenant_idx').on(t.tenantId),
+  }),
+);
+
+export const imMessages = pgTable(
+  'im_messages',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    channelId: uuid('channel_id')
+      .references(() => imChannels.id, { onDelete: 'cascade' })
+      .notNull(),
+    kind: imMessageKindEnum('kind').notNull().default('TEXT'),
+    senderKind: imSenderKindEnum('sender_kind').notNull().default('USER'),
+    senderUserId: uuid('sender_user_id').references(() => users.id, { onDelete: 'set null' }),
+    body: text('body').notNull().default(''),
+    parentId: uuid('parent_id'),
+    replyCount: integer('reply_count').notNull().default(0),
+    contextType: imContextTypeEnum('context_type'),
+    contextId: text('context_id'),
+    contextPayload: jsonb('context_payload')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    attachments: jsonb('attachments').$type<ImAttachment[]>().notNull().default([]),
+    actions: jsonb('actions').$type<ImAction[]>().notNull().default([]),
+    eventKey: text('event_key'),
+    mentions: uuid('mentions').array().notNull().default([]),
+    mentionsEveryone: boolean('mentions_everyone').notNull().default(false),
+    clientNonce: text('client_nonce'),
+    dedupeKey: text('dedupe_key'),
+    editedAt: timestamp('edited_at', { withTimezone: true }),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    deletedByUserId: uuid('deleted_by_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    channelCreatedIdx: index('im_messages_channel_created_idx').on(t.channelId, t.createdAt, t.id),
+    parentIdx: index('im_messages_parent_idx').on(t.parentId, t.createdAt),
+    contextIdx: index('im_messages_context_idx').on(t.tenantId, t.contextType, t.contextId),
+    tenantCreatedIdx: index('im_messages_tenant_created_idx').on(t.tenantId, t.createdAt),
+  }),
+);
+
+export const imMessageReactions = pgTable(
+  'im_message_reactions',
+  {
+    messageId: uuid('message_id')
+      .references(() => imMessages.id, { onDelete: 'cascade' })
+      .notNull(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    emoji: text('emoji').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.messageId, t.userId, t.emoji] }),
+    messageIdx: index('im_reactions_message_idx').on(t.messageId),
+  }),
+);
+
+export const imMentions = pgTable(
+  'im_mentions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    messageId: uuid('message_id')
+      .references(() => imMessages.id, { onDelete: 'cascade' })
+      .notNull(),
+    channelId: uuid('channel_id')
+      .references(() => imChannels.id, { onDelete: 'cascade' })
+      .notNull(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    readAt: timestamp('read_at', { withTimezone: true }),
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+    escalatedAt: timestamp('escalated_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    inboxIdx: index('im_mentions_inbox_idx').on(t.userId, t.readAt, t.createdAt),
+    msgUserUnique: unique('im_mentions_msg_user_key').on(t.messageId, t.userId),
+  }),
+);
+
+export const imSavedMessages = pgTable(
+  'im_saved_messages',
+  {
+    messageId: uuid('message_id')
+      .references(() => imMessages.id, { onDelete: 'cascade' })
+      .notNull(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    note: text('note'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.messageId, t.userId] }),
+  }),
+);
+
+export const imPins = pgTable(
+  'im_pins',
+  {
+    channelId: uuid('channel_id')
+      .references(() => imChannels.id, { onDelete: 'cascade' })
+      .notNull(),
+    messageId: uuid('message_id')
+      .references(() => imMessages.id, { onDelete: 'cascade' })
+      .notNull(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    pinnedByUserId: uuid('pinned_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.channelId, t.messageId] }),
+  }),
+);
+
+export const imUserSettings = pgTable(
+  'im_user_settings',
+  {
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    sound: boolean('sound').notNull().default(true),
+    desktopPush: boolean('desktop_push').notNull().default(true),
+    dndFrom: text('dnd_from'),
+    dndTo: text('dnd_to'),
+    escalateMentionsAfterMinutes: integer('escalate_mentions_after_minutes').notNull().default(0),
+    statusEmoji: text('status_emoji'),
+    statusText: text('status_text'),
+    statusUntil: timestamp('status_until', { withTimezone: true }),
+    retentionMonths: integer('retention_months').notNull().default(24),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.tenantId, t.userId] }),
   }),
 );
 
