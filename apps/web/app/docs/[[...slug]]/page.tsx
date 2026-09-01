@@ -55,6 +55,12 @@ const DOC_META: Array<{ slug: string; title: string; description: string }> = [
     description:
       'Build de imágenes Docker, auto-deploy con Dokploy, env de producción, migraciones y rollback.',
   },
+  {
+    slug: '05-mensajeria-interna',
+    title: 'Mensajería interna del equipo',
+    description:
+      'Investigación y plan: chat interno en tiempo real (SSE + Redis), modelo de datos, API, diseño Aurora e integraciones con Tareas, Waitlist, Contactos, Llamadas y Analytics.',
+  },
 ];
 
 // Etiquetas cortas del menú superior.
@@ -63,6 +69,7 @@ const NAV_LABELS: Record<string, string> = {
   '02-setup': 'Setup local',
   '03-api-referencia': 'Referencia de API',
   '04-deployment': 'Deployment',
+  '05-mensajeria-interna': 'Mensajería interna',
 };
 
 // docs/ vive en la raíz del repo. En dev el cwd es apps/web; en el standalone
