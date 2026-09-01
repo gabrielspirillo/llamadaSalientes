@@ -114,7 +114,7 @@ export function QuickAdd({
           placeholder="Llamar a María mañana 10:30 #paciente !alta @lucia"
           className="min-w-0 flex-1 border-0 bg-transparent text-sm placeholder:text-zinc-400 focus:outline-none"
         />
-        <span className="hidden shrink-0 text-[12px] text-zinc-400 sm:inline">
+        <span className="hidden shrink-0 text-[11px] text-zinc-400 sm:inline">
           en {STATUS_META[status].label}
         </span>
         <Button type="submit" size="sm" disabled={busy || !parsed.title.trim()}>
@@ -138,7 +138,7 @@ export function QuickAdd({
           {parsed.category && (
             <span
               className={cn(
-                'inline-flex items-center rounded-full px-2 py-0.5 text-[12px] font-semibold ring-1 ring-inset',
+                'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset',
                 CATEGORY_META[parsed.category].chip,
               )}
             >
@@ -148,7 +148,7 @@ export function QuickAdd({
           {parsed.priority && (
             <span
               className={cn(
-                'inline-flex items-center rounded-full px-2 py-0.5 text-[12px] font-semibold ring-1 ring-inset',
+                'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset',
                 PRIORITY_META[parsed.priority].chip,
               )}
             >
@@ -156,14 +156,14 @@ export function QuickAdd({
             </span>
           )}
           {parsed.dueAt && (
-            <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-[12px] font-medium text-zinc-600">
+            <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600">
               vence {formatDue(parsed.dueAt.toISOString(), parsed.dueAllDay)}
             </span>
           )}
           {matchedMembers.map((m) => (
             <span
               key={m.userId}
-              className="inline-flex items-center rounded-full bg-zinc-900 px-2 py-0.5 text-[12px] font-medium text-white"
+              className="inline-flex items-center rounded-full bg-zinc-900 px-2 py-0.5 text-[11px] font-medium text-white"
             >
               {m.name}
             </span>
@@ -171,7 +171,7 @@ export function QuickAdd({
           {parsed.labels.map((l) => (
             <span
               key={l}
-              className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-[12px] font-medium text-zinc-600"
+              className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600"
             >
               #{l}
             </span>

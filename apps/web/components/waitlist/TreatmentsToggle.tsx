@@ -49,7 +49,7 @@ export function TreatmentsToggle({ rows }: { rows: TreatmentToggleRow[] }) {
     <div className="overflow-hidden rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)]">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[560px] text-sm">
-          <thead className="border-b border-[--color-border] bg-[#fafbfb] text-[12px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+          <thead className="border-b border-[--color-border] bg-[#fafbfb] text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-400">
             <tr>
               <th className="text-left px-4 py-2.5">Tratamiento</th>
               <th className="text-left px-4 py-2.5">Duración</th>

@@ -183,7 +183,7 @@ function FieldInput({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[13px] font-medium uppercase text-zinc-500">{label}</span>
+      <span className="mb-1 block text-[12px] font-medium uppercase text-zinc-500">{label}</span>
       <input
         type={type}
         value={value}

@@ -240,10 +240,10 @@ export function MessageThread({
         </span>
 
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-[18px] font-semibold tracking-tight text-zinc-900">
+          <h2 className="truncate text-[16px] font-semibold tracking-tight text-zinc-900">
             {channel.name}
           </h2>
-          <p className="truncate text-[14px] text-zinc-500">
+          <p className="truncate text-[13px] text-zinc-500">
             {channel.topic ??
               channel.contextLabel ??
               `${channel.memberIds.length} ${channel.memberIds.length === 1 ? 'persona' : 'personas'}`}
@@ -255,7 +255,7 @@ export function MessageThread({
         )}
 
         {!connected && (
-          <span className="hidden rounded-full bg-amber-50 px-2 py-0.5 text-[12px] font-bold uppercase tracking-wide text-amber-700 sm:inline">
+          <span className="hidden rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-amber-700 sm:inline">
             Reconectando
           </span>
         )}
@@ -334,7 +334,7 @@ export function MessageThread({
                     {newDay && (
                       <li className="my-3 flex items-center gap-3 px-4">
                         <span className="h-px flex-1 bg-[--color-border]" />
-                        <span className="rounded-full bg-white px-3 py-0.5 text-[13px] font-bold uppercase tracking-[0.1em] text-zinc-400 ring-1 ring-[--color-border]">
+                        <span className="rounded-full bg-white px-3 py-0.5 text-[12px] font-bold uppercase tracking-[0.1em] text-zinc-400 ring-1 ring-[--color-border]">
                           {formatDayDivider(m.createdAt)}
                         </span>
                         <span className="h-px flex-1 bg-[--color-border]" />
@@ -344,7 +344,7 @@ export function MessageThread({
                     {firstUnreadId === m.id && (
                       <li className="my-2 flex items-center gap-3 px-4">
                         <span className="animate-grow-x h-px flex-1 origin-left bg-[linear-gradient(90deg,transparent,#f43f5e)]" />
-                        <span className="animate-pop rounded-full bg-rose-500 px-2.5 py-0.5 text-[12px] font-bold uppercase tracking-[0.12em] text-white shadow-[0_6px_18px_-8px_rgba(244,63,94,0.9)]">
+                        <span className="animate-pop rounded-full bg-rose-500 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.12em] text-white shadow-[0_6px_18px_-8px_rgba(244,63,94,0.9)]">
                           Mensajes nuevos
                         </span>
                         <span className="animate-grow-x h-px flex-1 origin-right bg-[linear-gradient(90deg,#f43f5e,transparent)]" />
@@ -386,7 +386,7 @@ export function MessageThread({
         {typingNames.length > 0 && (
           <div className="flex animate-fade-up items-center gap-2 px-5 py-2">
             <TypingDots />
-            <span className="text-[14px] font-medium text-zinc-500">
+            <span className="text-[13px] font-medium text-zinc-500">
               {typingLabel(typingNames)}
             </span>
           </div>
@@ -400,7 +400,7 @@ export function MessageThread({
         <button
           type="button"
           onClick={() => scrollToBottom(true)}
-          className="press absolute bottom-28 left-1/2 z-20 inline-flex -translate-x-1/2 animate-fade-up items-center gap-1.5 rounded-full bg-[linear-gradient(120deg,#37766a,#5fa896)] px-3.5 py-1.5 text-[14px] font-semibold text-white shadow-[0_10px_30px_-8px_rgba(55,118,106,0.75)]"
+          className="press absolute bottom-28 left-1/2 z-20 inline-flex -translate-x-1/2 animate-fade-up items-center gap-1.5 rounded-full bg-[linear-gradient(120deg,#37766a,#5fa896)] px-3.5 py-1.5 text-[13px] font-semibold text-white shadow-[0_10px_30px_-8px_rgba(55,118,106,0.75)]"
         >
           Nuevos mensajes
           <ArrowDown className="h-3.5 w-3.5" />
@@ -419,8 +419,8 @@ export function MessageThread({
             <span className="mx-auto mb-3 inline-flex h-14 w-14 animate-float items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#f4f0ff,#fdf0f7)] text-brand-600">
               <Paperclip className="h-6 w-6" />
             </span>
-            <p className="text-[18px] font-semibold text-zinc-800">Soltá para adjuntar</p>
-            <p className="mt-1 text-[15px] text-zinc-500">Se sube y se manda con tu mensaje</p>
+            <p className="text-[16px] font-semibold text-zinc-800">Soltá para adjuntar</p>
+            <p className="mt-1 text-[14px] text-zinc-500">Se sube y se manda con tu mensaje</p>
           </div>
         </div>
       )}

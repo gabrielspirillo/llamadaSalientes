@@ -187,7 +187,7 @@ export function ContactSidebar({
   return (
     <aside className="flex w-full flex-col gap-4 overflow-y-auto border-t border-[--color-border-subtle] bg-[linear-gradient(180deg,#fafdfb,#f6f5fb)] p-4 lg:w-80 lg:shrink-0 lg:border-l lg:border-t-0">
       {error && (
-        <div className="animate-fade-down rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-[14px] text-rose-700">
+        <div className="animate-fade-down rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-[13px] text-rose-700">
           {error}
         </div>
       )}
@@ -203,12 +203,12 @@ export function ContactSidebar({
               className="h-12 w-12 rounded-full object-cover"
             />
           ) : (
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[linear-gradient(135deg,#a7f3d0,#6ee7b7)] text-[18px] font-bold text-emerald-800 ring-2 ring-white">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[linear-gradient(135deg,#a7f3d0,#6ee7b7)] text-[16px] font-bold text-emerald-800 ring-2 ring-white">
               {(contact.name ?? contact.phoneE164).slice(0, 2).toUpperCase()}
             </div>
           )}
           <div className="min-w-0">
-            <p className="truncate text-[18px] font-bold text-zinc-900">
+            <p className="truncate text-[16px] font-bold text-zinc-900">
               {contact.name ?? 'Sin nombre'}
             </p>
             <p className="text-xs text-zinc-500">{contact.phoneE164}</p>
@@ -216,7 +216,7 @@ export function ContactSidebar({
         </div>
         <Link
           href={`/dashboard/whatsapp/contacts/${contact.id}`}
-          className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-[--color-border] bg-white px-3 py-2 text-[14px] font-semibold text-zinc-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:text-brand-700"
+          className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-[--color-border] bg-white px-3 py-2 text-[13px] font-semibold text-zinc-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:text-brand-700"
         >
           Ver detalles del contacto
         </Link>
@@ -248,7 +248,7 @@ export function ContactSidebar({
           {contact.ghlContactId && (
             <div className="flex justify-between">
               <dt className="text-zinc-500">Ficha en el CRM</dt>
-              <dd className="truncate font-mono text-[12px] text-zinc-700">
+              <dd className="truncate font-mono text-[11px] text-zinc-700">
                 {contact.ghlContactId}
               </dd>
             </div>
@@ -260,8 +260,8 @@ export function ContactSidebar({
       {leadMemory?.profileSummary ? (
         <div className="rounded-[22px] border border-brand-200 bg-[linear-gradient(140deg,#effaf5,#ffffff)] p-4">
           <div className="flex items-center justify-between">
-            <p className="text-[17px] font-bold text-zinc-900">Lo que sabemos del contacto</p>
-            <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[12px] font-bold text-brand-700">
+            <p className="text-[15px] font-bold text-zinc-900">Lo que sabemos del contacto</p>
+            <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-bold text-brand-700">
               multicanal
             </span>
           </div>
@@ -271,14 +271,14 @@ export function ContactSidebar({
           {leadFactEntries(leadMemory.facts).length > 0 && (
             <dl className="mt-2 space-y-0.5 border-t border-brand-100 pt-2">
               {leadFactEntries(leadMemory.facts).map(([k, v]) => (
-                <div key={k} className="flex gap-1 text-[13px]">
+                <div key={k} className="flex gap-1 text-[12px]">
                   <dt className="font-medium capitalize text-zinc-500">{k.replace(/_/g, ' ')}:</dt>
                   <dd className="text-zinc-700">{v}</dd>
                 </div>
               ))}
             </dl>
           )}
-          <p className="mt-2 text-[12px] text-zinc-400">
+          <p className="mt-2 text-[11px] text-zinc-400">
             Actualizada {new Date(leadMemory.updatedAt).toLocaleString()}
           </p>
         </div>
@@ -286,7 +286,7 @@ export function ContactSidebar({
 
       {/* Citas */}
       <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-4">
-        <p className="text-[17px] font-bold tracking-tight text-zinc-900">Citas</p>
+        <p className="text-[15px] font-bold tracking-tight text-zinc-900">Citas</p>
         {appointments.length === 0 ? (
           <p className="mt-2 text-xs text-zinc-500">
             {contact.ghlContactId
@@ -303,13 +303,13 @@ export function ContactSidebar({
                   </span>
                   {a.status && (
                     <span
-                      className={`rounded-full px-1.5 py-0.5 text-[11px] font-semibold uppercase ${apptStatusClass(a.status)}`}
+                      className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase ${apptStatusClass(a.status)}`}
                     >
                       {a.status}
                     </span>
                   )}
                 </div>
-                <p className="mt-0.5 text-[12px] text-zinc-500">
+                <p className="mt-0.5 text-[11px] text-zinc-500">
                   {a.startTime ? new Date(a.startTime).toLocaleString() : 'Sin fecha'}
                 </p>
               </li>
@@ -317,7 +317,7 @@ export function ContactSidebar({
             {appointments.length > 5 && (
               <Link
                 href={`/dashboard/whatsapp/contacts/${contact.id}`}
-                className="inline-block text-[13px] text-emerald-600 hover:text-emerald-700"
+                className="inline-block text-[12px] text-emerald-600 hover:text-emerald-700"
               >
                 Ver todas ({appointments.length})
               </Link>
@@ -330,7 +330,7 @@ export function ContactSidebar({
       <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[17px] font-bold tracking-tight text-zinc-900">Agente Virtual</p>
+            <p className="text-[15px] font-bold tracking-tight text-zinc-900">Agente Virtual</p>
             <p className="mt-0.5 text-xs text-zinc-500">
               {aiOn
                 ? 'El agente IA responde a todos los mensajes.'
@@ -359,7 +359,7 @@ export function ContactSidebar({
 
       {/* Asignación */}
       <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-4">
-        <p className="text-[17px] font-bold tracking-tight text-zinc-900">Asignar a</p>
+        <p className="text-[15px] font-bold tracking-tight text-zinc-900">Asignar a</p>
         <select
           value={assignedUserId ?? ''}
           onChange={(e) => handleAssign(e.target.value || null)}
@@ -374,7 +374,7 @@ export function ContactSidebar({
           ))}
         </select>
         {assignedMember && (
-          <p className="mt-2 text-[13px] text-zinc-500">
+          <p className="mt-2 text-[12px] text-zinc-500">
             Asignado a <span className="font-medium text-zinc-700">{assignedMember.email}</span>
           </p>
         )}
@@ -383,7 +383,7 @@ export function ContactSidebar({
       {/* Etiquetas */}
       <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-4">
         <div className="flex items-center justify-between">
-          <p className="text-[17px] font-bold tracking-tight text-zinc-900">Etiquetas</p>
+          <p className="text-[15px] font-bold tracking-tight text-zinc-900">Etiquetas</p>
           <button
             type="button"
             onClick={() => setNewTagOpen((v) => !v)}
@@ -413,7 +413,7 @@ export function ContactSidebar({
               <button
                 type="submit"
                 disabled={pending || !newTagLabel.trim()}
-                className="ml-auto rounded-full bg-[linear-gradient(120deg,#059669,#10b981)] px-3.5 py-1.5 text-[14px] font-semibold transition-all duration-300 hover:-translate-y-0.5 active:scale-95 font-medium text-white hover:opacity-95 disabled:opacity-50"
+                className="ml-auto rounded-full bg-[linear-gradient(120deg,#059669,#10b981)] px-3.5 py-1.5 text-[13px] font-semibold transition-all duration-300 hover:-translate-y-0.5 active:scale-95 font-medium text-white hover:opacity-95 disabled:opacity-50"
               >
                 Crear y aplicar
               </button>
@@ -426,7 +426,7 @@ export function ContactSidebar({
             {localTags.map((t) => (
               <span
                 key={t.id}
-                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[13px] font-medium text-white"
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-medium text-white"
                 style={{ backgroundColor: t.color }}
               >
                 {t.label}
@@ -466,7 +466,7 @@ export function ContactSidebar({
                   type="button"
                   onClick={() => handleAddTag(t)}
                   disabled={pending}
-                  className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[13px] hover:opacity-80 disabled:opacity-40"
+                  className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[12px] hover:opacity-80 disabled:opacity-40"
                   style={{ borderColor: t.color, color: t.color }}
                 >
                   + {t.label}

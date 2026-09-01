@@ -57,14 +57,14 @@ export default async function FaqsPage() {
                 <div className="flex-1 min-w-0 w-full">
                   <div className="flex flex-wrap items-center gap-2 mb-2">
                     {f.category && <Badge tone="accent">{f.category}</Badge>}
-                    <span className="text-[13px] font-medium text-zinc-400">
+                    <span className="text-[12px] font-medium text-zinc-400">
                       prioridad {f.priority ?? 0}
                     </span>
                   </div>
-                  <h3 className="text-[18px] font-bold tracking-tight text-zinc-900">
+                  <h3 className="text-[16px] font-bold tracking-tight text-zinc-900">
                     {f.question}
                   </h3>
-                  <p className="mt-1.5 text-[16px] leading-relaxed text-zinc-600">{f.answer}</p>
+                  <p className="mt-1.5 text-[14px] leading-relaxed text-zinc-600">{f.answer}</p>
                 </div>
                 <div className="flex items-center gap-1 self-end sm:self-start shrink-0">
                   <FaqDialog

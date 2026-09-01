@@ -81,8 +81,8 @@ function ConnectionCard({
         </span>
         <StatusPill connected={connected} />
       </div>
-      <h3 className="mt-4 text-[18px] font-bold text-zinc-900">{title}</h3>
-      <p className="mt-1 text-[16px] leading-relaxed text-zinc-500">{description}</p>
+      <h3 className="mt-4 text-[16px] font-bold text-zinc-900">{title}</h3>
+      <p className="mt-1 text-[14px] leading-relaxed text-zinc-500">{description}</p>
     </div>
   );
 }
@@ -128,7 +128,7 @@ export async function AgentStatusPanel() {
             )}
           </span>
           <div className="min-w-0">
-            <h2 className="text-[23px] font-extrabold tracking-tight text-zinc-900 sm:text-[26px]">
+            <h2 className="text-[21px] font-extrabold tracking-tight text-zinc-900 sm:text-[23px]">
               {allReady ? 'Tu asistente ya está atendiendo' : 'Estamos preparando tu asistente'}
             </h2>
             <p className="mt-1 text-sm text-zinc-600">
@@ -147,7 +147,7 @@ export async function AgentStatusPanel() {
                   style={{ width: `${(ready / total) * 100}%` }}
                 />
               </div>
-              <span className="shrink-0 text-[14px] font-bold tabular-nums text-zinc-500">
+              <span className="shrink-0 text-[13px] font-bold tabular-nums text-zinc-500">
                 {ready}/{total}
               </span>
             </div>
@@ -183,7 +183,7 @@ export async function AgentStatusPanel() {
       {/* Nota */}
       <div className="flex items-start gap-3 rounded-[22px] border border-[--color-border] bg-[#fafbfb] p-4 sm:p-5">
         <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand-400" />
-        <p className="text-[16px] leading-relaxed text-zinc-600">
+        <p className="text-[14px] leading-relaxed text-zinc-600">
           Estas conexiones las configura y las mantiene el equipo de{' '}
           <span className="font-medium text-zinc-900">Futura Solutions</span>. No tienes que tocar
           nada aquí: si algo aparece sin conectar, ya estamos con ello. ¿Dudas? Escríbenos.

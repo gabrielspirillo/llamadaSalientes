@@ -179,7 +179,7 @@ export function ContactsGrid({ initial }: { initial: Contact[] }) {
                       {initialsOf(c)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="truncate text-[18px] font-bold tracking-tight text-zinc-900">
+                      <p className="truncate text-[16px] font-bold tracking-tight text-zinc-900">
                         {displayName(c)}
                       </p>
                       <p className="text-xs text-zinc-500 mt-0.5">
@@ -214,7 +214,7 @@ export function ContactsGrid({ initial }: { initial: Contact[] }) {
                         <Tag key={tag}>{tag}</Tag>
                       ))}
                       {tags.length > 4 && (
-                        <span className="text-[13px] text-zinc-400">+{tags.length - 4}</span>
+                        <span className="text-[12px] text-zinc-400">+{tags.length - 4}</span>
                       )}
                     </div>
                   )}

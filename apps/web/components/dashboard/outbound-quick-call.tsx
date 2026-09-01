@@ -111,7 +111,7 @@ export function OutboundQuickCall() {
   return (
     <Card className="p-4 sm:p-6 mb-6">
       <div className="flex items-center justify-between mb-1">
-        <h3 className="text-[18px] font-semibold tracking-tight text-zinc-900 flex items-center gap-2">
+        <h3 className="text-[16px] font-semibold tracking-tight text-zinc-900 flex items-center gap-2">
           <Phone className="h-4 w-4 text-brand-600" /> Llamada rápida
         </h3>
       </div>
@@ -199,8 +199,8 @@ export function OutboundQuickCall() {
               </div>
             ))}
           </div>
-          <p className="text-[13px] text-zinc-500 mt-2">
-            Se envían al asistente como <code className="text-[13px]">{'{{nombre_variable}}'}</code>
+          <p className="text-[12px] text-zinc-500 mt-2">
+            Se envían al asistente como <code className="text-[12px]">{'{{nombre_variable}}'}</code>
             . Las que queden vacías se ignoran.
           </p>
         </div>

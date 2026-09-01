@@ -123,8 +123,8 @@ export function ThreadPanel({
             <MessageSquare className="h-4 w-4" />
           </span>
           <div className="min-w-0 flex-1">
-            <h2 className="text-[18px] font-semibold tracking-tight text-zinc-900">Hilo</h2>
-            <p className="truncate text-[14px] text-zinc-500">en {channel.name}</p>
+            <h2 className="text-[16px] font-semibold tracking-tight text-zinc-900">Hilo</h2>
+            <p className="truncate text-[13px] text-zinc-500">en {channel.name}</p>
           </div>
           <button
             type="button"
@@ -141,7 +141,7 @@ export function ThreadPanel({
 
           <div className="my-3 flex items-center gap-3 px-4">
             <span className="h-px flex-1 bg-[--color-border]" />
-            <span className="text-[13px] font-bold uppercase tracking-[0.12em] text-zinc-400">
+            <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-zinc-400">
               {replies.length === 0
                 ? 'Sin respuestas'
                 : `${replies.length} ${replies.length === 1 ? 'respuesta' : 'respuestas'}`}

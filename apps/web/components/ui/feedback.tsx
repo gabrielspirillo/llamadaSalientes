@@ -25,9 +25,9 @@ export function EmptyState({
           {icon}
         </div>
       )}
-      <p className="text-[18px] font-semibold tracking-tight text-zinc-800">{title}</p>
+      <p className="text-[16px] font-semibold tracking-tight text-zinc-800">{title}</p>
       {description && (
-        <p className="mx-auto mt-1.5 max-w-sm text-[16px] leading-relaxed text-zinc-500">
+        <p className="mx-auto mt-1.5 max-w-sm text-[14px] leading-relaxed text-zinc-500">
           {description}
         </p>
       )}
@@ -82,7 +82,7 @@ export function Callout({
   return (
     <div
       className={cn(
-        'flex gap-3 rounded-[18px] border p-4 text-[16px] leading-relaxed',
+        'flex gap-3 rounded-[18px] border p-4 text-[14px] leading-relaxed',
         tones[tone],
         className,
       )}
@@ -114,11 +114,11 @@ export function SectionTitle({
   return (
     <div className={cn('mb-4 flex items-end justify-between gap-4', className)}>
       <div className="min-w-0">
-        <h2 className="flex items-center gap-2 text-[16px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+        <h2 className="flex items-center gap-2 text-[14px] font-bold uppercase tracking-[0.14em] text-zinc-400">
           <span className="h-3 w-1 rounded-full bg-[linear-gradient(180deg,#37766a,#6bc2a4)]" />
           {title}
         </h2>
-        {description && <p className="mt-1.5 text-[16px] text-zinc-500">{description}</p>}
+        {description && <p className="mt-1.5 text-[14px] text-zinc-500">{description}</p>}
       </div>
       {action}
     </div>

@@ -67,11 +67,11 @@ export function BoardColumn({
   return (
     <section className={cn('flex flex-col gap-3', className)}>
       <header className="flex items-center justify-between gap-2 px-1">
-        <h3 className="flex items-center gap-1 text-[16px] font-bold tracking-tight text-zinc-700">
+        <h3 className="flex items-center gap-1 text-[14px] font-bold tracking-tight text-zinc-700">
           <ChevronRight className="h-3.5 w-3.5 text-zinc-400" />
           {title}
           {typeof count === 'number' && (
-            <span className="ml-1 rounded-full bg-white px-1.5 py-0.5 text-[12px] font-bold tabular-nums text-zinc-500 ring-1 ring-[--color-border]">
+            <span className="ml-1 rounded-full bg-white px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-zinc-500 ring-1 ring-[--color-border]">
               {count}
             </span>
           )}
@@ -101,7 +101,7 @@ function BoardTag({ label, tone }: { label: string; tone: BoardTone }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-md px-1.5 py-0.5 text-[12px] font-semibold lowercase',
+        'inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-semibold lowercase',
         TONE[tone].tag,
       )}
     >
@@ -206,10 +206,10 @@ export function BoardCard({
         <MoreHorizontal className="h-4 w-4 shrink-0 text-zinc-400 opacity-0 transition-opacity group-hover:opacity-100" />
       </div>
 
-      <p className={cn('text-[17px] font-semibold leading-snug', t.title)}>{title}</p>
+      <p className={cn('text-[15px] font-semibold leading-snug', t.title)}>{title}</p>
 
       {note && (
-        <p className="mt-1.5 text-[14px] leading-relaxed text-zinc-500">
+        <p className="mt-1.5 text-[13px] leading-relaxed text-zinc-500">
           {noteLabel && <span className="font-semibold text-zinc-600">{noteLabel} </span>}
           {note}
         </p>
@@ -220,8 +220,8 @@ export function BoardCard({
       {progress != null && (
         <div className="mt-3">
           <div className="mb-1.5 flex items-center justify-between">
-            <span className="text-[13px] font-medium text-zinc-500">{progressLabel}</span>
-            <span className="text-[13px] font-bold tabular-nums text-zinc-600">
+            <span className="text-[12px] font-medium text-zinc-500">{progressLabel}</span>
+            <span className="text-[12px] font-bold tabular-nums text-zinc-600">
               {Math.round(progress)}%
             </span>
           </div>
@@ -236,7 +236,7 @@ export function BoardCard({
               <span
                 key={`${n}-${i}`}
                 className={cn(
-                  '-ml-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold ring-2 ring-white first:ml-0',
+                  '-ml-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold ring-2 ring-white first:ml-0',
                   AVATAR_BG[i % AVATAR_BG.length],
                 )}
                 title={n}
@@ -245,13 +245,13 @@ export function BoardCard({
               </span>
             ))}
             {people.length > 4 && (
-              <span className="-ml-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white text-[11px] font-bold text-zinc-500 ring-2 ring-white">
+              <span className="-ml-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white text-[10px] font-bold text-zinc-500 ring-2 ring-white">
                 +{people.length - 4}
               </span>
             )}
           </div>
           {counts && (
-            <div className="flex items-center gap-2 text-[13px] font-medium text-zinc-500">
+            <div className="flex items-center gap-2 text-[12px] font-medium text-zinc-500">
               {counts.comments != null && (
                 <span className="inline-flex items-center gap-1 rounded-md bg-white/70 px-1.5 py-0.5">
                   <MessageSquareIcon />
@@ -301,7 +301,7 @@ export function BoardChecklist({
   return (
     <ul className="mt-2.5 space-y-1.5">
       {items.map((it) => (
-        <li key={it.label} className="flex items-center gap-2 text-[14px]">
+        <li key={it.label} className="flex items-center gap-2 text-[13px]">
           <span
             className={cn(
               'inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2',

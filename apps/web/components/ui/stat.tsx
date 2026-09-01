@@ -108,7 +108,7 @@ export function StatTile({
       />
 
       <div className="relative flex items-start justify-between gap-3">
-        <p className="text-[16px] font-medium text-zinc-500">{label}</p>
+        <p className="text-[14px] font-medium text-zinc-500">{label}</p>
         {icon && (
           <span
             className={cn(
@@ -122,7 +122,7 @@ export function StatTile({
       </div>
 
       <div className="relative mt-3 flex items-baseline gap-2">
-        <span className="text-[34px] font-bold leading-none tracking-tight text-zinc-900 sm:text-[38px]">
+        <span className="text-[31px] font-bold leading-none tracking-tight text-zinc-900 sm:text-[34px]">
           {numeric != null ? (
             <AnimatedNumber value={numeric} decimals={decimals} suffix={suffix} />
           ) : (
@@ -132,7 +132,7 @@ export function StatTile({
         {delta != null && (
           <span
             className={cn(
-              'inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[13px] font-bold',
+              'inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[12px] font-bold',
               dir === 'up' && 'bg-emerald-50 text-emerald-600',
               dir === 'down' && 'bg-rose-50 text-rose-600',
               dir === 'flat' && 'bg-zinc-100 text-zinc-500',
@@ -146,7 +146,7 @@ export function StatTile({
         )}
       </div>
 
-      {hint && <p className="relative mt-1.5 text-[13px] text-zinc-400">{hint}</p>}
+      {hint && <p className="relative mt-1.5 text-[12px] text-zinc-400">{hint}</p>}
 
       {trend && trend.length > 1 && (
         <div className="relative mt-3 -mb-1">
@@ -246,7 +246,7 @@ export function ProgressBar({
   return (
     <div className={cn('w-full', className)}>
       {showLabel && (
-        <div className="mb-1.5 flex items-center justify-between text-[13px]">
+        <div className="mb-1.5 flex items-center justify-between text-[12px]">
           <span className="font-medium text-zinc-500">Progreso</span>
           <span className="font-bold tabular-nums text-zinc-700">{pct}%</span>
         </div>
@@ -346,7 +346,7 @@ export function ProgressRing({
           className="animate-draw"
         />
       </svg>
-      <span className="absolute text-[14px] font-bold tabular-nums text-zinc-800">
+      <span className="absolute text-[13px] font-bold tabular-nums text-zinc-800">
         {label ?? `${Math.round(pct)}%`}
       </span>
     </div>

@@ -130,7 +130,7 @@ export function DashboardTopbar({
             className="flex shrink-0 items-center gap-1.5 lg:hidden"
             aria-label="FUTURA"
           >
-            <span className="text-[20px] font-extrabold leading-none tracking-tight text-[#0f1f2e]">
+            <span className="text-[18px] font-extrabold leading-none tracking-tight text-[#0f1f2e]">
               FUTURA
             </span>
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#5fa896]" />
@@ -138,8 +138,8 @@ export function DashboardTopbar({
 
           {/* Saludo — equivalente al "Welcome, …" de la referencia */}
           <div className="hidden min-w-0 lg:block">
-            <p className="text-[15px] font-medium leading-none text-zinc-500">{hello},</p>
-            <p className="mt-1.5 truncate text-[24px] font-extrabold leading-none tracking-tight text-zinc-900">
+            <p className="text-[14px] font-medium leading-none text-zinc-500">{hello},</p>
+            <p className="mt-1.5 truncate text-[22px] font-extrabold leading-none tracking-tight text-zinc-900">
               {firstName || 'bienvenido'}
             </p>
           </div>
@@ -155,7 +155,7 @@ export function DashboardTopbar({
           >
             <Search className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:text-brand-500" />
             <span className="truncate">Buscar llamadas, pacientes, mensajes…</span>
-            <kbd className="ml-auto shrink-0 rounded-lg bg-zinc-100 px-1.5 py-0.5 text-[12px] font-semibold text-zinc-400">
+            <kbd className="ml-auto shrink-0 rounded-lg bg-zinc-100 px-1.5 py-0.5 text-[11px] font-semibold text-zinc-400">
               ⌘K
             </kbd>
           </button>
@@ -163,7 +163,7 @@ export function DashboardTopbar({
 
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
           {impersonatingClinic && (
-            <span className="hidden max-w-[220px] items-center gap-1.5 rounded-full bg-[linear-gradient(120deg,#effaf5,#ddf3ea)] px-3 py-1.5 text-[13px] font-semibold text-brand-700 ring-1 ring-brand-100 sm:inline-flex">
+            <span className="hidden max-w-[220px] items-center gap-1.5 rounded-full bg-[linear-gradient(120deg,#effaf5,#ddf3ea)] px-3 py-1.5 text-[12px] font-semibold text-brand-700 ring-1 ring-brand-100 sm:inline-flex">
               <StatusDot tone="success" />
               <span className="truncate">Gestionando: {impersonatingClinic}</span>
             </span>
@@ -300,7 +300,7 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Buscar por número, paciente, resumen, tratamiento, mensaje…"
-            className="relative flex-1 bg-transparent text-[18px] outline-none placeholder:text-zinc-400"
+            className="relative flex-1 bg-transparent text-[16px] outline-none placeholder:text-zinc-400"
           />
           <button
             onClick={onClose}
@@ -370,7 +370,7 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
           )}
         </div>
 
-        <div className="flex items-center justify-between border-t border-[--color-border-subtle] bg-[#fafbfb] px-5 py-2.5 text-[13px] text-zinc-400">
+        <div className="flex items-center justify-between border-t border-[--color-border-subtle] bg-[#fafbfb] px-5 py-2.5 text-[12px] text-zinc-400">
           <span>↵ para abrir · Esc para cerrar</span>
           <span className="tabular-nums">{hits.length} resultados</span>
         </div>
@@ -422,7 +422,7 @@ function TeamAvatars() {
         </span>
       ))}
       {rest > 0 && (
-        <span className="-ml-2.5 inline-flex h-[34px] w-[34px] items-center justify-center rounded-full bg-brand-100 text-[13px] font-bold text-brand-700 ring-2 ring-white">
+        <span className="-ml-2.5 inline-flex h-[34px] w-[34px] items-center justify-center rounded-full bg-brand-100 text-[12px] font-bold text-brand-700 ring-2 ring-white">
           +{rest}
         </span>
       )}
@@ -541,7 +541,7 @@ function NotificationsBell({
       >
         <Bell className={cn('h-4 w-4', unreadCount > 0 && 'animate-pulse-soft')} />
         {unreadCount > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-[linear-gradient(120deg,#f43f5e,#fb7185)] px-1 text-[12px] font-bold text-white ring-2 ring-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-[linear-gradient(120deg,#f43f5e,#fb7185)] px-1 text-[11px] font-bold text-white ring-2 ring-white">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -559,7 +559,7 @@ function NotificationsBell({
             />
             <div className="relative">
               <h3 className="text-sm font-bold tracking-tight text-zinc-900">Notificaciones</h3>
-              <p className="text-[13px] text-zinc-500">
+              <p className="text-[12px] text-zinc-500">
                 {tab === 'calls'
                   ? `${visible.length} ${visible.length === 1 ? 'reciente' : 'recientes'}`
                   : `${mentions.length} ${mentions.length === 1 ? 'mención' : 'menciones'}`}
@@ -569,7 +569,7 @@ function NotificationsBell({
               <button
                 type="button"
                 onClick={clearAll}
-                className="relative inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[13px] font-semibold text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
+                className="relative inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
                 title="Limpiar todas"
               >
                 <Check className="h-3 w-3" />
@@ -633,7 +633,7 @@ function NotificationsBell({
                             )}
                           </div>
                           <p className="truncate text-xs text-zinc-500">{n.detail}</p>
-                          <p className="mt-0.5 text-[13px] text-zinc-400">{timeAgo(n.createdAt)}</p>
+                          <p className="mt-0.5 text-[12px] text-zinc-400">{timeAgo(n.createdAt)}</p>
                         </div>
                       </Link>
                       <button
@@ -693,7 +693,7 @@ function BellTab({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'inline-flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-[14px] font-semibold transition-all duration-300',
+        'inline-flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-semibold transition-all duration-300',
         active
           ? 'bg-[linear-gradient(120deg,#37766a,#5fa896)] text-white shadow-[0_8px_18px_-10px_rgba(55,118,106,0.85)]'
           : 'text-zinc-500 hover:bg-brand-50 hover:text-brand-700',
@@ -704,7 +704,7 @@ function BellTab({
       {badge > 0 && (
         <span
           className={cn(
-            'inline-flex min-w-[16px] items-center justify-center rounded-full px-1 text-[12px] font-bold tabular-nums',
+            'inline-flex min-w-[16px] items-center justify-center rounded-full px-1 text-[11px] font-bold tabular-nums',
             active ? 'bg-white/25 text-white' : 'bg-rose-500 text-white',
           )}
         >

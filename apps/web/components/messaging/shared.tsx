@@ -609,7 +609,7 @@ export function RichText({
   const blocks = parseBlocks(text ?? '');
 
   return (
-    <div className={cn('space-y-2 text-[16px] leading-relaxed', className)}>
+    <div className={cn('space-y-2 text-[14px] leading-relaxed', className)}>
       {blocks.map((block, bi) => {
         const key = `b${bi}-${block.type}`;
 
@@ -617,7 +617,7 @@ export function RichText({
           return (
             <pre
               key={key}
-              className="scrollbar-none overflow-x-auto rounded-[14px] border border-[--color-border] bg-[#fbfaff] p-3 font-mono text-[14px] leading-relaxed text-zinc-700"
+              className="scrollbar-none overflow-x-auto rounded-[14px] border border-[--color-border] bg-[#fbfaff] p-3 font-mono text-[13px] leading-relaxed text-zinc-700"
             >
               <code>{block.lines.join('\n')}</code>
             </pre>

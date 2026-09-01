@@ -46,7 +46,7 @@ export function PlaygroundPanel() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-[22px] font-bold tracking-tight text-zinc-900">
+        <h2 className="text-[20px] font-bold tracking-tight text-zinc-900">
           Probador del agente de WhatsApp
         </h2>
         <p className="text-sm text-zinc-500">
@@ -74,7 +74,7 @@ export function PlaygroundPanel() {
             setTurns([]);
             setError(null);
           }}
-          className="rounded-full border border-[--color-border] bg-white px-4 py-2 text-[16px] font-semibold text-zinc-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:text-brand-700 active:scale-95"
+          className="rounded-full border border-[--color-border] bg-white px-4 py-2 text-[14px] font-semibold text-zinc-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:text-brand-700 active:scale-95"
         >
           Reiniciar conversación
         </button>
@@ -147,7 +147,7 @@ function TraceDetails({ trace }: { trace: PlaygroundResult }) {
   if (trace.handoff) badges.push('handoff');
   if (trace.urgent) badges.push('urgent');
   return (
-    <div className="mt-1 text-[13px] text-zinc-500">
+    <div className="mt-1 text-[12px] text-zinc-500">
       <button type="button" onClick={() => setOpen((v) => !v)} className="underline">
         {open ? 'ocultar' : 'ver'} detalles
       </button>

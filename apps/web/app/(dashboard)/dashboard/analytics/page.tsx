@@ -286,7 +286,7 @@ async function InboundAnalytics({
                           }}
                           title={`${h.hour}:00 — ${h.calls} llamadas`}
                         />
-                        <span className="text-[11px] tabular-nums text-zinc-400 sm:text-[12px]">
+                        <span className="text-[10px] tabular-nums text-zinc-400 sm:text-[11px]">
                           {h.hour.toString().padStart(2, '0')}
                         </span>
                       </div>

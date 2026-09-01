@@ -132,9 +132,9 @@ function Section({
     <div>
       <div className="flex items-center gap-2 mb-2">
         {icon}
-        <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-zinc-500">{title}</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">{title}</p>
       </div>
-      <ul className="list-disc space-y-1.5 pl-5 text-[16px] marker:text-brand-300">{children}</ul>
+      <ul className="list-disc space-y-1.5 pl-5 text-[14px] marker:text-brand-300">{children}</ul>
     </div>
   );
 }

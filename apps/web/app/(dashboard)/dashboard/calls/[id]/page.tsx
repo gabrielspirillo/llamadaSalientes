@@ -73,7 +73,7 @@ export default async function CallDetailPage({
     <>
       <Link
         href="/dashboard/calls"
-        className="group mb-6 inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3.5 py-1.5 text-[16px] font-semibold text-zinc-500 ring-1 ring-[--color-border] transition-all duration-300 hover:text-brand-700 hover:ring-brand-200"
+        className="group mb-6 inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3.5 py-1.5 text-[14px] font-semibold text-zinc-500 ring-1 ring-[--color-border] transition-all duration-300 hover:text-brand-700 hover:ring-brand-200"
       >
         <ArrowLeft className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-1" />
         Volver a llamadas
@@ -84,13 +84,13 @@ export default async function CallDetailPage({
           <Avatar name={title} size={54} className="hidden shrink-0 sm:inline-flex" />
           <div className="min-w-0">
             <div className="mb-2 flex flex-wrap items-center gap-2 sm:gap-3">
-              <h1 className="truncate text-[31px] font-extrabold tracking-tight text-zinc-900 sm:text-[38px]">
+              <h1 className="truncate text-[28px] font-extrabold tracking-tight text-zinc-900 sm:text-[34px]">
                 {title}
               </h1>
               {statusBadge(call.status, call.transferred ?? false)}
               {intentBadge(call.intent)}
             </div>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[16px] text-zinc-500 sm:gap-x-5">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[14px] text-zinc-500 sm:gap-x-5">
               <span className="flex items-center gap-1.5">
                 <User className="h-3.5 w-3.5" /> {call.fromNumber ?? '—'}
               </span>
@@ -154,7 +154,7 @@ export default async function CallDetailPage({
                             {turn.speaker === 'agent' ? 'Agente' : 'Paciente'}
                           </div>
                           <p
-                            className={`break-words rounded-2xl px-4 py-2.5 text-[16px] leading-relaxed ${
+                            className={`break-words rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed ${
                               turn.speaker === 'agent'
                                 ? 'rounded-tl-md bg-[#f4f7f6] text-brand-900'
                                 : 'rounded-tl-md bg-[#e9f4fe] text-sky-900'
@@ -184,28 +184,28 @@ export default async function CallDetailPage({
               />
               <div className="px-5 pb-5 sm:px-6 sm:pb-6">
                 {call.summary ? (
-                  <p className="text-[16px] leading-relaxed text-zinc-700">
+                  <p className="text-[14px] leading-relaxed text-zinc-700">
                     {await ensureSpanish(call.summary)}
                   </p>
                 ) : (
-                  <p className="text-[16px] text-zinc-500">
+                  <p className="text-[14px] text-zinc-500">
                     El resumen se genera solo en cuanto termina de procesarse la llamada.
                   </p>
                 )}
                 <div className="mt-5 grid grid-cols-2 gap-2.5">
                   <div className="rounded-2xl bg-[#f4f7f6] p-3">
-                    <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-brand-400">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-400">
                       Sentimiento
                     </p>
-                    <p className="mt-1 text-[17px] font-bold capitalize text-brand-800">
+                    <p className="mt-1 text-[15px] font-bold capitalize text-brand-800">
                       {call.sentiment ?? '—'}
                     </p>
                   </div>
                   <div className="rounded-2xl bg-[#fdf0f7] p-3">
-                    <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-emerald-400">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-400">
                       Motivo
                     </p>
-                    <p className="mt-1 text-[17px] font-bold text-emerald-800">
+                    <p className="mt-1 text-[15px] font-bold text-emerald-800">
                       {call.intent ? (INTENT_META[call.intent]?.label ?? call.intent) : '—'}
                     </p>
                   </div>
@@ -236,7 +236,7 @@ export default async function CallDetailPage({
             <Card>
               <CardTopbar icon={<Info className="h-4 w-4" />} tone="zinc" title="Datos técnicos" />
               <div className="px-5 pb-5 sm:px-6 sm:pb-6">
-                <div className="space-y-2.5 text-[16px]">
+                <div className="space-y-2.5 text-[14px]">
                   <FieldRow label="Retell Call ID" value={call.retellCallId} mono />
                   <FieldRow label="GHL Contact" value={call.ghlContactId ?? '—'} mono />
                   <FieldRow
@@ -281,7 +281,7 @@ function GhlContactLink({
       href={url}
       target="_blank"
       rel="noreferrer"
-      className="group inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-[16px] font-semibold text-emerald-700 transition-all duration-300 hover:-translate-y-0.5 hover:bg-emerald-100"
+      className="group inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-[14px] font-semibold text-emerald-700 transition-all duration-300 hover:-translate-y-0.5 hover:bg-emerald-100"
     >
       Abrir ficha en GoHighLevel
       <ExternalLink className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />

@@ -184,7 +184,7 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
                           type="button"
                           onClick={() => saveEdit(r.id)}
                           disabled={pending || !editShortcut.trim() || !editText.trim()}
-                          className="rounded-full bg-[linear-gradient(120deg,#059669,#10b981)] px-3 py-1 text-[13px] font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 active:scale-95 hover:opacity-95 disabled:opacity-50"
+                          className="rounded-full bg-[linear-gradient(120deg,#059669,#10b981)] px-3 py-1 text-[12px] font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 active:scale-95 hover:opacity-95 disabled:opacity-50"
                         >
                           Guardar
                         </button>

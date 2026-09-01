@@ -120,7 +120,7 @@ function ProviderTabs({
                   <span className="font-semibold">{p.label}</span>
                   {p.configured && (
                     <span
-                      className={`text-[12px] px-2 py-0.5 rounded-full ${
+                      className={`text-[11px] px-2 py-0.5 rounded-full ${
                         active
                           ? 'bg-white/20 text-white'
                           : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
@@ -130,7 +130,7 @@ function ProviderTabs({
                     </span>
                   )}
                   {active && (
-                    <span className="ml-auto text-[12px] px-2 py-0.5 rounded-full bg-white/20 text-white">
+                    <span className="ml-auto text-[11px] px-2 py-0.5 rounded-full bg-white/20 text-white">
                       Activo
                     </span>
                   )}
@@ -202,7 +202,7 @@ function TwilioCredentialsForm({
       <div className="p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-5 w-5 text-zinc-500" />
-          <h3 className="text-[18px] font-semibold tracking-tight text-zinc-900">
+          <h3 className="text-[16px] font-semibold tracking-tight text-zinc-900">
             Credenciales Twilio
           </h3>
           {state.twilioConfigured && (
@@ -305,7 +305,7 @@ function ZadarmaCredentialsForm({
       <div className="p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-5 w-5 text-zinc-500" />
-          <h3 className="text-[18px] font-semibold tracking-tight text-zinc-900">
+          <h3 className="text-[16px] font-semibold tracking-tight text-zinc-900">
             Credenciales Zadarma
           </h3>
           {state.zadarmaConfigured && (
@@ -503,7 +503,7 @@ function CallerIdCard({
       <div className="p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-2">
           <PhoneOutgoing className="h-5 w-5 text-zinc-500" />
-          <h3 className="text-[18px] font-semibold tracking-tight text-zinc-900">
+          <h3 className="text-[16px] font-semibold tracking-tight text-zinc-900">
             Número que ve el paciente
           </h3>
           {verified && <CheckCircle2 className="h-4 w-4 text-emerald-600 ml-auto" />}
@@ -665,7 +665,7 @@ function InboundCard({
       <div className="p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-2">
           <PhoneIncoming className="h-5 w-5 text-zinc-500" />
-          <h3 className="text-[18px] font-semibold tracking-tight text-zinc-900">
+          <h3 className="text-[16px] font-semibold tracking-tight text-zinc-900">
             Número entrante
           </h3>
           {state.inboundNumberE164 && <CheckCircle2 className="h-4 w-4 text-emerald-600 ml-auto" />}
@@ -842,7 +842,7 @@ function HelpCard({
   return (
     <Card>
       <div className="p-4 sm:p-6 space-y-3">
-        <h3 className="text-[18px] font-semibold tracking-tight text-zinc-900">Cómo funciona</h3>
+        <h3 className="text-[16px] font-semibold tracking-tight text-zinc-900">Cómo funciona</h3>
         <ul className="text-sm text-zinc-600 space-y-2 list-disc pl-5">
           {isZadarma ? (
             <>
@@ -903,7 +903,7 @@ function CopyRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-2 rounded-lg bg-zinc-50 border border-[--color-border] px-2.5 py-1.5">
       <div className="min-w-0">
-        <div className="text-[12px] uppercase tracking-wide text-zinc-500">{label}</div>
+        <div className="text-[11px] uppercase tracking-wide text-zinc-500">{label}</div>
         <div className="text-xs font-mono text-zinc-900 truncate">{value}</div>
       </div>
       <button

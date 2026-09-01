@@ -149,7 +149,7 @@ export function MessageBubble(props: MessageBubbleProps) {
   if (message.kind === 'SYSTEM' && !deleted) {
     return (
       <li className="flex justify-center px-4 py-1.5">
-        <span className="inline-flex max-w-[80%] items-center gap-1.5 rounded-full bg-white/70 px-3 py-1 text-[14px] text-zinc-500 ring-1 ring-[--color-border-subtle]">
+        <span className="inline-flex max-w-[80%] items-center gap-1.5 rounded-full bg-white/70 px-3 py-1 text-[13px] text-zinc-500 ring-1 ring-[--color-border-subtle]">
           <Sparkles className="h-3 w-3 shrink-0 text-brand-400" />
           <span className="truncate">{message.body}</span>
         </span>
@@ -183,7 +183,7 @@ export function MessageBubble(props: MessageBubbleProps) {
         {grouped ? (
           <time
             suppressHydrationWarning
-            className="hidden select-none text-[12px] font-medium leading-5 text-zinc-400 group-hover:block"
+            className="hidden select-none text-[11px] font-medium leading-5 text-zinc-400 group-hover:block"
           >
             {formatClock(message.createdAt)}
           </time>
@@ -200,18 +200,18 @@ export function MessageBubble(props: MessageBubbleProps) {
       <div className="min-w-0 flex-1">
         {!grouped && (
           <div className="mb-0.5 flex flex-wrap items-baseline gap-2">
-            <span className="text-[16px] font-bold tracking-tight text-zinc-900">{senderName}</span>
+            <span className="text-[14px] font-bold tracking-tight text-zinc-900">{senderName}</span>
             {isSystem && (
-              <span className="rounded-md bg-brand-100 px-1.5 py-px text-[11px] font-bold uppercase tracking-[0.1em] text-brand-700">
+              <span className="rounded-md bg-brand-100 px-1.5 py-px text-[10px] font-bold uppercase tracking-[0.1em] text-brand-700">
                 {message.senderKind === 'BOT' ? 'bot' : 'sistema'}
               </span>
             )}
-            <time suppressHydrationWarning className="text-[13px] font-medium text-zinc-400">
+            <time suppressHydrationWarning className="text-[12px] font-medium text-zinc-400">
               {formatClock(message.createdAt)}
             </time>
-            {message.editedAt && <span className="text-[12px] italic text-zinc-400">editado</span>}
+            {message.editedAt && <span className="text-[11px] italic text-zinc-400">editado</span>}
             {message.pinned && (
-              <span className="inline-flex items-center gap-0.5 text-[12px] font-semibold text-amber-600">
+              <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-amber-600">
                 <Pin className="h-2.5 w-2.5" /> fijado
               </span>
             )}
@@ -219,7 +219,7 @@ export function MessageBubble(props: MessageBubbleProps) {
         )}
 
         {deleted ? (
-          <p className="text-[16px] italic text-zinc-400">Mensaje eliminado</p>
+          <p className="text-[14px] italic text-zinc-400">Mensaje eliminado</p>
         ) : editing ? (
           <div className="animate-zoom-in">
             <textarea
@@ -236,7 +236,7 @@ export function MessageBubble(props: MessageBubbleProps) {
                   saveEdit();
                 }
               }}
-              className="w-full rounded-[14px] border border-brand-200 bg-white p-3 text-[16px] leading-relaxed text-zinc-900 focus-visible:border-brand-400 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/12"
+              className="w-full rounded-[14px] border border-brand-200 bg-white p-3 text-[14px] leading-relaxed text-zinc-900 focus-visible:border-brand-400 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/12"
               rows={Math.min(8, draft.split('\n').length + 1)}
             />
             <div className="mt-2 flex items-center gap-2">
@@ -253,7 +253,7 @@ export function MessageBubble(props: MessageBubbleProps) {
               >
                 Cancelar
               </Button>
-              <span className="text-[13px] text-zinc-400">Esc para cancelar</span>
+              <span className="text-[12px] text-zinc-400">Esc para cancelar</span>
             </div>
           </div>
         ) : (
@@ -270,7 +270,7 @@ export function MessageBubble(props: MessageBubbleProps) {
             )}
           >
             {isDecision && (
-              <p className="mb-1 inline-flex items-center gap-1 text-[12px] font-bold uppercase tracking-[0.12em] text-brand-700">
+              <p className="mb-1 inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.12em] text-brand-700">
                 <Sparkles className="h-3 w-3" /> Decisión
               </p>
             )}
@@ -288,7 +288,7 @@ export function MessageBubble(props: MessageBubbleProps) {
         )}
 
         {message.failed && (
-          <div className="mt-1 flex items-center gap-2 text-[14px] text-rose-600">
+          <div className="mt-1 flex items-center gap-2 text-[13px] text-rose-600">
             <TriangleAlert className="h-3.5 w-3.5" />
             No se pudo enviar.
             <button
@@ -315,7 +315,7 @@ export function MessageBubble(props: MessageBubbleProps) {
           <button
             type="button"
             onClick={() => onOpenThread?.(message)}
-            className="press mt-1 inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[14px] font-semibold text-brand-700 ring-1 ring-brand-100 transition-all duration-300 hover:bg-zinc-100 hover:ring-brand-200"
+            className="press mt-1 inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[13px] font-semibold text-brand-700 ring-1 ring-brand-100 transition-all duration-300 hover:bg-zinc-100 hover:ring-brand-200"
           >
             <MessageSquare className="h-3 w-3" />
             {message.replyCount} {message.replyCount === 1 ? 'respuesta' : 'respuestas'}
@@ -337,7 +337,7 @@ export function MessageBubble(props: MessageBubbleProps) {
               key={emoji}
               type="button"
               onClick={() => onToggleReaction(message.id, emoji)}
-              className="press inline-flex h-7 w-7 items-center justify-center rounded-full text-[18px] transition-transform duration-200 hover:scale-125 hover:bg-zinc-100"
+              className="press inline-flex h-7 w-7 items-center justify-center rounded-full text-[16px] transition-transform duration-200 hover:scale-125 hover:bg-zinc-100"
               aria-label={`Reaccionar con ${emoji}`}
             >
               {emoji}
@@ -393,7 +393,7 @@ export function MessageBubble(props: MessageBubbleProps) {
                 onToggleReaction(message.id, emoji);
                 setEmojiOpen(false);
               }}
-              className="press inline-flex h-8 w-8 items-center justify-center rounded-full text-[20px] transition-transform duration-200 hover:scale-125 hover:bg-zinc-100"
+              className="press inline-flex h-8 w-8 items-center justify-center rounded-full text-[18px] transition-transform duration-200 hover:scale-125 hover:bg-zinc-100"
             >
               {emoji}
             </button>
@@ -468,14 +468,14 @@ function ReactionRow({
             type="button"
             onClick={() => onToggleReaction(message.id, r.emoji)}
             className={cn(
-              'press inline-flex animate-pop items-center gap-1 rounded-full px-2 py-0.5 text-[14px] font-semibold transition-all duration-200',
+              'press inline-flex animate-pop items-center gap-1 rounded-full px-2 py-0.5 text-[13px] font-semibold transition-all duration-200',
               mine
                 ? 'bg-brand-100 text-brand-700 ring-1 ring-brand-300'
                 : 'bg-white text-zinc-600 ring-1 ring-[--color-border] hover:ring-brand-200',
             )}
             title={`${r.count} ${r.count === 1 ? 'persona' : 'personas'}`}
           >
-            <span className="text-[16px] leading-none">{r.emoji}</span>
+            <span className="text-[14px] leading-none">{r.emoji}</span>
             <span className="tabular-nums">{r.count}</span>
           </button>
         );
@@ -522,8 +522,8 @@ function AttachmentGrid({ attachments }: { attachments: ImAttachment[] }) {
             <FileText className="h-4 w-4" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[15px] font-semibold text-zinc-800">{a.name}</span>
-            <span className="block text-[13px] text-zinc-400">{formatBytes(a.size)}</span>
+            <span className="block truncate text-[14px] font-semibold text-zinc-800">{a.name}</span>
+            <span className="block text-[12px] text-zinc-400">{formatBytes(a.size)}</span>
           </span>
           <Download className="h-3.5 w-3.5 shrink-0 text-zinc-300 transition-colors group-hover/file:text-brand-500" />
         </a>

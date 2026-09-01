@@ -50,7 +50,7 @@ export function WaitlistSettingsForm({ initial }: { initial: Settings }) {
   return (
     <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-6 space-y-6">
       <div>
-        <h2 className="text-[22px] font-bold tracking-tight text-zinc-900">
+        <h2 className="text-[20px] font-bold tracking-tight text-zinc-900">
           Configuración general
         </h2>
         <p className="text-sm text-zinc-500 mt-1">
@@ -131,7 +131,7 @@ export function WaitlistSettingsForm({ initial }: { initial: Settings }) {
       <hr className="border-[--color-border-subtle]" />
 
       <div>
-        <h2 className="text-[22px] font-bold tracking-tight text-zinc-900">
+        <h2 className="text-[20px] font-bold tracking-tight text-zinc-900">
           Reglas de elegibilidad
         </h2>
         <p className="text-sm text-zinc-500 mt-1">

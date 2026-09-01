@@ -132,7 +132,7 @@ export function ReminderDetailDialog({
       <div className="relative z-10 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
         <div className="flex items-start justify-between border-b border-[--color-border-subtle] p-5">
           <div className="min-w-0">
-            <h2 className="text-[22px] font-bold tracking-tight text-zinc-900 truncate">
+            <h2 className="text-[20px] font-bold tracking-tight text-zinc-900 truncate">
               {vars.contact?.fullName || vars.contact?.firstName || 'Paciente'}
             </h2>
             <p className="mt-0.5 text-sm text-zinc-500 truncate">
@@ -225,7 +225,7 @@ export function ReminderDetailDialog({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h3 className="mb-1.5 text-[12px] font-semibold uppercase tracking-wider text-zinc-500">
+      <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
         {title}
       </h3>
       <dl className="space-y-1">{children}</dl>
@@ -246,7 +246,7 @@ function Row({
     <div className="flex justify-between gap-3 text-sm">
       <dt className="text-zinc-500">{label}</dt>
       <dd
-        className={`min-w-0 truncate ${mono ? 'font-mono text-[13px]' : ''} text-zinc-800`}
+        className={`min-w-0 truncate ${mono ? 'font-mono text-[12px]' : ''} text-zinc-800`}
         title={value ?? ''}
       >
         {value || '—'}

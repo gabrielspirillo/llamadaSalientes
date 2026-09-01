@@ -9,7 +9,7 @@ export function AuthBrand() {
       className="group mb-8 inline-flex items-center gap-2 self-start"
       aria-label="FUTURA"
     >
-      <span className="text-[26px] font-extrabold leading-none tracking-tight text-[#0f1f2e]">
+      <span className="text-[23px] font-extrabold leading-none tracking-tight text-[#0f1f2e]">
         FUTURA
       </span>
       <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#5fa896]" />
@@ -52,7 +52,7 @@ export function AuthAside({
       />
 
       <div className="relative max-w-md animate-fade-up">
-        <p className="mb-5 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[13px] font-bold uppercase tracking-[0.16em] text-white/80 ring-1 ring-inset ring-white/15">
+        <p className="mb-5 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[12px] font-bold uppercase tracking-[0.16em] text-white/80 ring-1 ring-inset ring-white/15">
           {eyebrow}
         </p>
         {children}

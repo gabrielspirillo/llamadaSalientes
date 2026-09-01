@@ -57,11 +57,11 @@ export function SkipList({ skipped }: { skipped: SkipRow[] }) {
           <Card key={s.id} className="p-3">
             <div className="flex items-center justify-between gap-2">
               <span
-                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[12px] font-medium ${reasonClass}`}
+                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${reasonClass}`}
               >
                 {reasonLabel}
               </span>
-              <span className="text-[13px] text-zinc-400 shrink-0">{fmtAbsolute(s.createdAt)}</span>
+              <span className="text-[12px] text-zinc-400 shrink-0">{fmtAbsolute(s.createdAt)}</span>
             </div>
             <p className="mt-2 text-sm font-medium text-zinc-800 truncate">
               {s.treatmentName ?? 'Cita sin tratamiento'}
@@ -72,7 +72,7 @@ export function SkipList({ skipped }: { skipped: SkipRow[] }) {
               </p>
             )}
             <p
-              className="mt-1 truncate font-mono text-[12px] text-zinc-400"
+              className="mt-1 truncate font-mono text-[11px] text-zinc-400"
               title={s.ghlAppointmentId}
             >
               {s.ghlAppointmentId}

@@ -26,7 +26,7 @@ export async function IntegrationsPanel({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-[22px] font-bold tracking-tight text-zinc-900">Integraciones</h2>
+        <h2 className="text-[20px] font-bold tracking-tight text-zinc-900">Integraciones</h2>
         <p className="text-sm text-zinc-500">
           Conexión con GoHighLevel y URLs de webhook para auto-callback.
         </p>

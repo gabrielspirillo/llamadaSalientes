@@ -171,7 +171,7 @@ export function AgentTester() {
             <Phone className="relative z-10 h-8 w-8" />
           </div>
 
-          <h3 className="mt-5 text-[23px] font-extrabold tracking-tight text-zinc-900">
+          <h3 className="mt-5 text-[21px] font-extrabold tracking-tight text-zinc-900">
             {state === 'idle' && 'Probar el asistente'}
             {state === 'connecting' && 'Conectando…'}
             {state === 'live' && 'En llamada'}
@@ -180,7 +180,7 @@ export function AgentTester() {
           </h3>
 
           {state === 'live' && (
-            <p className="mt-1 text-[18px] font-bold tabular-nums text-emerald-600">
+            <p className="mt-1 text-[16px] font-bold tabular-nums text-emerald-600">
               {formatDuration(duration)}
             </p>
           )}
@@ -191,7 +191,7 @@ export function AgentTester() {
           )}
 
           {error && (
-            <div className="mt-4 w-full animate-fade-up rounded-2xl border border-rose-100 bg-rose-50/80 px-3.5 py-2.5 text-left text-[14px] text-rose-700">
+            <div className="mt-4 w-full animate-fade-up rounded-2xl border border-rose-100 bg-rose-50/80 px-3.5 py-2.5 text-left text-[13px] text-rose-700">
               {error}
             </div>
           )}
@@ -231,7 +231,7 @@ export function AgentTester() {
       {/* Live transcript */}
       <Card className="lg:col-span-2">
         <div className="flex items-center justify-between p-4 sm:p-6 pb-3 sm:pb-4">
-          <h3 className="text-[18px] font-semibold tracking-tight text-zinc-900">
+          <h3 className="text-[16px] font-semibold tracking-tight text-zinc-900">
             Transcripción en vivo
           </h3>
           {state === 'live' && (
@@ -274,7 +274,7 @@ export function AgentTester() {
                     {turn.speaker === 'agent' ? 'Asistente' : 'Tú'}
                   </p>
                   <p
-                    className={`rounded-2xl px-4 py-2.5 text-[16px] leading-relaxed ${
+                    className={`rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed ${
                       turn.speaker === 'agent'
                         ? 'rounded-tl-md bg-[#f4f7f6] text-brand-900'
                         : 'rounded-tl-md bg-[#e9f4fe] text-sky-900'

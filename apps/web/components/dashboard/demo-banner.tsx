@@ -19,10 +19,10 @@ export function DemoBanner() {
             <Sparkles className="h-4.5 w-4.5" />
           </div>
           <div>
-            <p className="text-[17px] font-bold tracking-tight text-amber-900">
+            <p className="text-[15px] font-bold tracking-tight text-amber-900">
               Estás viendo datos de ejemplo
             </p>
-            <p className="mt-1 max-w-2xl text-[16px] leading-relaxed text-amber-800/80">
+            <p className="mt-1 max-w-2xl text-[14px] leading-relaxed text-amber-800/80">
               Así se verá tu panel cuando el asistente empiece a atender llamadas, dar citas y
               recuperar las que se cancelan.
             </p>

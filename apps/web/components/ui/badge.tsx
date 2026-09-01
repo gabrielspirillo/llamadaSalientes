@@ -19,8 +19,8 @@ const badgeVariants = cva(
           'bg-[linear-gradient(120deg,#37766a,#5fa896)] text-white shadow-[0_4px_12px_-4px_rgba(55,118,106,0.6)]',
       },
       size: {
-        sm: 'px-2 py-0.5 text-[12px]',
-        md: 'px-2.5 py-0.5 text-[13px]',
+        sm: 'px-2 py-0.5 text-[11px]',
+        md: 'px-2.5 py-0.5 text-[12px]',
         lg: 'px-3 py-1 text-xs',
       },
     },
@@ -71,7 +71,7 @@ export function Tag({
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-md px-1.5 py-0.5 text-[12px] font-semibold lowercase tracking-tight',
+        'inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-semibold lowercase tracking-tight',
         toneFor(children),
         className,
       )}

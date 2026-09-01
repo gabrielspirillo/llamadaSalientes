@@ -21,7 +21,7 @@ export function MarketingTopbar() {
     <header className="sticky top-0 z-50 w-full border-b border-[--color-border] bg-white/70 backdrop-blur-xl">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-1.5" aria-label="FUTURA">
-          <span className="text-[22px] font-extrabold leading-none tracking-tight text-[#0f1f2e]">
+          <span className="text-[20px] font-extrabold leading-none tracking-tight text-[#0f1f2e]">
             FUTURA
           </span>
           <span className="inline-block h-2 w-2 rounded-full bg-[#5fa896]" />

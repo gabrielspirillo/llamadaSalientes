@@ -84,8 +84,8 @@ export default async function OutboundPage() {
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-[17px] font-bold text-zinc-900">{c.name}</p>
-                        <span className="text-[13px] text-zinc-400 shrink-0">
+                        <p className="truncate text-[15px] font-bold text-zinc-900">{c.name}</p>
+                        <span className="text-[12px] text-zinc-400 shrink-0">
                           {new Date(c.createdAt).toLocaleDateString('es-ES')}
                         </span>
                       </div>
@@ -125,7 +125,7 @@ export default async function OutboundPage() {
                         c.totalTargets > 0 ? (c.completedTargets / c.totalTargets) * 100 : 0;
                       return (
                         <TR key={c.id} className="group">
-                          <TD className="text-[17px] font-bold text-zinc-900">{c.name}</TD>
+                          <TD className="text-[15px] font-bold text-zinc-900">{c.name}</TD>
                           <TD className="hidden text-zinc-600 lg:table-cell">
                             {USE_CASE_LABEL[c.useCase as UseCase] ?? c.useCase}
                           </TD>
@@ -133,18 +133,18 @@ export default async function OutboundPage() {
                           <TD>
                             <div className="flex items-center gap-2.5">
                               <ProgressBar value={pct} tone="blossom" className="min-w-[80px]" />
-                              <span className="shrink-0 text-[14px] font-semibold tabular-nums text-zinc-600">
+                              <span className="shrink-0 text-[13px] font-semibold tabular-nums text-zinc-600">
                                 {c.completedTargets}/{c.totalTargets}
                               </span>
                             </div>
                           </TD>
-                          <TD className="hidden text-right text-[14px] text-zinc-500 lg:table-cell">
+                          <TD className="hidden text-right text-[13px] text-zinc-500 lg:table-cell">
                             {new Date(c.createdAt).toLocaleDateString('es-ES')}
                           </TD>
                           <TD className="text-right">
                             <Link
                               href={`/dashboard/outbound/${c.id}`}
-                              className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[14px] font-semibold text-brand-600 transition-all duration-300 group-hover:bg-brand-100 group-hover:text-brand-700"
+                              className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[13px] font-semibold text-brand-600 transition-all duration-300 group-hover:bg-brand-100 group-hover:text-brand-700"
                             >
                               Ver
                               <ArrowRight className="h-3 w-3 transition-transform duration-300 group-hover:translate-x-0.5" />

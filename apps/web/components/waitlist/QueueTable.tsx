@@ -52,7 +52,7 @@ export function QueueTable({ rows, tz }: { rows: QueueRow[]; tz: string }) {
 
   if (rows.length === 0) {
     return (
-      <p className="py-10 text-center text-[16px] text-zinc-500">
+      <p className="py-10 text-center text-[14px] text-zinc-500">
         No hay pacientes en la lista. Cuando se detecte una cita futura que cumpla los requisitos,
         se añade sola.
       </p>
@@ -63,7 +63,7 @@ export function QueueTable({ rows, tz }: { rows: QueueRow[]; tz: string }) {
     <div className="overflow-hidden rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)]">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[560px] text-sm">
-          <thead className="border-b border-[--color-border] bg-[#fafbfb] text-[12px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+          <thead className="border-b border-[--color-border] bg-[#fafbfb] text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-400">
             <tr>
               <th className="text-left px-4 py-2.5">Paciente</th>
               <th className="text-left px-4 py-2.5">Tratamiento</th>

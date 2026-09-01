@@ -194,7 +194,7 @@ export function MessagingAnalyticsPanel({ data }: { data: MessagingAnalytics | n
                                 <span className="block truncate font-semibold text-zinc-800">
                                   {p.name}
                                 </span>
-                                <span className="block truncate text-[13px] text-zinc-400">
+                                <span className="block truncate text-[12px] text-zinc-400">
                                   {p.email}
                                 </span>
                               </span>
@@ -208,7 +208,7 @@ export function MessagingAnalyticsPanel({ data }: { data: MessagingAnalytics | n
                               <span className="text-zinc-400">0</span>
                             )}
                           </TD>
-                          <TD className="text-[14px] text-zinc-500">{formatAge(p.oldestAt)}</TD>
+                          <TD className="text-[13px] text-zinc-500">{formatAge(p.oldestAt)}</TD>
                         </TR>
                       ))}
                     </tbody>

@@ -169,10 +169,10 @@ export default async function CallsPage({
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-2">
-                            <p className="truncate text-[17px] font-semibold text-zinc-800">
+                            <p className="truncate text-[15px] font-semibold text-zinc-800">
                               {display}
                             </p>
-                            <span className="shrink-0 text-[13px] tabular-nums text-zinc-400">
+                            <span className="shrink-0 text-[12px] tabular-nums text-zinc-400">
                               {c.startedAt
                                 ? new Date(c.startedAt).toLocaleString('es-ES', {
                                     day: '2-digit',
@@ -191,7 +191,7 @@ export default async function CallsPage({
                           <div className="mt-2 flex flex-wrap items-center gap-1.5">
                             {motivoBadge(c.intent)}
                             {statusBadge(c.status, c.transferred ?? false)}
-                            <span className="text-[13px] tabular-nums text-zinc-500">
+                            <span className="text-[12px] tabular-nums text-zinc-500">
                               {formatDuration(c.durationSeconds)}
                             </span>
                           </div>
@@ -279,7 +279,7 @@ export default async function CallsPage({
                 </TableWrap>
               </div>
 
-              <div className="flex items-center justify-between border-t border-[--color-border-subtle] bg-[#fafbfb] p-4 text-[14px] text-zinc-500 sm:px-5">
+              <div className="flex items-center justify-between border-t border-[--color-border-subtle] bg-[#fafbfb] p-4 text-[13px] text-zinc-500 sm:px-5">
                 <span className="inline-flex items-center gap-2">
                   <Phone className="h-3.5 w-3.5" />
                   Mostrando {realCalls.length} de {realCalls.length}

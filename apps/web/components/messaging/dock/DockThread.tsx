@@ -225,13 +225,13 @@ export function DockThread({ channelId }: { channelId: string }) {
                 </span>
                 <div className={cn('min-w-0 max-w-[78%]', mine && 'text-right')}>
                   {!grouped && !mine && (
-                    <p className="mb-0.5 truncate text-[13px] font-semibold text-zinc-500">
+                    <p className="mb-0.5 truncate text-[12px] font-semibold text-zinc-500">
                       {m.senderName ?? 'Sistema'}
                     </p>
                   )}
                   <div
                     className={cn(
-                      'inline-block rounded-[16px] px-3 py-2 text-left text-[16px] leading-snug transition-opacity duration-200',
+                      'inline-block rounded-[16px] px-3 py-2 text-left text-[14px] leading-snug transition-opacity duration-200',
                       mine
                         ? 'bg-[linear-gradient(120deg,#37766a,#5fa896)] text-white'
                         : isSystem
@@ -243,7 +243,7 @@ export function DockThread({ channelId }: { channelId: string }) {
                   >
                     <span className="whitespace-pre-wrap break-words">{m.body}</span>
                   </div>
-                  <p className="mt-0.5 text-[12px] tabular-nums text-zinc-400">
+                  <p className="mt-0.5 text-[11px] tabular-nums text-zinc-400">
                     {m.failed ? 'No se pudo enviar' : hourOf(m.createdAt)}
                   </p>
                 </div>
@@ -253,7 +253,7 @@ export function DockThread({ channelId }: { channelId: string }) {
         )}
 
         {peers.length > 0 && (
-          <p className="px-1 text-[13px] italic text-zinc-400">
+          <p className="px-1 text-[12px] italic text-zinc-400">
             {peers.length === 1
               ? `${peers[0]?.name} está escribiendo…`
               : `${peers.length} personas están escribiendo…`}
@@ -281,7 +281,7 @@ export function DockThread({ channelId }: { channelId: string }) {
           }}
           placeholder="Escribí un mensaje…"
           aria-label="Mensaje"
-          className="h-10 min-w-0 flex-1 rounded-full border border-[--color-border] bg-white px-4 text-[16px] outline-none transition-colors placeholder:text-zinc-400 focus:border-brand-300"
+          className="h-10 min-w-0 flex-1 rounded-full border border-[--color-border] bg-white px-4 text-[14px] outline-none transition-colors placeholder:text-zinc-400 focus:border-brand-300"
         />
         <button
           type="button"

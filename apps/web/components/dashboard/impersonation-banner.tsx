@@ -18,7 +18,7 @@ export function ImpersonationBanner({ clinicName }: { clinicName: string }) {
   }
 
   return (
-    <div className="relative flex items-center justify-between gap-3 overflow-hidden bg-[linear-gradient(100deg,#2e5f56,#479183_55%,#6bc2a4)] px-4 py-2.5 text-[16px] text-white sm:px-6">
+    <div className="relative flex items-center justify-between gap-3 overflow-hidden bg-[linear-gradient(100deg,#2e5f56,#479183_55%,#6bc2a4)] px-4 py-2.5 text-[14px] text-white sm:px-6">
       <span
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-[linear-gradient(100deg,transparent,rgba(255,255,255,0.18),transparent)] bg-[length:200%_100%] animate-shimmer"

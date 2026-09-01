@@ -45,7 +45,7 @@ export function WaitlistTabs({
 /** Contador dentro de la pestaña: hereda color según esté activa o no. */
 function TabCount({ n }: { n: number }) {
   return (
-    <span className="rounded-full bg-current/15 px-1.5 py-0.5 text-[12px] font-bold tabular-nums">
+    <span className="rounded-full bg-current/15 px-1.5 py-0.5 text-[11px] font-bold tabular-nums">
       {n}
     </span>
   );

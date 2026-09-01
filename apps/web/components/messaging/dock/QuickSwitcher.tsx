@@ -156,7 +156,7 @@ export function QuickSwitcher() {
               setCursor(0);
             }}
             placeholder="Ir a un canal o a una persona…"
-            className="relative flex-1 bg-transparent text-[18px] outline-none placeholder:text-zinc-400"
+            className="relative flex-1 bg-transparent text-[16px] outline-none placeholder:text-zinc-400"
           />
           <button
             type="button"
@@ -205,7 +205,7 @@ export function QuickSwitcher() {
                     </span>
                     {r.type === 'person' && r.online && <StatusDot tone="success" />}
                     {r.type === 'channel' && r.unread > 0 && (
-                      <span className="inline-flex min-w-[20px] shrink-0 items-center justify-center rounded-full bg-brand-600 px-1.5 py-0.5 text-[12px] font-semibold tabular-nums text-white">
+                      <span className="inline-flex min-w-[20px] shrink-0 items-center justify-center rounded-full bg-brand-600 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-white">
                         {r.unread > 99 ? '99+' : r.unread}
                       </span>
                     )}
@@ -216,7 +216,7 @@ export function QuickSwitcher() {
           )}
         </div>
 
-        <div className="flex items-center justify-between border-t border-[--color-border-subtle] bg-[#fbfaff] px-5 py-2.5 text-[13px] text-zinc-400">
+        <div className="flex items-center justify-between border-t border-[--color-border-subtle] bg-[#fbfaff] px-5 py-2.5 text-[12px] text-zinc-400">
           <span>↑↓ para moverte · ↵ para abrir · Esc para cerrar</span>
           <span className="tabular-nums">⌘J</span>
         </div>

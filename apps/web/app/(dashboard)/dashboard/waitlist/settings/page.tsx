@@ -101,7 +101,7 @@ export default async function WaitlistSettingsPage() {
 
         <div className="space-y-3">
           <div>
-            <h2 className="text-[22px] font-bold tracking-tight text-zinc-900">
+            <h2 className="text-[20px] font-bold tracking-tight text-zinc-900">
               Tratamientos elegibles
             </h2>
             <p className="text-sm text-zinc-500">

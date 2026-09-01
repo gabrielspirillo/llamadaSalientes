@@ -104,12 +104,12 @@ export function EventCard({
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h4 className="text-[17px] font-bold leading-tight tracking-tight text-zinc-900">
+            <h4 className="text-[15px] font-bold leading-tight tracking-tight text-zinc-900">
               {title}
             </h4>
             <span
               className={cn(
-                'inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-0.5 text-[12px] font-bold uppercase tracking-[0.1em]',
+                'inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.1em]',
                 meta.text,
               )}
             >
@@ -119,7 +119,7 @@ export function EventCard({
           </div>
 
           {contextLabel && (
-            <p className="mt-1 text-[14px] font-medium text-zinc-500">{contextLabel}</p>
+            <p className="mt-1 text-[13px] font-medium text-zinc-500">{contextLabel}</p>
           )}
 
           {body && <RichText text={body} mentions={mentions} className="mt-2 text-zinc-700" />}
@@ -137,7 +137,7 @@ export function EventCard({
             </div>
           )}
 
-          <p className="mt-2.5 text-[13px] font-medium text-zinc-400" suppressHydrationWarning>
+          <p className="mt-2.5 text-[12px] font-medium text-zinc-400" suppressHydrationWarning>
             {formatClock(message.createdAt)}
           </p>
         </div>

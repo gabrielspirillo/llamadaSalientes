@@ -28,7 +28,7 @@ export const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      'relative inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-4 py-1.5 text-[16px] font-semibold',
+      'relative inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] font-semibold',
       'transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
       'hover:text-brand-700',
       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40',
@@ -81,7 +81,7 @@ export function SegmentedNav({
             key={it.value}
             href={it.href}
             className={cn(
-              'inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-[16px] font-semibold transition-all duration-300',
+              'inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-[14px] font-semibold transition-all duration-300',
               active
                 ? 'bg-[linear-gradient(120deg,#37766a,#5fa896)] text-white shadow-[0_6px_18px_-8px_rgba(55,118,106,0.8)]'
                 : 'text-zinc-500 hover:bg-zinc-100 hover:text-brand-700',
@@ -91,7 +91,7 @@ export function SegmentedNav({
             {typeof it.count === 'number' && (
               <span
                 className={cn(
-                  'rounded-full px-1.5 py-0.5 text-[12px] tabular-nums',
+                  'rounded-full px-1.5 py-0.5 text-[11px] tabular-nums',
                   active ? 'bg-white/20 text-white' : 'bg-zinc-100 text-zinc-500',
                 )}
               >

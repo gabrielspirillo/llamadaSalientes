@@ -62,7 +62,7 @@ export function MentionsInbox({
             <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-brand-100 text-brand-600">
               <AtSign className="h-3 w-3" />
             </span>
-            <p className="min-w-0 flex-1 truncate text-[14px] font-semibold text-zinc-800">
+            <p className="min-w-0 flex-1 truncate text-[13px] font-semibold text-zinc-800">
               {m.senderName ?? 'Sistema'} · {m.channelName}
             </p>
             {!m.readAt && (
@@ -70,15 +70,15 @@ export function MentionsInbox({
             )}
           </div>
 
-          <p className="mt-1.5 line-clamp-2 text-[15px] leading-snug text-zinc-600">{m.body}</p>
-          <p className="mt-1 text-[13px] text-zinc-400">{timeAgo(m.createdAt)}</p>
+          <p className="mt-1.5 line-clamp-2 text-[14px] leading-snug text-zinc-600">{m.body}</p>
+          <p className="mt-1 text-[12px] text-zinc-400">{timeAgo(m.createdAt)}</p>
 
           <div className="mt-2 flex items-center gap-1.5">
             {onGoToMessage ? (
               <button
                 type="button"
                 onClick={() => onGoToMessage(m.channelId, m.messageId)}
-                className="press inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-[13px] font-semibold text-brand-700 transition-colors hover:bg-zinc-200"
+                className="press inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-[12px] font-semibold text-brand-700 transition-colors hover:bg-zinc-200"
               >
                 <CornerDownRight className="h-3 w-3" />
                 Ir al mensaje
@@ -86,7 +86,7 @@ export function MentionsInbox({
             ) : (
               <Link
                 href={`/dashboard/messages?channel=${m.channelId}&message=${m.messageId}`}
-                className="press inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-[13px] font-semibold text-brand-700 transition-colors hover:bg-zinc-200"
+                className="press inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-[12px] font-semibold text-brand-700 transition-colors hover:bg-zinc-200"
               >
                 <CornerDownRight className="h-3 w-3" />
                 Ir al mensaje
@@ -95,7 +95,7 @@ export function MentionsInbox({
             <button
               type="button"
               onClick={() => void resolveMention(m.id)}
-              className="press inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[13px] font-semibold text-zinc-500 transition-colors hover:bg-emerald-50 hover:text-emerald-700"
+              className="press inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold text-zinc-500 transition-colors hover:bg-emerald-50 hover:text-emerald-700"
             >
               <Check className="h-3 w-3" />
               Resolver

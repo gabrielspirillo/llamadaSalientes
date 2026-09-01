@@ -284,7 +284,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
   return (
     <div className="relative rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)]">
       {error && (
-        <div className="animate-fade-down border-b border-rose-100 bg-rose-50 px-3 py-2 text-[14px] text-rose-700">
+        <div className="animate-fade-down border-b border-rose-100 bg-rose-50 px-3 py-2 text-[13px] text-rose-700">
           {error}
         </div>
       )}
@@ -318,7 +318,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
       {/* Slash command popup */}
       {slashOpen && slashResults.length > 0 && (
         <div className="absolute bottom-full left-3 right-3 z-20 mb-1 max-h-60 overflow-y-auto rounded-2xl border border-[--color-border] bg-white shadow-lg">
-          <p className="border-b border-[--color-border-subtle] px-3 py-2 text-[12px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+          <p className="border-b border-[--color-border-subtle] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-400">
             Respuestas rápidas · ↑↓ para navegar, Enter para usar
           </p>
           <ul>
@@ -347,7 +347,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
           <button
             type="button"
             onClick={discardAudio}
-            className="rounded-full border border-[--color-border] bg-white px-3 py-1.5 text-[14px] font-semibold text-zinc-700 transition-all duration-300 hover:border-brand-200 hover:text-brand-700 active:scale-95"
+            className="rounded-full border border-[--color-border] bg-white px-3 py-1.5 text-[13px] font-semibold text-zinc-700 transition-all duration-300 hover:border-brand-200 hover:text-brand-700 active:scale-95"
           >
             Descartar
           </button>
@@ -355,7 +355,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
             type="button"
             onClick={sendAudio}
             disabled={pending}
-            className="rounded-full bg-[linear-gradient(120deg,#059669,#10b981)] px-3.5 py-1.5 text-[14px] font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 active:scale-95 disabled:opacity-50"
+            className="rounded-full bg-[linear-gradient(120deg,#059669,#10b981)] px-3.5 py-1.5 text-[13px] font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 active:scale-95 disabled:opacity-50"
           >
             {pending ? 'Enviando…' : 'Enviar audio'}
           </button>
@@ -472,7 +472,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
           )}
 
           <div className="ml-auto flex items-center gap-2">
-            <span className="text-[12px] text-zinc-400">
+            <span className="text-[11px] text-zinc-400">
               {isNote ? 'Solo visible para tu equipo' : 'Ctrl+Enter para enviar'}
             </span>
             <button

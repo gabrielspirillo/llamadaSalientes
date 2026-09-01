@@ -370,18 +370,18 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
               >
                 <Icon className="h-5 w-5" />
               </span>
-              <span className="text-[12px] font-bold uppercase tracking-[0.16em] text-brand-500">
+              <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-brand-500">
                 {s.eyebrow}
               </span>
             </div>
 
             <h2
               key={step}
-              className="mt-4 animate-fade-up text-[23px] font-extrabold tracking-tight text-zinc-900"
+              className="mt-4 animate-fade-up text-[21px] font-extrabold tracking-tight text-zinc-900"
             >
               {s.title}
             </h2>
-            <p className="mt-1.5 text-[16px] leading-relaxed text-zinc-600">{s.body}</p>
+            <p className="mt-1.5 text-[14px] leading-relaxed text-zinc-600">{s.body}</p>
 
             {/* Progreso */}
             <div className="mt-5 flex items-center gap-1.5">

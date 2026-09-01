@@ -40,12 +40,12 @@ export function PageHeader({
         )}
         <div className="min-w-0">
           {eyebrow && (
-            <p className="mb-1 text-[12px] font-bold uppercase tracking-[0.18em] text-zinc-400">
+            <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-400">
               {eyebrow}
             </p>
           )}
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <h1 className="text-[31px] font-extrabold leading-tight tracking-tight text-zinc-900 sm:text-[38px]">
+            <h1 className="text-[28px] font-extrabold leading-tight tracking-tight text-zinc-900 sm:text-[34px]">
               {title}
             </h1>
             {demoBadge && (
@@ -55,7 +55,7 @@ export function PageHeader({
             )}
           </div>
           {description && (
-            <p className="mt-1.5 max-w-2xl text-[16px] leading-relaxed text-zinc-500">
+            <p className="mt-1.5 max-w-2xl text-[14px] leading-relaxed text-zinc-500">
               {description}
             </p>
           )}

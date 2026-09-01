@@ -143,7 +143,7 @@ export function EvolutionConnectionPanel({ initial }: Props) {
             </div>
           )}
           {status === 'PENDING' && (
-            <p className="mt-2 text-[13px] text-zinc-500">
+            <p className="mt-2 text-[12px] text-zinc-500">
               Comprobando el estado cada 4 s. El QR caduca en unos 60 s; vuelve a pulsar «Pedir QR»
               si tarda.
             </p>
@@ -184,7 +184,7 @@ export function EvolutionConnectionPanel({ initial }: Props) {
             type="button"
             onClick={onCheckStatus}
             disabled={pending}
-            className="rounded-full border border-[--color-border] bg-white px-4 py-2 text-[16px] font-semibold text-zinc-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:text-brand-700 active:scale-95 disabled:opacity-50"
+            className="rounded-full border border-[--color-border] bg-white px-4 py-2 text-[14px] font-semibold text-zinc-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:text-brand-700 active:scale-95 disabled:opacity-50"
           >
             Comprobar estado
           </button>

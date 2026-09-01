@@ -146,7 +146,7 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
             />
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="truncate text-[19px] font-bold tracking-tight text-zinc-900">
+                <h1 className="truncate text-[17px] font-bold tracking-tight text-zinc-900">
                   {row.contact.name ?? row.contact.phoneE164}
                 </h1>
                 {row.conv.urgentFlag && (
@@ -157,7 +157,7 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
               </div>
               <Link
                 href="/dashboard/whatsapp/quick-replies"
-                className="mt-0.5 inline-flex items-center gap-1 text-[14px] text-zinc-400 transition-colors hover:text-brand-600"
+                className="mt-0.5 inline-flex items-center gap-1 text-[13px] text-zinc-400 transition-colors hover:text-brand-600"
               >
                 <Zap className="h-3 w-3" />
                 Respuestas rápidas

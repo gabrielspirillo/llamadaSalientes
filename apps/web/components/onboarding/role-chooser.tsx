@@ -21,7 +21,7 @@ export function RoleChooser() {
       <div className="w-full">
         <BackButton onClick={() => setMode('choose')} />
         <div className="mb-6 text-center">
-          <h1 className="text-[31px] font-extrabold tracking-tight text-zinc-900 sm:text-[38px]">
+          <h1 className="text-[28px] font-extrabold tracking-tight text-zinc-900 sm:text-[34px]">
             Da de alta tu clínica
           </h1>
           <p className="mt-2 text-zinc-500">
@@ -38,7 +38,7 @@ export function RoleChooser() {
       <div className="w-full">
         <BackButton onClick={() => setMode('choose')} />
         <div className="mb-6 text-center">
-          <h1 className="text-[31px] font-extrabold tracking-tight text-zinc-900 sm:text-[38px]">
+          <h1 className="text-[28px] font-extrabold tracking-tight text-zinc-900 sm:text-[34px]">
             Únete a tu clínica
           </h1>
           <p className="mt-2 text-zinc-500">
@@ -60,12 +60,12 @@ export function RoleChooser() {
     <div className="w-full">
       <div className="mb-8 text-center">
         <div className="mb-5 inline-flex items-center gap-1.5">
-          <span className="text-[26px] font-extrabold leading-none tracking-tight text-[#0f1f2e]">
+          <span className="text-[23px] font-extrabold leading-none tracking-tight text-[#0f1f2e]">
             FUTURA
           </span>
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#5fa896]" />
         </div>
-        <h1 className="text-[31px] font-extrabold tracking-tight text-zinc-900 sm:text-[38px]">
+        <h1 className="text-[28px] font-extrabold tracking-tight text-zinc-900 sm:text-[34px]">
           ¿Cómo vas a usar Futura?
         </h1>
         <p className="mt-2 text-zinc-500">Elige una opción para continuar.</p>
@@ -110,8 +110,8 @@ function RoleCard({
         {icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[18px] font-bold text-zinc-900">{title}</span>
-        <span className="mt-0.5 block text-[16px] leading-relaxed text-zinc-500">
+        <span className="block text-[16px] font-bold text-zinc-900">{title}</span>
+        <span className="mt-0.5 block text-[14px] leading-relaxed text-zinc-500">
           {description}
         </span>
       </span>
@@ -125,7 +125,7 @@ function BackButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="group mb-5 inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3.5 py-1.5 text-[16px] font-semibold text-zinc-500 ring-1 ring-[--color-border] transition-all duration-300 hover:text-brand-700 hover:ring-brand-200"
+      className="group mb-5 inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3.5 py-1.5 text-[14px] font-semibold text-zinc-500 ring-1 ring-[--color-border] transition-all duration-300 hover:text-brand-700 hover:ring-brand-200"
     >
       <ArrowLeft className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-1" />
       Volver

@@ -122,7 +122,7 @@ export async function GlobalAnalyticsBar({
         <Reveal>
           <Card className="mb-4 overflow-hidden p-0">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-3 p-4 sm:px-5">
-              <span className="text-[12px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+              <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-400">
                 Revenue por canal · mes en curso
               </span>
               <div className="flex flex-wrap gap-2">
@@ -197,7 +197,7 @@ function ChannelChip({
 }) {
   return (
     <span
-      className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[16px] transition-transform duration-300 hover:scale-105 ${className}`}
+      className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[14px] transition-transform duration-300 hover:scale-105 ${className}`}
     >
       <span className="opacity-70">{icon}</span>
       <span className="font-medium opacity-80">{label}</span>

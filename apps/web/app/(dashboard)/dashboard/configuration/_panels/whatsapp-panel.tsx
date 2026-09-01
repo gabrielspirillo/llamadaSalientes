@@ -28,7 +28,7 @@ export async function WhatsappPanel() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-[22px] font-bold tracking-tight text-zinc-900">
+        <h2 className="text-[20px] font-bold tracking-tight text-zinc-900">
           Integraciones de WhatsApp
         </h2>
         <p className="text-sm text-zinc-500">
@@ -41,7 +41,7 @@ export async function WhatsappPanel() {
         <section className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-6">
           <div className="mb-4 flex items-start justify-between">
             <div>
-              <h3 className="text-[22px] font-bold tracking-tight text-zinc-900">Meta Cloud API</h3>
+              <h3 className="text-[20px] font-bold tracking-tight text-zinc-900">Meta Cloud API</h3>
               <p className="text-xs text-zinc-500">
                 Recomendado para producción. Requiere WABA aprobada.
               </p>
@@ -51,9 +51,9 @@ export async function WhatsappPanel() {
 
           <div className="mb-4 rounded-lg bg-zinc-50 p-3 text-xs text-zinc-700">
             <div className="font-medium">Webhook URL</div>
-            <code className="block break-all text-[13px] text-zinc-600">{cloudWebhookUrl}</code>
+            <code className="block break-all text-[12px] text-zinc-600">{cloudWebhookUrl}</code>
             <div className="mt-2 font-medium">Verify token</div>
-            <code className="block text-[13px] text-zinc-600">
+            <code className="block text-[12px] text-zinc-600">
               {process.env.WHATSAPP_VERIFY_TOKEN
                 ? '✓ Configurado (env WHATSAPP_VERIFY_TOKEN)'
                 : '⚠️ WHATSAPP_VERIFY_TOKEN no configurado en env'}
@@ -75,7 +75,7 @@ export async function WhatsappPanel() {
         <section className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-6">
           <div className="mb-4 flex items-start justify-between">
             <div>
-              <h3 className="text-[22px] font-bold tracking-tight text-zinc-900">Evolution API</h3>
+              <h3 className="text-[20px] font-bold tracking-tight text-zinc-900">Evolution API</h3>
               <p className="text-xs text-zinc-500">
                 Self-hosted (Baileys). Útil para pilotos. Riesgo de baneo del número.
               </p>
@@ -85,9 +85,9 @@ export async function WhatsappPanel() {
 
           <div className="mb-4 rounded-lg bg-zinc-50 p-3 text-xs text-zinc-700">
             <div className="font-medium">Webhook URL</div>
-            <code className="block break-all text-[13px] text-zinc-600">{evolutionWebhookUrl}</code>
+            <code className="block break-all text-[12px] text-zinc-600">{evolutionWebhookUrl}</code>
             <div className="mt-2 font-medium">Servidor Evolution</div>
-            <code className="block text-[13px] text-zinc-600">
+            <code className="block text-[12px] text-zinc-600">
               {process.env.EVOLUTION_API_URL
                 ? `✓ ${process.env.EVOLUTION_API_URL}`
                 : '⚠️ EVOLUTION_API_URL no configurado'}
@@ -110,7 +110,7 @@ export async function WhatsappPanel() {
         <section className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-6">
           <div className="mb-4 flex items-start justify-between">
             <div>
-              <h3 className="text-[22px] font-bold tracking-tight text-zinc-900">Twilio (BSP)</h3>
+              <h3 className="text-[20px] font-bold tracking-tight text-zinc-900">Twilio (BSP)</h3>
               <p className="text-xs text-zinc-500">
                 Business Solution Provider oficial. Sender propio aprobado.
               </p>
@@ -120,9 +120,9 @@ export async function WhatsappPanel() {
 
           <div className="mb-4 rounded-lg bg-zinc-50 p-3 text-xs text-zinc-700">
             <div className="font-medium">Webhook URL</div>
-            <code className="block break-all text-[13px] text-zinc-600">{twilioWebhookUrl}</code>
+            <code className="block break-all text-[12px] text-zinc-600">{twilioWebhookUrl}</code>
             <div className="mt-2 font-medium">Cómo configurarlo</div>
-            <p className="text-[13px] text-zinc-600">
+            <p className="text-[12px] text-zinc-600">
               En Twilio Console → Messaging → WhatsApp sender, pega la URL en
               <em> When a message comes in</em> con método HTTP <code>POST</code>. Twilio firma cada
               request con tu Auth Token; lo verificamos en cada callback.

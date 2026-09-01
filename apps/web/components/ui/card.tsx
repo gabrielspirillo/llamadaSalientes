@@ -59,7 +59,7 @@ export const CardTitle = React.forwardRef<HTMLDivElement, React.HTMLAttributes<H
   ({ className, ...props }, ref) => (
     <h3
       ref={ref as never}
-      className={cn('text-[18px] font-semibold tracking-tight text-zinc-900', className)}
+      className={cn('text-[16px] font-semibold tracking-tight text-zinc-900', className)}
       {...props}
     />
   ),
@@ -70,7 +70,7 @@ export const CardDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
-  <p ref={ref} className={cn('text-[16px] text-zinc-500', className)} {...props} />
+  <p ref={ref} className={cn('text-[14px] text-zinc-500', className)} {...props} />
 ));
 CardDescription.displayName = 'CardDescription';
 
@@ -139,10 +139,10 @@ export function CardTopbar({
           </span>
         )}
         <div className="min-w-0">
-          <h3 className="truncate text-[18px] font-semibold tracking-tight text-zinc-900">
+          <h3 className="truncate text-[16px] font-semibold tracking-tight text-zinc-900">
             {title}
           </h3>
-          {subtitle && <p className="mt-0.5 truncate text-[16px] text-zinc-500">{subtitle}</p>}
+          {subtitle && <p className="mt-0.5 truncate text-[14px] text-zinc-500">{subtitle}</p>}
         </div>
       </div>
       {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}

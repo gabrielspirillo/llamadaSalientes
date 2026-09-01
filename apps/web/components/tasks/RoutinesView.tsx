@@ -230,7 +230,7 @@ function TemplateCard({
         <div className="min-w-0 flex-1">
           <h3 className="text-sm font-semibold text-zinc-900">{template.name}</h3>
           <p className="mt-0.5 text-xs leading-relaxed text-zinc-500">{template.description}</p>
-          <p className="mt-1.5 text-[13px] font-medium text-zinc-600">
+          <p className="mt-1.5 text-[12px] font-medium text-zinc-600">
             {describeRecurrence(
               {
                 freq: template.recurrenceFreq,
@@ -261,7 +261,7 @@ function TemplateCard({
         </label>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-zinc-500">
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] text-zinc-500">
         <span className="tabular-nums">
           {template.items.length} paso{template.items.length === 1 ? '' : 's'}
         </span>
@@ -305,7 +305,7 @@ function TemplateCard({
           {isAdmin && (
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block">
-                <span className="mb-1 block text-[13px] font-semibold uppercase tracking-wide text-zinc-400">
+                <span className="mb-1 block text-[12px] font-semibold uppercase tracking-wide text-zinc-400">
                   Hora
                 </span>
                 <input
@@ -321,7 +321,7 @@ function TemplateCard({
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-[13px] font-semibold uppercase tracking-wide text-zinc-400">
+                <span className="mb-1 block text-[12px] font-semibold uppercase tracking-wide text-zinc-400">
                   Responsable por defecto
                 </span>
                 <select
@@ -377,13 +377,13 @@ function RuleRow({
             <h3 className="text-sm font-semibold text-zinc-900">{meta.label}</h3>
             <span
               className={cn(
-                'inline-flex items-center rounded-full px-2 py-0.5 text-[12px] font-semibold ring-1 ring-inset',
+                'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset',
                 PRIORITY_META[rule.priority as TaskPriority].chip,
               )}
             >
               {PRIORITY_META[rule.priority as TaskPriority].label}
             </span>
-            <span className="text-[13px] text-zinc-400">
+            <span className="text-[12px] text-zinc-400">
               vence en {formatOffset(rule.dueOffsetMinutes)}
             </span>
           </div>
@@ -395,7 +395,7 @@ function RuleRow({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-3">
-          <span className="text-[13px] tabular-nums text-zinc-400">
+          <span className="text-[12px] tabular-nums text-zinc-400">
             {rule.generatedLast30d} en 30 días
           </span>
           <input
@@ -414,7 +414,7 @@ function RuleRow({
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="mt-2 inline-flex items-center gap-1 text-[13px] font-medium text-zinc-600 hover:text-zinc-900"
+            className="mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-zinc-600 hover:text-zinc-900"
           >
             {open ? 'Ocultar ajustes' : 'Ajustar'}
             <ChevronDown className={cn('h-3 w-3 transition-transform', open && 'rotate-180')} />
@@ -423,7 +423,7 @@ function RuleRow({
           {open && (
             <div className="mt-3 grid gap-3 border-t border-zinc-100 pt-3 sm:grid-cols-3">
               <label className="block sm:col-span-3">
-                <span className="mb-1 block text-[13px] font-semibold uppercase tracking-wide text-zinc-400">
+                <span className="mb-1 block text-[12px] font-semibold uppercase tracking-wide text-zinc-400">
                   Título de la tarea
                 </span>
                 <input
@@ -436,12 +436,12 @@ function RuleRow({
                   }}
                   className="w-full rounded-lg border border-zinc-200 px-2.5 py-1.5 text-sm"
                 />
-                <span className="mt-1 block text-[12px] text-zinc-400">
+                <span className="mt-1 block text-[11px] text-zinc-400">
                   Variables: {'{{patientName}}'} {'{{phone}}'} {'{{date}}'} {'{{treatment}}'}
                 </span>
               </label>
               <label className="block">
-                <span className="mb-1 block text-[13px] font-semibold uppercase tracking-wide text-zinc-400">
+                <span className="mb-1 block text-[12px] font-semibold uppercase tracking-wide text-zinc-400">
                   Plazo (minutos)
                 </span>
                 <input
@@ -460,7 +460,7 @@ function RuleRow({
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-[13px] font-semibold uppercase tracking-wide text-zinc-400">
+                <span className="mb-1 block text-[12px] font-semibold uppercase tracking-wide text-zinc-400">
                   Se asigna a
                 </span>
                 <select
@@ -479,7 +479,7 @@ function RuleRow({
               </label>
               {rule.trigger === 'PATIENT_INACTIVE' && (
                 <label className="block">
-                  <span className="mb-1 block text-[13px] font-semibold uppercase tracking-wide text-zinc-400">
+                  <span className="mb-1 block text-[12px] font-semibold uppercase tracking-wide text-zinc-400">
                     Meses sin venir
                   </span>
                   <input

@@ -716,11 +716,11 @@ function NotificationToasts({
             }}
             className="min-w-0 flex-1 text-left"
           >
-            <p className="truncate text-[16px] font-semibold text-zinc-900">{t.title}</p>
+            <p className="truncate text-[14px] font-semibold text-zinc-900">{t.title}</p>
             {t.detail && (
-              <p className="mt-0.5 line-clamp-2 text-[14px] text-zinc-500">{t.detail}</p>
+              <p className="mt-0.5 line-clamp-2 text-[13px] text-zinc-500">{t.detail}</p>
             )}
-            <p className="mt-1 text-[13px] font-semibold text-brand-600">Ir al hilo</p>
+            <p className="mt-1 text-[12px] font-semibold text-brand-600">Ir al hilo</p>
           </button>
           <button
             type="button"

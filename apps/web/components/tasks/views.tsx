@@ -72,7 +72,7 @@ export function TaskRow({
             <ShieldCheck className="h-3 w-3 text-brand-500" aria-label="Requiere evidencia" />
           )}
         </div>
-        <div className="mt-1 flex flex-wrap items-center gap-2.5 text-[13px] text-zinc-500">
+        <div className="mt-1 flex flex-wrap items-center gap-2.5 text-[12px] text-zinc-500">
           <span>{meta.label}</span>
           {task.patientName && <span className="truncate">· {task.patientName}</span>}
           {task.checklistTotal > 0 && (
@@ -328,7 +328,7 @@ export function WeekView({
               <div className="flex items-baseline justify-between">
                 <span
                   className={cn(
-                    'text-[13px] font-semibold uppercase tracking-wide',
+                    'text-[12px] font-semibold uppercase tracking-wide',
                     isToday ? 'text-zinc-900' : 'text-zinc-400',
                   )}
                 >
@@ -363,7 +363,7 @@ export function WeekView({
                       />
                       <span
                         className={cn(
-                          'line-clamp-2 text-[14px] leading-snug',
+                          'line-clamp-2 text-[13px] leading-snug',
                           t.status === 'DONE' ? 'text-zinc-400 line-through' : 'text-zinc-700',
                         )}
                       >
@@ -373,9 +373,9 @@ export function WeekView({
                   </li>
                 ))}
                 {d.items.length > 6 && (
-                  <li className="px-1 text-[13px] text-zinc-400">+{d.items.length - 6} más</li>
+                  <li className="px-1 text-[12px] text-zinc-400">+{d.items.length - 6} más</li>
                 )}
-                {d.items.length === 0 && <li className="px-1 py-2 text-[13px] text-zinc-300">—</li>}
+                {d.items.length === 0 && <li className="px-1 py-2 text-[12px] text-zinc-300">—</li>}
               </ul>
             </div>
           );
@@ -480,7 +480,7 @@ export function PatientsView({
                 {g.phone}
               </a>
             )}
-            <span className="ml-auto text-[13px] tabular-nums text-zinc-400">
+            <span className="ml-auto text-[12px] tabular-nums text-zinc-400">
               {g.items.length} pendiente{g.items.length === 1 ? '' : 's'}
             </span>
           </header>

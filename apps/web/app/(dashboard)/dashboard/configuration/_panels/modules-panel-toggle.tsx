@@ -56,7 +56,7 @@ export function ModuleToggle({
           )}
         />
       </button>
-      {error && <span className="text-[12px] text-rose-600">{error}</span>}
+      {error && <span className="text-[11px] text-rose-600">{error}</span>}
     </div>
   );
 }

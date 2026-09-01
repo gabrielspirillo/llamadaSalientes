@@ -101,7 +101,7 @@ function isActive(pathname: string, href: string) {
 function BrandMark() {
   return (
     <span className="flex items-center gap-1.5">
-      <span className="text-[23px] font-extrabold leading-none tracking-tight text-[#0f1f2e]">
+      <span className="text-[21px] font-extrabold leading-none tracking-tight text-[#0f1f2e]">
         FUTURA
       </span>
       <span className="inline-block h-2 w-2 rounded-full bg-[#5fa896]" />
@@ -135,7 +135,7 @@ function NavLink({
       data-tour={tourAnchor}
       onClick={onNavigate}
       className={cn(
-        'group relative flex items-center gap-3 rounded-2xl px-2.5 py-2 text-[16px] font-medium',
+        'group relative flex items-center gap-3 rounded-2xl px-2.5 py-2 text-[14px] font-medium',
         'transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
         active
           ? 'bg-white text-zinc-900 shadow-[0_8px_20px_-12px_rgba(20,33,29,0.45)]'
@@ -164,7 +164,7 @@ function NavLink({
       <span className="flex-1 truncate">{item.label}</span>
       {badge > 0 && (
         <span
-          className="inline-flex min-w-[20px] shrink-0 items-center justify-center rounded-full bg-brand-600 px-1.5 py-0.5 text-[12px] font-semibold tabular-nums text-white"
+          className="inline-flex min-w-[20px] shrink-0 items-center justify-center rounded-full bg-brand-600 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-white"
           aria-label={badgeLabel ?? `${badge} pendientes en ${item.label}`}
         >
           {badge > 99 ? '99+' : badge}
@@ -239,7 +239,7 @@ function SidebarNav({
         {GROUPS.map((group) => (
           <div key={group.title ?? 'top'}>
             {group.title && (
-              <p className="mb-1.5 px-3 text-[12px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+              <p className="mb-1.5 px-3 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
                 {group.title}
               </p>
             )}
@@ -311,7 +311,7 @@ function SidebarNav({
               window.dispatchEvent(new Event('futura:open-tour'));
             }
           }}
-          className="group flex w-full items-center gap-3 rounded-2xl px-2.5 py-2 text-[16px] font-medium text-zinc-600 transition-all duration-300 hover:bg-white/70 hover:text-zinc-900"
+          className="group flex w-full items-center gap-3 rounded-2xl px-2.5 py-2 text-[14px] font-medium text-zinc-600 transition-all duration-300 hover:bg-white/70 hover:text-zinc-900"
         >
           <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/70 text-brand-600 transition-transform duration-300 group-hover:scale-110 group-hover:bg-white">
             <Sparkles className="h-[17px] w-[17px]" />
