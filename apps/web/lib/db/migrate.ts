@@ -26,6 +26,9 @@ import postgres from 'postgres';
 
 const BASELINE_THROUGH = '0017';
 
+// Identificador arbitrario y estable del advisory lock del runner.
+const MIGRATION_LOCK_ID = 4823917;
+
 export interface MigrationResult {
   applied: string[];
   skipped: string[];
@@ -71,6 +74,19 @@ export async function runPendingMigrations(): Promise<MigrationResult> {
   const sql = postgres(env.DATABASE_URL, { max: 1, prepare: false });
 
   try {
+    // Un solo runner a la vez: con más de una réplica de worker, dos procesos
+    // corrían el mismo DDL en paralelo. Y sin lock_timeout, un DDL esperando
+    // el lock del worker viejo dejaba al nuevo sin consumir un solo job,
+    // indefinidamente y sin un error en los logs.
+    await sql.unsafe("SET lock_timeout = '15s'");
+    const [lock] = (await sql.unsafe(
+      `SELECT pg_try_advisory_lock(${MIGRATION_LOCK_ID}) AS acquired`,
+    )) as unknown as { acquired: boolean }[];
+    if (!lock?.acquired) {
+      console.warn('[migrate] otro proceso está migrando, no hago nada');
+      return result;
+    }
+
     await sql.unsafe(`
       CREATE TABLE IF NOT EXISTS schema_migrations (
         filename text PRIMARY KEY,
@@ -124,7 +140,14 @@ export async function runPendingMigrations(): Promise<MigrationResult> {
         // "already exists" = alguien la aplicó a mano antes de que existiera
         // este runner. La registramos y seguimos: reintentarla en cada boot
         // dejaría la cadena trabada para siempre.
-        if (/already exists/i.test(message)) {
+        //
+        // Sólo vale para el baseline. Fuera de él era una trampa: cada archivo
+        // corre en una transacción, así que si el statement 12 de 40 choca con
+        // un objeto preexistente, los 11 anteriores hacen rollback y el archivo
+        // igual quedaba registrado como aplicado. Resultado: esquema a medias,
+        // marcado como completo y sin forma de reintentarlo.
+        const isBaseline = file.slice(0, 4) <= BASELINE_THROUGH;
+        if (isBaseline && /already exists/i.test(message)) {
           await sql
             .unsafe('INSERT INTO schema_migrations (filename) VALUES ($1) ON CONFLICT DO NOTHING', [
               file,
