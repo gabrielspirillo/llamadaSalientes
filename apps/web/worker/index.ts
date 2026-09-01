@@ -10,6 +10,7 @@
 import 'server-only';
 import { Worker, type Job } from 'bullmq';
 
+import { runPendingMigrations } from '@/lib/db/migrate';
 import { env } from '@/lib/env';
 import { scheduleTaskCrons } from '@/lib/queue/client';
 import { getRedis } from '@/lib/queue/connection';
@@ -293,6 +294,20 @@ function buildTaskDailySweepWorker(): Worker<QueueJobs['task-daily-sweep']> {
 
 async function main(): Promise<void> {
   logStart();
+
+  // Migraciones primero: los handlers asumen que el schema está al día.
+  // Nunca tira el proceso — si una falla, se loguea y el worker igual levanta
+  // para no dejar a las clínicas sin recordatorios ni waitlist.
+  const migrations = await runPendingMigrations().catch((err) => {
+    console.error('[worker] runner de migraciones falló', err);
+    return null;
+  });
+  if (migrations?.applied.length) {
+    console.log('[worker] migraciones aplicadas', migrations.applied);
+  }
+  if (migrations?.failed) {
+    console.error('[worker] MIGRACIÓN PENDIENTE CON ERROR', migrations.failed);
+  }
 
   const workers = [
     buildWaWorker(),

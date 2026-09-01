@@ -40,6 +40,8 @@ COPY --chown=worker:nodejs apps/web/tsconfig.json ./apps/web/
 COPY --chown=worker:nodejs apps/web/lib ./apps/web/lib
 COPY --chown=worker:nodejs apps/web/worker ./apps/web/worker
 COPY --chown=worker:nodejs packages ./packages
+# Las migraciones SQL: el worker las aplica al arrancar (lib/db/migrate.ts).
+COPY --chown=worker:nodejs supabase/migrations ./supabase/migrations
 
 WORKDIR /app/apps/web
 USER worker
