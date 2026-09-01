@@ -89,6 +89,25 @@ Convenciones comunes: todos los handlers usan `runtime='nodejs'` y `dynamic='for
 | PATCH | `/api/waitlist/treatments` | admin | Elegibilidad de tratamiento para waitlist |
 | GET / PATCH | `/api/waitlist/settings` | viewer / admin | Configuración (TTLs, channelMode, umbrales de distancia…) |
 
+### Tareas (roles: viewer/operator/admin)
+
+| Método | Ruta | Rol mín. | Descripción |
+|---|---|---|---|
+| GET | `/api/tasks` | viewer | Tablero completo + métricas de cumplimiento |
+| POST | `/api/tasks` | operator | Alta manual de tarea |
+| GET / PATCH / DELETE | `/api/tasks/{id}` | viewer / operator | Detalle, edición y archivado (no borra: preserva el histórico) |
+| POST / PATCH / DELETE | `/api/tasks/{id}/checklist` | operator | Añadir, marcar y quitar pasos del checklist |
+| POST | `/api/tasks/{id}/comments` | operator | Comentario en el timeline |
+| POST | `/api/tasks/reorder` | operator | Reordena una columna completa del tablero tras un drag |
+| GET / POST | `/api/tasks/templates` | viewer / admin | Rutinas recurrentes (`{"action":"seed"}` instala el catálogo dental) |
+| PATCH / DELETE | `/api/tasks/templates/{id}` | admin | Editar rutina; las del catálogo se desactivan en vez de borrarse |
+| GET | `/api/tasks/automations` | viewer | Reglas que crean tareas a partir de eventos |
+| PATCH | `/api/tasks/automations/{id}` | admin | Activar/ajustar una regla (título, SLA, responsable) |
+| GET / PATCH | `/api/tasks/postop-treatments` | viewer / admin | Qué tratamientos generan llamada postoperatoria |
+| POST | `/api/tasks/run-routines` | admin | Fuerza rutinas + barridos sin esperar al worker |
+
+Errores propios: `422` cuando una tarea con `requires_evidence` se intenta cerrar sin nota de evidencia.
+
 ### WhatsApp y otros
 
 | Método | Ruta | Descripción |
@@ -151,6 +170,7 @@ Los mensajes de WhatsApp entrantes pasan primero por los handlers de respuesta d
 | `wa-process` | Webhooks WhatsApp (Twilio/Evolution/Cloud) | `worker/jobs/whatsapp-process.ts` |
 | `reminder-send` / `reminder-fallback-check` | Materialización de recordatorios (backfill, webhooks de citas) | `worker/jobs/reminder-*.ts` |
 | `waitlist-offer-send` / `waitlist-offer-expire` | Motor de waitlist (webhook de citas GHL) | `worker/jobs/waitlist-offer-*.ts` |
+| `task-routines-tick` / `task-daily-sweep` | Repeatable jobs registrados por el worker al arrancar | `worker/jobs/task-*.ts` |
 
 Si `REDIS_URL` no está configurada, el encolado es no-op en dev (con warning en prod).
 

@@ -15,6 +15,11 @@ import {
   upsertAppointmentCache,
 } from '@/lib/appointments/cache';
 import {
+  onAppointmentCancelled,
+  onAppointmentCompleted,
+  onAppointmentNoShow,
+} from '@/lib/tasks/hooks';
+import {
   autoEnqueueOnNewAppointment,
   enqueueOfferForCancelledSlot,
 } from '@/lib/waitlist/engine';
@@ -114,6 +119,36 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // ── Tareas: los pendientes humanos que nacen de la cita ────────────────────
+  // Va antes de classifyEvent a propósito: los cambios de status (no-show,
+  // asistió) no son ni create ni cancel para analytics, pero sí generan trabajo
+  // para recepción. Awaited con catch interno: el webhook no se rompe por esto.
+  const apptStart = parseDate(apt.startTime);
+  const statusLower = (apt.status ?? '').toLowerCase();
+  if (isCancel) {
+    await onAppointmentCancelled({
+      tenantId: integration.tenantId,
+      ghlAppointmentId: apt.id,
+      ghlContactId: apt.contactId ?? null,
+      startTime: apptStart,
+    });
+  } else if (NO_SHOW_STATUSES.has(statusLower)) {
+    await onAppointmentNoShow({
+      tenantId: integration.tenantId,
+      ghlAppointmentId: apt.id,
+      ghlContactId: apt.contactId ?? null,
+      startTime: apptStart,
+    });
+  } else if (ATTENDED_STATUSES.has(statusLower)) {
+    await onAppointmentCompleted({
+      tenantId: integration.tenantId,
+      ghlAppointmentId: apt.id,
+      ghlContactId: apt.contactId ?? null,
+      startTime: apptStart,
+      treatmentId: apt.treatmentId ?? null,
+    });
+  }
+
   const event = classifyEvent(payload);
   if (!event) {
     return NextResponse.json({ ok: true, cached: true, ignored: eventType ?? apt.status });
@@ -190,6 +225,11 @@ export async function POST(req: NextRequest) {
     waitlist: autoEnqueue.ok ? { entryId: autoEnqueue.entryId } : { skipped: autoEnqueue.reason },
   });
 }
+
+// GHL no normaliza el status de asistencia entre cuentas: aceptamos las
+// variantes que aparecen en la práctica.
+const NO_SHOW_STATUSES = new Set(['no_show', 'noshow', 'no-show']);
+const ATTENDED_STATUSES = new Set(['showed', 'completed', 'attended']);
 
 function isCancelType(eventType: string | undefined, status: string | undefined): boolean {
   const t = (eventType ?? '').toLowerCase();

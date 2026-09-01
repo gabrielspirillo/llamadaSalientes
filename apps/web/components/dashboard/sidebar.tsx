@@ -7,6 +7,7 @@ import { OrganizationSwitcher } from '@clerk/nextjs';
 import {
   BarChart3,
   BellRing,
+  ClipboardCheck,
   Bot,
   Building2,
   Contact,
@@ -46,6 +47,7 @@ const GROUPS: readonly NavGroup[] = [
     title: null,
     items: [
       { href: '/dashboard', label: 'Dashboard', icon: Home, tone: 'grape' },
+      { href: '/dashboard/tasks', label: 'Tareas', icon: ClipboardCheck, tone: 'blossom' },
       { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3, tone: 'sky' },
     ],
   },
@@ -100,6 +102,7 @@ function NavLink({
   onNavigate,
   tourAnchor,
   index,
+  badge = 0,
 }: {
   item: { href: string; label: string; icon: typeof Home; tone: NavItem['tone'] };
   active: boolean;
@@ -108,6 +111,8 @@ function NavLink({
   onNavigate?: () => void;
   tourAnchor?: string;
   index: number;
+  /** Contador que se dibuja a la derecha (0 = nada). */
+  badge?: number;
 }) {
   const Icon = item.icon;
   return (
@@ -144,8 +149,23 @@ function NavLink({
         )}
       >
         <Icon className="h-[17px] w-[17px]" />
+        {/* Colapsada no hay lugar para el número: un punto avisa igual. */}
+        {collapsed && badge > 0 && (
+          <span
+            aria-hidden
+            className="absolute right-1 top-1 h-2 w-2 rounded-full bg-violet-600 ring-2 ring-white"
+          />
+        )}
       </span>
       {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
+      {!collapsed && badge > 0 && (
+        <span
+          className="inline-flex min-w-[20px] shrink-0 items-center justify-center rounded-full bg-violet-600 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-white"
+          aria-label={`${badge} tareas para hoy o vencidas`}
+        >
+          {badge > 99 ? '99+' : badge}
+        </span>
+      )}
       {!collapsed && locked && (
         <Lock className="h-3 w-3 shrink-0 text-zinc-400" aria-label="Módulo no contratado" />
       )}
@@ -160,6 +180,7 @@ function SidebarNav({
   anchorTour = false,
   collapsed = false,
   onToggleCollapse,
+  tasksBadge = 0,
 }: {
   onNavigate?: () => void;
   enabledModules: EnabledModules;
@@ -167,6 +188,8 @@ function SidebarNav({
   anchorTour?: boolean;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  /** Tareas mías vencidas o para hoy. 0 = no se muestra nada. */
+  tasksBadge?: number;
 }) {
   const pathname = usePathname();
   let index = 0;
@@ -276,6 +299,7 @@ function SidebarNav({
                     collapsed={collapsed}
                     onNavigate={onNavigate}
                     tourAnchor={anchorTour ? it.href : undefined}
+                    badge={it.href === '/dashboard/tasks' ? tasksBadge : 0}
                   />
                 );
               })}
@@ -349,9 +373,11 @@ function SidebarNav({
 export function DashboardSidebar({
   enabledModules,
   isSuperAdmin = false,
+  tasksBadge = 0,
 }: {
   enabledModules: EnabledModules;
   isSuperAdmin?: boolean;
+  tasksBadge?: number;
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -384,6 +410,7 @@ export function DashboardSidebar({
       <SidebarNav
         enabledModules={enabledModules}
         isSuperAdmin={isSuperAdmin}
+        tasksBadge={tasksBadge}
         anchorTour
         collapsed={collapsed}
         onToggleCollapse={toggle}
@@ -397,11 +424,13 @@ export function DashboardSidebarMobile({
   onClose,
   enabledModules,
   isSuperAdmin = false,
+  tasksBadge = 0,
 }: {
   open: boolean;
   onClose: () => void;
   enabledModules: EnabledModules;
   isSuperAdmin?: boolean;
+  tasksBadge?: number;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -438,6 +467,7 @@ export function DashboardSidebarMobile({
           onNavigate={onClose}
           enabledModules={enabledModules}
           isSuperAdmin={isSuperAdmin}
+          tasksBadge={tasksBadge}
         />
       </aside>
     </div>

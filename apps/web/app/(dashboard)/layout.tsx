@@ -3,6 +3,7 @@ import { DashboardSidebar } from '@/components/dashboard/sidebar';
 import { DashboardTopbar } from '@/components/dashboard/topbar';
 import { WelcomeTour } from '@/components/dashboard/welcome-tour';
 import { DEFAULT_ENABLED_MODULES, type EnabledModules } from '@/lib/modules';
+import { countActionableTasks, internalUserIdFor } from '@/lib/tasks/queries';
 import { getCurrentTenantOrNull } from '@/lib/tenant';
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
@@ -41,15 +42,32 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // Futura (super-admin) ve las conexiones técnicas; la clínica ve solo lectura.
   const isSuperAdmin = tenantCtx?.isSuperAdmin ?? false;
 
+  // Badge de Tareas: lo mío vencido o para hoy. Una query barata por render;
+  // si falla (tenant recién creado, DB lenta) el sidebar se dibuja sin badge.
+  let tasksBadge = 0;
+  if (tenantCtx) {
+    try {
+      const internalUserId = await internalUserIdFor(userId);
+      tasksBadge = await countActionableTasks(tenantCtx.tenant.id, internalUserId);
+    } catch {
+      tasksBadge = 0;
+    }
+  }
+
   return (
     <div className="aurora-canvas flex min-h-screen text-zinc-900">
-      <DashboardSidebar enabledModules={enabledModules} isSuperAdmin={isSuperAdmin} />
+      <DashboardSidebar
+        enabledModules={enabledModules}
+        isSuperAdmin={isSuperAdmin}
+        tasksBadge={tasksBadge}
+      />
       <div className="flex min-w-0 flex-1 flex-col">
         {tenantCtx?.impersonating && <ImpersonationBanner clinicName={tenantCtx.tenant.name} />}
         <DashboardTopbar
           enabledModules={enabledModules}
           isSuperAdmin={isSuperAdmin}
           impersonatingClinic={tenantCtx?.impersonating ? tenantCtx.tenant.name : undefined}
+          tasksBadge={tasksBadge}
         />
         {/* La key por ruta re-dispara la animación de entrada en cada navegación. */}
         <main className="enter-page flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-9">
