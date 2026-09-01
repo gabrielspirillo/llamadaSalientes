@@ -12,15 +12,15 @@ const badgeVariants = cva(
         warn: 'bg-amber-100/80 text-amber-700',
         danger: 'bg-rose-100/80 text-rose-700',
         info: 'bg-sky-100/80 text-sky-700',
-        violet: 'bg-violet-100/80 text-violet-700',
-        pink: 'bg-pink-100/80 text-pink-700',
+        accent: 'bg-brand-100/80 text-brand-700',
+        pink: 'bg-emerald-100/80 text-emerald-700',
         /* Gradiente de marca — para contadores destacados */
         brand:
           'bg-[linear-gradient(120deg,#37766a,#5fa896)] text-white shadow-[0_4px_12px_-4px_rgba(55,118,106,0.6)]',
       },
       size: {
-        sm: 'px-2 py-0.5 text-[10px]',
-        md: 'px-2.5 py-0.5 text-[11px]',
+        sm: 'px-2 py-0.5 text-[12px]',
+        md: 'px-2.5 py-0.5 text-[13px]',
         lg: 'px-3 py-1 text-xs',
       },
     },
@@ -44,12 +44,12 @@ export function Badge({ className, tone, size, ...props }: BadgeProps) {
  * Se usa para categorizar llamadas, campañas, tratamientos, etc.
  */
 const TAG_TONES = [
-  'bg-violet-100/70 text-violet-600',
-  'bg-pink-100/70 text-pink-600',
-  'bg-sky-100/70 text-sky-600',
-  'bg-emerald-100/70 text-emerald-600',
-  'bg-amber-100/70 text-amber-600',
-  'bg-rose-100/70 text-rose-600',
+  'bg-brand-100/70 text-brand-700',
+  'bg-emerald-100/70 text-emerald-700',
+  'bg-teal-100/70 text-teal-700',
+  'bg-brand-200/60 text-brand-800',
+  'bg-emerald-200/60 text-emerald-800',
+  'bg-teal-200/60 text-teal-800',
 ] as const;
 
 /** Color estable derivado del texto — la misma etiqueta siempre sale igual. */
@@ -71,7 +71,7 @@ export function Tag({
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold lowercase tracking-tight',
+        'inline-flex items-center rounded-md px-1.5 py-0.5 text-[12px] font-semibold lowercase tracking-tight',
         toneFor(children),
         className,
       )}
@@ -88,7 +88,7 @@ export function StatusDot({
   pulse = true,
   className,
 }: {
-  tone?: 'success' | 'warn' | 'danger' | 'info' | 'neutral' | 'violet';
+  tone?: 'success' | 'warn' | 'danger' | 'info' | 'neutral' | 'accent';
   pulse?: boolean;
   className?: string;
 }) {
@@ -98,7 +98,7 @@ export function StatusDot({
     danger: 'bg-rose-500',
     info: 'bg-sky-500',
     neutral: 'bg-zinc-400',
-    violet: 'bg-violet-500',
+    accent: 'bg-brand-500',
   } as const;
   return (
     <span className={cn('relative inline-flex h-2 w-2 shrink-0', className)}>

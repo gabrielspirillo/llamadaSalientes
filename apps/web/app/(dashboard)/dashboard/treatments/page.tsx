@@ -44,7 +44,7 @@ export default async function TreatmentsPage() {
                 <li key={t.id} className="p-4" style={{ ['--i' as string]: Math.min(i, 12) }}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[14px] font-bold text-zinc-900">{t.name}</p>
+                      <p className="truncate text-[17px] font-bold text-zinc-900">{t.name}</p>
                       {t.description && (
                         <p className="text-xs text-zinc-500 mt-0.5 line-clamp-2">{t.description}</p>
                       )}
@@ -89,9 +89,9 @@ export default async function TreatmentsPage() {
                     {rows.map((t) => (
                       <TR key={t.id}>
                         <TD>
-                          <div className="text-[14px] font-bold text-zinc-900">{t.name}</div>
+                          <div className="text-[17px] font-bold text-zinc-900">{t.name}</div>
                           {t.description && (
-                            <div className="mt-0.5 line-clamp-1 text-[12px] text-zinc-500">
+                            <div className="mt-0.5 line-clamp-1 text-[14px] text-zinc-500">
                               {t.description}
                             </div>
                           )}
@@ -102,7 +102,7 @@ export default async function TreatmentsPage() {
                             {formatPrice(t.priceMin, t.priceMax)}
                           </span>
                           {t.priceCents != null && (
-                            <div className="mt-0.5 text-[11px] text-zinc-500">
+                            <div className="mt-0.5 text-[13px] text-zinc-500">
                               {(t.priceCents / 100).toFixed(0)} € · ingresos
                             </div>
                           )}

@@ -14,7 +14,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        /* Acción principal: gradiente violeta con halo y barrido de luz */
+        /* Acción principal: gradiente verde con halo y barrido de luz */
         primary:
           'sheen text-white bg-[linear-gradient(120deg,#37766a_0%,#479183_45%,#5fa896_100%)] shadow-[0_8px_24px_-10px_rgba(55,118,106,0.75)] hover:shadow-[0_16px_34px_-12px_rgba(55,118,106,0.8)] hover:-translate-y-0.5',
         /* Secundaria: superficie blanca con borde suave */
@@ -36,9 +36,9 @@ const buttonVariants = cva(
       },
       size: {
         xs: 'h-7 px-2.5 text-xs gap-1.5',
-        sm: 'h-9 px-3.5 text-[13px]',
+        sm: 'h-9 px-3.5 text-[16px]',
         md: 'h-11 px-5 text-sm',
-        lg: 'h-12 px-7 text-[15px]',
+        lg: 'h-12 px-7 text-[18px]',
         icon: 'h-10 w-10 p-0',
         'icon-sm': 'h-8 w-8 p-0',
       },

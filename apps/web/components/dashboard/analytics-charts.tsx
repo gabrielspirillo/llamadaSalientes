@@ -131,10 +131,10 @@ export function IntentDonut({ data }: { data: Intent[] }) {
         </PieChart>
       </ResponsiveContainer>
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        <span className="text-[26px] font-bold leading-none tabular-nums text-zinc-900">
+        <span className="text-[31px] font-bold leading-none tabular-nums text-zinc-900">
           {total}
         </span>
-        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+        <span className="text-[12px] font-bold uppercase tracking-[0.14em] text-zinc-400">
           Total
         </span>
       </div>
@@ -155,7 +155,7 @@ export function IntentBarList({ data }: { data: Intent[] }) {
         const pct = (item.value / max) * 100;
         const color = chartSequence[i % chartSequence.length];
         return (
-          <li key={item.name} className="flex items-center gap-3 text-[13px]">
+          <li key={item.name} className="flex items-center gap-3 text-[16px]">
             <span className="w-24 truncate font-medium text-zinc-600">{item.name}</span>
             <div className="h-2 flex-1 overflow-hidden rounded-full bg-zinc-100">
               <div

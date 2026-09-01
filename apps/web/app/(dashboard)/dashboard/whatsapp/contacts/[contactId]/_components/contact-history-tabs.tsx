@@ -111,7 +111,7 @@ function Atributos({
         <div className="flex items-center justify-between text-xs">
           <span className="font-semibold uppercase text-zinc-500">Ficha en el CRM</span>
           {ghlContactId ? (
-            <span className="font-mono text-[10px] text-zinc-600">
+            <span className="font-mono text-[12px] text-zinc-600">
               {ghlContactId.slice(0, 12)}…
             </span>
           ) : (
@@ -135,7 +135,7 @@ function Atributos({
                   <span className="font-medium text-zinc-900">{a.treatment ?? 'Cita'}</span>
                   {a.status && (
                     <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${appointmentStatusClass(a.status)}`}
+                      className={`rounded-full px-2 py-0.5 text-[12px] font-semibold uppercase ${appointmentStatusClass(a.status)}`}
                     >
                       {a.status}
                     </span>
@@ -169,7 +169,7 @@ function Historial({
     <div className="space-y-4">
       {conversations.length > 0 && (
         <div>
-          <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+          <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-wider text-zinc-500">
             Conversaciones
           </h3>
           <ul className="space-y-1">
@@ -185,7 +185,7 @@ function Historial({
                     }`}
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between text-[11px] text-zinc-500">
+                    <div className="flex items-center justify-between text-[13px] text-zinc-500">
                       <span className="uppercase">
                         {channelShort(c.channel)} ·{' '}
                         {c.lastMessageDirection === 'OUTBOUND'
@@ -209,7 +209,7 @@ function Historial({
 
       {calls.length > 0 && (
         <div>
-          <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+          <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-wider text-zinc-500">
             Llamadas
           </h3>
           <ul className="space-y-1">
@@ -219,9 +219,9 @@ function Historial({
                   href={`/dashboard/llamadas/${c.id}`}
                   className="flex items-start gap-2 rounded-lg p-2 hover:bg-zinc-50"
                 >
-                  <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-purple-500" />
+                  <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-brand-500" />
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between text-[11px] text-zinc-500">
+                    <div className="flex items-center justify-between text-[13px] text-zinc-500">
                       <span className="uppercase">
                         Llamada
                         {c.durationSeconds != null && ` · ${formatDuration(c.durationSeconds)}`}
@@ -328,7 +328,7 @@ function Notas({ contactId, notes }: { contactId: string; notes: NoteItem[] }) {
           {error ? (
             <span className="text-xs text-rose-700">{error}</span>
           ) : (
-            <span className="text-[10px] text-zinc-400">Admite formato Markdown</span>
+            <span className="text-[12px] text-zinc-400">Admite formato Markdown</span>
           )}
           <button
             type="button"
@@ -352,7 +352,7 @@ function Notas({ contactId, notes }: { contactId: string; notes: NoteItem[] }) {
               key={n.id}
               className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm"
             >
-              <div className="flex items-center justify-between text-[10px] uppercase text-amber-700">
+              <div className="flex items-center justify-between text-[12px] uppercase text-amber-700">
                 <span>{n.authorEmail ?? 'Anónimo'}</span>
                 <div className="flex items-center gap-2">
                   <span>{formatShort(n.createdAt)}</span>
@@ -469,9 +469,9 @@ function Combinar({ contactId }: { contactId: string }) {
         placeholder="Buscar por nombre o teléfono…"
         className="w-full rounded-lg border border-[--color-border] px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
       />
-      {searching && <p className="text-[11px] text-zinc-400">Buscando…</p>}
+      {searching && <p className="text-[13px] text-zinc-400">Buscando…</p>}
       {!searching && query.trim().length >= 2 && results.length === 0 && (
-        <p className="text-[11px] text-zinc-400">Sin resultados.</p>
+        <p className="text-[13px] text-zinc-400">Sin resultados.</p>
       )}
       <ul className="space-y-1">
         {results.map((r) => {
@@ -490,7 +490,7 @@ function Combinar({ contactId }: { contactId: string }) {
                 <div className="font-medium text-zinc-900">{r.name ?? '(sin nombre)'}</div>
                 <div className="text-xs text-zinc-500">{r.phoneE164}</div>
                 {r.ghlContactId && (
-                  <div className="mt-0.5 text-[10px] text-zinc-400">
+                  <div className="mt-0.5 text-[12px] text-zinc-400">
                     GHL · {r.ghlContactId.slice(0, 12)}…
                   </div>
                 )}

@@ -355,7 +355,7 @@ export function Composer({
       {/* Popover de comandos / menciones */}
       {menu && options.length > 0 && (
         <div className="absolute bottom-full left-0 z-30 mb-2 w-full max-w-md animate-zoom-in overflow-hidden rounded-[18px] border border-[--color-border] bg-white/95 shadow-[var(--shadow-lifted)] backdrop-blur-xl">
-          <div className="flex items-center gap-1.5 border-b border-[--color-border-subtle] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+          <div className="flex items-center gap-1.5 border-b border-[--color-border-subtle] px-3 py-2 text-[12px] font-bold uppercase tracking-[0.14em] text-zinc-400">
             {menu.kind === '/' ? <Zap className="h-3 w-3" /> : <AtSign className="h-3 w-3" />}
             {menu.kind === '/' ? 'Comandos' : 'Mencionar a'}
           </div>
@@ -373,13 +373,13 @@ export function Composer({
                 >
                   {opt.node}
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13px] font-semibold text-zinc-900">
+                    <span className="block truncate text-[16px] font-semibold text-zinc-900">
                       {opt.label}
                     </span>
-                    <span className="block truncate text-[11.5px] text-zinc-500">{opt.hint}</span>
+                    <span className="block truncate text-[14px] text-zinc-500">{opt.hint}</span>
                   </span>
                   {i === activeIndex && (
-                    <span className="shrink-0 rounded-md bg-white px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-zinc-400 ring-1 ring-[--color-border]">
+                    <span className="shrink-0 rounded-md bg-white px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-zinc-400 ring-1 ring-[--color-border]">
                       Enter
                     </span>
                   )}
@@ -396,7 +396,7 @@ export function Composer({
           {attachments.map((a) => (
             <span
               key={a.key}
-              className="inline-flex animate-pop items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[11.5px] font-medium text-zinc-700 ring-1 ring-[--color-border]"
+              className="inline-flex animate-pop items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[14px] font-medium text-zinc-700 ring-1 ring-[--color-border]"
             >
               <FileText className="h-3 w-3 text-brand-500" />
               <span className="max-w-[160px] truncate">{a.name}</span>
@@ -417,13 +417,13 @@ export function Composer({
         </div>
       )}
 
-      {uploadError && <p className="mb-2 text-[11.5px] font-medium text-rose-600">{uploadError}</p>}
+      {uploadError && <p className="mb-2 text-[14px] font-medium text-rose-600">{uploadError}</p>}
 
       {/* Caja */}
       <div
         className={cn(
           'flex items-end gap-2 rounded-[20px] border border-[--color-border] bg-white p-2 shadow-[var(--shadow-soft)]',
-          'transition-[border-color,box-shadow] duration-300 focus-within:border-brand-300 focus-within:shadow-[0_0_0_4px_rgba(113,57,232,0.10)]',
+          'transition-[border-color,box-shadow] duration-300 focus-within:border-brand-300 focus-within:shadow-[0_0_0_4px_rgba(55,118,106,0.10)]',
           disabled && 'opacity-60',
         )}
       >
@@ -459,7 +459,7 @@ export function Composer({
           rows={1}
           placeholder={placeholder ?? `Escribí en ${channelName}…  (/ comandos · @ menciones)`}
           aria-label={`Mensaje para ${channelName}`}
-          className="scrollbar-none max-h-[200px] min-h-[36px] flex-1 resize-none bg-transparent px-1 py-2 text-[13.5px] leading-relaxed text-zinc-900 placeholder:text-zinc-400 focus-visible:outline-none"
+          className="scrollbar-none max-h-[200px] min-h-[36px] flex-1 resize-none bg-transparent px-1 py-2 text-[16px] leading-relaxed text-zinc-900 placeholder:text-zinc-400 focus-visible:outline-none"
         />
 
         <button
@@ -494,7 +494,7 @@ export function Composer({
         </Button>
       </div>
 
-      <p className="mt-1.5 px-2 text-[10.5px] text-zinc-400">
+      <p className="mt-1.5 px-2 text-[13px] text-zinc-400">
         <kbd className="rounded bg-zinc-100 px-1 font-sans font-semibold">Enter</kbd> envía ·{' '}
         <kbd className="rounded bg-zinc-100 px-1 font-sans font-semibold">Shift+Enter</kbd> salta de
         línea

@@ -229,7 +229,7 @@ export function ContactDetailDialog({
           <TabButton active={tab === 'llamadas'} onClick={() => setTab('llamadas')}>
             <Phone className="h-3.5 w-3.5" /> Llamadas
             {data && data.calls.length > 0 && (
-              <span className="text-[10px] font-semibold bg-zinc-100 text-zinc-700 rounded-full px-1.5 py-0.5">
+              <span className="text-[12px] font-semibold bg-zinc-100 text-zinc-700 rounded-full px-1.5 py-0.5">
                 {data.calls.length}
               </span>
             )}
@@ -237,7 +237,7 @@ export function ContactDetailDialog({
           <TabButton active={tab === 'citas'} onClick={() => setTab('citas')}>
             <Calendar className="h-3.5 w-3.5" /> Citas
             {upcomingCount > 0 && (
-              <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 rounded-full px-1.5 py-0.5">
+              <span className="text-[12px] font-semibold bg-emerald-100 text-emerald-700 rounded-full px-1.5 py-0.5">
                 {upcomingCount}
               </span>
             )}
@@ -340,7 +340,7 @@ export function ContactDetailDialog({
                                 {c.summary ?? 'Sin resumen aún'}
                               </p>
                             </div>
-                            <Badge tone="violet">{motivo}</Badge>
+                            <Badge tone="accent">{motivo}</Badge>
                           </div>
                         </Link>
                       );
@@ -518,7 +518,7 @@ function PatientTeamThread({ contactId, label }: { contactId: string; label: str
       <ul className="max-h-72 space-y-3 overflow-y-auto px-3 py-3">
         {messages.map((m) => (
           <li key={m.id} className="text-sm">
-            <p className="text-[11px] font-medium text-zinc-400">
+            <p className="text-[13px] font-medium text-zinc-400">
               {m.senderKind === 'USER' ? (m.senderName ?? 'Alguien') : 'Cliniq'} ·{' '}
               {fmtDateTime(m.createdAt)}
             </p>
@@ -553,7 +553,7 @@ function PatientTeamThread({ contactId, label }: { contactId: string; label: str
           Enviar
         </Button>
       </form>
-      {threadError && <p className="px-3 pb-2 text-[11px] text-rose-600">{threadError}</p>}
+      {threadError && <p className="px-3 pb-2 text-[13px] text-rose-600">{threadError}</p>}
     </div>
   );
 }

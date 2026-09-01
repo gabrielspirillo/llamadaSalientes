@@ -1,7 +1,7 @@
 import 'server-only';
 
-import { SEED_CHANNELS } from '@/lib/messaging/constants';
 import { ensureSlugChannel } from '@/lib/messaging/channels';
+import { SEED_CHANNELS } from '@/lib/messaging/constants';
 import { listTenantMembersSynced } from '@/lib/tenant-members';
 
 /**

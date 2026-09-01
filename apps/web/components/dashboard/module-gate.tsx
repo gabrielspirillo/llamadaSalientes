@@ -40,7 +40,7 @@ export async function ModuleGate({
             className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(95,168,150,0.16),transparent_70%)]"
           />
           <div className="relative">
-            <div className="mx-auto mb-4 inline-flex h-14 w-14 animate-float items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#37766a,#5fa896_60%,#6bc2a4)] text-white shadow-[0_14px_30px_-12px_rgba(55,118,106,0.9)]">
+            <div className="mx-auto mb-4 inline-flex h-14 w-14 animate-float items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#2e5f56,#479183_60%,#6bc2a4)] text-white shadow-[0_14px_30px_-12px_rgba(55,118,106,0.9)]">
               <Lock className="h-6 w-6" />
             </div>
             <CardTitle className="text-xl">Módulo no incluido</CardTitle>

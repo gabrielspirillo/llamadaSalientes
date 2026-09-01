@@ -249,9 +249,7 @@ async function publishAppointmentEvent(
   try {
     const { resolvePatient } = await import('@/lib/tasks/hooks');
     const patient = await resolvePatient(args.tenantId, { ghlContactId: args.ghlContactId });
-    const { postAppointmentCancelled, postAppointmentNoShow } = await import(
-      '@/lib/messaging/bot'
-    );
+    const { postAppointmentCancelled, postAppointmentNoShow } = await import('@/lib/messaging/bot');
     const post = kind === 'cancelled' ? postAppointmentCancelled : postAppointmentNoShow;
     await post({
       tenantId: args.tenantId,

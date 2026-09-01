@@ -169,10 +169,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const rawMime = file.type || 'application/octet-stream';
     const mime = (rawMime.split(';')[0] ?? rawMime).trim().toLowerCase();
     if (!ALLOWED_MIMES.has(mime)) {
-      return NextResponse.json(
-        { error: `Tipo de archivo no permitido: ${mime}` },
-        { status: 415 },
-      );
+      return NextResponse.json({ error: `Tipo de archivo no permitido: ${mime}` }, { status: 415 });
     }
     if (file.size <= 0) {
       return badRequest([{ message: 'El archivo está vacío', path: ['file'] }]);

@@ -40,7 +40,7 @@ export function TH({ className, ...props }: React.ThHTMLAttributes<HTMLTableCell
   return (
     <th
       className={cn(
-        'whitespace-nowrap px-5 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400',
+        'whitespace-nowrap px-5 py-3 text-left text-[12px] font-bold uppercase tracking-[0.14em] text-zinc-400',
         className,
       )}
       {...props}

@@ -3,6 +3,8 @@ import { and, desc, eq, gt, inArray, isNull, ne, sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import {
+  type ImAction,
+  type ImAttachment,
   imChannelMembers,
   imChannels,
   imMentions,
@@ -12,17 +14,15 @@ import {
   imSavedMessages,
   imUserSettings,
   tenants,
-  type ImAction,
-  type ImAttachment,
 } from '@/lib/db/schema';
 import { MessagingForbiddenError, MessagingNotFoundError } from '@/lib/messaging/auth';
 import {
   EDIT_WINDOW_MS,
-  MAX_ATTACHMENTS_PER_MESSAGE,
-  MAX_BODY_LENGTH,
   type ImContextType,
   type ImMessageKind,
   type ImSenderKind,
+  MAX_ATTACHMENTS_PER_MESSAGE,
+  MAX_BODY_LENGTH,
 } from '@/lib/messaging/constants';
 import type { ImRealtimeEvent } from '@/lib/messaging/events';
 import { resolveMentions } from '@/lib/messaging/mentions';

@@ -96,14 +96,14 @@ export function initials(c: GhlContact): string {
 
 // Paleta de gradients para avatars (determinista por contactId)
 const AVATAR_GRADIENTS = [
-  'from-violet-500 to-pink-500',
-  'from-blue-500 to-cyan-500',
-  'from-emerald-500 to-teal-500',
-  'from-amber-500 to-orange-500',
-  'from-rose-500 to-red-500',
-  'from-indigo-500 to-purple-500',
-  'from-sky-500 to-blue-500',
-  'from-fuchsia-500 to-pink-500',
+  'from-brand-600 to-brand-400',
+  'from-emerald-600 to-emerald-400',
+  'from-teal-600 to-teal-400',
+  'from-brand-700 to-emerald-500',
+  'from-emerald-700 to-teal-500',
+  'from-teal-700 to-brand-500',
+  'from-brand-500 to-emerald-300',
+  'from-emerald-500 to-brand-300',
 ];
 
 export function avatarGradient(c: GhlContact): string {

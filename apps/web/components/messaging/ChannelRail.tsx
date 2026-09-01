@@ -98,7 +98,7 @@ export function ChannelRail({
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Buscar canal o persona"
           aria-label="Buscar canal o persona"
-          className="h-10 bg-white/80 text-[13px]"
+          className="h-10 bg-white/80 text-[16px]"
           trailing={
             query ? (
               <button
@@ -113,7 +113,7 @@ export function ChannelRail({
           }
         />
         <div className="mt-2.5 flex items-center justify-between px-1">
-          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+          <span className="inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.14em] text-zinc-400">
             {connected ? (
               <>
                 <Equalizer className="text-emerald-500" />
@@ -137,7 +137,7 @@ export function ChannelRail({
       {/* Lista */}
       <div className="min-h-0 flex-1 overflow-y-auto px-2 py-3">
         {empty && availablePeople.length === 0 ? (
-          <p className="px-3 py-8 text-center text-[12.5px] text-zinc-500">
+          <p className="px-3 py-8 text-center text-[15px] text-zinc-500">
             {q ? 'Nada coincide con la búsqueda.' : 'Todavía no hay canales.'}
           </p>
         ) : null}
@@ -229,7 +229,7 @@ export function ChannelRail({
                       size={26}
                       online={presence.get(p.userId)?.online}
                     />
-                    <span className="min-w-0 flex-1 truncate text-[13px] text-zinc-500 group-hover:text-zinc-800">
+                    <span className="min-w-0 flex-1 truncate text-[16px] text-zinc-500 group-hover:text-zinc-800">
                       {p.name}
                     </span>
                     <Plus className="h-3.5 w-3.5 shrink-0 text-zinc-300 transition-colors group-hover:text-brand-500" />
@@ -255,7 +255,7 @@ function RailSection({
   return (
     <section className="mb-4 last:mb-0">
       <div className="mb-1.5 flex items-center justify-between gap-2 px-3">
-        <h3 className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+        <h3 className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.16em] text-zinc-400">
           <span className="h-2.5 w-1 rounded-full bg-[linear-gradient(180deg,#37766a,#6bc2a4)]" />
           {title}
         </h3>
@@ -331,7 +331,7 @@ function RailChannel({
           <span className="flex items-center gap-1.5">
             <span
               className={cn(
-                'min-w-0 flex-1 truncate text-[13px] leading-tight',
+                'min-w-0 flex-1 truncate text-[16px] leading-tight',
                 unread
                   ? 'font-bold text-zinc-900'
                   : active
@@ -344,7 +344,7 @@ function RailChannel({
             {channel.lastMessageAt && (
               <time
                 suppressHydrationWarning
-                className="shrink-0 text-[10px] font-medium text-zinc-400"
+                className="shrink-0 text-[12px] font-medium text-zinc-400"
               >
                 {timeAgo(channel.lastMessageAt)}
               </time>
@@ -353,7 +353,7 @@ function RailChannel({
           {channel.lastMessagePreview && (
             <span
               className={cn(
-                'mt-0.5 block truncate text-[11.5px] leading-tight',
+                'mt-0.5 block truncate text-[14px] leading-tight',
                 unread ? 'text-zinc-600' : 'text-zinc-400',
               )}
             >
@@ -367,7 +367,7 @@ function RailChannel({
             @{channel.mentionCount}
           </Badge>
         ) : unread ? (
-          <span className="inline-flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-brand-600 px-1.5 text-[10px] font-bold tabular-nums text-white shadow-[0_4px_12px_-4px_rgba(113,57,232,0.6)]">
+          <span className="inline-flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-brand-600 px-1.5 text-[12px] font-bold tabular-nums text-white shadow-[0_4px_12px_-4px_rgba(55,118,106,0.6)]">
             {channel.unreadCount > 99 ? '99+' : channel.unreadCount}
           </span>
         ) : channel.muted ? (

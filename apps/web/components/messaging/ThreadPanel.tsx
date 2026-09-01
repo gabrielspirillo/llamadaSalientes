@@ -115,7 +115,7 @@ export function ThreadPanel({
         className="fixed inset-0 z-40 animate-fade-in cursor-default bg-[#171429]/25 backdrop-blur-[2px]"
       />
 
-      <aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[440px] animate-slide-right flex-col border-l border-white/60 bg-white shadow-[0_40px_90px_-30px_rgba(23,20,41,0.5)]">
+      <aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[440px] animate-slide-right flex-col border-l border-white/60 bg-white shadow-[0_40px_90px_-30px_rgba(22,26,25,0.5)]">
         <header className="flex shrink-0 items-center gap-3 border-b border-[--color-border-subtle] px-4 py-3.5">
           <span
             className={cn('inline-flex h-9 w-9 items-center justify-center rounded-xl', tone.chip)}
@@ -123,8 +123,8 @@ export function ThreadPanel({
             <MessageSquare className="h-4 w-4" />
           </span>
           <div className="min-w-0 flex-1">
-            <h2 className="text-[15px] font-semibold tracking-tight text-zinc-900">Hilo</h2>
-            <p className="truncate text-[12px] text-zinc-500">en {channel.name}</p>
+            <h2 className="text-[18px] font-semibold tracking-tight text-zinc-900">Hilo</h2>
+            <p className="truncate text-[14px] text-zinc-500">en {channel.name}</p>
           </div>
           <button
             type="button"
@@ -141,7 +141,7 @@ export function ThreadPanel({
 
           <div className="my-3 flex items-center gap-3 px-4">
             <span className="h-px flex-1 bg-[--color-border]" />
-            <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-zinc-400">
+            <span className="text-[13px] font-bold uppercase tracking-[0.12em] text-zinc-400">
               {replies.length === 0
                 ? 'Sin respuestas'
                 : `${replies.length} ${replies.length === 1 ? 'respuesta' : 'respuestas'}`}

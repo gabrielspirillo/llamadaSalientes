@@ -3,7 +3,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import { imChannelMembers, imChannels, tenantMemberships, users } from '@/lib/db/schema';
-import { normalizeRole, type TaskRole } from '@/lib/tasks/auth';
+import { type TaskRole, normalizeRole } from '@/lib/tasks/auth';
 import { getCurrentTenant } from '@/lib/tenant';
 
 /**

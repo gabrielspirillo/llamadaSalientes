@@ -162,7 +162,7 @@ export function AgentTester() {
                 ? 'bg-[linear-gradient(135deg,#059669,#34d399)] text-white shadow-[0_18px_40px_-14px_rgba(16,185,129,0.9)]'
                 : state === 'connecting'
                   ? 'animate-pulse bg-[linear-gradient(135deg,#d97706,#fbbf24)] text-white'
-                  : 'bg-[linear-gradient(135deg,#37766a,#5fa896_60%,#6bc2a4)] text-white shadow-[0_18px_40px_-14px_rgba(55,118,106,0.9)]'
+                  : 'bg-[linear-gradient(135deg,#2e5f56,#479183_60%,#6bc2a4)] text-white shadow-[0_18px_40px_-14px_rgba(55,118,106,0.9)]'
             }`}
           >
             {state === 'live' && (
@@ -171,7 +171,7 @@ export function AgentTester() {
             <Phone className="relative z-10 h-8 w-8" />
           </div>
 
-          <h3 className="mt-5 text-[19px] font-extrabold tracking-tight text-zinc-900">
+          <h3 className="mt-5 text-[23px] font-extrabold tracking-tight text-zinc-900">
             {state === 'idle' && 'Probar el asistente'}
             {state === 'connecting' && 'Conectando…'}
             {state === 'live' && 'En llamada'}
@@ -180,7 +180,7 @@ export function AgentTester() {
           </h3>
 
           {state === 'live' && (
-            <p className="mt-1 text-[15px] font-bold tabular-nums text-emerald-600">
+            <p className="mt-1 text-[18px] font-bold tabular-nums text-emerald-600">
               {formatDuration(duration)}
             </p>
           )}
@@ -191,7 +191,7 @@ export function AgentTester() {
           )}
 
           {error && (
-            <div className="mt-4 w-full animate-fade-up rounded-2xl border border-rose-100 bg-rose-50/80 px-3.5 py-2.5 text-left text-[12px] text-rose-700">
+            <div className="mt-4 w-full animate-fade-up rounded-2xl border border-rose-100 bg-rose-50/80 px-3.5 py-2.5 text-left text-[14px] text-rose-700">
               {error}
             </div>
           )}
@@ -231,7 +231,7 @@ export function AgentTester() {
       {/* Live transcript */}
       <Card className="lg:col-span-2">
         <div className="flex items-center justify-between p-4 sm:p-6 pb-3 sm:pb-4">
-          <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">
+          <h3 className="text-[18px] font-semibold tracking-tight text-zinc-900">
             Transcripción en vivo
           </h3>
           {state === 'live' && (
@@ -274,9 +274,9 @@ export function AgentTester() {
                     {turn.speaker === 'agent' ? 'Asistente' : 'Tú'}
                   </p>
                   <p
-                    className={`rounded-2xl px-4 py-2.5 text-[13.5px] leading-relaxed ${
+                    className={`rounded-2xl px-4 py-2.5 text-[16px] leading-relaxed ${
                       turn.speaker === 'agent'
-                        ? 'rounded-tl-md bg-[#f4f7f6] text-violet-900'
+                        ? 'rounded-tl-md bg-[#f4f7f6] text-brand-900'
                         : 'rounded-tl-md bg-[#e9f4fe] text-sky-900'
                     }`}
                   >

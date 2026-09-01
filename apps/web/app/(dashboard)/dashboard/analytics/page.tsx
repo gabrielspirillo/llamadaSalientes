@@ -247,7 +247,7 @@ async function InboundAnalytics({
                   tone="grape"
                   title="Tendencia diaria"
                   subtitle="Llamadas apiladas por intención"
-                  action={<Badge tone="violet">{range === '7d' ? '7 días' : '30 días'}</Badge>}
+                  action={<Badge tone="accent">{range === '7d' ? '7 días' : '30 días'}</Badge>}
                 />
                 <div className="px-4 pb-6 sm:px-6">
                   <CallsTrendChart data={data.byDay} />
@@ -286,7 +286,7 @@ async function InboundAnalytics({
                           }}
                           title={`${h.hour}:00 — ${h.calls} llamadas`}
                         />
-                        <span className="text-[9px] tabular-nums text-zinc-400 sm:text-[10px]">
+                        <span className="text-[11px] tabular-nums text-zinc-400 sm:text-[12px]">
                           {h.hour.toString().padStart(2, '0')}
                         </span>
                       </div>

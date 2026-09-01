@@ -458,7 +458,7 @@ function FilterGroup({
 }) {
   return (
     <div className="flex items-center gap-1.5">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+      <span className="text-[13px] font-semibold uppercase tracking-wide text-zinc-400">
         {label}
       </span>
       <div className="flex flex-wrap gap-1">
@@ -468,7 +468,7 @@ function FilterGroup({
             type="button"
             onClick={() => onChange(value === o.value ? null : o.value)}
             className={cn(
-              'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
+              'rounded-full border px-2.5 py-1 text-[13px] font-medium transition-colors',
               value === o.value
                 ? 'border-zinc-900 bg-zinc-900 text-white'
                 : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300',

@@ -21,7 +21,7 @@ const REASON_TONE: Record<string, string> = {
   no_whatsapp: 'bg-amber-50 text-amber-700 border-amber-200',
   no_voice_agent: 'bg-amber-50 text-amber-700 border-amber-200',
   no_template: 'bg-amber-50 text-amber-700 border-amber-200',
-  quiet_hours_full_day: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  quiet_hours_full_day: 'bg-brand-50 text-brand-700 border-brand-200',
   opt_out: 'bg-rose-50 text-rose-700 border-rose-200',
   appointment_cancelled: 'bg-rose-50 text-rose-700 border-rose-200',
   duplicate: 'bg-zinc-100 text-zinc-600 border-[--color-border]',
@@ -57,11 +57,11 @@ export function SkipList({ skipped }: { skipped: SkipRow[] }) {
           <Card key={s.id} className="p-3">
             <div className="flex items-center justify-between gap-2">
               <span
-                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${reasonClass}`}
+                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[12px] font-medium ${reasonClass}`}
               >
                 {reasonLabel}
               </span>
-              <span className="text-[11px] text-zinc-400 shrink-0">{fmtAbsolute(s.createdAt)}</span>
+              <span className="text-[13px] text-zinc-400 shrink-0">{fmtAbsolute(s.createdAt)}</span>
             </div>
             <p className="mt-2 text-sm font-medium text-zinc-800 truncate">
               {s.treatmentName ?? 'Cita sin tratamiento'}
@@ -72,7 +72,7 @@ export function SkipList({ skipped }: { skipped: SkipRow[] }) {
               </p>
             )}
             <p
-              className="mt-1 truncate font-mono text-[10px] text-zinc-400"
+              className="mt-1 truncate font-mono text-[12px] text-zinc-400"
               title={s.ghlAppointmentId}
             >
               {s.ghlAppointmentId}

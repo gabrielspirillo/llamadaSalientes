@@ -66,7 +66,7 @@ export async function GlobalAnalyticsBar({
         title="Métricas globales"
         description="Todos los canales combinados: llamadas, WhatsApp, recordatorios y waitlist."
         action={
-          <Badge tone="violet" size="lg" className="hidden sm:inline-flex">
+          <Badge tone="accent" size="lg" className="hidden sm:inline-flex">
             <Sparkles className="h-3 w-3" />
             Cross-channel
           </Badge>
@@ -122,7 +122,7 @@ export async function GlobalAnalyticsBar({
         <Reveal>
           <Card className="mb-4 overflow-hidden p-0">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-3 p-4 sm:px-5">
-              <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+              <span className="text-[12px] font-bold uppercase tracking-[0.16em] text-zinc-400">
                 Revenue por canal · mes en curso
               </span>
               <div className="flex flex-wrap gap-2">
@@ -130,13 +130,13 @@ export async function GlobalAnalyticsBar({
                   icon={<PhoneCall className="h-3.5 w-3.5" />}
                   label="Salientes"
                   value={formatMoney(revenue.byChannel.outbound, revenue.currency)}
-                  className="bg-pink-50 text-pink-700"
+                  className="bg-emerald-50 text-emerald-700"
                 />
                 <ChannelChip
                   icon={<Phone className="h-3.5 w-3.5" />}
                   label="Entrantes"
                   value={formatMoney(revenue.byChannel.inbound, revenue.currency)}
-                  className="bg-violet-50 text-brand-700"
+                  className="bg-brand-50 text-brand-700"
                 />
                 <ChannelChip
                   icon={<MessageCircle className="h-3.5 w-3.5" />}
@@ -197,7 +197,7 @@ function ChannelChip({
 }) {
   return (
     <span
-      className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[13px] transition-transform duration-300 hover:scale-105 ${className}`}
+      className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[16px] transition-transform duration-300 hover:scale-105 ${className}`}
     >
       <span className="opacity-70">{icon}</span>
       <span className="font-medium opacity-80">{label}</span>

@@ -135,7 +135,7 @@ export async function OutboundModule({ tenantId }: { tenantId: string }) {
             />
             <div className="space-y-3 px-5 pb-5 sm:px-6 sm:pb-6">
               {campaigns.length === 0 ? (
-                <p className="text-[13px] text-zinc-500">Sin campañas en el período.</p>
+                <p className="text-[16px] text-zinc-500">Sin campañas en el período.</p>
               ) : (
                 campaigns.map((c, i) => (
                   <div
@@ -144,10 +144,8 @@ export async function OutboundModule({ tenantId }: { tenantId: string }) {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="truncate text-[13.5px] font-semibold text-zinc-800">
-                          {c.name}
-                        </p>
-                        <p className="mt-0.5 text-[11.5px] text-zinc-500">
+                        <p className="truncate text-[16px] font-semibold text-zinc-800">{c.name}</p>
+                        <p className="mt-0.5 text-[14px] text-zinc-500">
                           {c.attempted} llamadas · {formatPercent(c.contactRate)} contact rate
                         </p>
                       </div>

@@ -1,16 +1,16 @@
 import 'server-only';
-import { and, eq, isNull, inArray } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import type { Redis } from 'ioredis';
 
 import { db } from '@/lib/db/client';
 import { imChannelMembers, imUserSettings } from '@/lib/db/schema';
 import { PRESENCE_TTL_SECONDS, TYPING_TTL_SECONDS } from '@/lib/messaging/constants';
 import {
+  type ImRealtimeEvent,
   presenceKey,
   tenantChannel,
   typingKey,
   userChannel,
-  type ImRealtimeEvent,
 } from '@/lib/messaging/events';
 import type { ImPresence } from '@/lib/messaging/types';
 

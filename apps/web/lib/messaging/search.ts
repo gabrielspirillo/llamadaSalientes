@@ -3,8 +3,8 @@ import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import { imChannelMembers, imChannels, imMessages } from '@/lib/db/schema';
-import type { ImSearchHit } from '@/lib/messaging/types';
 import { loadPeople, personMap } from '@/lib/messaging/queries';
+import type { ImSearchHit } from '@/lib/messaging/types';
 
 const DEFAULT_LIMIT = 30;
 const MAX_LIMIT = 100;

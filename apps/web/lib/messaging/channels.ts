@@ -4,10 +4,10 @@ import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import { imChannelMembers, imChannels, tenantMemberships } from '@/lib/db/schema';
 import {
-  SEED_CHANNELS,
   type ImChannelKind,
   type ImContextType,
   type ImTone,
+  SEED_CHANNELS,
 } from '@/lib/messaging/constants';
 import type { ImRealtimeEvent } from '@/lib/messaging/events';
 

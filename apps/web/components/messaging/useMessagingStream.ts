@@ -44,18 +44,42 @@ export interface MessagingStreamState {
 /** Despacha un evento ya parseado a los callbacks tipados. */
 function dispatch(h: MessagingStreamHandlers, event: ImRealtimeEvent): void {
   switch (event.kind) {
-    case 'message.new': h.onMessageNew?.(event); break;
-    case 'message.updated': h.onMessageUpdated?.(event); break;
-    case 'message.deleted': h.onMessageDeleted?.(event); break;
-    case 'reaction.changed': h.onReactionChanged?.(event); break;
-    case 'channel.updated': h.onChannelUpdated?.(event); break;
-    case 'channel.member_joined': h.onMemberJoined?.(event); break;
-    case 'channel.member_left': h.onMemberLeft?.(event); break;
-    case 'typing.start': h.onTypingStart?.(event); break;
-    case 'typing.stop': h.onTypingStop?.(event); break;
-    case 'presence.changed': h.onPresenceChanged?.(event); break;
-    case 'unread.changed': h.onUnreadChanged?.(event); break;
-    case 'mention.new': h.onMentionNew?.(event); break;
+    case 'message.new':
+      h.onMessageNew?.(event);
+      break;
+    case 'message.updated':
+      h.onMessageUpdated?.(event);
+      break;
+    case 'message.deleted':
+      h.onMessageDeleted?.(event);
+      break;
+    case 'reaction.changed':
+      h.onReactionChanged?.(event);
+      break;
+    case 'channel.updated':
+      h.onChannelUpdated?.(event);
+      break;
+    case 'channel.member_joined':
+      h.onMemberJoined?.(event);
+      break;
+    case 'channel.member_left':
+      h.onMemberLeft?.(event);
+      break;
+    case 'typing.start':
+      h.onTypingStart?.(event);
+      break;
+    case 'typing.stop':
+      h.onTypingStop?.(event);
+      break;
+    case 'presence.changed':
+      h.onPresenceChanged?.(event);
+      break;
+    case 'unread.changed':
+      h.onUnreadChanged?.(event);
+      break;
+    case 'mention.new':
+      h.onMentionNew?.(event);
+      break;
   }
 }
 

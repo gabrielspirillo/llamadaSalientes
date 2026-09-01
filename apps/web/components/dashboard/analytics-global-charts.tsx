@@ -100,10 +100,10 @@ export function TopTreatmentsChart({ data }: { data: TopTreatment[] }) {
           </PieChart>
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-[26px] font-bold tabular-nums leading-none text-zinc-900">
+          <span className="text-[31px] font-bold tabular-nums leading-none text-zinc-900">
             {total}
           </span>
-          <span className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+          <span className="mt-1 text-[12px] font-bold uppercase tracking-[0.16em] text-zinc-400">
             Citas
           </span>
         </div>
@@ -112,7 +112,7 @@ export function TopTreatmentsChart({ data }: { data: TopTreatment[] }) {
       {/* Leyenda propia: más legible que la de recharts y con el mismo lenguaje */}
       <ul className="mt-3 space-y-1.5">
         {chartData.slice(0, 5).map((d, i) => (
-          <li key={d.name} className="flex items-center gap-2 text-[12px]">
+          <li key={d.name} className="flex items-center gap-2 text-[14px]">
             <span
               className="h-2.5 w-2.5 shrink-0 rounded-full"
               style={{ background: chartSequence[i % chartSequence.length] }}

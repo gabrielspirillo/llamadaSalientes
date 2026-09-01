@@ -629,7 +629,7 @@ function TemplateEditor(props: {
               type="button"
               onClick={() => insertVariable(v.token)}
               title={v.description}
-              className="rounded-md border border-[--color-border] bg-white px-2 py-1 font-mono text-[11px] text-zinc-700 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+              className="rounded-md border border-[--color-border] bg-white px-2 py-1 font-mono text-[13px] text-zinc-700 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
             >
               {v.token}
             </button>

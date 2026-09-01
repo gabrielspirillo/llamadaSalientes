@@ -7,6 +7,24 @@
    ========================================================================== */
 
 @theme {
+  /* --- Tipografía: escala un 20% mayor que la de Tailwind ---------------- */
+  --text-xs: 0.9rem;
+  --text-xs--line-height: 1.35rem;
+  --text-sm: 1.05rem;
+  --text-sm--line-height: 1.55rem;
+  --text-base: 1.2rem;
+  --text-base--line-height: 1.8rem;
+  --text-lg: 1.35rem;
+  --text-lg--line-height: 1.95rem;
+  --text-xl: 1.5rem;
+  --text-xl--line-height: 2.1rem;
+  --text-2xl: 1.8rem;
+  --text-2xl--line-height: 2.4rem;
+  --text-3xl: 2.25rem;
+  --text-3xl--line-height: 2.7rem;
+  --text-4xl: 2.7rem;
+  --text-4xl--line-height: 3rem;
+
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
     "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-display: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
@@ -42,20 +60,21 @@
   --color-brand-800: #2e5f56;
   --color-brand-900: #274e47;
 
-  /* --- Acentos pastel (tarjetas / tags / charts) ------------------------ */
-  --color-grape: #8b5cf6;
-  --color-grape-soft: #efe9ff;
-  --color-blossom: #ec4899;
-  --color-blossom-soft: #fde8f3;
+  /* --- Acentos: familia verde/teal. Ámbar y coral quedan solo como
+     señales de aviso y error, no como decoración. ------------------------- */
+  --color-grape: #479183;
+  --color-grape-soft: #e4f0ec;
+  --color-blossom: #2f8f7a;
+  --color-blossom-soft: #ddefe9;
   --color-mint: #10b981;
   --color-mint-soft: #dcf7ec;
-  --color-sky: #0ea5e9;
-  --color-sky-soft: #ddf1fd;
+  --color-sky: #3d8b8b;
+  --color-sky-soft: #ddeeee;
   --color-honey: #f59e0b;
   --color-honey-soft: #fdf0d5;
   --color-coral: #f43f5e;
   --color-coral-soft: #ffe4e8;
-  --color-lilac: #a78bfa;
+  --color-lilac: #6bc2a4;
   --color-lilac-soft: #f0eaff;
 
   /* --- Semánticos -------------------------------------------------------- */
@@ -65,7 +84,7 @@
   --color-success: #10b981;
   --color-warn: #f59e0b;
   --color-danger: #f43f5e;
-  --color-info: #0ea5e9;
+  --color-info: #3d8b8b;
 
   /* --- Radios ------------------------------------------------------------ */
   --radius-card: 22px;
@@ -335,47 +354,13 @@ body {
 }
 
 /* ============================================================================
-   Canvas con aurora — fondo vivo de toda la app
+   Lienzo de la app — gris neutro plano, sin tintes de color
    ========================================================================== */
 
 .aurora-canvas {
   position: relative;
   isolation: isolate;
-  background: radial-gradient(1100px 620px at 8% -8%, rgba(95, 168, 150, 0.22), transparent 62%),
-    radial-gradient(900px 520px at 98% 4%, rgba(107, 194, 164, 0.16), transparent 60%),
-    radial-gradient(1000px 700px at 60% 108%, rgba(45, 212, 191, 0.1), transparent 62%),
-    var(--color-canvas);
-}
-
-.aurora-canvas::before,
-.aurora-canvas::after {
-  content: "";
-  position: fixed;
-  z-index: -1;
-  border-radius: 9999px;
-  filter: blur(90px);
-  opacity: 0.35;
-  pointer-events: none;
-}
-
-.aurora-canvas::before {
-  width: 46vw;
-  height: 46vw;
-  top: -14vw;
-  left: -10vw;
-  background: radial-gradient(circle, rgba(95, 168, 150, 0.22), transparent 70%);
-  animation: var(--animate-drift);
-}
-
-.aurora-canvas::after {
-  width: 40vw;
-  height: 40vw;
-  bottom: -16vw;
-  right: -12vw;
-  background: radial-gradient(circle, rgba(107, 194, 164, 0.16), transparent 70%);
-  animation: var(--animate-drift);
-  animation-delay: -9s;
-  animation-direction: alternate-reverse;
+  background: var(--color-canvas);
 }
 
 /* ============================================================================
@@ -397,7 +382,7 @@ body {
 }
 
 .glass-dark {
-  background: rgba(23, 20, 41, 0.62);
+  background: rgba(22, 26, 25, 0.62);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -653,9 +638,5 @@ html.js [data-reveal].is-revealed {
   html.js [data-reveal] {
     opacity: 1 !important;
     transform: none !important;
-  }
-  .aurora-canvas::before,
-  .aurora-canvas::after {
-    animation: none !important;
   }
 }

@@ -67,8 +67,8 @@ export const STATUS_META: Record<
   IN_REVIEW: {
     label: 'En revisión',
     hint: 'Esperando verificación',
-    dot: 'bg-violet-500',
-    accent: 'text-violet-600',
+    dot: 'bg-brand-500',
+    accent: 'text-brand-600',
   },
   DONE: {
     label: 'Hecho',
@@ -123,10 +123,10 @@ export const CATEGORY_META: Record<
   COMPLIANCE: {
     label: 'Cumplimiento',
     hint: 'RGPD, protección radiológica, validaciones',
-    card: 'bg-violet-50/80 border-violet-100',
-    chip: 'bg-white/70 text-violet-700 ring-violet-200',
-    bar: 'bg-violet-400',
-    dot: 'bg-violet-400',
+    card: 'bg-brand-50/80 border-brand-100',
+    chip: 'bg-white/70 text-brand-700 ring-brand-200',
+    bar: 'bg-brand-400',
+    dot: 'bg-brand-400',
   },
   TEAM: {
     label: 'Equipo',

@@ -43,7 +43,7 @@ export function InsightsPanel() {
         tone="grape"
         title="Insights con IA"
         subtitle="Patrones, alertas y mejoras al prompt del agente"
-        action={<Badge tone="violet">Gemini</Badge>}
+        action={<Badge tone="accent">Gemini</Badge>}
       />
       <div className="px-5 pb-5 sm:px-6 sm:pb-6">
         {!data && !loading && !error && (
@@ -132,9 +132,9 @@ function Section({
     <div>
       <div className="flex items-center gap-2 mb-2">
         {icon}
-        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500">{title}</p>
+        <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-zinc-500">{title}</p>
       </div>
-      <ul className="list-disc space-y-1.5 pl-5 text-[13px] marker:text-brand-300">{children}</ul>
+      <ul className="list-disc space-y-1.5 pl-5 text-[16px] marker:text-brand-300">{children}</ul>
     </div>
   );
 }

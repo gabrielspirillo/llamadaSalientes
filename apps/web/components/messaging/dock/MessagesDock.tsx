@@ -120,14 +120,14 @@ export function MessagesDock() {
           aria-label={totalUnread > 0 ? `Mensajes, ${totalUnread} sin leer` : 'Mensajes del equipo'}
           className={cn(
             'press fixed bottom-5 right-4 z-[60] inline-flex h-14 w-14 animate-fade-up items-center justify-center rounded-full',
-            'bg-[linear-gradient(135deg,#37766a,#5fa896_60%,#6bc2a4)] text-white',
-            'shadow-[0_18px_38px_-14px_rgba(113,57,232,0.85)] transition-transform duration-300 hover:scale-105 sm:right-6',
+            'bg-[linear-gradient(135deg,#2e5f56,#479183_60%,#6bc2a4)] text-white',
+            'shadow-[0_18px_38px_-14px_rgba(55,118,106,0.85)] transition-transform duration-300 hover:scale-105 sm:right-6',
             totalMentions > 0 && 'animate-pulse-ring',
           )}
         >
           <MessageSquare className="h-5 w-5" />
           {totalUnread > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[linear-gradient(120deg,#f43f5e,#fb7185)] px-1 text-[10px] font-bold tabular-nums text-white ring-2 ring-white">
+            <span className="absolute -right-0.5 -top-0.5 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[linear-gradient(120deg,#f43f5e,#fb7185)] px-1 text-[12px] font-bold tabular-nums text-white ring-2 ring-white">
               {totalUnread > 99 ? '99+' : totalUnread}
             </span>
           )}
@@ -140,7 +140,7 @@ export function MessagesDock() {
           className={cn(
             'glass fixed bottom-5 right-4 z-[60] flex animate-fade-up flex-col overflow-hidden rounded-[22px] sm:right-6',
             'h-[560px] max-h-[calc(100vh-2.5rem)] w-[380px] max-w-[calc(100vw-2rem)]',
-            'shadow-[0_40px_90px_-30px_rgba(23,20,41,0.55)]',
+            'shadow-[0_40px_90px_-30px_rgba(22,26,25,0.55)]',
           )}
           aria-label="Mensajes del equipo"
         >
@@ -148,7 +148,7 @@ export function MessagesDock() {
           <div className="relative shrink-0 border-b border-white/60 bg-white/70 px-3 py-2.5">
             <span
               aria-hidden
-              className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(139,92,246,0.14),transparent_70%)]"
+              className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(95,168,150,0.14),transparent_70%)]"
             />
             <div className="relative flex items-center gap-1.5">
               {/* Selector de canal */}
@@ -166,10 +166,10 @@ export function MessagesDock() {
                     )}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13px] font-bold tracking-tight text-zinc-900">
+                    <span className="block truncate text-[16px] font-bold tracking-tight text-zinc-900">
                       {current?.name ?? 'Mensajes'}
                     </span>
-                    <span className="block truncate text-[10px] text-zinc-400">
+                    <span className="block truncate text-[12px] text-zinc-400">
                       {totalUnread > 0 ? `${totalUnread} sin leer` : 'Al día'}
                     </span>
                   </span>
@@ -182,9 +182,9 @@ export function MessagesDock() {
                 </button>
 
                 {pickerOpen && (
-                  <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-[280px] animate-fade-down overflow-y-auto rounded-2xl border border-white/60 bg-white p-1.5 shadow-[0_30px_70px_-30px_rgba(23,20,41,0.5)]">
+                  <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-[280px] animate-fade-down overflow-y-auto rounded-2xl border border-white/60 bg-white p-1.5 shadow-[0_30px_70px_-30px_rgba(22,26,25,0.5)]">
                     {ordered.length === 0 ? (
-                      <p className="px-3 py-4 text-center text-[12px] text-zinc-400">
+                      <p className="px-3 py-4 text-center text-[14px] text-zinc-400">
                         Todavía no hay canales.
                       </p>
                     ) : (
@@ -213,12 +213,12 @@ export function MessagesDock() {
                                   <Hash className="h-3 w-3" />
                                 )}
                               </span>
-                              <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-zinc-800">
+                              <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-zinc-800">
                                 {c.name}
                               </span>
                               {c.mentionCount > 0 && <StatusDot tone="danger" />}
                               {c.unreadCount > 0 && (
-                                <span className="inline-flex min-w-[18px] shrink-0 items-center justify-center rounded-full bg-brand-600 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-white">
+                                <span className="inline-flex min-w-[18px] shrink-0 items-center justify-center rounded-full bg-brand-600 px-1.5 py-0.5 text-[12px] font-semibold tabular-nums text-white">
                                   {c.unreadCount > 99 ? '99+' : c.unreadCount}
                                 </span>
                               )}
@@ -288,7 +288,7 @@ export function MessagesDock() {
               action={
                 <Link
                   href="/dashboard/messages"
-                  className="press inline-flex items-center gap-1.5 rounded-full bg-[linear-gradient(120deg,#37766a,#5fa896)] px-4 py-2 text-[12px] font-semibold text-white"
+                  className="press inline-flex items-center gap-1.5 rounded-full bg-[linear-gradient(120deg,#37766a,#5fa896)] px-4 py-2 text-[14px] font-semibold text-white"
                 >
                   Abrir Mensajes
                 </Link>
@@ -351,15 +351,15 @@ function DockSettings({
 
   return (
     <div className="scrollbar-none min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
-      <p className="px-1 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">Avisos</p>
+      <p className="px-1 text-[12px] font-bold uppercase tracking-[0.16em] text-zinc-400">Avisos</p>
 
       <div className="flex items-center gap-3 rounded-2xl bg-white p-3 ring-1 ring-[--color-border]">
         <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-100 text-brand-600">
           <Volume2 className="h-4 w-4" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[13px] font-semibold text-zinc-800">Sonido</span>
-          <span className="block text-[11px] text-zinc-500">
+          <span className="block text-[16px] font-semibold text-zinc-800">Sonido</span>
+          <span className="block text-[13px] text-zinc-500">
             Un tono corto en menciones y mensajes directos.
           </span>
         </span>
@@ -367,12 +367,12 @@ function DockSettings({
       </div>
 
       <div className="flex items-center gap-3 rounded-2xl bg-white p-3 ring-1 ring-[--color-border]">
-        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-pink-100 text-pink-600">
+        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
           <BellRing className="h-4 w-4" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[13px] font-semibold text-zinc-800">Avisos en pantalla</span>
-          <span className="block text-[11px] text-zinc-500">
+          <span className="block text-[16px] font-semibold text-zinc-800">Avisos en pantalla</span>
+          <span className="block text-[13px] text-zinc-500">
             Tarjeta en la esquina que enlaza al hilo.
           </span>
         </span>
@@ -385,31 +385,31 @@ function DockSettings({
             <MessageSquare className="h-4 w-4" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[13px] font-semibold text-zinc-800">
+            <span className="block text-[16px] font-semibold text-zinc-800">
               Notificaciones del navegador
             </span>
-            <span className="block text-[11px] text-zinc-500">
+            <span className="block text-[13px] text-zinc-500">
               Solo el nombre y el canal: nunca datos del paciente.
             </span>
           </span>
         </div>
         <div className="mt-2.5">
           {desktopPermission === 'granted' ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-semibold text-emerald-700">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-[13px] font-semibold text-emerald-700">
               <Check className="h-3 w-3" />
               Activadas
             </span>
           ) : desktopPermission === 'denied' ? (
-            <p className="text-[11px] text-zinc-500">
+            <p className="text-[13px] text-zinc-500">
               Están bloqueadas en el navegador. Se reactivan desde los permisos del sitio.
             </p>
           ) : desktopPermission === 'unsupported' ? (
-            <p className="text-[11px] text-zinc-500">Este navegador no las soporta.</p>
+            <p className="text-[13px] text-zinc-500">Este navegador no las soporta.</p>
           ) : (
             <button
               type="button"
               onClick={requestDesktopPermission}
-              className="press inline-flex items-center gap-1.5 rounded-full bg-[linear-gradient(120deg,#37766a,#5fa896)] px-3.5 py-1.5 text-[11px] font-semibold text-white shadow-[0_8px_20px_-10px_rgba(113,57,232,0.9)]"
+              className="press inline-flex items-center gap-1.5 rounded-full bg-[linear-gradient(120deg,#37766a,#5fa896)] px-3.5 py-1.5 text-[13px] font-semibold text-white shadow-[0_8px_20px_-10px_rgba(55,118,106,0.9)]"
             >
               Activar notificaciones
             </button>
@@ -417,7 +417,7 @@ function DockSettings({
         </div>
       </div>
 
-      <p className="px-1 pt-1 text-[11px] leading-relaxed text-zinc-400">
+      <p className="px-1 pt-1 text-[13px] leading-relaxed text-zinc-400">
         El contador del título de la pestaña y el badge del menú están siempre activos: son los
         avisos que no interrumpen.
       </p>

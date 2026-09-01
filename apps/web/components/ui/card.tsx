@@ -59,7 +59,7 @@ export const CardTitle = React.forwardRef<HTMLDivElement, React.HTMLAttributes<H
   ({ className, ...props }, ref) => (
     <h3
       ref={ref as never}
-      className={cn('text-[15px] font-semibold tracking-tight text-zinc-900', className)}
+      className={cn('text-[18px] font-semibold tracking-tight text-zinc-900', className)}
       {...props}
     />
   ),
@@ -70,7 +70,7 @@ export const CardDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
-  <p ref={ref} className={cn('text-[13px] text-zinc-500', className)} {...props} />
+  <p ref={ref} className={cn('text-[16px] text-zinc-500', className)} {...props} />
 ));
 CardDescription.displayName = 'CardDescription';
 
@@ -115,8 +115,8 @@ export function CardTopbar({
   className?: string;
 }) {
   const tones: Record<string, string> = {
-    grape: 'bg-violet-100 text-violet-600',
-    blossom: 'bg-pink-100 text-pink-600',
+    grape: 'bg-brand-100 text-brand-600',
+    blossom: 'bg-emerald-100 text-emerald-600',
     mint: 'bg-emerald-100 text-emerald-600',
     sky: 'bg-sky-100 text-sky-600',
     honey: 'bg-amber-100 text-amber-600',
@@ -139,10 +139,10 @@ export function CardTopbar({
           </span>
         )}
         <div className="min-w-0">
-          <h3 className="truncate text-[15px] font-semibold tracking-tight text-zinc-900">
+          <h3 className="truncate text-[18px] font-semibold tracking-tight text-zinc-900">
             {title}
           </h3>
-          {subtitle && <p className="mt-0.5 truncate text-[13px] text-zinc-500">{subtitle}</p>}
+          {subtitle && <p className="mt-0.5 truncate text-[16px] text-zinc-500">{subtitle}</p>}
         </div>
       </div>
       {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}

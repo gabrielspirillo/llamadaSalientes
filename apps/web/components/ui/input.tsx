@@ -46,7 +46,7 @@ export const Label = React.forwardRef<
   // biome-ignore lint/a11y/noLabelWithoutControl: <Label> is a generic primitive; consumers wire htmlFor or wrap input
   <label
     ref={ref}
-    className={cn('text-[13px] font-semibold tracking-tight text-zinc-700', className)}
+    className={cn('text-[16px] font-semibold tracking-tight text-zinc-700', className)}
     {...props}
   />
 ));

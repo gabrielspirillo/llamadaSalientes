@@ -20,8 +20,8 @@ import type {
   ImMessageDTO,
   ImPerson,
   ImPresence,
-  ImReactionDTO,
   ImRailDTO,
+  ImReactionDTO,
   ImThreadPage,
 } from '@/lib/messaging/types';
 import { displayName, initialsOf } from '@/lib/tasks/queries';
