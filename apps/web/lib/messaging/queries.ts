@@ -76,7 +76,9 @@ export async function loadPeople(
       };
     });
   } catch (err) {
-    console.warn('[messaging] loadPeople falló', { err: (err as Error).message });
+    console.warn('[messaging] loadPeople falló', {
+      err: (err as Error).message,
+    });
     return [];
   }
 }
@@ -226,7 +228,10 @@ async function membersByChannel(
   if (channelIds.length === 0) return out;
 
   const rows = await db
-    .select({ channelId: imChannelMembers.channelId, userId: imChannelMembers.userId })
+    .select({
+      channelId: imChannelMembers.channelId,
+      userId: imChannelMembers.userId,
+    })
     .from(imChannelMembers)
     .where(
       and(
@@ -509,7 +514,11 @@ export async function loadPins(tenantId: string, channelId: string): Promise<ImM
   const byId = personMap(people);
 
   return messages.map((m) =>
-    toMessageDTO(m, { people: byId, reactions: reactions.get(m.id) ?? [], pinned: true }),
+    toMessageDTO(m, {
+      people: byId,
+      reactions: reactions.get(m.id) ?? [],
+      pinned: true,
+    }),
   );
 }
 

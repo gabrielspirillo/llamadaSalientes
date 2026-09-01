@@ -25,6 +25,14 @@ export async function processTaskDailySweepJob(
       const res = await runDailySweepsForTenant(tenantId);
       pendingTreatment += res.pendingTreatment;
       inactive += res.inactive;
+      // Mensajes: UN resumen diario de lo vencido en el canal por defecto, no
+      // una tarjeta por tarea. Best-effort — no puede tumbar el barrido.
+      try {
+        const { postTaskOverdueDigest } = await import('@/lib/messaging/bot');
+        await postTaskOverdueDigest({ tenantId });
+      } catch (err) {
+        console.warn('[task-daily-sweep] digest de mensajes falló', (err as Error).message);
+      }
     } catch (err) {
       failed += 1;
       console.error('[task-daily-sweep] tenant failed', {

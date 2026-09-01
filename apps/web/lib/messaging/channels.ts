@@ -3,7 +3,12 @@ import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import { imChannelMembers, imChannels, tenantMemberships } from '@/lib/db/schema';
-import { SEED_CHANNELS, type ImChannelKind, type ImContextType, type ImTone } from '@/lib/messaging/constants';
+import {
+  SEED_CHANNELS,
+  type ImChannelKind,
+  type ImContextType,
+  type ImTone,
+} from '@/lib/messaging/constants';
 import type { ImRealtimeEvent } from '@/lib/messaging/events';
 
 /**
@@ -13,11 +18,7 @@ import type { ImRealtimeEvent } from '@/lib/messaging/events';
 const MUTE_FOREVER = new Date('2999-12-31T00:00:00.000Z');
 
 /** Publicación best-effort: Redis caído nunca rompe una escritura. */
-async function publish(
-  tenantId: string,
-  channelId: string,
-  event: ImRealtimeEvent,
-): Promise<void> {
+async function publish(tenantId: string, channelId: string, event: ImRealtimeEvent): Promise<void> {
   try {
     const { publishToChannelMembers } = await import('@/lib/messaging/publisher');
     await publishToChannelMembers(tenantId, channelId, event);
@@ -129,7 +130,9 @@ export async function ensureDmChannel(a: {
   userIdA: string;
   userIdB: string;
 }): Promise<{ id: string }> {
-  const [lo, hi] = [a.userIdA, a.userIdB].sort();
+  const sorted = [a.userIdA, a.userIdB].sort();
+  const lo = sorted[0] ?? a.userIdA;
+  const hi = sorted[1] ?? a.userIdB;
   const dedupeKey = `dm:${lo}:${hi}`;
 
   const [row] = await db
@@ -193,7 +196,10 @@ export async function ensureContextChannel(a: {
  * TODO el tenant: es lo que hace que el bot pueda publicar en 'urgencias' sin
  * que nadie haya entrado nunca al módulo.
  */
-export async function ensureSlugChannel(a: { tenantId: string; slug: string }): Promise<{
+export async function ensureSlugChannel(a: {
+  tenantId: string;
+  slug: string;
+}): Promise<{
   id: string;
 }> {
   const slug = a.slug.trim().toLowerCase();
@@ -290,7 +296,10 @@ export async function updateChannel(a: {
     .set(set)
     .where(and(eq(imChannels.tenantId, a.tenantId), eq(imChannels.id, a.channelId)));
 
-  await publish(a.tenantId, a.channelId, { kind: 'channel.updated', channelId: a.channelId });
+  await publish(a.tenantId, a.channelId, {
+    kind: 'channel.updated',
+    channelId: a.channelId,
+  });
 }
 
 /** Silenciar y fijar son preferencias **del usuario**, no del canal. */
@@ -334,10 +343,7 @@ export async function activeMemberIds(tenantId: string, channelId: string): Prom
 }
 
 /** Filtra ids que no pertenezcan al tenant. Nunca confiar en el cliente. */
-export async function filterTenantUserIds(
-  tenantId: string,
-  userIds: string[],
-): Promise<string[]> {
+export async function filterTenantUserIds(tenantId: string, userIds: string[]): Promise<string[]> {
   const unique = [...new Set(userIds.filter(Boolean))];
   if (unique.length === 0) return [];
 
@@ -345,10 +351,7 @@ export async function filterTenantUserIds(
     .select({ userId: tenantMemberships.userId })
     .from(tenantMemberships)
     .where(
-      and(
-        eq(tenantMemberships.tenantId, tenantId),
-        inArray(tenantMemberships.userId, unique),
-      ),
+      and(eq(tenantMemberships.tenantId, tenantId), inArray(tenantMemberships.userId, unique)),
     );
   return rows.map((r) => r.userId);
 }

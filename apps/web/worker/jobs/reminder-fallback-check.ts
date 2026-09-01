@@ -64,6 +64,7 @@ export async function processReminderFallbackCheckJob(
       // recuperación posible es que alguien levante el teléfono.
       const { onReminderNoResponse } = await import('@/lib/tasks/hooks');
       await onReminderNoResponse({ tenantId, reminderId });
+      await publishReminderNoResponse(tenantId, reminderId);
       return { status: 'skipped', reason: 'no_fallback' };
     }
 
@@ -107,6 +108,7 @@ export async function processReminderFallbackCheckJob(
         await markFallbackFailed(reminderId, result.reason);
         const { onReminderNoResponse } = await import('@/lib/tasks/hooks');
         await onReminderNoResponse({ tenantId, reminderId });
+        await publishReminderNoResponse(tenantId, reminderId);
         return { status: 'failed', reason: result.reason };
       }
       await markFallbackSent(reminderId, 'WHATSAPP', result.externalMessageId, null);
@@ -126,6 +128,7 @@ export async function processReminderFallbackCheckJob(
         await markFallbackFailed(reminderId, result.reason);
         const { onReminderNoResponse } = await import('@/lib/tasks/hooks');
         await onReminderNoResponse({ tenantId, reminderId });
+        await publishReminderNoResponse(tenantId, reminderId);
         return { status: 'failed', reason: result.reason };
       }
       await markFallbackSent(reminderId, 'VOICE', null, result.callId);
@@ -134,6 +137,62 @@ export async function processReminderFallbackCheckJob(
 
     return { status: 'skipped', reason: 'unknown_fallback' };
   });
+}
+
+/**
+ * Mensajes: la cita sin confirmar se anuncia en #agenda con Llamar / Ver
+ * recordatorios / Liberar el hueco. Best-effort: nunca rompe el job.
+ */
+async function publishReminderNoResponse(tenantId: string, reminderId: string): Promise<void> {
+  try {
+    const [rem] = await db
+      .select({
+        ghlAppointmentId: appointmentReminders.ghlAppointmentId,
+        payloadSnapshot: appointmentReminders.payloadSnapshot,
+      })
+      .from(appointmentReminders)
+      .where(
+        and(
+          eq(appointmentReminders.tenantId, tenantId),
+          eq(appointmentReminders.id, reminderId),
+        ),
+      )
+      .limit(1);
+    if (!rem) return;
+
+    const [appt] = await db
+      .select({
+        contactId: appointmentsCache.contactId,
+        startTime: appointmentsCache.startTime,
+      })
+      .from(appointmentsCache)
+      .where(
+        and(
+          eq(appointmentsCache.tenantId, tenantId),
+          eq(appointmentsCache.ghlAppointmentId, rem.ghlAppointmentId),
+        ),
+      )
+      .limit(1);
+
+    const snapshot = (rem.payloadSnapshot ?? {}) as { vars?: ReminderVars };
+    const { resolvePatient } = await import('@/lib/tasks/hooks');
+    const patient = await resolvePatient(tenantId, {
+      ghlContactId: appt?.contactId ?? null,
+      phone: snapshot.vars?.contact?.phone ?? null,
+    });
+
+    const { postReminderNoResponse } = await import('@/lib/messaging/bot');
+    await postReminderNoResponse({
+      tenantId,
+      reminderId,
+      patientName: patient.name,
+      phone: patient.phone,
+      appointmentStart: appt?.startTime ?? null,
+      ghlAppointmentId: rem.ghlAppointmentId,
+    });
+  } catch (err) {
+    console.warn('[reminder-fallback-check] publish falló', (err as Error).message);
+  }
 }
 
 async function markFallbackSent(

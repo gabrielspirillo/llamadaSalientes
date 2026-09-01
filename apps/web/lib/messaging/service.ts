@@ -377,7 +377,11 @@ export async function sendMessage(input: SendMessageInput): Promise<{
 
     if (notifyIds.length > 0) {
       const [channel] = await db
-        .select({ name: imChannels.name, slug: imChannels.slug, kind: imChannels.kind })
+        .select({
+          name: imChannels.name,
+          slug: imChannels.slug,
+          kind: imChannels.kind,
+        })
         .from(imChannels)
         .where(eq(imChannels.id, input.channelId))
         .limit(1);
@@ -470,7 +474,9 @@ export async function editMessage(a: {
       message: toMessageDTO(updated, { people: personMap(people), reactions }),
     });
   } catch (err) {
-    console.warn('[messaging] publish de edición falló', { err: (err as Error).message });
+    console.warn('[messaging] publish de edición falló', {
+      err: (err as Error).message,
+    });
   }
 }
 
@@ -584,7 +590,10 @@ export async function togglePin(a: {
   }
 
   const members = await activeMemberIds(a.tenantId, a.channelId);
-  await publishToUsersSafe(members, { kind: 'channel.updated', channelId: a.channelId });
+  await publishToUsersSafe(members, {
+    kind: 'channel.updated',
+    channelId: a.channelId,
+  });
 }
 
 /** Guardado personal ("para después"). No lo ve nadie más. */
@@ -669,7 +678,10 @@ export async function resolveMention(a: {
   const now = new Date();
   const [row] = await db
     .update(imMentions)
-    .set({ resolvedAt: now, readAt: sql`coalesce(${imMentions.readAt}, now())` })
+    .set({
+      resolvedAt: now,
+      readAt: sql`coalesce(${imMentions.readAt}, now())`,
+    })
     .where(
       and(
         eq(imMentions.tenantId, a.tenantId),

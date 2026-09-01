@@ -26,7 +26,7 @@ const EVERYONE_TOKENS = new Set([
 export function normalizeMentionKey(value: string): string {
   return value
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\p{M}+/gu, '') // quitar diacríticos combinantes
     .toLowerCase()
     .trim();
 }
@@ -47,7 +47,10 @@ export function stripCodeSpans(body: string): string {
  * Extrae los tokens `@algo` del cuerpo. Devuelve los tokens normalizados (sin
  * repetir, sin la arroba) y si se mencionó a todo el canal.
  */
-export function extractMentionTokens(body: string): { tokens: string[]; everyone: boolean } {
+export function extractMentionTokens(body: string): {
+  tokens: string[];
+  everyone: boolean;
+} {
   const clean = stripCodeSpans(body ?? '');
   // La arroba tiene que abrir palabra: "mail@dominio.com" no es una mención.
   const re = /(^|[^\p{L}\p{N}_@])@([\p{L}\p{N}][\p{L}\p{N}._-]*)/gu;
@@ -78,7 +81,10 @@ export function extractMentionTokens(body: string): { tokens: string[]; everyone
  * espacios, cada palabra suelta del nombre y el local part del email (entero y
  * partido por `.`/`_`/`-`).
  */
-export function mentionKeysFor(person: { name: string; email: string }): string[] {
+export function mentionKeysFor(person: {
+  name: string;
+  email: string;
+}): string[] {
   const keys = new Set<string>();
   const name = normalizeMentionKey(person.name ?? '');
   if (name) {
@@ -125,7 +131,10 @@ export async function resolveMentions(
   }
 
   if (everyone) {
-    return { userIds: [...new Set(members.map((m) => m.userId))], everyone: true };
+    return {
+      userIds: [...new Set(members.map((m) => m.userId))],
+      everyone: true,
+    };
   }
 
   const wanted = new Set(tokens);

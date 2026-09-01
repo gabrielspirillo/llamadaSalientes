@@ -67,12 +67,17 @@ export async function searchMessages(
   if (rows.length === 0) return [];
 
   // Los DM no tienen nombre propio: es la otra persona.
-  const dmChannelIds = [...new Set(rows.filter((r) => r.channelKind === 'DM').map((r) => r.channelId))];
+  const dmChannelIds = [
+    ...new Set(rows.filter((r) => r.channelKind === 'DM').map((r) => r.channelId)),
+  ];
   const [people, dmMembers] = await Promise.all([
     loadPeople(tenantId),
     dmChannelIds.length > 0
       ? db
-          .select({ channelId: imChannelMembers.channelId, userId: imChannelMembers.userId })
+          .select({
+            channelId: imChannelMembers.channelId,
+            userId: imChannelMembers.userId,
+          })
           .from(imChannelMembers)
           .where(
             and(
@@ -93,7 +98,9 @@ export async function searchMessages(
     const other = counterpart.get(r.channelId);
     const channelName =
       r.channelKind === 'DM'
-        ? (other ? (byId.get(other)?.name ?? 'Mensaje directo') : 'Mensaje directo')
+        ? other
+          ? (byId.get(other)?.name ?? 'Mensaje directo')
+          : 'Mensaje directo'
         : (r.channelName ?? r.channelLabel ?? r.channelSlug ?? 'Canal');
     const sender = r.senderUserId ? (byId.get(r.senderUserId) ?? null) : null;
 

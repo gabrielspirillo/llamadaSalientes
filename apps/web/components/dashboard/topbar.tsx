@@ -1,6 +1,8 @@
 'use client';
 
 import { DashboardSidebarMobile } from '@/components/dashboard/sidebar';
+import { MentionsInbox } from '@/components/messaging/dock/MentionsInbox';
+import { useMessaging } from '@/components/messaging/MessagingProvider';
 import { StatusDot } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/feedback';
 import { cn } from '@/lib/cn';
@@ -8,12 +10,15 @@ import type { EnabledModules } from '@/lib/modules';
 import { UserButton, useUser } from '@clerk/nextjs';
 import {
   ArrowRight,
+  AtSign,
   Bell,
   Calendar,
   Check,
   Contact,
+  Hash,
   Menu,
   MessageCircle,
+  MessageSquare,
   Phone,
   Search,
   Sparkles,
@@ -26,7 +31,16 @@ import { useEffect, useRef, useState } from 'react';
 type SearchHit =
   | { kind: 'call'; id: string; title: string; subtitle: string; href: string; when: string | null }
   | { kind: 'treatment'; id: string; title: string; subtitle: string; href: string; when: null }
-  | { kind: 'contact'; id: string; title: string; subtitle: string; href: string; when: null };
+  | { kind: 'contact'; id: string; title: string; subtitle: string; href: string; when: null }
+  | { kind: 'channel'; id: string; title: string; subtitle: string; href: string; when: null }
+  | {
+      kind: 'message';
+      id: string;
+      title: string;
+      subtitle: string;
+      href: string;
+      when: string | null;
+    };
 
 type Notification = {
   id: string;
@@ -61,11 +75,13 @@ export function DashboardTopbar({
   isSuperAdmin = false,
   impersonatingClinic,
   tasksBadge = 0,
+  messagesBadge = 0,
 }: {
   enabledModules: EnabledModules;
   isSuperAdmin?: boolean;
   impersonatingClinic?: string;
   tasksBadge?: number;
+  messagesBadge?: number;
 }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -182,6 +198,7 @@ export function DashboardTopbar({
         enabledModules={enabledModules}
         isSuperAdmin={isSuperAdmin}
         tasksBadge={tasksBadge}
+        messagesBadge={messagesBadge}
       />
       {searchOpen && <SearchPalette onClose={() => setSearchOpen(false)} />}
     </>

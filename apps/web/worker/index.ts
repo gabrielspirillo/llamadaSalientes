@@ -11,10 +11,13 @@ import 'server-only';
 import { Worker, type Job } from 'bullmq';
 
 import { env } from '@/lib/env';
-import { scheduleTaskCrons } from '@/lib/queue/client';
+import { scheduleMessagingCrons, scheduleTaskCrons } from '@/lib/queue/client';
 import { getRedis } from '@/lib/queue/connection';
 import type { QueueJobs } from '@/lib/queue/queues';
 import { createStepRunner } from '@/lib/queue/step';
+import { processImDigestJob } from '@/worker/jobs/im-digest';
+import { processImMentionEscalateJob } from '@/worker/jobs/im-mention-escalate';
+import { processImRetentionSweepJob } from '@/worker/jobs/im-retention-sweep';
 import { processCallJob } from '@/worker/jobs/process-call';
 import { processTaskDailySweepJob } from '@/worker/jobs/task-daily-sweep';
 import { processTaskRoutinesTickJob } from '@/worker/jobs/task-routines-tick';
@@ -39,6 +42,7 @@ function logStart(): void {
     callConcurrency: num('WORKER_CONCURRENCY_CALL', 2),
     reminderConcurrency: num('WORKER_CONCURRENCY_REMINDER', 2),
     waitlistConcurrency: num('WORKER_CONCURRENCY_WAITLIST', 2),
+    imConcurrency: num('WORKER_CONCURRENCY_IM', 2),
     waEnabled: process.env.WHATSAPP_AGENT_ENABLED === 'true',
   });
 }
@@ -291,6 +295,95 @@ function buildTaskDailySweepWorker(): Worker<QueueJobs['task-daily-sweep']> {
   return worker;
 }
 
+function buildImDigestWorker(): Worker<QueueJobs['im-digest']> {
+  const worker = new Worker<QueueJobs['im-digest']>(
+    'im-digest',
+    async (job: Job<QueueJobs['im-digest']>) => {
+      const step = createStepRunner(job.id ?? `im-digest-${job.timestamp}`);
+      return processImDigestJob(job.data, step);
+    },
+    {
+      connection: getRedis(),
+      // Uno solo: el tick recorre todos los tenants y dos corridas simultáneas
+      // pelearían por el mismo dedupe_key del resumen del día.
+      concurrency: 1,
+    },
+  );
+
+  worker.on('completed', (job, result) => {
+    console.log('[worker:im-digest] completed', { jobId: job.id, result });
+  });
+  worker.on('failed', (job, err) => {
+    console.error('[worker:im-digest] failed', {
+      jobId: job?.id,
+      attemptsMade: job?.attemptsMade,
+      err: err?.message,
+    });
+  });
+
+  return worker;
+}
+
+function buildImMentionEscalateWorker(): Worker<QueueJobs['im-mention-escalate']> {
+  const worker = new Worker<QueueJobs['im-mention-escalate']>(
+    'im-mention-escalate',
+    async (job: Job<QueueJobs['im-mention-escalate']>) => {
+      const step = createStepRunner(job.id ?? `im-esc-${job.timestamp}`);
+      return processImMentionEscalateJob(job.data, step);
+    },
+    {
+      connection: getRedis(),
+      concurrency: num('WORKER_CONCURRENCY_IM', 2),
+    },
+  );
+
+  worker.on('completed', (job, result) => {
+    console.log('[worker:im-mention-escalate] completed', {
+      jobId: job.id,
+      mentionId: job.data.mentionId,
+      result,
+    });
+  });
+  worker.on('failed', (job, err) => {
+    console.error('[worker:im-mention-escalate] failed', {
+      jobId: job?.id,
+      mentionId: job?.data.mentionId,
+      attemptsMade: job?.attemptsMade,
+      err: err?.message,
+    });
+  });
+
+  return worker;
+}
+
+function buildImRetentionSweepWorker(): Worker<QueueJobs['im-retention-sweep']> {
+  const worker = new Worker<QueueJobs['im-retention-sweep']>(
+    'im-retention-sweep',
+    async (job: Job<QueueJobs['im-retention-sweep']>) => {
+      const step = createStepRunner(job.id ?? `im-ret-${job.timestamp}`);
+      return processImRetentionSweepJob(job.data, step);
+    },
+    {
+      connection: getRedis(),
+      // Borrado por lotes: una sola corrida a la vez, sin excepciones.
+      concurrency: 1,
+    },
+  );
+
+  worker.on('completed', (job, result) => {
+    console.log('[worker:im-retention-sweep] completed', { jobId: job.id, result });
+  });
+  worker.on('failed', (job, err) => {
+    console.error('[worker:im-retention-sweep] failed', {
+      jobId: job?.id,
+      attemptsMade: job?.attemptsMade,
+      err: err?.message,
+    });
+  });
+
+  return worker;
+}
+
 async function main(): Promise<void> {
   logStart();
 
@@ -303,12 +396,20 @@ async function main(): Promise<void> {
     buildWaitlistOfferExpireWorker(),
     buildTaskRoutinesTickWorker(),
     buildTaskDailySweepWorker(),
+    buildImDigestWorker(),
+    buildImMentionEscalateWorker(),
+    buildImRetentionSweepWorker(),
   ];
 
   // Los crons de tareas se registran acá (no en la web) para que existan aunque
   // nadie abra el dashboard. El repeat + jobId fijo los hace idempotentes.
   await scheduleTaskCrons().catch((err) => {
     console.error('[worker] no se pudieron registrar los crons de tareas', err);
+  });
+
+  // Ídem para Mensajes: resumen diario cada 30 min y retención a las 04:40 UTC.
+  await scheduleMessagingCrons().catch((err) => {
+    console.error('[worker] no se pudieron registrar los crons de mensajería', err);
   });
 
   const shutdown = async (signal: string) => {

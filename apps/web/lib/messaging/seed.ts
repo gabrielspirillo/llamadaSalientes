@@ -15,10 +15,7 @@ import { listTenantMembersSynced } from '@/lib/tenant-members';
  * Nunca lanza: si la migración `0019` todavía no corrió, el resto del panel no
  * puede caerse por esto.
  */
-export async function seedMessagingForTenant(
-  tenantId: string,
-  clerkOrgId: string,
-): Promise<void> {
+export async function seedMessagingForTenant(tenantId: string, clerkOrgId: string): Promise<void> {
   try {
     // Primero Clerk → `users` + `tenant_memberships`: `ensureSlugChannel` suma
     // como miembros a todo el tenant leyendo la tabla local, así que sin este
