@@ -28,20 +28,20 @@ export function AutoCallbackCard({ intakeUrl, intakeKey, ghlWebhookUrl, location
       <div className="p-4 sm:p-6">
         <div className="flex items-center justify-between mb-1">
           <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900 flex items-center gap-2">
-            <PhoneCall className="h-4 w-4 text-violet-600" /> Auto-callback
+            <PhoneCall className="h-4 w-4 text-brand-600" /> Devolución de llamada automática
           </h3>
           <Badge tone="success">Activo</Badge>
         </div>
         <p className="text-sm text-zinc-500 mb-5">
-          Cada vez que un nuevo lead deja su teléfono, el agente lo llama automáticamente y al
-          instante. Conectá las dos fuentes:
+          Cada vez que un contacto nuevo deja su teléfono, el agente le llama al instante. Conecta
+          las dos fuentes:
         </p>
 
         {/* 1. Webhook GHL */}
         <Section
           number="1"
-          title="Webhook desde GHL"
-          subtitle="GHL llama esta URL cada vez que se crea un contacto"
+          title="Aviso desde GoHighLevel"
+          subtitle="GoHighLevel llama a esta URL cada vez que se crea un contacto"
         >
           <CopyableField
             label="URL del webhook"
@@ -51,8 +51,8 @@ export function AutoCallbackCard({ intakeUrl, intakeKey, ghlWebhookUrl, location
             onCopy={copy}
           />
           <p className="text-xs text-zinc-500 mt-3">
-            En GHL → <strong>Settings → Integrations → Webhooks</strong> → New Outbound Webhook →
-            pegá esta URL y elegí el evento <em>Contact Create</em>.
+            En GoHighLevel → <strong>Settings → Integrations → Webhooks</strong> → New Outbound
+            Webhook → pega esta URL y elige el evento <em>Contact Create</em>.
             {locationId && (
               <>
                 {' '}
@@ -68,7 +68,7 @@ export function AutoCallbackCard({ intakeUrl, intakeKey, ghlWebhookUrl, location
         <Section
           number="2"
           title="API pública para formularios"
-          subtitle="Cualquier landing o web puede disparar la llamada"
+          subtitle="Cualquier página web o formulario puede iniciar la llamada"
         >
           <CopyableField
             label="Endpoint"
@@ -107,16 +107,16 @@ export function AutoCallbackCard({ intakeUrl, intakeKey, ghlWebhookUrl, location
               </button>
             </div>
             <p className="text-[11px] text-zinc-500 mt-1.5">
-              Esta key se deriva determinísticamente y no se guarda en plano. Para rotarla hay que
-              rotar la ENCRYPTION_KEY del proyecto.
+              Esta clave se genera de forma determinista y no se guarda en texto plano. Para
+              cambiarla hay que rotar la ENCRYPTION_KEY del proyecto.
             </p>
           </div>
 
           <details className="mt-4 group">
-            <summary className="text-xs font-medium text-violet-600 hover:text-violet-700 cursor-pointer inline-flex items-center gap-1">
+            <summary className="text-xs font-medium text-brand-600 hover:text-brand-700 cursor-pointer inline-flex items-center gap-1">
               Ver ejemplo de uso (curl)
             </summary>
-            <pre className="mt-2 rounded-xl bg-[#171429] text-zinc-100 text-[11px] p-3 overflow-x-auto leading-relaxed">{`curl -X POST '${intakeUrl}' \\
+            <pre className="mt-2 rounded-xl bg-[#14211d] text-zinc-100 text-[11px] p-3 overflow-x-auto leading-relaxed">{`curl -X POST '${intakeUrl}' \\
   -H 'Authorization: Bearer ${intakeKey.slice(0, 12)}...' \\
   -H 'Content-Type: application/json' \\
   -d '{
@@ -133,16 +133,16 @@ export function AutoCallbackCard({ intakeUrl, intakeKey, ghlWebhookUrl, location
         {/* 3. Manual */}
         <Section
           number="3"
-          title="Manual desde el dashboard"
-          subtitle="Útil para hacer pruebas o callbacks puntuales"
+          title="A mano desde el panel"
+          subtitle="Útil para pruebas o para llamadas puntuales"
         >
           <p className="text-xs text-zinc-500">
-            Andá a <strong>Contactos</strong>, abrí cualquier contacto y dale a{' '}
+            Ve a <strong>Pacientes</strong>, abre cualquier contacto y pulsa{' '}
             <strong>Llamar ahora</strong>.
           </p>
           <a
             href="/dashboard/contacts"
-            className="inline-flex items-center gap-1.5 mt-3 text-sm font-medium text-violet-600 hover:text-violet-700"
+            className="inline-flex items-center gap-1.5 mt-3 text-sm font-medium text-brand-600 hover:text-brand-700"
           >
             Ir a contactos <ExternalLink className="h-3 w-3" />
           </a>

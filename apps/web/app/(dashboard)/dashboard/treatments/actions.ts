@@ -67,16 +67,25 @@ export async function createTreatmentAction(formData: FormData): Promise<ActionR
     const parsed = treatmentSchema.safeParse(Object.fromEntries(formData));
     if (!parsed.success) {
       const first = parsed.error.issues[0];
-      return { ok: false, error: `${first?.path.join('.') || 'campo'}: ${first?.message ?? 'inválido'}` };
+      return {
+        ok: false,
+        error: `${first?.path.join('.') || 'campo'}: ${first?.message ?? 'inválido'}`,
+      };
     }
 
     let ghlCalendarId: string | null = null;
-    if (parsed.data.scheduleDays.length > 0 && parsed.data.scheduleStart && parsed.data.scheduleEnd) {
+    if (
+      parsed.data.scheduleDays.length > 0 &&
+      parsed.data.scheduleStart &&
+      parsed.data.scheduleEnd
+    ) {
       try {
         ghlCalendarId = await createCalendarForTreatment(tenant.id, {
           name: parsed.data.name,
           durationMinutes: parsed.data.durationMinutes,
-          days: parsed.data.scheduleDays as Array<'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun'>,
+          days: parsed.data.scheduleDays as Array<
+            'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun'
+          >,
           startTime: parsed.data.scheduleStart,
           endTime: parsed.data.scheduleEnd,
         });
@@ -122,17 +131,21 @@ export async function updateTreatmentAction(id: string, formData: FormData): Pro
     const parsed = treatmentSchema.partial().safeParse(Object.fromEntries(formData));
     if (!parsed.success) {
       const first = parsed.error.issues[0];
-      return { ok: false, error: `${first?.path.join('.') || 'campo'}: ${first?.message ?? 'inválido'}` };
+      return {
+        ok: false,
+        error: `${first?.path.join('.') || 'campo'}: ${first?.message ?? 'inválido'}`,
+      };
     }
 
     const before = await getTreatmentById(tenant.id, id);
-    if (!before) return { ok: false, error: 'Tratamiento no encontrado' };
+    if (!before) return { ok: false, error: 'No se ha encontrado el tratamiento' };
 
     // Sólo pasamos campos que vinieron
     const patch: Record<string, unknown> = {};
     if (parsed.data.name !== undefined) patch.name = parsed.data.name;
     if (parsed.data.description !== undefined) patch.description = parsed.data.description ?? null;
-    if (parsed.data.durationMinutes !== undefined) patch.durationMinutes = parsed.data.durationMinutes;
+    if (parsed.data.durationMinutes !== undefined)
+      patch.durationMinutes = parsed.data.durationMinutes;
     if (parsed.data.priceMin !== undefined) patch.priceMin = parsed.data.priceMin;
     if (parsed.data.priceMax !== undefined) patch.priceMax = parsed.data.priceMax;
     if (parsed.data.price !== undefined) patch.priceCents = parsed.data.price;
@@ -160,7 +173,7 @@ export async function updateTreatmentAction(id: string, formData: FormData): Pro
 export async function deleteTreatmentAction(id: string): Promise<ActionResult> {
   const { tenant } = await getCurrentTenant();
   const before = await getTreatmentById(tenant.id, id);
-  if (!before) return { ok: false, error: 'Tratamiento no encontrado' };
+  if (!before) return { ok: false, error: 'No se ha encontrado el tratamiento' };
 
   await deleteTreatment(tenant.id, id);
 

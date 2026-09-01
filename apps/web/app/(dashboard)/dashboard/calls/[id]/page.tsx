@@ -20,20 +20,22 @@ import {
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+const INTENT_META: Record<
+  string,
+  { label: string; tone: 'success' | 'info' | 'warn' | 'violet' | 'neutral' | 'danger' }
+> = {
+  agendar: { label: 'Pedir cita', tone: 'success' },
+  reagendar: { label: 'Cambiar cita', tone: 'info' },
+  cancelar: { label: 'Anular cita', tone: 'warn' },
+  consulta: { label: 'Consulta', tone: 'violet' },
+  pregunta: { label: 'Consulta', tone: 'violet' },
+  queja: { label: 'Queja', tone: 'danger' },
+  otro: { label: 'Otro', tone: 'neutral' },
+};
+
 function intentBadge(intent: string | null) {
   if (!intent) return <Badge>—</Badge>;
-  const map: Record<
-    string,
-    { label: string; tone: 'success' | 'info' | 'warn' | 'violet' | 'neutral' | 'danger' }
-  > = {
-    agendar: { label: 'Agendar', tone: 'success' },
-    reagendar: { label: 'Reagendar', tone: 'info' },
-    cancelar: { label: 'Cancelar', tone: 'warn' },
-    pregunta: { label: 'Pregunta', tone: 'violet' },
-    queja: { label: 'Queja', tone: 'danger' },
-    otro: { label: 'Otro', tone: 'neutral' },
-  };
-  const it = map[intent] ?? { label: intent, tone: 'neutral' as const };
+  const it = INTENT_META[intent] ?? { label: intent, tone: 'neutral' as const };
   return <Badge tone={it.tone}>{it.label}</Badge>;
 }
 
@@ -131,13 +133,13 @@ export default async function CallDetailPage({
                 icon={<FileText className="h-4 w-4" />}
                 tone="sky"
                 title="Transcripción"
-                subtitle="Turno a turno, agente y paciente"
+                subtitle="Diálogo completo entre el agente y el paciente"
                 action={transcript ? <Badge tone="info">cifrada · AES-256</Badge> : undefined}
               />
               <div className="border-t border-[--color-border-subtle] px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5 max-h-[60vh] sm:max-h-[480px] overflow-y-auto">
                 {transcriptTurns.length === 0 ? (
                   <div className="text-center py-8 text-sm text-zinc-500">
-                    La transcripción aparecerá cuando termine el procesamiento.
+                    La transcripción aparecerá en cuanto termine de procesarse la llamada.
                   </div>
                 ) : (
                   transcriptTurns.map((turn, i) => {
@@ -154,7 +156,7 @@ export default async function CallDetailPage({
                           <p
                             className={`break-words rounded-2xl px-4 py-2.5 text-[13.5px] leading-relaxed ${
                               turn.speaker === 'agent'
-                                ? 'rounded-tl-md bg-[#f4f0ff] text-violet-900'
+                                ? 'rounded-tl-md bg-[#effaf5] text-violet-900'
                                 : 'rounded-tl-md bg-[#e9f4fe] text-sky-900'
                             }`}
                           >
@@ -187,11 +189,11 @@ export default async function CallDetailPage({
                   </p>
                 ) : (
                   <p className="text-[13px] text-zinc-500">
-                    El resumen se genera automáticamente cuando termine el procesamiento.
+                    El resumen se genera solo en cuanto termina de procesarse la llamada.
                   </p>
                 )}
                 <div className="mt-5 grid grid-cols-2 gap-2.5">
-                  <div className="rounded-2xl bg-[#f4f0ff] p-3">
+                  <div className="rounded-2xl bg-[#effaf5] p-3">
                     <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-violet-400">
                       Sentimiento
                     </p>
@@ -203,8 +205,8 @@ export default async function CallDetailPage({
                     <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-pink-400">
                       Motivo
                     </p>
-                    <p className="mt-1 text-[14px] font-bold capitalize text-pink-800">
-                      {call.intent ?? '—'}
+                    <p className="mt-1 text-[14px] font-bold text-pink-800">
+                      {call.intent ? (INTENT_META[call.intent]?.label ?? call.intent) : '—'}
                     </p>
                   </div>
                 </div>
@@ -219,7 +221,7 @@ export default async function CallDetailPage({
                 <CardTopbar
                   icon={<User className="h-4 w-4" />}
                   tone="mint"
-                  title="Contacto en GHL"
+                  title="Contacto en GoHighLevel"
                   subtitle="Historial completo del paciente"
                 />
                 <div className="px-5 pb-5 sm:px-6 sm:pb-6">
@@ -232,7 +234,7 @@ export default async function CallDetailPage({
           {/* Metadata */}
           <Reveal direction="right" delay={150}>
             <Card>
-              <CardTopbar icon={<Info className="h-4 w-4" />} tone="zinc" title="Metadata" />
+              <CardTopbar icon={<Info className="h-4 w-4" />} tone="zinc" title="Datos técnicos" />
               <div className="px-5 pb-5 sm:px-6 sm:pb-6">
                 <div className="space-y-2.5 text-[13px]">
                   <FieldRow label="Retell Call ID" value={call.retellCallId} mono />
@@ -281,7 +283,7 @@ function GhlContactLink({
       rel="noreferrer"
       className="group inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-[13px] font-semibold text-emerald-700 transition-all duration-300 hover:-translate-y-0.5 hover:bg-emerald-100"
     >
-      Abrir ficha en GHL
+      Abrir ficha en GoHighLevel
       <ExternalLink className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
     </a>
   );

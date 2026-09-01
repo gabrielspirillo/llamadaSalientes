@@ -19,6 +19,13 @@ export type QueueRow = {
   preferredWindow: { start: string | null; end: string | null };
 };
 
+const STATUS_LABEL: Record<QueueRow['status'], string> = {
+  ACTIVE: 'En espera',
+  PAUSED: 'En pausa',
+  FULFILLED: 'Adelantada',
+  REMOVED: 'Retirado',
+};
+
 export function QueueTable({ rows, tz }: { rows: QueueRow[]; tz: string }) {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -46,8 +53,8 @@ export function QueueTable({ rows, tz }: { rows: QueueRow[]; tz: string }) {
   if (rows.length === 0) {
     return (
       <p className="py-10 text-center text-[13px] text-zinc-500">
-        No hay pacientes en la cola. Al detectar una cita futura elegible, se agregan
-        automáticamente.
+        No hay pacientes en la lista. Cuando se detecte una cita futura que cumpla los requisitos,
+        se añade sola.
       </p>
     );
   }
@@ -56,13 +63,13 @@ export function QueueTable({ rows, tz }: { rows: QueueRow[]; tz: string }) {
     <div className="overflow-hidden rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)]">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[560px] text-sm">
-          <thead className="border-b border-[--color-border] bg-[#fbfaff] text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+          <thead className="border-b border-[--color-border] bg-[#fafdfb] text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400">
             <tr>
               <th className="text-left px-4 py-2.5">Paciente</th>
               <th className="text-left px-4 py-2.5">Tratamiento</th>
               <th className="text-left px-4 py-2.5">Cita actual</th>
-              <th className="text-left px-4 py-2.5">En cola desde</th>
-              <th className="text-left px-4 py-2.5">Ventana</th>
+              <th className="text-left px-4 py-2.5">En la lista desde</th>
+              <th className="text-left px-4 py-2.5">Franja horaria</th>
               <th className="text-left px-4 py-2.5">Estado</th>
               <th className="text-right px-4 py-2.5">Acciones</th>
             </tr>
@@ -81,7 +88,7 @@ export function QueueTable({ rows, tz }: { rows: QueueRow[]; tz: string }) {
                     ) : null}
                     {r.source === 'manual' ? (
                       <Badge tone="info" className="mt-1">
-                        manual
+                        Añadido a mano
                       </Badge>
                     ) : null}
                   </td>
@@ -109,7 +116,9 @@ export function QueueTable({ rows, tz }: { rows: QueueRow[]; tz: string }) {
                       : '—'}
                   </td>
                   <td className="px-4 py-3">
-                    <Badge tone={r.status === 'ACTIVE' ? 'success' : 'neutral'}>{r.status}</Badge>
+                    <Badge tone={r.status === 'ACTIVE' ? 'success' : 'neutral'}>
+                      {STATUS_LABEL[r.status]}
+                    </Badge>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
@@ -137,7 +146,7 @@ export function QueueTable({ rows, tz }: { rows: QueueRow[]; tz: string }) {
                         variant="ghost"
                         disabled={disabled}
                         onClick={() => {
-                          if (confirm('¿Quitar al paciente de la waitlist?')) {
+                          if (confirm('¿Quitar al paciente de la lista de espera?')) {
                             void update(r.id, { status: 'REMOVED' });
                           }
                         }}

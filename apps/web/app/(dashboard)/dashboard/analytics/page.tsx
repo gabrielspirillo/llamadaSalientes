@@ -42,8 +42,8 @@ export default async function AnalyticsPage({
     <>
       <PageHeader
         eyebrow="Rendimiento"
-        title="Analytics"
-        description="Métricas reales por módulo: entrantes, salientes y WhatsApp."
+        title="Métricas"
+        description="Datos reales de cada canal: llamadas entrantes, salientes y WhatsApp."
         icon={<BarChart3 className="h-5 w-5" />}
       />
 
@@ -215,7 +215,7 @@ async function InboundAnalytics({
                         className="group/bar flex min-w-0 flex-1 flex-col items-center gap-1.5 sm:gap-2"
                       >
                         <div
-                          className="min-h-[3px] w-full origin-bottom rounded-t-lg bg-[linear-gradient(180deg,#a855f7,#7139e8)] transition-[filter,transform] duration-300 hover:brightness-110 group-hover/bar:scale-x-110"
+                          className="min-h-[3px] w-full origin-bottom rounded-t-lg bg-[linear-gradient(180deg,#6bc2a4,#37766a)] transition-[filter,transform] duration-300 hover:brightness-110 group-hover/bar:scale-x-110"
                           style={{
                             height: `${(h.calls / maxByHour) * 100}%`,
                             animation: 'grow-y 700ms cubic-bezier(0.22,1,0.36,1) both',
@@ -260,7 +260,7 @@ function RangePill({ href, active, label }: { href: string; active: boolean; lab
       href={href}
       className={`rounded-full px-3.5 py-2 font-semibold transition-all duration-300 ${
         active
-          ? 'bg-[linear-gradient(120deg,#7139e8,#8b5cf6)] text-white shadow-[0_6px_18px_-8px_rgba(113,57,232,0.8)]'
+          ? 'bg-[linear-gradient(120deg,#37766a,#5fa896)] text-white shadow-[0_6px_18px_-8px_rgba(55,118,106,0.8)]'
           : 'text-zinc-500 hover:bg-brand-50 hover:text-brand-700'
       }`}
     >

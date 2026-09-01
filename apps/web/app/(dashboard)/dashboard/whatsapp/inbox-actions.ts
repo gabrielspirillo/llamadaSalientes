@@ -1,8 +1,8 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
-import { and, asc, desc, eq, ilike } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
+import { and, asc, desc, eq, ilike } from 'drizzle-orm';
+import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { db } from '@/lib/db/client';
@@ -11,18 +11,18 @@ import {
   users,
   whatsappConnections,
   whatsappContacts,
-  whatsappConversations,
   whatsappConversationTags,
+  whatsappConversations,
   whatsappMessages,
   whatsappQuickReplies,
   whatsappTags,
 } from '@/lib/db/schema';
+import { buildWhatsappMediaPath, mediaUpload } from '@/lib/storage/media';
 import { getCurrentTenant } from '@/lib/tenant';
 import { listTenantMembersSynced, userIsTenantMember } from '@/lib/tenant-members';
-import { auth } from '@clerk/nextjs/server';
 import { buildConnector } from '@/lib/whatsapp';
 import { publishMessageEvent } from '@/lib/whatsapp/realtime/publisher';
-import { buildWhatsappMediaPath, mediaUpload } from '@/lib/storage/media';
+import { auth } from '@clerk/nextjs/server';
 
 export type ActionResult<T> =
   | { success: true; data: T }
@@ -180,7 +180,7 @@ export async function assignConversation(input: unknown): Promise<ActionResult<n
       tenant.clerkOrganizationId,
       parsed.data.userId,
     );
-    if (!isMember) return fail('El usuario no pertenece al tenant');
+    if (!isMember) return fail('Ese usuario no pertenece a esta clínica');
   }
 
   const updated = await db
@@ -330,7 +330,10 @@ export async function updateQuickReply(input: unknown): Promise<ActionResult<nul
     .update(whatsappQuickReplies)
     .set({ shortcut: parsed.data.shortcut, text: parsed.data.text, updatedAt: new Date() })
     .where(
-      and(eq(whatsappQuickReplies.id, parsed.data.id), eq(whatsappQuickReplies.tenantId, tenant.id)),
+      and(
+        eq(whatsappQuickReplies.id, parsed.data.id),
+        eq(whatsappQuickReplies.tenantId, tenant.id),
+      ),
     )
     .returning({ id: whatsappQuickReplies.id });
   if (updated.length === 0) return fail('Respuesta no encontrada');
@@ -345,20 +348,26 @@ export async function deleteQuickReply(input: unknown): Promise<ActionResult<nul
   await db
     .delete(whatsappQuickReplies)
     .where(
-      and(eq(whatsappQuickReplies.id, parsed.data.id), eq(whatsappQuickReplies.tenantId, tenant.id)),
+      and(
+        eq(whatsappQuickReplies.id, parsed.data.id),
+        eq(whatsappQuickReplies.tenantId, tenant.id),
+      ),
     );
   revalidatePath('/dashboard/whatsapp/quick-replies');
   return ok(null);
 }
 
 // Búsqueda usada por el popup "/" del composer.
-export async function searchQuickReplies(query: string): Promise<
-  ActionResult<Array<{ id: string; shortcut: string; text: string }>>
-> {
+export async function searchQuickReplies(
+  query: string,
+): Promise<ActionResult<Array<{ id: string; shortcut: string; text: string }>>> {
   const { tenant } = await getCurrentTenant();
   const q = (query ?? '').trim().slice(0, 32);
   const where = q
-    ? and(eq(whatsappQuickReplies.tenantId, tenant.id), ilike(whatsappQuickReplies.shortcut, `${q}%`))
+    ? and(
+        eq(whatsappQuickReplies.tenantId, tenant.id),
+        ilike(whatsappQuickReplies.shortcut, `${q}%`),
+      )
     : eq(whatsappQuickReplies.tenantId, tenant.id);
   const rows = await db
     .select({
@@ -435,7 +444,9 @@ function detectKind(mime: string): MediaKind | null {
   return null;
 }
 
-export async function sendMediaMessage(formData: FormData): Promise<ActionResult<{ messageId: string }>> {
+export async function sendMediaMessage(
+  formData: FormData,
+): Promise<ActionResult<{ messageId: string }>> {
   const conversationId = String(formData.get('conversationId') ?? '');
   const caption = String(formData.get('caption') ?? '').slice(0, 1024) || undefined;
   const file = formData.get('file');
@@ -452,10 +463,10 @@ export async function sendMediaMessage(formData: FormData): Promise<ActionResult
     // Mensaje extra-específico para el caso del MediaRecorder de Chrome.
     if (mime.startsWith('audio/webm')) {
       return fail(
-        'WhatsApp no acepta audio/webm. Tu navegador debió convertir el audio a MP3 antes de subir; recarga la página y reintenta.',
+        'WhatsApp no admite el formato audio/webm. Tu navegador debía convertir el audio a MP3 antes de subirlo; recarga la página e inténtalo de nuevo.',
       );
     }
-    return fail(`Tipo de archivo no soportado: ${mime}`);
+    return fail(`Tipo de archivo no admitido: ${mime}`);
   }
 
   if (file.size > MAX_BYTES[kind]) {
@@ -475,7 +486,10 @@ export async function sendMediaMessage(formData: FormData): Promise<ActionResult
     .from(whatsappConversations)
     .innerJoin(whatsappContacts, eq(whatsappContacts.id, whatsappConversations.contactId))
     .where(
-      and(eq(whatsappConversations.id, conversationId), eq(whatsappConversations.tenantId, tenant.id)),
+      and(
+        eq(whatsappConversations.id, conversationId),
+        eq(whatsappConversations.tenantId, tenant.id),
+      ),
     )
     .limit(1);
   const row = convRows[0];
@@ -610,9 +624,7 @@ export async function listTagsForTenant(): Promise<
 }
 
 export async function listQuickRepliesAll(): Promise<
-  ActionResult<
-    Array<{ id: string; shortcut: string; text: string; updatedAt: Date }>
-  >
+  ActionResult<Array<{ id: string; shortcut: string; text: string; updatedAt: Date }>>
 > {
   const { tenant } = await getCurrentTenant();
   const rows = await db

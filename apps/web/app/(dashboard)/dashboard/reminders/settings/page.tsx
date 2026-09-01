@@ -62,14 +62,14 @@ export default async function RemindersSettingsPage() {
         className="mb-4 inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-800 transition-colors"
       >
         <ChevronLeft className="h-4 w-4" />
-        Volver al pipeline
+        Volver a recordatorios
       </Link>
 
       <PageHeader
         eyebrow="Automatizaciones"
         icon={<BellRing className="h-5 w-5" />}
         title="Configuración de recordatorios"
-        description="Definí cuándo y por qué canal mandar cada recordatorio, con plantillas multi-canal."
+        description="Define cuándo y por qué canal se envía cada recordatorio, con una plantilla para cada canal."
       />
 
       <Card className="p-6">

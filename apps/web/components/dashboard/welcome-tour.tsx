@@ -36,18 +36,18 @@ type Step = {
 const STEPS: Step[] = [
   {
     icon: Sparkles,
-    tint: 'bg-gradient-to-br from-violet-500 to-fuchsia-500',
+    tint: 'bg-gradient-to-br from-brand-500 to-fuchsia-500',
     eyebrow: 'Bienvenido',
-    title: 'Conocé Futura en 1 minuto',
-    body: 'Tu recepcionista con IA que atiende llamadas y WhatsApp por vos, las 24 horas. Te voy a ir señalando cada parte del menú para que sepas dónde está todo.',
+    title: 'Conoce Futura en 1 minuto',
+    body: 'Tu asistente con IA atiende las llamadas y los WhatsApp de la clínica las 24 horas del día. Te vamos señalando cada parte del menú para que sepas dónde está todo.',
   },
   {
     target: '[data-tour="/dashboard/agent"]',
     icon: Bot,
-    tint: 'bg-gradient-to-br from-violet-500 to-indigo-500',
+    tint: 'bg-gradient-to-br from-brand-500 to-indigo-500',
     eyebrow: 'El cerebro',
-    title: 'Tu Agente',
-    body: 'Acá configurás cómo habla: su tono, el saludo y a qué número transfiere cuando hace falta una persona.',
+    title: 'Tu asistente',
+    body: 'Aquí configuras cómo habla: su tono, el saludo y a qué número pasa la llamada cuando hace falta una persona.',
   },
   {
     target: '[data-tour="/dashboard/calls"]',
@@ -55,7 +55,7 @@ const STEPS: Step[] = [
     tint: 'bg-gradient-to-br from-blue-500 to-cyan-500',
     eyebrow: 'Teléfono',
     title: 'Llamadas',
-    body: 'El agente atiende las llamadas que entran, y también llama a tus pacientes: recordatorios y recuperar turnos.',
+    body: 'El asistente atiende las llamadas que entran y también llama a tus pacientes para recordarles la cita o recuperar las que se cancelaron.',
   },
   {
     target: '[data-tour="/dashboard/whatsapp"]',
@@ -63,7 +63,7 @@ const STEPS: Step[] = [
     tint: 'bg-gradient-to-br from-emerald-500 to-teal-500',
     eyebrow: 'Mensajes',
     title: 'WhatsApp',
-    body: 'Tu agente también conversa por WhatsApp: responde dudas, confirma turnos y deriva a tu equipo cuando conviene.',
+    body: 'Tu asistente también atiende por WhatsApp: responde dudas, confirma citas y avisa a tu equipo cuando hace falta.',
   },
   {
     target: '[data-tour="/dashboard/treatments"]',
@@ -71,7 +71,7 @@ const STEPS: Step[] = [
     tint: 'bg-gradient-to-br from-rose-500 to-pink-500',
     eyebrow: 'Tu clínica',
     title: 'Tratamientos',
-    body: 'Cargá lo que ofrecés, con duración y precios. El agente lo usa para responder y agendar bien.',
+    body: 'Añade lo que ofreces, con su duración y sus precios. El asistente los usa para responder y dar cita sin equivocarse.',
   },
   {
     target: '[data-tour="/dashboard/faqs"]',
@@ -79,7 +79,7 @@ const STEPS: Step[] = [
     tint: 'bg-gradient-to-br from-amber-500 to-orange-500',
     eyebrow: 'Respuestas',
     title: 'Preguntas frecuentes',
-    body: 'Las respuestas a lo que más te preguntan (precios, ubicación, formas de pago). El agente las usa tal cual.',
+    body: 'Las respuestas a lo que más os preguntan: precios, dirección, formas de pago. El asistente las usa tal cual.',
   },
   {
     target: '[data-tour="/dashboard/reminders"]',
@@ -87,23 +87,23 @@ const STEPS: Step[] = [
     tint: 'bg-gradient-to-br from-orange-500 to-red-500',
     eyebrow: 'Automático',
     title: 'Recordatorios',
-    body: 'Avisos de turno automáticos para reducir ausencias. Y en Waitlist, una lista de espera para llenar los huecos.',
+    body: 'Avisos de cita automáticos para reducir las citas no asistidas. Y una lista de espera con pacientes listos para ocupar los huecos que se liberen.',
   },
   {
     target: '[data-tour="/dashboard/contacts"]',
     icon: Contact,
     tint: 'bg-gradient-to-br from-sky-500 to-blue-500',
     eyebrow: 'Pacientes',
-    title: 'Contactos',
-    body: 'Todos tus pacientes ordenados en un solo lugar, con su historial de llamadas y conversaciones.',
+    title: 'Pacientes',
+    body: 'Todos tus pacientes en un mismo sitio, con su historial de llamadas y conversaciones.',
   },
   {
     target: '[data-tour="/dashboard/analytics"]',
     icon: BarChart3,
     tint: 'bg-gradient-to-br from-indigo-500 to-violet-500',
     eyebrow: 'Resultados',
-    title: 'Analytics',
-    body: 'Métricas reales: cuántas llamadas atendió el agente, turnos agendados y cómo se fueron sintiendo tus pacientes.',
+    title: 'Métricas',
+    body: 'Datos reales: cuántas llamadas ha atendido el asistente, cuántas citas se han dado y cómo valoran la atención tus pacientes.',
   },
   {
     target: '[data-tour="/dashboard/team"]',
@@ -111,14 +111,14 @@ const STEPS: Step[] = [
     tint: 'bg-gradient-to-br from-cyan-500 to-blue-500',
     eyebrow: 'Tu gente',
     title: 'Equipo',
-    body: 'Invitá a las personas de tu clínica, cada una con su rol. Trabajan todos sobre el mismo panel.',
+    body: 'Invita a las personas de tu clínica, cada una con su rol. Todas trabajan sobre el mismo panel.',
   },
   {
     icon: ShieldCheck,
     tint: 'bg-gradient-to-br from-emerald-500 to-green-500',
     eyebrow: 'Listo',
     title: 'De lo técnico nos encargamos nosotros',
-    body: 'Las conexiones (teléfono, WhatsApp, agenda) las deja andando el equipo de Futura. Vos ocupate de tu clínica. ¿Dudas? Escribinos cuando quieras.',
+    body: 'Las conexiones de teléfono, WhatsApp y agenda las deja funcionando el equipo de Futura. Tú ocúpate de tu clínica. ¿Dudas? Escríbenos cuando quieras.',
   },
 ];
 
@@ -317,7 +317,7 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
         </>
       ) : (
         // Sin objetivo: oscurecido completo con desenfoque.
-        <div className="absolute inset-0 bg-[#171429]/75 backdrop-blur-[3px]" />
+        <div className="absolute inset-0 bg-[#14211d]/75 backdrop-blur-[3px]" />
       )}
 
       {/* Tarjeta */}
@@ -325,7 +325,7 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
         className={`absolute ${reduced ? '' : 'animate-[zoom-in_200ms_cubic-bezier(0.16,1,0.3,1)]'}`}
         style={cardPos}
       >
-        <div className="relative overflow-hidden rounded-[26px] border border-white/60 bg-white shadow-[0_40px_90px_-30px_rgba(23,20,41,0.6)]">
+        <div className="relative overflow-hidden rounded-[26px] border border-white/60 bg-white shadow-[0_40px_90px_-30px_rgba(20,33,29,0.6)]">
           {/* Puntero hacia el ítem */}
           {beakTop !== null && (
             <span
@@ -346,7 +346,7 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
           <div className="p-6">
             <div className="flex items-center gap-3">
               <span
-                className={`inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-[0_12px_28px_-12px_rgba(23,20,41,0.7)] ${s.tint} ${
+                className={`inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-[0_12px_28px_-12px_rgba(20,33,29,0.7)] ${s.tint} ${
                   reduced ? '' : 'animate-[float_3s_ease-in-out_infinite]'
                 }`}
               >
@@ -375,7 +375,7 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
                   onClick={() => setStep(i)}
                   className={`h-1.5 rounded-full transition-all duration-300 ${
                     i === step
-                      ? 'w-6 bg-[linear-gradient(90deg,#7139e8,#ec4899)]'
+                      ? 'w-6 bg-[linear-gradient(90deg,#37766a,#6bc2a4)]'
                       : 'w-1.5 bg-zinc-200 hover:bg-brand-200'
                   }`}
                 />

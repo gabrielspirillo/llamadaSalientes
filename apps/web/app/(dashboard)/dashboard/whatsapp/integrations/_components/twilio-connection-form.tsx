@@ -83,7 +83,7 @@ export function TwilioConnectionForm({ initial }: Props) {
           className="w-full rounded-lg border border-[--color-border] px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
         />
         <p className="mt-1 text-[11px] text-zinc-500">
-          El número WhatsApp sender aprobado en Twilio (sin prefijo
+          El número de WhatsApp aprobado como remitente en Twilio (sin el prefijo
           <code className="mx-1 rounded bg-zinc-100 px-1">whatsapp:</code>).
         </p>
       </div>

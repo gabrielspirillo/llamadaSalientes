@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 const USE_CASES = [
-  { value: 'payment', label: 'Cobranza' },
+  { value: 'payment', label: 'Cobro pendiente' },
   { value: 'info', label: 'Información de la clínica' },
   { value: 'reminder', label: 'Recordatorio de cita' },
   { value: 'reactivation', label: 'Reactivación de paciente' },
@@ -49,11 +49,11 @@ export function OutboundCampaignForm() {
     try {
       const parsed = parseTargetsCsv(csvText);
       if (parsed.length === 0) {
-        setError('No se detectó ningún destinatario válido en el CSV.');
+        setError('No hemos encontrado ningún destinatario válido en el CSV.');
       }
       setTargets(parsed);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'CSV inválido');
+      setError(err instanceof Error ? err.message : 'El CSV no es válido');
     } finally {
       setParsing(false);
     }
@@ -64,8 +64,8 @@ export function OutboundCampaignForm() {
     setSubmitting(true);
     setError(null);
     try {
-      if (!name.trim()) throw new Error('La campaña necesita un nombre.');
-      if (targets.length === 0) throw new Error('Cargá un CSV con los destinatarios.');
+      if (!name.trim()) throw new Error('Ponle un nombre a la campaña.');
+      if (targets.length === 0) throw new Error('Sube un CSV con los destinatarios.');
 
       const res = await fetch('/api/outbound/campaigns', {
         method: 'POST',
@@ -90,7 +90,7 @@ export function OutboundCampaignForm() {
       router.push(`/dashboard/outbound/${data.campaignId}`);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al crear la campaña');
+      setError(err instanceof Error ? err.message : 'No hemos podido crear la campaña');
       setSubmitting(false);
     }
   }
@@ -104,13 +104,13 @@ export function OutboundCampaignForm() {
             id="campaign-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Ej: Cobranza octubre 2026"
+            placeholder="Ej.: Cobros de octubre de 2026"
             required
           />
         </div>
 
         <div>
-          <Label htmlFor="campaign-use-case">Caso de uso</Label>
+          <Label htmlFor="campaign-use-case">Tipo de campaña</Label>
           <select
             id="campaign-use-case"
             value={useCase}
@@ -124,8 +124,8 @@ export function OutboundCampaignForm() {
             ))}
           </select>
           <p className="mt-1.5 text-xs text-zinc-500">
-            Se pasa al agente como variable dinámica <code>{'{{use_case}}'}</code> para que adapte
-            el guión.
+            Se envía al asistente en la variable <code>{'{{use_case}}'}</code> para que adapte lo
+            que dice.
           </p>
         </div>
 
@@ -135,7 +135,7 @@ export function OutboundCampaignForm() {
             id="campaign-notes"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Contexto para tu equipo, no se manda al agente."
+            placeholder="Contexto para tu equipo. No se envía al asistente."
           />
         </div>
       </Card>
@@ -144,9 +144,9 @@ export function OutboundCampaignForm() {
         <div>
           <Label>Destinatarios (CSV)</Label>
           <p className="mt-1 text-xs text-zinc-500">
-            Cabeceras esperadas: <code>to_number,patient_name,email</code> + cualquier variable
-            dinámica adicional (ej. <code>monto_pendiente</code>, <code>fecha_cita</code>). Mínimo 1
-            fila, máximo 5000.
+            Columnas esperadas: <code>to_number,patient_name,email</code> y las variables
+            adicionales que quieras (por ejemplo <code>monto_pendiente</code> o{' '}
+            <code>fecha_cita</code>). Entre 1 y 5000 filas.
           </p>
         </div>
 
@@ -170,7 +170,7 @@ export function OutboundCampaignForm() {
         <Textarea
           value={csvText}
           onChange={(e) => setCsvText(e.target.value)}
-          placeholder="to_number,patient_name,monto_pendiente&#10;+5491140001234,Juan Pérez,12500"
+          placeholder="to_number,patient_name,monto_pendiente&#10;+34611223344,Juan Pérez,125"
           className="font-mono text-xs"
         />
 

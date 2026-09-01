@@ -21,7 +21,7 @@ export function EmptyState({
   return (
     <div className={cn('px-6 py-14 text-center', className)}>
       {icon && (
-        <div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#f4f0ff,#fdf0f7)] text-violet-500 animate-float">
+        <div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#effaf5,#ddf3ea)] text-brand-600 animate-float">
           {icon}
         </div>
       )}
@@ -77,7 +77,7 @@ export function Callout({
     success: 'bg-emerald-50/80 text-emerald-900 border-emerald-100',
     warn: 'bg-amber-50/80 text-amber-900 border-amber-100',
     danger: 'bg-rose-50/80 text-rose-900 border-rose-100',
-    brand: 'bg-violet-50/80 text-violet-900 border-violet-100',
+    brand: 'bg-brand-50/80 text-brand-900 border-brand-100',
   } as const;
   return (
     <div
@@ -115,7 +115,7 @@ export function SectionTitle({
     <div className={cn('mb-4 flex items-end justify-between gap-4', className)}>
       <div className="min-w-0">
         <h2 className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.14em] text-zinc-400">
-          <span className="h-3 w-1 rounded-full bg-[linear-gradient(180deg,#7139e8,#ec4899)]" />
+          <span className="h-3 w-1 rounded-full bg-[linear-gradient(180deg,#37766a,#6bc2a4)]" />
           {title}
         </h2>
         {description && <p className="mt-1.5 text-[13px] text-zinc-500">{description}</p>}

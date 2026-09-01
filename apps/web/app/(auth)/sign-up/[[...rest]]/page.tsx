@@ -3,12 +3,12 @@ import { SignUp } from '@clerk/nextjs';
 import { CheckCircle2 } from 'lucide-react';
 
 const BENEFITS = [
-  'Agente de voz IA listo en minutos',
-  'Integración GoHighLevel en un click',
-  'Atención 24/7 en español',
-  'Panel de llamadas + analytics',
-  'Cifrado AES-256 + compliance',
-  '14 días gratis · sin tarjeta',
+  'Asistente de voz con IA listo en minutos',
+  'Integración con GoHighLevel en un clic',
+  'Atención en español, las 24 horas',
+  'Panel de llamadas y estadísticas',
+  'Cifrado AES-256 y cumplimiento normativo',
+  '14 días gratis, sin tarjeta',
 ];
 
 export default function SignUpPage() {
@@ -25,9 +25,9 @@ export default function SignUpPage() {
 
       <AuthAside eyebrow="Lo que incluye">
         <h2 className="text-[28px] font-extrabold leading-tight tracking-tight">
-          Tu recepcionista IA,
+          Tu asistente de voz,
           <br />
-          funcionando esta semana.
+          atendiendo llamadas esta semana.
         </h2>
         <ul className="mt-8 space-y-3.5">
           {BENEFITS.map((b, i) => (

@@ -54,36 +54,33 @@ export function WaitlistSettingsForm({ initial }: { initial: Settings }) {
           Configuración general
         </h2>
         <p className="text-sm text-zinc-500 mt-1">
-          Estas opciones controlan cómo el sistema oferta los slots liberados a los pacientes en
-          cola.
+          Estas opciones controlan cómo se ofrecen los huecos que se quedan libres a los pacientes
+          de la lista.
         </p>
       </div>
 
       <Row
         label="Módulo activo"
-        hint="Si está apagado, no se crean entradas nuevas ni se envían ofertas."
+        hint="Si lo desactivas, no se añaden pacientes nuevos ni se envían ofertas."
       >
         <Toggle value={s.enabled} onChange={(v) => setS({ ...s, enabled: v })} />
       </Row>
 
-      <Row
-        label="Canal de oferta"
-        hint="Cómo se contacta al paciente cuando hay un slot disponible."
-      >
+      <Row label="Canal de oferta" hint="Cómo se avisa al paciente cuando queda un hueco libre.">
         <select
           className="w-full sm:w-auto max-w-full rounded-md border border-[--color-border] px-3 py-1.5 text-sm bg-white"
           value={s.channelMode}
           onChange={(e) => setS({ ...s, channelMode: e.target.value as Settings['channelMode'] })}
         >
           <option value="WHATSAPP_ONLY">Solo WhatsApp</option>
-          <option value="VOICE_ONLY">Solo Voz (llamada)</option>
-          <option value="WHATSAPP_THEN_VOICE">WhatsApp y luego Voz si no responde</option>
+          <option value="VOICE_ONLY">Solo llamada de voz</option>
+          <option value="WHATSAPP_THEN_VOICE">WhatsApp y, si no responde, llamada</option>
         </select>
       </Row>
 
       <Row
-        label="TTL default (min)"
-        hint="Cuánto esperamos respuesta antes de pasar al siguiente paciente."
+        label="Tiempo para responder (min)"
+        hint="Cuánto esperamos la respuesta antes de pasar al siguiente paciente."
       >
         <NumInput
           value={s.ttlMinutesDefault}
@@ -91,7 +88,10 @@ export function WaitlistSettingsForm({ initial }: { initial: Settings }) {
         />
       </Row>
 
-      <Row label="TTL si el slot está cerca (min)" hint="TTL reducido cuando el slot es próximo.">
+      <Row
+        label="Tiempo para responder si el hueco es inminente (min)"
+        hint="Se usa cuando el hueco libre es muy próximo."
+      >
         <NumInput
           value={s.ttlMinutesNearSlot}
           onChange={(v) => setS({ ...s, ttlMinutesNearSlot: v })}
@@ -99,8 +99,8 @@ export function WaitlistSettingsForm({ initial }: { initial: Settings }) {
       </Row>
 
       <Row
-        label="Umbral 'slot cercano' (horas)"
-        hint="Si faltan menos horas, se usa el TTL reducido."
+        label="A partir de cuántas horas el hueco se considera inminente"
+        hint="Si faltan menos horas que estas, se usa el tiempo de respuesta reducido."
       >
         <NumInput
           value={s.nearSlotHoursThreshold}
@@ -110,7 +110,7 @@ export function WaitlistSettingsForm({ initial }: { initial: Settings }) {
 
       <Row
         label="No ofrecer si faltan menos de (horas)"
-        hint="Si el slot está muy cerca, no perdemos tiempo ofreciéndolo."
+        hint="Si el hueco está muy cerca, no merece la pena ofrecerlo."
       >
         <NumInput
           value={s.minSkipHoursThreshold}
@@ -118,7 +118,10 @@ export function WaitlistSettingsForm({ initial }: { initial: Settings }) {
         />
       </Row>
 
-      <Row label="Ventana WhatsApp → Voz (min)" hint="Solo para canal WHATSAPP_THEN_VOICE.">
+      <Row
+        label="Espera entre el WhatsApp y la llamada (min)"
+        hint="Solo se aplica si has elegido «WhatsApp y, si no responde, llamada»."
+      >
         <NumInput
           value={s.whatsappToVoiceWindowMinutes}
           onChange={(v) => setS({ ...s, whatsappToVoiceWindowMinutes: v })}
@@ -132,13 +135,13 @@ export function WaitlistSettingsForm({ initial }: { initial: Settings }) {
           Reglas de elegibilidad
         </h2>
         <p className="text-sm text-zinc-500 mt-1">
-          Qué citas entran a la cola automática y qué slots se les ofrecen.
+          Qué citas entran solas en la lista y qué huecos se les ofrecen.
         </p>
       </div>
 
       <Row
-        label="Cita actual debe estar a (días) al menos"
-        hint="Pacientes con cita cercana no entran a la waitlist."
+        label="La cita actual debe estar a más de (días)"
+        hint="Los pacientes con la cita muy próxima no entran en la lista de espera."
       >
         <NumInput
           value={s.minAppointmentDistanceDays}
@@ -147,8 +150,8 @@ export function WaitlistSettingsForm({ initial }: { initial: Settings }) {
       </Row>
 
       <Row
-        label="Cita actual no debe estar a más de (días)"
-        hint="Tope de lejanía. Citas más lejanas no entran a la cola — evita ofrecer adelantos sobre agendas muy futuras. Vacío = sin tope."
+        label="La cita actual no debe estar a más de (días)"
+        hint="Las citas más lejanas no entran en la lista. Déjalo vacío para no poner tope."
       >
         <NullableNumInput
           value={s.maxAppointmentDistanceDays}
@@ -158,15 +161,15 @@ export function WaitlistSettingsForm({ initial }: { initial: Settings }) {
       </Row>
 
       <Row
-        label="Slot debe adelantar al menos (días)"
-        hint="Solo ofrecemos slots que adelanten significativamente la cita actual."
+        label="El hueco debe adelantar la cita al menos (días)"
+        hint="Solo se ofrecen huecos que adelanten la cita de forma apreciable."
       >
         <NumInput value={s.minAdvanceDays} onChange={(v) => setS({ ...s, minAdvanceDays: v })} />
       </Row>
 
       <Row
         label="Exigir mismo dentista"
-        hint="Solo ofrecer slots del mismo dentista que tenía la cita original."
+        hint="Solo se ofrecen huecos con el mismo dentista de la cita original."
       >
         <Toggle
           value={s.requireSameDentist}
@@ -176,7 +179,7 @@ export function WaitlistSettingsForm({ initial }: { initial: Settings }) {
 
       <Row
         label="Respetar ventana horaria del paciente"
-        hint="Si el paciente solo puede en cierta franja horaria, no ofrecer fuera de esa franja."
+        hint="Si el paciente solo puede en cierta franja, no se le ofrece nada fuera de ella."
       >
         <Toggle
           value={s.respectTimeWindow}

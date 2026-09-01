@@ -41,7 +41,7 @@ export default async function OutboundPage() {
         eyebrow="Canal saliente"
         icon={<PhoneOutgoing className="h-5 w-5" />}
         title="Llamadas salientes"
-        description="Campañas de cobranza, recordatorios y reactivación con tu agente outbound."
+        description="Campañas de cobros, recordatorios de cita y reactivación de pacientes con tu asistente de voz."
         actions={
           <Button asChild>
             <Link href="/dashboard/outbound/new">
@@ -60,12 +60,12 @@ export default async function OutboundPage() {
         <Card>
           <EmptyState
             icon={<PhoneOutgoing className="h-5 w-5" />}
-            title="No tenés campañas todavía"
-            description="Subí un CSV con los teléfonos a llamar y elegí el caso de uso."
+            title="Todavía no tienes campañas"
+            description="Sube un CSV con los teléfonos a los que llamar y elige el tipo de campaña."
             action={
               <Button asChild>
                 <Link href="/dashboard/outbound/new">
-                  <Plus className="h-4 w-4" /> Crear primera campaña
+                  <Plus className="h-4 w-4" /> Crear la primera campaña
                 </Link>
               </Button>
             }
@@ -86,7 +86,7 @@ export default async function OutboundPage() {
                       <div className="flex items-center justify-between gap-2">
                         <p className="truncate text-[14px] font-bold text-zinc-900">{c.name}</p>
                         <span className="text-[11px] text-zinc-400 shrink-0">
-                          {new Date(c.createdAt).toLocaleDateString('es-AR')}
+                          {new Date(c.createdAt).toLocaleDateString('es-ES')}
                         </span>
                       </div>
                       <p className="text-xs text-zinc-500 truncate mt-0.5">
@@ -112,7 +112,7 @@ export default async function OutboundPage() {
                   <THead>
                     <HeadRow>
                       <TH>Campaña</TH>
-                      <TH className="hidden lg:table-cell">Caso de uso</TH>
+                      <TH className="hidden lg:table-cell">Tipo de campaña</TH>
                       <TH>Estado</TH>
                       <TH className="w-48">Progreso</TH>
                       <TH className="hidden text-right lg:table-cell">Creada</TH>
@@ -139,7 +139,7 @@ export default async function OutboundPage() {
                             </div>
                           </TD>
                           <TD className="hidden text-right text-[12px] text-zinc-500 lg:table-cell">
-                            {new Date(c.createdAt).toLocaleDateString('es-AR')}
+                            {new Date(c.createdAt).toLocaleDateString('es-ES')}
                           </TD>
                           <TD className="text-right">
                             <Link

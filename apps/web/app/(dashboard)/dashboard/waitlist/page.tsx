@@ -322,8 +322,8 @@ export default async function WaitlistPage() {
       <PageHeader
         eyebrow="Recuperación de huecos"
         icon={<ListChecks className="h-5 w-5" />}
-        title="Waitlist"
-        description="Cola FIFO de pacientes con cita futura. Cuando un slot se libera, el sistema oferta el hueco al siguiente en cola."
+        title="Lista de espera"
+        description="Pacientes con cita que quieren adelantarla. Cuando se libera un hueco, el sistema se lo ofrece al siguiente de la lista, por orden de llegada."
         actions={
           <Link href="/dashboard/waitlist/settings">
             <Button size="sm" variant="secondary">

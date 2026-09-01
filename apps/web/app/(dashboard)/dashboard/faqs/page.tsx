@@ -20,12 +20,12 @@ export default async function FaqsPage() {
         eyebrow="Base de conocimiento"
         icon={<HelpCircle className="h-5 w-5" />}
         title="Preguntas frecuentes"
-        description="Respuestas que el agente puede dar sin consultar GHL."
+        description="Respuestas que el agente da al momento, sin consultar el CRM."
         actions={
           <FaqDialog
             trigger={
               <Button size="sm">
-                <Plus className="h-4 w-4" /> Nueva FAQ
+                <Plus className="h-4 w-4" /> Nueva pregunta
               </Button>
             }
           />
@@ -36,8 +36,8 @@ export default async function FaqsPage() {
         <Card>
           <EmptyState
             icon={<HelpCircle className="h-5 w-5" />}
-            title="Sin FAQs todavía"
-            description="Cargá las preguntas más comunes (precios, horarios, formas de pago) para que el agente responda al toque."
+            title="Aún no hay preguntas"
+            description="Añade las preguntas más habituales (precios, horarios, formas de pago) para que el agente las responda al instante."
             action={
               <FaqDialog
                 trigger={

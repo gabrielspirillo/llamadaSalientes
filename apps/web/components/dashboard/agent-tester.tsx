@@ -162,7 +162,7 @@ export function AgentTester() {
                 ? 'bg-[linear-gradient(135deg,#059669,#34d399)] text-white shadow-[0_18px_40px_-14px_rgba(16,185,129,0.9)]'
                 : state === 'connecting'
                   ? 'animate-pulse bg-[linear-gradient(135deg,#d97706,#fbbf24)] text-white'
-                  : 'bg-[linear-gradient(135deg,#7139e8,#a855f7_60%,#ec4899)] text-white shadow-[0_18px_40px_-14px_rgba(113,57,232,0.9)]'
+                  : 'bg-[linear-gradient(135deg,#37766a,#5fa896_60%,#6bc2a4)] text-white shadow-[0_18px_40px_-14px_rgba(55,118,106,0.9)]'
             }`}
           >
             {state === 'live' && (
@@ -172,7 +172,7 @@ export function AgentTester() {
           </div>
 
           <h3 className="mt-5 text-[19px] font-extrabold tracking-tight text-zinc-900">
-            {state === 'idle' && 'Probar agente'}
+            {state === 'idle' && 'Probar el asistente'}
             {state === 'connecting' && 'Conectando…'}
             {state === 'live' && 'En llamada'}
             {state === 'ended' && 'Llamada finalizada'}
@@ -186,7 +186,7 @@ export function AgentTester() {
           )}
           {state === 'idle' && (
             <p className="text-sm text-zinc-500 mt-2 max-w-xs">
-              Hablá con el agente directamente desde tu navegador. No consume minutos del plan.
+              Habla con el asistente desde tu navegador. No consume minutos de tu plan.
             </p>
           )}
 
@@ -244,13 +244,13 @@ export function AgentTester() {
         <div className="border-t border-[--color-border-subtle] px-4 sm:px-6 py-4 sm:py-5 space-y-4 min-h-[300px] sm:min-h-[400px] max-h-[60vh] sm:max-h-[500px] overflow-y-auto">
           {transcript.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-[360px] text-center text-sm text-zinc-400">
-              <span className="mb-3 inline-flex h-12 w-12 animate-float items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#f4f0ff,#fdf0f7)] text-violet-400">
+              <span className="mb-3 inline-flex h-12 w-12 animate-float items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#effaf5,#fdf0f7)] text-violet-400">
                 <Phone className="h-5 w-5" />
               </span>
               {state === 'idle'
-                ? 'La transcripción aparecerá acá cuando inicies la llamada.'
+                ? 'La transcripción aparecerá aquí cuando inicies la llamada.'
                 : state === 'connecting'
-                  ? 'Conectando con el agente…'
+                  ? 'Conectando con el asistente…'
                   : 'Esperando audio…'}
             </div>
           ) : (
@@ -259,7 +259,7 @@ export function AgentTester() {
                 <div
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
                     turn.speaker === 'agent'
-                      ? 'bg-[linear-gradient(135deg,#7139e8,#a855f7)] text-white'
+                      ? 'bg-[linear-gradient(135deg,#37766a,#5fa896)] text-white'
                       : 'bg-sky-100 text-sky-700'
                   }`}
                 >
@@ -271,12 +271,12 @@ export function AgentTester() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-zinc-500 mb-1">
-                    {turn.speaker === 'agent' ? 'Agente' : 'Tú'}
+                    {turn.speaker === 'agent' ? 'Asistente' : 'Tú'}
                   </p>
                   <p
                     className={`rounded-2xl px-4 py-2.5 text-[13.5px] leading-relaxed ${
                       turn.speaker === 'agent'
-                        ? 'rounded-tl-md bg-[#f4f0ff] text-violet-900'
+                        ? 'rounded-tl-md bg-[#effaf5] text-violet-900'
                         : 'rounded-tl-md bg-[#e9f4fe] text-sky-900'
                     }`}
                   >

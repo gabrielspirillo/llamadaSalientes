@@ -95,7 +95,7 @@ export function ContactDetailForm({ contact }: Props) {
           label="Email"
           value={email}
           onChange={setEmail}
-          placeholder="Ingrese el correo electrónico"
+          placeholder="correo@ejemplo.com"
           type="email"
         />
         <FieldInput
@@ -105,12 +105,7 @@ export function ContactDetailForm({ contact }: Props) {
           placeholder=""
           readOnly
         />
-        <FieldInput
-          label="Ciudad"
-          value={city}
-          onChange={setCity}
-          placeholder="Introduzca el nombre de la ciudad"
-        />
+        <FieldInput label="Ciudad" value={city} onChange={setCity} placeholder="Ciudad" />
         <FieldInput label="País" value={country} onChange={setCountry} placeholder="País" />
         <FieldInput
           label="Dirección"
@@ -118,12 +113,7 @@ export function ContactDetailForm({ contact }: Props) {
           onChange={setAddress}
           placeholder="Dirección"
         />
-        <FieldInput
-          label="Empresa"
-          value={company}
-          onChange={setCompany}
-          placeholder="Escriba el nombre de la empresa"
-        />
+        <FieldInput label="Empresa" value={company} onChange={setCompany} placeholder="Empresa" />
       </div>
 
       <div>

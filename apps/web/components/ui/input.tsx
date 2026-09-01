@@ -99,7 +99,7 @@ export function Switch({
         'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-300',
         'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/20',
         checked
-          ? 'bg-[linear-gradient(120deg,#7139e8,#a855f7)] shadow-[0_4px_12px_-4px_rgba(113,57,232,0.7)]'
+          ? 'bg-[linear-gradient(120deg,#37766a,#5fa896)] shadow-[0_4px_12px_-4px_rgba(55,118,106,0.7)]'
           : 'bg-zinc-200',
         disabled && 'cursor-not-allowed opacity-50',
         className,

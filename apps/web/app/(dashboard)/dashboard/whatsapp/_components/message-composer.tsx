@@ -342,7 +342,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
 
       {/* Audio preview */}
       {audioBlob && (
-        <div className="flex items-center gap-2 border-b border-[--color-border-subtle] bg-[#fbfaff] px-3 py-2">
+        <div className="flex items-center gap-2 border-b border-[--color-border-subtle] bg-[#fafdfb] px-3 py-2">
           <audio src={URL.createObjectURL(audioBlob)} controls className="h-8 flex-1" />
           <button
             type="button"

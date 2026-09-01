@@ -72,6 +72,9 @@ function leadFactEntries(facts: Record<string, unknown>): Array<[string, string]
   return out;
 }
 
+const statusLabel = (s: Props['conversation']['status']) =>
+  s === 'CLOSED' ? 'Cerrada' : s === 'HANDOFF' ? 'La atiende una persona' : 'Abierta';
+
 const channelLabel = (c: Props['conversation']['channel']) =>
   c === 'WHATSAPP_CLOUD' ? 'Cloud API' : c === 'WHATSAPP_TWILIO' ? 'Twilio' : 'Evolution';
 
@@ -182,7 +185,7 @@ export function ContactSidebar({
   const assignedMember = members.find((m) => m.userId === assignedUserId);
 
   return (
-    <aside className="flex w-full flex-col gap-4 overflow-y-auto border-t border-[--color-border-subtle] bg-[linear-gradient(180deg,#fbfaff,#f6f5fb)] p-4 lg:w-80 lg:shrink-0 lg:border-l lg:border-t-0">
+    <aside className="flex w-full flex-col gap-4 overflow-y-auto border-t border-[--color-border-subtle] bg-[linear-gradient(180deg,#fafdfb,#f6f5fb)] p-4 lg:w-80 lg:shrink-0 lg:border-l lg:border-t-0">
       {error && (
         <div className="animate-fade-down rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
           {error}
@@ -224,11 +227,11 @@ export function ContactSidebar({
           </div>
           <div className="flex justify-between">
             <dt className="text-zinc-500">Estado</dt>
-            <dd className="font-medium text-zinc-700">{conversation.status}</dd>
+            <dd className="font-medium text-zinc-700">{statusLabel(conversation.status)}</dd>
           </div>
           {conversation.humanTakeoverUntil && conversation.status === 'HANDOFF' && (
             <div className="flex justify-between">
-              <dt className="text-zinc-500">Takeover hasta</dt>
+              <dt className="text-zinc-500">La atiende una persona hasta</dt>
               <dd className="font-medium text-zinc-700">
                 {new Date(conversation.humanTakeoverUntil).toLocaleTimeString()}
               </dd>
@@ -244,7 +247,7 @@ export function ContactSidebar({
           )}
           {contact.ghlContactId && (
             <div className="flex justify-between">
-              <dt className="text-zinc-500">GHL ID</dt>
+              <dt className="text-zinc-500">Ficha en el CRM</dt>
               <dd className="truncate font-mono text-[10px] text-zinc-700">
                 {contact.ghlContactId}
               </dd>
@@ -255,10 +258,10 @@ export function ContactSidebar({
 
       {/* Memoria del lead (cross-canal: WhatsApp + llamadas in/out) */}
       {leadMemory?.profileSummary ? (
-        <div className="rounded-[22px] border border-violet-200/70 bg-[linear-gradient(140deg,#f4f0ff,#ffffff)] p-4">
+        <div className="rounded-[22px] border border-brand-200 bg-[linear-gradient(140deg,#effaf5,#ffffff)] p-4">
           <div className="flex items-center justify-between">
-            <p className="text-[14px] font-bold text-zinc-900">Memoria del lead</p>
-            <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700">
+            <p className="text-[14px] font-bold text-zinc-900">Lo que sabemos del contacto</p>
+            <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-brand-700">
               multicanal
             </span>
           </div>
@@ -286,7 +289,9 @@ export function ContactSidebar({
         <p className="text-[14px] font-bold tracking-tight text-zinc-900">Citas</p>
         {appointments.length === 0 ? (
           <p className="mt-2 text-xs text-zinc-500">
-            {contact.ghlContactId ? 'Sin citas registradas.' : 'Aún no hay link con el CRM.'}
+            {contact.ghlContactId
+              ? 'Sin citas registradas.'
+              : 'Todavía no está vinculado con el CRM.'}
           </p>
         ) : (
           <ul className="mt-2 space-y-2">
@@ -330,7 +335,7 @@ export function ContactSidebar({
               {aiOn
                 ? 'El agente IA responde a todos los mensajes.'
                 : takeoverActive
-                  ? 'En manos del operador. La IA retoma sola al terminar la ventana, o activala ahora.'
+                  ? 'Ahora contesta una persona. El agente se reactiva solo al acabar ese rato, o puedes activarlo ya.'
                   : 'El agente IA está pausado.'}
             </p>
           </div>
@@ -452,7 +457,7 @@ export function ContactSidebar({
         {tagPool.length > 0 && (
           <details className="mt-3">
             <summary className="cursor-pointer text-xs text-zinc-500 hover:text-zinc-700">
-              Añadir existente ({tagPool.length})
+              Añadir una etiqueta existente ({tagPool.length})
             </summary>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {tagPool.map((t) => (

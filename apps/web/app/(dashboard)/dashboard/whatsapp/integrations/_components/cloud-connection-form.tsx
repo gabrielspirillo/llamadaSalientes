@@ -74,9 +74,7 @@ export function CloudConnectionForm({ initial }: Props) {
           value={accessToken}
           onChange={(e) => setAccessToken(e.target.value)}
           required
-          placeholder={
-            initial ? 'Dejar vacío para conservar el actual no es soportado — pega de nuevo' : ''
-          }
+          placeholder={initial ? 'Vuelve a pegarlo para actualizarlo' : ''}
           className="w-full rounded-lg border border-[--color-border] px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
         />
       </div>

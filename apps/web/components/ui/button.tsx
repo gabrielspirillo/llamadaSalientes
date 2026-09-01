@@ -16,10 +16,10 @@ const buttonVariants = cva(
       variant: {
         /* Acción principal: gradiente violeta con halo y barrido de luz */
         primary:
-          'sheen text-white bg-[linear-gradient(120deg,#7139e8_0%,#8b5cf6_45%,#a855f7_100%)] shadow-[0_8px_24px_-10px_rgba(113,57,232,0.75)] hover:shadow-[0_16px_34px_-12px_rgba(113,57,232,0.8)] hover:-translate-y-0.5',
+          'sheen text-white bg-[linear-gradient(120deg,#37766a_0%,#479183_45%,#5fa896_100%)] shadow-[0_8px_24px_-10px_rgba(55,118,106,0.75)] hover:shadow-[0_16px_34px_-12px_rgba(55,118,106,0.8)] hover:-translate-y-0.5',
         /* Secundaria: superficie blanca con borde suave */
         secondary:
-          'bg-white text-zinc-800 border border-[--color-border] shadow-[0_1px_2px_rgba(23,20,41,0.04)] hover:border-brand-200 hover:text-brand-700 hover:shadow-[0_10px_22px_-14px_rgba(23,20,41,0.45)] hover:-translate-y-0.5',
+          'bg-white text-zinc-800 border border-[--color-border] shadow-[0_1px_2px_rgba(20,33,29,0.04)] hover:border-brand-200 hover:text-brand-700 hover:shadow-[0_10px_22px_-14px_rgba(20,33,29,0.45)] hover:-translate-y-0.5',
         /* Suave: pastel de marca, para acciones frecuentes no destructivas */
         soft: 'bg-brand-50 text-brand-700 hover:bg-brand-100 hover:-translate-y-0.5',
         ghost: 'text-zinc-600 hover:bg-brand-50 hover:text-brand-700',
@@ -32,7 +32,7 @@ const buttonVariants = cva(
           'sheen text-white bg-[linear-gradient(120deg,#059669_0%,#10b981_100%)] shadow-[0_8px_24px_-10px_rgba(16,185,129,0.65)] hover:-translate-y-0.5',
         /* Vidrio: sobre fondos con color/imagen */
         glass:
-          'glass text-zinc-800 hover:bg-white/90 shadow-[0_8px_24px_-14px_rgba(23,20,41,0.4)] hover:-translate-y-0.5',
+          'glass text-zinc-800 hover:bg-white/90 shadow-[0_8px_24px_-14px_rgba(20,33,29,0.4)] hover:-translate-y-0.5',
       },
       size: {
         xs: 'h-7 px-2.5 text-xs gap-1.5',

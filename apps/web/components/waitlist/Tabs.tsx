@@ -23,7 +23,7 @@ export function WaitlistTabs({
     <Tabs defaultValue="queue">
       <TabsList>
         <TabsTrigger value="queue">
-          Cola activa
+          En espera
           <TabCount n={queueCount} />
         </TabsTrigger>
         <TabsTrigger value="offers">

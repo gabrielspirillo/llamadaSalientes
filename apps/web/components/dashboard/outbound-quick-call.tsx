@@ -7,7 +7,7 @@ import { Loader2, Phone, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 const USE_CASES = [
-  { value: 'payment', label: 'Cobranza' },
+  { value: 'payment', label: 'Cobro pendiente' },
   { value: 'info', label: 'Información de la clínica' },
   { value: 'reminder', label: 'Recordatorio de cita' },
   { value: 'reactivation', label: 'Reactivación de paciente' },
@@ -95,11 +95,14 @@ export function OutboundQuickCall() {
       } else {
         setResult({
           ok: true,
-          message: `Llamada iniciada (call_id: ${body.callId}, status: ${body.status})`,
+          message: `Llamada iniciada. Identificador: ${body.callId} · Estado: ${body.status}`,
         });
       }
     } catch (err) {
-      setResult({ ok: false, message: err instanceof Error ? err.message : 'Error inesperado' });
+      setResult({
+        ok: false,
+        message: err instanceof Error ? err.message : 'Ha ocurrido un error inesperado',
+      });
     } finally {
       setLoading(false);
     }
@@ -109,12 +112,12 @@ export function OutboundQuickCall() {
     <Card className="p-4 sm:p-6 mb-6">
       <div className="flex items-center justify-between mb-1">
         <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900 flex items-center gap-2">
-          <Phone className="h-4 w-4 text-violet-600" /> Llamada rápida
+          <Phone className="h-4 w-4 text-brand-600" /> Llamada rápida
         </h3>
       </div>
       <p className="text-sm text-zinc-500 mb-5">
-        Probá una llamada 1 a 1 con tu agente outbound. Ideal para tests o callbacks puntuales sin
-        crear una campaña.
+        Prueba una llamada suelta con tu asistente. Útil para hacer pruebas o para devolver una
+        llamada concreta, sin crear una campaña.
       </p>
 
       <form onSubmit={onSubmit} className="space-y-4">
@@ -125,7 +128,7 @@ export function OutboundQuickCall() {
               id="qc-phone"
               value={toNumber}
               onChange={(e) => setToNumber(e.target.value)}
-              placeholder="+5491140001234"
+              placeholder="+34611223344"
               required
               autoComplete="off"
             />
@@ -143,7 +146,7 @@ export function OutboundQuickCall() {
         </div>
 
         <div>
-          <Label htmlFor="qc-usecase">Caso de uso</Label>
+          <Label htmlFor="qc-usecase">Tipo de llamada</Label>
           <select
             id="qc-usecase"
             value={useCase}
@@ -164,9 +167,9 @@ export function OutboundQuickCall() {
             <button
               type="button"
               onClick={addVar}
-              className="inline-flex items-center gap-1 text-xs text-violet-600 hover:text-violet-700"
+              className="inline-flex items-center gap-1 text-xs text-brand-600 hover:text-brand-700"
             >
-              <Plus className="h-3 w-3" /> Agregar variable
+              <Plus className="h-3 w-3" /> Añadir variable
             </button>
           </div>
           <div className="space-y-2">
@@ -197,8 +200,8 @@ export function OutboundQuickCall() {
             ))}
           </div>
           <p className="text-[11px] text-zinc-500 mt-2">
-            Se inyectan al prompt del agente como{' '}
-            <code className="text-[11px]">{'{{nombre_variable}}'}</code>. Vacías se ignoran.
+            Se envían al asistente como <code className="text-[11px]">{'{{nombre_variable}}'}</code>
+            . Las que queden vacías se ignoran.
           </p>
         </div>
 

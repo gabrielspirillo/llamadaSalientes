@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Menu, Sparkles, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
@@ -20,37 +20,35 @@ export function MarketingTopbar() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[--color-border] bg-white/70 backdrop-blur-xl">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Link href="/" className="group flex items-center gap-2.5" aria-label="FUTURA">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-[13px] bg-[linear-gradient(135deg,#7139e8,#a855f7_60%,#ec4899)] text-white shadow-[0_8px_20px_-8px_rgba(113,57,232,0.9)] transition-transform duration-500 group-hover:rotate-6">
-            <Sparkles className="h-4 w-4" />
-          </span>
-          <span className="text-[18px] font-extrabold leading-none tracking-tight text-zinc-900">
+        <Link href="/" className="flex items-center gap-1.5" aria-label="FUTURA">
+          <span className="text-[18px] font-extrabold leading-none tracking-tight text-[#0f1f2e]">
             FUTURA
           </span>
+          <span className="inline-block h-2 w-2 rounded-full bg-[#5fa896]" />
         </Link>
 
         <nav className="hidden md:flex items-center gap-7 text-sm text-zinc-600">
           <Link
             href="#producto"
-            className="relative transition-colors hover:text-brand-700 after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:w-0 after:rounded-full after:bg-[linear-gradient(90deg,#7139e8,#ec4899)] after:transition-all after:duration-300 hover:after:w-full"
+            className="relative transition-colors hover:text-brand-700 after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:w-0 after:rounded-full after:bg-[linear-gradient(90deg,#37766a,#6bc2a4)] after:transition-all after:duration-300 hover:after:w-full"
           >
             Producto
           </Link>
           <Link
             href="#integraciones"
-            className="relative transition-colors hover:text-brand-700 after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:w-0 after:rounded-full after:bg-[linear-gradient(90deg,#7139e8,#ec4899)] after:transition-all after:duration-300 hover:after:w-full"
+            className="relative transition-colors hover:text-brand-700 after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:w-0 after:rounded-full after:bg-[linear-gradient(90deg,#37766a,#6bc2a4)] after:transition-all after:duration-300 hover:after:w-full"
           >
             Integraciones
           </Link>
           <Link
             href="#precios"
-            className="relative transition-colors hover:text-brand-700 after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:w-0 after:rounded-full after:bg-[linear-gradient(90deg,#7139e8,#ec4899)] after:transition-all after:duration-300 hover:after:w-full"
+            className="relative transition-colors hover:text-brand-700 after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:w-0 after:rounded-full after:bg-[linear-gradient(90deg,#37766a,#6bc2a4)] after:transition-all after:duration-300 hover:after:w-full"
           >
             Precios
           </Link>
           <Link
             href="/dashboard"
-            className="relative transition-colors hover:text-brand-700 after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:w-0 after:rounded-full after:bg-[linear-gradient(90deg,#7139e8,#ec4899)] after:transition-all after:duration-300 hover:after:w-full"
+            className="relative transition-colors hover:text-brand-700 after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:w-0 after:rounded-full after:bg-[linear-gradient(90deg,#37766a,#6bc2a4)] after:transition-all after:duration-300 hover:after:w-full"
           >
             Demo
           </Link>

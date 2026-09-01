@@ -136,7 +136,7 @@ export async function GlobalAnalyticsBar({
                   icon={<Phone className="h-3.5 w-3.5" />}
                   label="Entrantes"
                   value={formatMoney(revenue.byChannel.inbound, revenue.currency)}
-                  className="bg-violet-50 text-violet-700"
+                  className="bg-violet-50 text-brand-700"
                 />
                 <ChannelChip
                   icon={<MessageCircle className="h-3.5 w-3.5" />}

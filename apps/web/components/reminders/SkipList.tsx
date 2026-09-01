@@ -9,9 +9,9 @@ const REASON_LABEL: Record<string, string> = {
   no_voice_agent: 'Sin agente de voz',
   no_template: 'Sin plantilla',
   quiet_hours_full_day: 'Fuera de horario',
-  opt_out: 'Opt-out',
+  opt_out: 'Baja voluntaria',
   appointment_cancelled: 'Cita cancelada',
-  duplicate: 'Duplicado',
+  duplicate: 'Repetido',
 };
 
 const REASON_TONE: Record<string, string> = {
@@ -42,7 +42,7 @@ export function SkipList({ skipped }: { skipped: SkipRow[] }) {
   if (skipped.length === 0) {
     return (
       <Card className="p-4 text-center text-xs text-zinc-400">
-        No hay omitidos en el histórico reciente.
+        Últimamente no se ha omitido ningún recordatorio.
       </Card>
     );
   }

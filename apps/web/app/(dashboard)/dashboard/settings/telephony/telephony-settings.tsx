@@ -84,13 +84,13 @@ function ProviderTabs({
     {
       id: 'twilio',
       label: 'Twilio',
-      sub: 'Mejor para US/Canadá y WhatsApp BSP. Caller ID verificado por DTMF.',
+      sub: 'Mejor para EE. UU. y Canadá, y para WhatsApp. El número emisor se verifica por teléfono.',
       configured: state.twilioConfigured,
     },
     {
       id: 'zadarma',
       label: 'Zadarma',
-      sub: 'Mejor para LATAM/Europa. DIDs económicos. Verificación de caller ID via cabinet.',
+      sub: 'Mejor para España y Europa. Números económicos. El número emisor se verifica en su panel.',
       configured: state.zadarmaConfigured,
     },
   ];
@@ -100,7 +100,7 @@ function ProviderTabs({
       <div className="p-3 sm:p-4">
         <div className="flex items-center gap-2 mb-3 px-1">
           <ShieldCheck className="h-4 w-4 text-zinc-500" />
-          <span className="text-sm font-medium">Provider de telefonía</span>
+          <span className="text-sm font-medium">Proveedor de telefonía</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {providers.map((p) => {
@@ -212,8 +212,8 @@ function TwilioCredentialsForm({
           )}
         </div>
         <p className="text-sm text-zinc-500">
-          Pegá las credenciales del subaccount Twilio de la clínica. El Auth Token se cifra
-          (AES-256-GCM) antes de guardarse. Validamos contra Twilio antes de persistir.
+          Pega las credenciales de la subcuenta de Twilio de la clínica. El Auth Token se cifra
+          (AES-256-GCM) antes de guardarse y lo validamos con Twilio antes de darlo por bueno.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -234,7 +234,7 @@ function TwilioCredentialsForm({
               value={token}
               onChange={(e) => setToken(e.target.value)}
               placeholder={
-                state.twilioConfigured ? '••••••••••••  (dejar vacío para no cambiar)' : ''
+                state.twilioConfigured ? '••••••••••••  (déjalo vacío para no cambiarlo)' : ''
               }
               className="mt-2 font-mono"
             />
@@ -315,9 +315,9 @@ function ZadarmaCredentialsForm({
           )}
         </div>
         <p className="text-sm text-zinc-500">
-          Generá las claves en cabinet.zadarma.com → Settings → API. El Secret y el Webhook Secret
-          se cifran (AES-256-GCM) antes de guardarse. Validamos con un ping a /v1/info/balance/
-          antes de persistir.
+          Genera las claves en cabinet.zadarma.com → Settings → API. El Secret y el Webhook Secret
+          se cifran (AES-256-GCM) antes de guardarse. Los validamos con una consulta a
+          /v1/info/balance/ antes de darlos por buenos.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -338,7 +338,7 @@ function ZadarmaCredentialsForm({
               value={secret}
               onChange={(e) => setSecret(e.target.value)}
               placeholder={
-                state.zadarmaConfigured ? '••••••••••••  (dejar vacío para no cambiar)' : ''
+                state.zadarmaConfigured ? '••••••••••••  (déjalo vacío para no cambiarlo)' : ''
               }
               className="mt-2 font-mono"
             />
@@ -355,12 +355,12 @@ function ZadarmaCredentialsForm({
               placeholder={
                 state.zadarmaWebhookSecretSet
                   ? '•••• (ya configurado)'
-                  : 'Sólo si lo configuraste en cabinet'
+                  : 'Solo si lo has configurado en el panel de Zadarma'
               }
               className="mt-2 font-mono"
             />
             <p className="text-xs text-zinc-500 mt-1">
-              Si no lo configurás, verificamos las firmas NOTIFY_* con el Secret del API.
+              Si no lo configuras, verificamos las firmas NOTIFY_* con el Secret de la API.
             </p>
           </div>
         </div>
@@ -425,7 +425,7 @@ function CallerIdCard({
           kind: 'ok',
           text:
             state.provider === 'zadarma'
-              ? 'Número detectado en tu cuenta Zadarma y verificado.'
+              ? 'Número detectado en tu cuenta de Zadarma y verificado.'
               : 'Este número ya estaba verificado en Twilio.',
         });
         onChange({
@@ -439,7 +439,7 @@ function CallerIdCard({
       setValidationCode(j.validationCode);
       setMsg({
         kind: 'ok',
-        text: 'Twilio te va a llamar. Cuando escuches la voz, ingresá los 6 dígitos en el teclado del teléfono.',
+        text: 'Twilio te llamará. Cuando escuches la voz, marca los 6 dígitos en el teclado del teléfono.',
       });
       startPolling();
     } catch (err) {
@@ -459,7 +459,7 @@ function CallerIdCard({
         const j = await res.json();
         if (j.verified) {
           setValidationCode(null);
-          setMsg({ kind: 'ok', text: 'Caller ID verificado correctamente.' });
+          setMsg({ kind: 'ok', text: 'Número emisor verificado correctamente.' });
           onChange({
             ...state,
             callerIdE164: j.phoneNumber,
@@ -469,7 +469,7 @@ function CallerIdCard({
         } else if (elapsed >= 240) {
           setMsg({
             kind: 'error',
-            text: 'Pasaron 4 minutos sin confirmación. Probá de nuevo o revisá el panel del provider.',
+            text: 'Han pasado 4 minutos sin confirmación. Inténtalo de nuevo o revisa el panel del proveedor.',
           });
           stopPoll();
         }
@@ -481,14 +481,16 @@ function CallerIdCard({
 
   async function unlink() {
     if (
-      !confirm('¿Quitar el Caller ID actual? Las próximas llamadas usarán el número del provider.')
+      !confirm(
+        '¿Quitar el número emisor actual? Las próximas llamadas usarán el número del proveedor.',
+      )
     ) {
       return;
     }
     const res = await fetch('/api/telephony/caller-id', { method: 'DELETE' });
     if (res.ok) {
       onChange({ ...state, callerIdE164: null, callerIdVerifiedAt: null });
-      setMsg({ kind: 'ok', text: 'Caller ID desvinculado.' });
+      setMsg({ kind: 'ok', text: 'Número emisor desvinculado.' });
       setPhone('');
     }
   }
@@ -502,15 +504,15 @@ function CallerIdCard({
         <div className="flex items-center gap-2">
           <PhoneOutgoing className="h-5 w-5 text-zinc-500" />
           <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">
-            Caller ID saliente
+            Número que ve el paciente
           </h3>
           {verified && <CheckCircle2 className="h-4 w-4 text-emerald-600 ml-auto" />}
         </div>
         <p className="text-sm text-zinc-500">
-          Número público de la clínica que verá el destinatario en las llamadas salientes.{' '}
+          Número público de la clínica que aparece en el teléfono del paciente cuando le llamamos.{' '}
           {isZadarma
-            ? 'En Zadarma se verifica desde cabinet.zadarma.com → My numbers; acá sólo confirmamos.'
-            : 'Twilio lo verifica por DTMF con un código de 6 dígitos.'}
+            ? 'En Zadarma se verifica desde cabinet.zadarma.com → My numbers; aquí solo lo confirmamos.'
+            : 'Twilio lo verifica con una llamada y un código de 6 dígitos.'}
         </p>
 
         {verified ? (
@@ -519,7 +521,7 @@ function CallerIdCard({
             <div className="text-emerald-700 text-xs mt-0.5">
               Verificado{' '}
               {state.callerIdVerifiedAt
-                ? new Date(state.callerIdVerifiedAt).toLocaleString('es-MX')
+                ? new Date(state.callerIdVerifiedAt).toLocaleString('es-ES')
                 : ''}
             </div>
             <button
@@ -538,7 +540,7 @@ function CallerIdCard({
                 id="callerId"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="+5491139530968"
+                placeholder="+34600123456"
                 className="mt-2 font-mono"
                 disabled={polling || verifying}
               />
@@ -547,13 +549,13 @@ function CallerIdCard({
             {validationCode && (
               <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4 text-center">
                 <div className="text-xs text-amber-800 uppercase tracking-wide">
-                  Código a ingresar en el teléfono
+                  Código que hay que marcar en el teléfono
                 </div>
                 <div className="text-4xl font-bold tracking-[0.4em] text-amber-900 mt-2">
                   {validationCode}
                 </div>
                 <div className="text-xs text-amber-700 mt-2">
-                  Cuando suene el teléfono de la clínica, atendé y tipeá estos 6 dígitos.
+                  Cuando suene el teléfono de la clínica, descuelga y marca estos 6 dígitos.
                 </div>
               </div>
             )}
@@ -646,7 +648,7 @@ function InboundCard({
       });
       setMsg({
         kind: 'ok',
-        text: 'Número configurado. Ya podés indicarle a la clínica que active el desvío.',
+        text: 'Número configurado. Ya puedes pedir a la clínica que active el desvío.',
       });
       await loadNumbers();
     } catch (err) {
@@ -670,24 +672,24 @@ function InboundCard({
         </div>
         <p className="text-sm text-zinc-500">
           {isZadarma
-            ? 'Elegí qué DID Zadarma recibe las llamadas. Configuramos la URL de notificación de la cuenta automáticamente (Zadarma sólo permite una por cuenta).'
-            : 'Elegí qué número Twilio recibe las llamadas que la clínica desvía desde su operador. Configuramos sus webhooks de voz/SMS automáticamente.'}
+            ? 'Elige qué número de Zadarma recibe las llamadas. Configuramos la URL de notificación de la cuenta automáticamente (Zadarma solo permite una por cuenta).'
+            : 'Elige qué número de Twilio recibe las llamadas que la clínica desvía desde su operador. Configuramos sus avisos de voz y SMS automáticamente.'}
         </p>
 
         {!isConfigured ? (
           <div className="text-sm text-zinc-500 italic">
-            Cargá las credenciales primero para listar los números disponibles.
+            Introduce primero las credenciales para ver los números disponibles.
           </div>
         ) : loading ? (
           <div className="flex items-center gap-2 text-sm text-zinc-600">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Listando números…
+            Cargando números…
           </div>
         ) : numbers.length === 0 ? (
           <div className="text-sm text-zinc-500 italic">
             {isZadarma
-              ? 'No hay DIDs comprados en esta cuenta Zadarma. Comprá uno desde cabinet.zadarma.com → My numbers.'
-              : 'No hay IncomingPhoneNumbers en esta cuenta Twilio. Comprá uno primero desde Twilio Console.'}
+              ? 'No hay números contratados en esta cuenta de Zadarma. Compra uno en cabinet.zadarma.com → My numbers.'
+              : 'No hay números en esta cuenta de Twilio. Compra uno primero en la consola de Twilio.'}
           </div>
         ) : (
           <>
@@ -709,30 +711,30 @@ function InboundCard({
 
             {isZadarma && (
               <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900 space-y-2">
-                <div className="font-medium text-sm">💡 Modelos de inbound para Zadarma</div>
+                <div className="font-medium text-sm">💡 Formas de recibir llamadas con Zadarma</div>
                 <div>
-                  <span className="font-medium">Agente Retell (AI):</span> el número en Zadarma debe
+                  <span className="font-medium">Agente de voz:</span> el número de Zadarma debe
                   estar en la centralita —{' '}
                   <span className="font-mono">
-                    cabinet.zadarma.com → Mis números → click el número → asegurate de que NO tenga
-                    desvío estático activado
+                    cabinet.zadarma.com → Mis números → pulsa el número → asegúrate de que NO tenga
+                    el desvío fijo activado
                   </span>
-                  . Nuestro webhook recibe NOTIFY_START y redirige a Retell.
+                  . Recibimos el aviso NOTIFY_START y redirigimos la llamada a Retell.
                 </div>
                 <div>
-                  <span className="font-medium">Reenviar a humano:</span> dos vías equivalentes —
-                  elegí una sola:
+                  <span className="font-medium">Pasar a una persona:</span> hay dos formas
+                  equivalentes, elige solo una:
                   <ul className="list-disc ml-4 mt-1 space-y-0.5">
                     <li>
-                      <span className="font-medium">Desde acá</span> (esta UI): cargás el número
-                      humano abajo y nuestra app redirige dinámicamente. Útil si vas a alternar
-                      entre AI y humano.
+                      <span className="font-medium">Desde aquí</span> (este panel): introduces abajo
+                      el número de la persona y la app redirige la llamada. Útil si vas a alternar
+                      entre el agente y una persona.
                     </li>
                     <li>
                       <span className="font-medium">Desde Zadarma cabinet</span>:{' '}
                       <span className="font-mono">Mis números → Reenviar a teléfono</span>. Más
-                      simple, sobrevive caídas del server, pero para cambiar destino hay que volver
-                      al cabinet.
+                      sencillo y funciona aunque nuestro servidor se caiga, pero para cambiar el
+                      destino hay que volver a su panel.
                     </li>
                   </ul>
                 </div>
@@ -740,7 +742,7 @@ function InboundCard({
             )}
 
             <div>
-              <Label>Cómo enrutar las entrantes</Label>
+              <Label>Qué hacer con las llamadas entrantes</Label>
               <div className="mt-2 space-y-2">
                 <label className="flex items-start gap-2 text-sm">
                   <input
@@ -750,11 +752,12 @@ function InboundCard({
                     className="mt-1"
                   />
                   <span>
-                    <span className="font-medium">Agente Retell</span>
+                    <span className="font-medium">Las atiende el agente</span>
                     <span className="text-zinc-500 block text-xs">
-                      Atiende el agente AI; transfiere a humano si lo pide el paciente.
+                      Contesta el agente de voz y pasa la llamada a una persona si el paciente lo
+                      pide.
                       {isZadarma &&
-                        ' (Requiere webhook configurado en cabinet.zadarma.com → Configuración → Integraciones → Notificaciones de eventos.)'}
+                        ' (Requiere el aviso configurado en cabinet.zadarma.com → Configuración → Integraciones → Notificaciones de eventos.)'}
                     </span>
                   </span>
                 </label>
@@ -766,9 +769,9 @@ function InboundCard({
                     className="mt-1"
                   />
                   <span>
-                    <span className="font-medium">Reenviar a humano</span>
+                    <span className="font-medium">Pasarlas a una persona</span>
                     <span className="text-zinc-500 block text-xs">
-                      La llamada se enruta directo a un número humano (sin agente AI).
+                      La llamada va directa a un número de la clínica, sin pasar por el agente.
                     </span>
                   </span>
                 </label>
@@ -777,12 +780,12 @@ function InboundCard({
 
             {route === 'forward' && (
               <div>
-                <Label htmlFor="fwd">Número humano (E.164)</Label>
+                <Label htmlFor="fwd">Número de la persona (E.164)</Label>
                 <Input
                   id="fwd"
                   value={forwardNumber}
                   onChange={(e) => setForwardNumber(e.target.value)}
-                  placeholder="+5491139530968"
+                  placeholder="+34600123456"
                   className="mt-2 font-mono"
                 />
               </div>
@@ -795,7 +798,7 @@ function InboundCard({
                 disabled={submitting || !selected || (route === 'forward' && !forwardNumber)}
               >
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Configurar webhooks
+                Guardar configuración
               </Button>
             </div>
           </>
@@ -804,17 +807,18 @@ function InboundCard({
         {state.inboundNumberE164 && (
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
             <div>
-              <span className="font-medium">{state.inboundNumberE164}</span> está recibiendo
-              llamadas como{' '}
+              El <span className="font-medium">{state.inboundNumberE164}</span> ya recibe llamadas:{' '}
               <span className="font-medium">
-                {state.inboundRoute === 'agent' ? 'Agente Retell' : 'Forward a humano'}
+                {state.inboundRoute === 'agent'
+                  ? 'las atiende el agente de voz'
+                  : 'se pasan a una persona'}
               </span>
               .
             </div>
             <div className="text-xs text-emerald-700 mt-1">
               {isZadarma
-                ? 'Las entrantes llegan vía webhook NOTIFY_START y se redirigen según esta config.'
-                : 'Pedile a la clínica que active el desvío desde su operador hacia este número.'}
+                ? 'Las llamadas entrantes llegan por el aviso NOTIFY_START y se redirigen según esta configuración.'
+                : 'Pide a la clínica que active el desvío desde su operador hacia este número.'}
             </div>
           </div>
         )}
@@ -843,43 +847,43 @@ function HelpCard({
           {isZadarma ? (
             <>
               <li>
-                <span className="font-medium">Salientes:</span> Zadarma dispara la llamada vía
-                /v1/request/callback/. El paciente ve el caller ID configurado (DID o número
-                personal verificado en el cabinet).
+                <span className="font-medium">Llamadas salientes:</span> Zadarma lanza la llamada
+                con /v1/request/callback/. El paciente ve el número emisor configurado (un número de
+                Zadarma o uno propio verificado en su panel).
               </li>
               <li>
-                <span className="font-medium">Entrantes:</span> Zadarma envía un POST NOTIFY_START a
-                nuestro webhook; respondemos con `{'{ redirect: ... }'}` para enrutar al agente
-                Retell (SIP) o a un humano.
+                <span className="font-medium">Llamadas entrantes:</span> Zadarma envía un POST
+                NOTIFY_START a nuestro webhook y respondemos con `{'{ redirect: ... }'}` para llevar
+                la llamada al agente (SIP) o a una persona.
               </li>
               <li>
-                <span className="font-medium">Agente AI:</span> requiere un trunk SIP externo en
-                cabinet.zadarma.com → Settings → External SIP, apuntando a Retell. Setear{' '}
+                <span className="font-medium">Agente de voz:</span> requiere un trunk SIP externo en
+                cabinet.zadarma.com → Settings → External SIP apuntando a Retell. Configura{' '}
                 <code className="bg-zinc-100 px-1 rounded">ZADARMA_SIP_INTERNAL_FOR_AGENT</code> en
-                env para usar esa extensión como leg A del callback.
+                las variables de entorno para usar esa extensión como primer tramo de la llamada.
               </li>
             </>
           ) : (
             <>
               <li>
-                <span className="font-medium">Salientes:</span> Twilio coloca la llamada y muestra
-                el Caller ID verificado como número del que llama. Requiere subaccount Twilio del
-                tenant registrado en Retell (BYOT).
+                <span className="font-medium">Llamadas salientes:</span> Twilio lanza la llamada y
+                muestra el número emisor verificado como número que llama. Requiere la subcuenta de
+                Twilio de la clínica dada de alta en Retell (BYOT).
               </li>
               <li>
-                <span className="font-medium">Entrantes:</span> la clínica configura "desvío de
-                llamadas" en su operador hacia el número Twilio elegido aquí; el webhook recibe la
-                llamada y la enruta al agente o a un humano.
+                <span className="font-medium">Llamadas entrantes:</span> la clínica activa el
+                "desvío de llamadas" en su operador hacia el número de Twilio elegido aquí;
+                recibimos la llamada y la pasamos al agente o a una persona.
               </li>
               <li>
-                <span className="font-medium">Number porting</span> (largo plazo): podés portar el
-                número de la clínica directo a Twilio para evitar el desvío.
+                <span className="font-medium">Portabilidad</span> (a largo plazo): puedes portar el
+                número de la clínica directamente a Twilio y ahorrarte el desvío.
               </li>
             </>
           )}
         </ul>
         <div className="pt-2 border-t border-[--color-border-subtle] space-y-2">
-          <div className="text-xs text-zinc-500">Webhook URLs configuradas automáticamente:</div>
+          <div className="text-xs text-zinc-500">URLs configuradas automáticamente:</div>
           {isZadarma ? (
             <CopyRow label="Notification URL" value={webhookUrls.zadarma.webhook} />
           ) : (

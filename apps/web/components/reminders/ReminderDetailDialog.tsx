@@ -31,7 +31,7 @@ const STATUS_LABEL: Record<
   SENT: { label: 'Enviado', tone: 'neutral' },
   DELIVERED: { label: 'Entregado', tone: 'neutral' },
   CONFIRMED: { label: 'Confirmado', tone: 'success' },
-  RESCHEDULE_REQUESTED: { label: 'Pidió reagendar', tone: 'warn' },
+  RESCHEDULE_REQUESTED: { label: 'Quiere cambiar la cita', tone: 'warn' },
   CANCELLED: { label: 'Cancelado', tone: 'danger' },
   NO_RESPONSE: { label: 'Sin respuesta', tone: 'warn' },
   SKIPPED: { label: 'Omitido', tone: 'neutral' },
@@ -94,8 +94,8 @@ export function ReminderDetailDialog({
         action === 'confirm'
           ? '¿Confirmar manualmente este recordatorio?'
           : action === 'cancel'
-            ? '¿Marcar como cancelado y cancelar la cita en GHL?'
-            : '¿Marcar como "pidió reagendar"?',
+            ? '¿Marcar como cancelado y cancelar también la cita en el CRM?'
+            : '¿Marcar como que el paciente quiere cambiar la cita?',
       )
     )
       return;
@@ -122,7 +122,7 @@ export function ReminderDetailDialog({
       });
       onClose();
     } else {
-      alert(`No se pudo marcar.\n\nMotivo: ${data.error ?? 'error desconocido'}`);
+      alert(`No se ha podido marcar.\n\nMotivo: ${data.error ?? 'error desconocido'}`);
     }
   }
 
@@ -167,7 +167,7 @@ export function ReminderDetailDialog({
                 vars.appointment?.durationMinutes ? `${vars.appointment.durationMinutes} min` : null
               }
             />
-            <Row label="ID GHL" value={reminder.ghlAppointmentId} mono />
+            <Row label="ID en el CRM" value={reminder.ghlAppointmentId} mono />
           </Section>
 
           <Section title="Clínica">
@@ -180,8 +180,12 @@ export function ReminderDetailDialog({
             <Row label="Canal" value={reminder.channelPlanned === 'VOICE' ? 'Voz' : 'WhatsApp'} />
             {reminder.channelUsed && reminder.channelUsed !== reminder.channelPlanned && (
               <Row
-                label="Canal usado"
-                value={reminder.channelUsed === 'VOICE' ? 'Voz (fallback)' : 'WhatsApp (fallback)'}
+                label="Canal utilizado"
+                value={
+                  reminder.channelUsed === 'VOICE'
+                    ? 'Voz (segundo intento)'
+                    : 'WhatsApp (segundo intento)'
+                }
               />
             )}
             <Row
@@ -206,7 +210,7 @@ export function ReminderDetailDialog({
             Marcar como confirmado
           </Button>
           <Button size="sm" variant="secondary" onClick={() => mark('reschedule')} disabled={busy}>
-            Marcar reagendar
+            Marcar cambio de cita
           </Button>
           <Button size="sm" variant="ghost" onClick={() => mark('cancel')} disabled={busy}>
             Marcar cancelado

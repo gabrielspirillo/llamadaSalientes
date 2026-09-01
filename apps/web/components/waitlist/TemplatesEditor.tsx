@@ -53,9 +53,9 @@ const VARIABLE_GROUPS: Array<{ title: string; vars: Array<{ path: string; help: 
     ],
   },
   {
-    title: 'Slot ofrecido',
+    title: 'Hueco ofrecido',
     vars: [
-      { path: 'newSlot.dateTime', help: 'Fecha y hora del slot' },
+      { path: 'newSlot.dateTime', help: 'Fecha y hora del hueco' },
       { path: 'newSlot.date', help: 'Solo fecha' },
       { path: 'newSlot.time', help: 'Solo hora' },
       { path: 'newSlot.durationMinutes', help: 'Duración' },
@@ -181,12 +181,12 @@ export function TemplatesEditor({
   async function doTestSend(ch: 'WHATSAPP' | 'VOICE') {
     const phone = window.prompt(
       ch === 'WHATSAPP'
-        ? 'Teléfono destino en formato E.164 (ej: +34611223344) para enviar el WhatsApp de prueba:'
-        : 'Teléfono destino en formato E.164 (ej: +34611223344) para llamar de prueba:',
+        ? 'Teléfono de destino en formato E.164 (por ejemplo: +34611223344) para enviar el WhatsApp de prueba:'
+        : 'Teléfono de destino en formato E.164 (por ejemplo: +34611223344) para hacer la llamada de prueba:',
     );
     if (!phone) return;
     if (!/^\+\d{7,15}$/.test(phone.trim())) {
-      alert('El teléfono debe estar en formato E.164 (ej: +34611223344).');
+      alert('El teléfono debe estar en formato E.164 (por ejemplo: +34611223344).');
       return;
     }
     setTesting(ch);
@@ -205,7 +205,7 @@ export function TemplatesEditor({
       setTestResult(
         ch === 'WHATSAPP'
           ? `✓ WhatsApp enviado (kind=${data.kind ?? 'text'}).`
-          : `✓ Llamada iniciada (callId=${data.callId ?? '?'}).`,
+          : `✓ Llamada iniciada (id=${data.callId ?? '?'}).`,
       );
     } finally {
       setTesting(null);
@@ -224,8 +224,8 @@ export function TemplatesEditor({
           Plantillas de mensaje
         </h2>
         <p className="text-sm text-zinc-500 mt-1">
-          Texto que se envía al paciente al ofrecerle el slot adelantado. Las variables se
-          reemplazan en el envío real.
+          Texto que se envía al paciente cuando se le ofrece el hueco. Al enviarlo, las variables se
+          sustituyen por los datos reales.
         </p>
       </div>
 
@@ -247,9 +247,9 @@ export function TemplatesEditor({
       </div>
 
       {channel === 'VOICE' || activeScope === 'whatsapp_evolution' ? (
-        <div className="rounded-lg border border-[--color-border] bg-[#fbfaff] p-3 space-y-2">
+        <div className="rounded-lg border border-[--color-border] bg-[#fafdfb] p-3 space-y-2">
           <div className="text-xs uppercase tracking-wide text-zinc-500">
-            Variables disponibles · click para insertar en el cursor
+            Variables disponibles · haz clic para insertarlas donde tengas el cursor
           </div>
           <div className="space-y-2">
             {VARIABLE_GROUPS.map((g) => (
@@ -290,7 +290,7 @@ export function TemplatesEditor({
             />
             <span className="text-xs text-zinc-500">
               Debe estar aprobada en Meta Business Manager. Las variables van en los parámetros de
-              la plantilla, no acá.
+              la plantilla, no aquí.
             </span>
           </label>
         ) : null}
@@ -304,21 +304,23 @@ export function TemplatesEditor({
               rows={6}
               value={freeText}
               onChange={(e) => setFreeText(e.target.value)}
-              placeholder={`Hola {{contact.firstName}}, se liberó un hueco antes de tu cita del {{oldAppointment.dateTime}}. ¿Querés adelantarla al {{newSlot.dateTime}}?`}
+              placeholder={`Hola {{contact.firstName}}, se ha quedado libre un hueco antes de tu cita del {{oldAppointment.dateTime}}. ¿Quieres adelantarla al {{newSlot.dateTime}}?`}
             />
           </label>
         ) : null}
 
         {channel === 'VOICE' ? (
           <label className="block">
-            <span className="text-sm font-medium text-zinc-900">Prompt extra para el agente</span>
+            <span className="text-sm font-medium text-zinc-900">
+              Instrucciones extra para el agente
+            </span>
             <textarea
               ref={voicePromptRef}
               className="mt-1 w-full rounded-md border border-[--color-border] px-3 py-2 text-sm font-mono"
               rows={4}
               value={voicePrompt}
               onChange={(e) => setVoicePrompt(e.target.value)}
-              placeholder="Instrucciones específicas para el agente al ofrecer el slot adelantado."
+              placeholder="Instrucciones concretas para el agente al ofrecer el hueco."
             />
           </label>
         ) : null}
@@ -377,7 +379,7 @@ export function TemplatesEditor({
           ) : preview.voicePromptOverride ? (
             <div className="whitespace-pre-wrap text-zinc-800">{preview.voicePromptOverride}</div>
           ) : (
-            <div className="text-zinc-500">Sin contenido renderizado.</div>
+            <div className="text-zinc-500">No hay contenido que mostrar.</div>
           )}
           {preview.buttons.length > 0 ? (
             <div className="mt-3 flex flex-wrap gap-2">

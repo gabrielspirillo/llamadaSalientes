@@ -1,7 +1,7 @@
 'use client';
 
 import { CreateOrganization, OrganizationList } from '@clerk/nextjs';
-import { ArrowLeft, ArrowRight, Building2, Sparkles, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Building2, Users } from 'lucide-react';
 import { useState } from 'react';
 
 const clerkAppearance = {
@@ -22,10 +22,10 @@ export function RoleChooser() {
         <BackButton onClick={() => setMode('choose')} />
         <div className="mb-6 text-center">
           <h1 className="text-[26px] font-extrabold tracking-tight text-zinc-900 sm:text-[32px]">
-            Dá de alta tu clínica
+            Da de alta tu clínica
           </h1>
           <p className="mt-2 text-zinc-500">
-            Creá la organización de tu clínica. Después cargás sus datos.
+            Crea la ficha de tu clínica. Después rellenas sus datos.
           </p>
         </div>
         <CreateOrganization afterCreateOrganizationUrl="/dashboard" appearance={clerkAppearance} />
@@ -39,11 +39,11 @@ export function RoleChooser() {
         <BackButton onClick={() => setMode('choose')} />
         <div className="mb-6 text-center">
           <h1 className="text-[26px] font-extrabold tracking-tight text-zinc-900 sm:text-[32px]">
-            Unite a tu clínica
+            Únete a tu clínica
           </h1>
           <p className="mt-2 text-zinc-500">
-            Si tu clínica te invitó, va a aparecer acá para unirte. Si no aparece, pedile al
-            administrador que te invite por email a esta dirección.
+            Si tu clínica ya te ha invitado, aparecerá aquí para que te unas. Si no aparece, pide al
+            administrador que te invite a esta dirección de correo.
           </p>
         </div>
         <OrganizationList
@@ -59,26 +59,29 @@ export function RoleChooser() {
   return (
     <div className="w-full">
       <div className="mb-8 text-center">
-        <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#7139e8,#a855f7_60%,#ec4899)] shadow-[0_12px_28px_-12px_rgba(113,57,232,0.9)]">
-          <Sparkles className="h-5 w-5 text-white" />
+        <div className="mb-5 inline-flex items-center gap-1.5">
+          <span className="text-[22px] font-extrabold leading-none tracking-tight text-[#0f1f2e]">
+            FUTURA
+          </span>
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#5fa896]" />
         </div>
         <h1 className="text-[26px] font-extrabold tracking-tight text-zinc-900 sm:text-[32px]">
           ¿Cómo vas a usar Futura?
         </h1>
-        <p className="mt-2 text-zinc-500">Elegí una opción para continuar.</p>
+        <p className="mt-2 text-zinc-500">Elige una opción para continuar.</p>
       </div>
 
       <div className="stagger grid gap-3">
         <RoleCard
           icon={<Building2 className="h-5 w-5" />}
           title="Soy dueño/administrador"
-          description="Quiero dar de alta mi clínica y configurar el agente."
+          description="Quiero dar de alta mi clínica y configurar el asistente."
           onClick={() => setMode('owner')}
         />
         <RoleCard
           icon={<Users className="h-5 w-5" />}
           title="Trabajo en una clínica"
-          description="Quiero unirme a una clínica que ya está registrada."
+          description="Quiero unirme a una clínica que ya está dada de alta."
           onClick={() => setMode('worker')}
         />
       </div>
@@ -103,7 +106,7 @@ function RoleCard({
       onClick={onClick}
       className="group flex items-center gap-4 rounded-[22px] border border-[--color-border] bg-white p-5 text-left shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-[var(--shadow-lifted)]"
     >
-      <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#f4f0ff,#fdf0f7)] text-violet-600 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">
+      <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#effaf5,#fdf0f7)] text-brand-600 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">
         {icon}
       </span>
       <span className="min-w-0 flex-1">

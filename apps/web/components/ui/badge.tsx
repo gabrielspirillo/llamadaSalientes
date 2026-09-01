@@ -16,7 +16,7 @@ const badgeVariants = cva(
         pink: 'bg-pink-100/80 text-pink-700',
         /* Gradiente de marca — para contadores destacados */
         brand:
-          'bg-[linear-gradient(120deg,#7139e8,#a855f7)] text-white shadow-[0_4px_12px_-4px_rgba(113,57,232,0.6)]',
+          'bg-[linear-gradient(120deg,#37766a,#5fa896)] text-white shadow-[0_4px_12px_-4px_rgba(55,118,106,0.6)]',
       },
       size: {
         sm: 'px-2 py-0.5 text-[10px]',

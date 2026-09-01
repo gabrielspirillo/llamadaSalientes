@@ -39,8 +39,8 @@ export function DeleteTreatmentButton({ id, name }: { id: string; name: string }
         <DialogHeader>
           <DialogTitle>Eliminar tratamiento</DialogTitle>
           <DialogDescription>
-            Vas a eliminar <span className="font-medium text-zinc-900">{name}</span>. El agente ya
-            no lo va a ofrecer en futuras llamadas. Esta acción no se puede deshacer.
+            Vas a eliminar <span className="font-medium text-zinc-900">{name}</span>. El agente
+            dejará de ofrecerlo en las próximas llamadas. Esta acción no se puede deshacer.
           </DialogDescription>
         </DialogHeader>
         {error && (

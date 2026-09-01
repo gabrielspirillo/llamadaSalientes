@@ -2,26 +2,17 @@ import { DemoBanner } from '@/components/dashboard/demo-banner';
 import { GlobalAnalyticsBar } from '@/components/dashboard/global-analytics-bar';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { RealtimeRefresh } from '@/components/dashboard/realtime-refresh';
-import { Badge, StatusDot, Tag } from '@/components/ui/badge';
+import { TeamBoardCard } from '@/components/dashboard/team-board-card';
+import { StatusDot } from '@/components/ui/badge';
+import { BoardCard, BoardColumn } from '@/components/ui/board';
 import { Button } from '@/components/ui/button';
-import { Card, CardTopbar } from '@/components/ui/card';
-import { EmptyState } from '@/components/ui/feedback';
+import { Card } from '@/components/ui/card';
 import { Reveal } from '@/components/ui/motion';
-import { Avatar, Equalizer } from '@/components/ui/stat';
-import { getUpcomingAppointments } from '@/lib/data/calls-list';
+import { Equalizer } from '@/components/ui/stat';
+import { formatDuration, getDashboardStats, getUpcomingAppointments } from '@/lib/data/calls-list';
 import { getDemoUpcoming } from '@/lib/demo-data';
 import { getCurrentTenant } from '@/lib/tenant';
-import {
-  ArrowRight,
-  BarChart3,
-  Bot,
-  CalendarClock,
-  MessageCircle,
-  Phone,
-  PhoneOutgoing,
-  Sparkles,
-  Stethoscope,
-} from 'lucide-react';
+import { ArrowRight, Bot, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
 export default async function DashboardOverview({
@@ -32,6 +23,19 @@ export default async function DashboardOverview({
   const { tenant } = await getCurrentTenant();
   const demo = (await searchParams).demo === '1';
   const upcoming = demo ? getDemoUpcoming() : await getUpcomingAppointments(tenant.id, 8);
+  const stats = demo
+    ? {
+        callsToday: 12,
+        callsYesterday: 9,
+        avgDurationSec: 168,
+        conversionRate: 64,
+        containmentRate: 82,
+      }
+    : await getDashboardStats(tenant.id);
+
+  const nextNames = upcoming
+    .map((u) => u.patientName ?? u.phone ?? 'Paciente')
+    .filter((n): n is string => Boolean(n));
 
   const clinicName = tenant.name.split(/['']s|\s/)[0];
 
@@ -40,24 +44,24 @@ export default async function DashboardOverview({
       <PageHeader
         eyebrow="Panel general"
         title={`Buenas, ${clinicName}`}
-        description="Resumen en tiempo real de tu clínica: llamadas, citas y recuperación de huecos."
+        description="Resumen en directo de tu clínica: llamadas, citas y huecos recuperados."
         icon={<Sparkles className="h-5 w-5" />}
         demoBadge={demo}
         actions={
           demo ? (
             <Button asChild variant="secondary">
-              <Link href="/dashboard">Salir del demo</Link>
+              <Link href="/dashboard">Salir del ejemplo</Link>
             </Button>
           ) : (
             <>
               <Button asChild variant="secondary">
                 <Link href="/dashboard?demo=1">
-                  <Sparkles className="h-4 w-4" /> Ver demo
+                  <Sparkles className="h-4 w-4" /> Ver ejemplo
                 </Link>
               </Button>
               <Button asChild>
                 <Link href="/dashboard/agent">
-                  Probar agente
+                  Probar el asistente
                   <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                 </Link>
               </Button>
@@ -78,201 +82,133 @@ export default async function DashboardOverview({
 
       <GlobalAnalyticsBar tenantId={tenant.id} demo={demo} />
 
-      <div className="grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-3">
-        {/* --- Próximas citas ------------------------------------------------ */}
-        <Reveal direction="left" className="xl:col-span-2">
-          <Card className="group h-full overflow-hidden">
-            <CardTopbar
-              icon={<CalendarClock className="h-4 w-4" />}
-              tone="grape"
-              title="Próximas citas"
-              subtitle="Agendadas y confirmadas por el agente"
-              action={
-                <>
-                  <Badge tone="brand" size="lg">
-                    {upcoming.length}
-                  </Badge>
-                  <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
-                    <Link href="/dashboard/calls">
-                      Ver llamadas
-                      <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1" />
-                    </Link>
-                  </Button>
-                </>
-              }
-            />
-
-            <div className="border-t border-[--color-border-subtle]">
-              {upcoming.length === 0 ? (
-                <EmptyState
-                  icon={<CalendarClock className="h-5 w-5" />}
-                  title="Sin próximas citas"
-                  description="Cuando el agente agende una cita, aparece acá al instante."
-                  action={
-                    <Button asChild size="sm" variant="soft">
-                      <Link href="/dashboard/agent">Probar el agente</Link>
-                    </Button>
-                  }
-                />
-              ) : (
-                <ul className="stagger p-2" style={{ ['--stagger-step' as string]: '55ms' }}>
-                  {upcoming.map((u, i) => {
-                    const name = u.patientName ?? u.phone ?? 'Paciente';
-                    const when = u.startTime.toLocaleString('es-ES', {
-                      weekday: 'short',
-                      day: '2-digit',
-                      month: 'short',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    });
-                    return (
-                      <li key={u.callId} style={{ ['--i' as string]: i }}>
-                        <div className="flex items-center gap-3 rounded-2xl px-3 py-3 transition-all duration-300 hover:bg-brand-50/50">
-                          <Avatar name={name} size={38} />
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-[14px] font-semibold text-zinc-800">
-                              {name}
-                            </p>
-                            <p className="mt-0.5 flex items-center gap-1.5 truncate text-[12px] text-zinc-500">
-                              <span className="truncate">{when}</span>
-                            </p>
-                          </div>
-                          {u.treatmentName && (
-                            <Tag className="hidden shrink-0 sm:inline-flex">{u.treatmentName}</Tag>
-                          )}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
+      {/* --- Tablero: cada bloque abre una sección de la app ---------------- */}
+      <Reveal>
+        <Card tone="night" className="mb-6 overflow-hidden p-6">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 animate-float rounded-full bg-[radial-gradient(circle,rgba(107,194,164,0.45),transparent_70%)] blur-2xl"
+          />
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/90 ring-1 ring-inset ring-white/15">
+                <StatusDot tone="success" />
+                Asistente conectado
+                <Equalizer className="text-emerald-300" />
+              </span>
+              <h3 className="mt-4 text-[21px] font-bold leading-snug tracking-tight">
+                Tu asistente de voz atiende todas las llamadas
+              </h3>
+              <p className="mt-2 max-w-xl text-[13.5px] leading-relaxed text-white/70">
+                Contesta el teléfono, reserva citas, las cambia de fecha y recupera las
+                cancelaciones. A cualquier hora, también por WhatsApp.
+              </p>
             </div>
-          </Card>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <Button asChild variant="glass" size="sm">
+                <Link href="/dashboard/agent">
+                  <Bot className="h-4 w-4" />
+                  Probar el asistente
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </Reveal>
+
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <Reveal direction="left">
+          <BoardColumn title="Hoy en la clínica" count={upcoming.length}>
+            <BoardCard
+              href="/dashboard/calls"
+              tone="sky"
+              tags={['citas', 'agenda']}
+              title="Próximas citas reservadas"
+              noteLabel="Siguiente:"
+              note={
+                upcoming[0]
+                  ? `${upcoming[0].patientName ?? upcoming[0].phone ?? 'Paciente'} · ${upcoming[0].startTime.toLocaleString(
+                      'es-ES',
+                      {
+                        weekday: 'short',
+                        day: '2-digit',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      },
+                    )}`
+                  : 'Todavía no hay citas reservadas'
+              }
+              people={nextNames}
+              counts={{ comments: upcoming.length }}
+            />
+            <BoardCard
+              href="/dashboard/calls"
+              tone="mint"
+              tags={['llamadas', 'entrantes']}
+              title="Llamadas atendidas hoy"
+              noteLabel="Ayer:"
+              note={`${stats.callsYesterday} llamadas · duración media ${formatDuration(stats.avgDurationSec)}`}
+              progress={stats.conversionRate}
+              progressLabel="Acaban en cita"
+              counts={{ comments: stats.callsToday }}
+            />
+          </BoardColumn>
         </Reveal>
 
-        {/* --- Columna lateral ----------------------------------------------- */}
-        <div className="space-y-4 sm:space-y-6">
-          <Reveal direction="right">
-            <Card tone="night" className="overflow-hidden p-6">
-              <div
-                aria-hidden
-                className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 animate-float rounded-full bg-[radial-gradient(circle,rgba(236,72,153,0.5),transparent_70%)] blur-2xl"
-              />
-              <div className="relative">
-                <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/90 ring-1 ring-inset ring-white/15">
-                  <StatusDot tone="success" />
-                  Agente en línea
-                  <Equalizer className="text-emerald-300" />
-                </span>
-                <h3 className="mt-4 text-[19px] font-bold leading-snug tracking-tight">
-                  Tu recepcionista IA nunca cuelga
-                </h3>
-                <p className="mt-2 text-[13px] leading-relaxed text-white/70">
-                  Atiende llamadas, agenda, reagenda y recupera cancelaciones 24/7 — también por
-                  WhatsApp.
-                </p>
-                <div className="mt-5 flex flex-wrap gap-2">
-                  <Button asChild variant="glass" size="sm">
-                    <Link href="/dashboard/agent">
-                      <Bot className="h-4 w-4" />
-                      Probar llamada
-                    </Link>
-                  </Button>
-                  <Button
-                    asChild
-                    size="sm"
-                    variant="ghost"
-                    className="text-white/80 hover:bg-white/10 hover:text-white"
-                  >
-                    <Link href="/dashboard/analytics">Ver métricas</Link>
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          </Reveal>
+        <Reveal>
+          <BoardColumn title="Canales de contacto">
+            <BoardCard
+              href="/dashboard/whatsapp"
+              tone="mint"
+              tags={['whatsapp', 'mensajes']}
+              title="Conversaciones de WhatsApp"
+              noteLabel="Bandeja:"
+              note="Lo que el asistente responde y lo que pasa a una persona."
+            />
+            <BoardCard
+              href="/dashboard/outbound"
+              tone="blossom"
+              tags={['salientes', 'campañas']}
+              title="Campañas de llamadas salientes"
+              noteLabel="Para qué:"
+              note="Recordar citas, recuperar pacientes y avisar de huecos libres."
+            />
+            <BoardCard
+              href="/dashboard/reminders"
+              tone="honey"
+              tags={['recordatorios']}
+              title="Recordatorios de citas"
+              noteLabel="Objetivo:"
+              note="Menos citas no asistidas avisando por WhatsApp y por voz."
+            />
+          </BoardColumn>
+        </Reveal>
 
-          <Reveal direction="right" delay={100}>
-            <Card>
-              <CardTopbar
-                icon={<Sparkles className="h-4 w-4" />}
-                tone="blossom"
-                title="Accesos rápidos"
-                subtitle="Lo que más se usa cada día"
-              />
-              <div className="grid grid-cols-2 gap-2.5 p-5 pt-0 sm:p-6 sm:pt-0">
-                <QuickTile
-                  href="/dashboard/agent"
-                  icon={<Bot className="h-4 w-4" />}
-                  label="Probar agente"
-                  tone="grape"
-                />
-                <QuickTile
-                  href="/dashboard/treatments"
-                  icon={<Stethoscope className="h-4 w-4" />}
-                  label="Tratamientos"
-                  tone="mint"
-                />
-                <QuickTile
-                  href="/dashboard/outbound"
-                  icon={<PhoneOutgoing className="h-4 w-4" />}
-                  label="Nueva campaña"
-                  tone="blossom"
-                />
-                <QuickTile
-                  href="/dashboard/whatsapp"
-                  icon={<MessageCircle className="h-4 w-4" />}
-                  label="Inbox WhatsApp"
-                  tone="mint"
-                />
-                <QuickTile
-                  href="/dashboard/analytics"
-                  icon={<BarChart3 className="h-4 w-4" />}
-                  label="Analytics"
-                  tone="sky"
-                />
-                <QuickTile
-                  href="/dashboard/configuration?tab=telephony"
-                  icon={<Phone className="h-4 w-4" />}
-                  label="Telefonía"
-                  tone="honey"
-                />
-              </div>
-            </Card>
-          </Reveal>
-        </div>
+        <Reveal direction="right">
+          <BoardColumn title="Tu clínica">
+            <TeamBoardCard />
+            <BoardCard
+              href="/dashboard/treatments"
+              tone="grape"
+              tags={['tratamientos', 'catálogo']}
+              title="Tratamientos que ofrece el asistente"
+              noteLabel="Importante:"
+              note="Si un tratamiento no está aquí, el asistente no lo ofrece."
+            />
+            <BoardCard
+              href="/dashboard/analytics"
+              tone="coral"
+              tags={['métricas']}
+              title="Cómo va la clínica"
+              noteLabel="Incluye:"
+              note="Llamadas, citas no asistidas e ingresos recuperados."
+              progress={stats.containmentRate}
+              progressLabel="Resueltas sin persona"
+            />
+          </BoardColumn>
+        </Reveal>
       </div>
     </>
-  );
-}
-
-const TILE_TONE = {
-  grape: 'bg-[#f4f0ff] text-violet-700 hover:bg-[#ede5ff]',
-  blossom: 'bg-[#fdf0f7] text-pink-700 hover:bg-[#fbe4f0]',
-  mint: 'bg-[#e9f9f2] text-emerald-700 hover:bg-[#d9f5e8]',
-  sky: 'bg-[#e9f4fe] text-sky-700 hover:bg-[#d8ecfd]',
-  honey: 'bg-[#fdf5e6] text-amber-700 hover:bg-[#fbecd3]',
-} as const;
-
-function QuickTile({
-  href,
-  icon,
-  label,
-  tone,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  label: string;
-  tone: keyof typeof TILE_TONE;
-}) {
-  return (
-    <Link
-      href={href}
-      className={`group/tile flex flex-col gap-2.5 rounded-2xl p-3.5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_14px_28px_-18px_rgba(23,20,41,0.5)] ${TILE_TONE[tone]}`}
-    >
-      <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/70 transition-transform duration-300 group-hover/tile:scale-110 group-hover/tile:-rotate-6">
-        {icon}
-      </span>
-      <span className="text-[12.5px] font-semibold leading-tight">{label}</span>
-    </Link>
   );
 }

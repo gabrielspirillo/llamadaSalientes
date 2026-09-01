@@ -34,7 +34,7 @@ export function PageHeader({
     >
       <div className="flex min-w-0 items-center gap-4">
         {icon && (
-          <span className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#7139e8,#a855f7_60%,#ec4899)] text-white shadow-[0_10px_26px_-12px_rgba(113,57,232,0.9)] sm:inline-flex">
+          <span className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#37766a,#5fa896_60%,#6bc2a4)] text-white shadow-[0_10px_26px_-12px_rgba(55,118,106,0.9)] sm:inline-flex">
             {icon}
           </span>
         )}

@@ -8,8 +8,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Onboarding · FUTURA',
-  description: 'Cargá los datos de tu clínica para activar tu agente de voz.',
+  title: 'Alta de clínica · FUTURA',
+  description: 'Rellena los datos de tu clínica para activar tu asistente de voz.',
 };
 
 // Primera pantalla después del registro (flujo: registro → onboarding →

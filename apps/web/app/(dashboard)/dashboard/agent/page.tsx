@@ -14,18 +14,18 @@ export default async function AgentPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Laboratorio"
+        eyebrow="Pruebas"
         icon={<Bot className="h-5 w-5" />}
-        title="Probar agente"
-        description="Hablá con tu agente de voz directamente desde el navegador, sin usar el teléfono."
+        title="Probar el asistente"
+        description="Habla con tu asistente de voz desde el navegador, sin usar el teléfono."
       />
 
       {!hasAgent ? (
         <Card>
           <EmptyState
             icon={<Bot className="h-5 w-5" />}
-            title="Agente no vinculado"
-            description="Tu administrador necesita vincular el agente antes de poder probarlo."
+            title="Asistente sin vincular"
+            description="Tu administrador tiene que vincular el asistente antes de que puedas probarlo."
           />
         </Card>
       ) : (

@@ -77,7 +77,7 @@ export function IconTextButton({
       onClick={onClick}
       className={cn(
         'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
-        tone === 'danger' ? 'text-rose-600 hover:bg-rose-50' : 'text-violet-700 hover:bg-violet-50',
+        tone === 'danger' ? 'text-rose-600 hover:bg-rose-50' : 'text-brand-700 hover:bg-violet-50',
       )}
     >
       {children}

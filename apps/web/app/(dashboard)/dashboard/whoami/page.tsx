@@ -20,7 +20,7 @@ export default async function WhoamiPage() {
   const orgSlug = a.orgSlug ?? null;
 
   const rows: { k: string; v: string | null; hint?: string }[] = [
-    { k: 'Tenant ID', v: t.id, hint: 'Este valor va en la env FUTURA_TENANT_ID' },
+    { k: 'Tenant ID', v: t.id, hint: 'Este valor va en la variable de entorno FUTURA_TENANT_ID' },
     { k: 'Slug', v: t.slug },
     { k: 'Nombre', v: t.name },
     { k: 'Estado', v: t.status },
@@ -58,7 +58,7 @@ export default async function WhoamiPage() {
                 <code className="break-all rounded bg-zinc-50 px-2 py-1 text-sm text-zinc-800 ring-1 ring-inset ring-zinc-200">
                   {r.v ?? '—'}
                 </code>
-                {r.hint && <p className="mt-1 text-xs text-violet-600">{r.hint}</p>}
+                {r.hint && <p className="mt-1 text-xs text-brand-600">{r.hint}</p>}
               </dd>
             </div>
           ))}
@@ -66,17 +66,17 @@ export default async function WhoamiPage() {
       </div>
 
       {!ctx.isSuperAdmin && (
-        <div className="mt-5 rounded-2xl border border-violet-200/70 bg-violet-50/60 p-5 text-sm text-zinc-700">
+        <div className="mt-5 rounded-2xl border border-brand-200 bg-brand-50/60 p-5 text-sm text-zinc-700">
           <p className="font-medium text-zinc-900">Para habilitar el Panel Futura</p>
           <ol className="mt-2 list-decimal space-y-1 pl-5">
             <li>
-              Copiá el <span className="font-medium">Tenant ID</span> de arriba.
+              Copia el <span className="font-medium">Tenant ID</span> de arriba.
             </li>
             <li>
               En Dokploy → servicio <span className="font-mono">cliniq-web</span> → Environment,
-              agregá <span className="font-mono">FUTURA_TENANT_ID=&lt;ese id&gt;</span>.
+              añade <span className="font-mono">FUTURA_TENANT_ID=&lt;ese id&gt;</span>.
             </li>
-            <li>Redeploy. Volvé a esta página: “Super-admin” debería figurar “Activo”.</li>
+            <li>Vuelve a desplegar y recarga esta página: “Super-admin” debe aparecer “Activo”.</li>
           </ol>
         </div>
       )}

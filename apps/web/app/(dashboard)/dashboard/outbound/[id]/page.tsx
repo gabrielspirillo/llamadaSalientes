@@ -25,9 +25,9 @@ function targetStatusBadge(status: string) {
     case 'ended':
       return <Badge tone="success">Contactado</Badge>;
     case 'voicemail':
-      return <Badge tone="warn">Buzón</Badge>;
+      return <Badge tone="warn">Buzón de voz</Badge>;
     case 'no_answer':
-      return <Badge tone="warn">No atendió</Badge>;
+      return <Badge tone="warn">Sin respuesta</Badge>;
     case 'busy':
       return <Badge tone="warn">Ocupado</Badge>;
     case 'failed':
@@ -82,8 +82,8 @@ export default async function OutboundCampaignDetail({
         <Stat label="Pendientes" value={summary.pending} />
         <Stat label="En curso" value={summary.ongoing} />
         <Stat label="Contactados" value={summary.completed} tone="success" />
-        <Stat label="Buzón" value={summary.voicemail} tone="warn" />
-        <Stat label="Fallidos" value={summary.failed} tone="danger" />
+        <Stat label="Buzón de voz" value={summary.voicemail} tone="warn" />
+        <Stat label="Sin contactar" value={summary.failed} tone="danger" />
       </div>
 
       <Card>
@@ -97,7 +97,7 @@ export default async function OutboundCampaignDetail({
                 </th>
                 <th className="text-left font-medium px-4 sm:px-5 py-3">Estado</th>
                 <th className="text-left font-medium px-4 sm:px-5 py-3 hidden md:table-cell">
-                  Razón
+                  Motivo
                 </th>
                 <th className="text-right font-medium px-4 sm:px-5 py-3 hidden md:table-cell">
                   Último intento
@@ -114,7 +114,7 @@ export default async function OutboundCampaignDetail({
                     {t.lastDisconnectionReason ?? t.lastError ?? '—'}
                   </td>
                   <td className="px-4 sm:px-5 py-3 text-right text-xs text-zinc-500 hidden md:table-cell">
-                    {t.lastAttemptAt ? new Date(t.lastAttemptAt).toLocaleString('es-AR') : '—'}
+                    {t.lastAttemptAt ? new Date(t.lastAttemptAt).toLocaleString('es-ES') : '—'}
                   </td>
                 </tr>
               ))}

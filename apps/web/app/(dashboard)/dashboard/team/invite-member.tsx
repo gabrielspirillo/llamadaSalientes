@@ -41,7 +41,9 @@ export function InviteMember() {
       <form onSubmit={submit} className="space-y-4 p-5">
         <div>
           <h3 className="text-sm font-semibold tracking-tight">Invitar a un miembro</h3>
-          <p className="mt-1 text-sm text-zinc-500">Le llega un email para unirse a tu clínica.</p>
+          <p className="mt-1 text-sm text-zinc-500">
+            Recibirá un correo con la invitación para unirse a tu clínica.
+          </p>
         </div>
 
         <div className="space-y-2">
@@ -65,7 +67,9 @@ export function InviteMember() {
             onChange={(e) => setRole(e.target.value)}
             className="flex h-11 w-full rounded-[14px] border border-[--color-border] bg-white px-4 text-sm transition-[border-color,box-shadow] duration-300 hover:border-brand-200 focus-visible:border-brand-400 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/12 px-3.5 text-sm focus-visible:border-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/25"
           >
-            <option value="org:member">Operador — puede operar, sin config crítica</option>
+            <option value="org:member">
+              Operador — usa el panel, sin la configuración crítica
+            </option>
             <option value="org:admin">Admin — acceso completo</option>
           </select>
         </div>

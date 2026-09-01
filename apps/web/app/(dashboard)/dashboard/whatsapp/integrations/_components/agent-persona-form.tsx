@@ -37,7 +37,7 @@ export function AgentPersonaForm({ initial }: Props) {
           value={agentName}
           onChange={(e) => setAgentName(e.target.value)}
           maxLength={60}
-          placeholder="Ej: Lucía"
+          placeholder="Por ejemplo: Lucía"
           className="mt-1 w-full rounded-lg border border-[--color-border] px-3 py-1.5 text-sm"
         />
       </label>
@@ -50,12 +50,12 @@ export function AgentPersonaForm({ initial }: Props) {
           onChange={(e) => setPersona(e.target.value)}
           maxLength={2000}
           rows={5}
-          placeholder="Ej: Tono cálido y cercano. Mencioná la promo de blanqueamiento cuando encaje. Tratá de usted a mayores."
+          placeholder="Por ejemplo: tono cálido y cercano. Menciona la promoción de blanqueamiento cuando encaje. Trata de usted a las personas mayores."
           className="mt-1 w-full rounded-lg border border-[--color-border] px-3 py-1.5 text-sm"
         />
         <span className="mt-1 block text-[11px] text-zinc-400">
           Afina el tono y el foco del agente. No anula las reglas de seguridad, los datos oficiales
-          ni los protocolos de urgencia/handoff. ({persona.length}/2000)
+          ni los protocolos de urgencia y de paso a una persona. ({persona.length}/2000)
         </span>
       </label>
       {feedback && (
@@ -70,7 +70,7 @@ export function AgentPersonaForm({ initial }: Props) {
       <button
         type="submit"
         disabled={pending}
-        className="rounded-full bg-[linear-gradient(120deg,#7139e8,#8b5cf6)] px-5 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+        className="rounded-full bg-[linear-gradient(120deg,#37766a,#5fa896)] px-5 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
       >
         {pending ? 'Guardando…' : 'Guardar personalización'}
       </button>

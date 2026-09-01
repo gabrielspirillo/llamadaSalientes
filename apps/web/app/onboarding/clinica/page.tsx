@@ -2,8 +2,8 @@ import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Onboarding · FUTURA',
-  description: 'Cargá los datos de tu clínica para activar tu agente de voz.',
+  title: 'Alta de clínica · FUTURA',
+  description: 'Rellena los datos de tu clínica para activar tu asistente de voz.',
 };
 
 // Página PÚBLICA para el flujo POR-CLÍNICA con key firmada:

@@ -37,7 +37,7 @@ export function ConversationActions({ conversationId, status, urgentFlag }: Prop
           disabled={pending}
           className="rounded-full bg-[linear-gradient(120deg,#d97706,#fbbf24)] px-3.5 py-1.5 text-[12px] font-semibold text-white shadow-[0_6px_18px_-8px_rgba(245,158,11,0.8)] transition-all duration-300 hover:-translate-y-0.5 active:scale-95 disabled:opacity-50"
         >
-          Tomar conversación (2 h)
+          Atender yo (2 h)
         </button>
       )}
 

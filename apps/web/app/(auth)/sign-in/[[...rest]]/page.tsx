@@ -17,11 +17,11 @@ export default function SignInPage() {
       <AuthAside eyebrow="Caso real">
         <Quote className="mb-5 h-8 w-8 text-white/25" />
         <blockquote className="text-[26px] font-bold leading-snug tracking-tight">
-          Pasamos de perder 3 de cada 10 llamadas a contestar el 100%. La conversión a cita subió
-          28% en el primer mes.
+          Pasamos de perder 3 de cada 10 llamadas a contestarlas todas. Las citas cerradas por
+          teléfono subieron un 28% el primer mes.
         </blockquote>
         <div className="mt-8 flex items-center gap-3">
-          <div className="h-11 w-11 rounded-full bg-[linear-gradient(135deg,#a855f7,#ec4899)] ring-2 ring-white/20" />
+          <div className="h-11 w-11 rounded-full bg-[linear-gradient(135deg,#5fa896,#6bc2a4)] ring-2 ring-white/20" />
           <div>
             <p className="text-[14px] font-bold">Dra. Patricia Mendoza</p>
             <p className="text-[13px] text-white/60">Directora · Sonrisa Clínica Estética</p>
@@ -32,7 +32,7 @@ export default function SignInPage() {
           {[
             { k: '100%', v: 'llamadas atendidas' },
             { k: '+28%', v: 'conversión a cita' },
-            { k: '24/7', v: 'sin descansos' },
+            { k: '24 h', v: 'todos los días' },
           ].map((s, i) => (
             <div
               key={s.k}

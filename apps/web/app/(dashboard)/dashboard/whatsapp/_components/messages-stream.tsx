@@ -116,11 +116,11 @@ export function MessagesStream({ conversationId, initialMessages, senderUserEmai
     <div
       ref={scrollContainerRef}
       onScroll={onScroll}
-      className="flex-1 overflow-y-auto bg-[linear-gradient(180deg,#fbfaff_0%,#f6f5fb_100%)] p-4"
+      className="flex-1 overflow-y-auto bg-[linear-gradient(180deg,#fafdfb_0%,#f6f5fb_100%)] p-4"
     >
       {empty ? (
         <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
-          <span className="inline-flex h-12 w-12 animate-float items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#e9f9f2,#f4f0ff)]" />
+          <span className="inline-flex h-12 w-12 animate-float items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#e9f9f2,#effaf5)]" />
           <p className="text-[13px] text-zinc-500">Sin mensajes aún.</p>
         </div>
       ) : (

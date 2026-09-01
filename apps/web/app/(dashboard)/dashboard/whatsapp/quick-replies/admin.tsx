@@ -103,7 +103,7 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
             type="text"
             value={shortcut}
             onChange={(e) => setShortcut(e.target.value.replace(/[^a-z0-9_-]/gi, '').slice(0, 32))}
-            placeholder="atajo (ej: saludo)"
+            placeholder="Atajo (por ejemplo: saludo)"
             className="rounded-lg border border-[--color-border] px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
             required
           />

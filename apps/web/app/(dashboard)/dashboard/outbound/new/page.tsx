@@ -11,7 +11,7 @@ export default function NewOutboundCampaignPage() {
         eyebrow="Canal saliente"
         icon={<PhoneOutgoing className="h-5 w-5" />}
         title="Nueva campaña"
-        description="Cargá un CSV con los teléfonos. Lo lanzás desde el detalle cuando todo esté listo."
+        description="Sube un CSV con los teléfonos. La campaña se lanza desde su ficha cuando todo esté listo."
       />
       <div className="max-w-3xl">
         <OutboundCampaignForm />

@@ -29,8 +29,8 @@ export default async function ConfigurationPage({
         <PageHeader
           eyebrow="Estado"
           icon={<ShieldCheck className="h-5 w-5" />}
-          title="Estado de tu agente"
-          description="Cómo va la puesta a punto de tu agente de voz."
+          title="Estado de tu asistente"
+          description="Cómo va la puesta a punto de tu asistente de voz."
         />
         <AgentStatusPanel />
       </>

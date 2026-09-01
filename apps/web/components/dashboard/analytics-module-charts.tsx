@@ -37,7 +37,7 @@ const STATUS_COLORS = {
 function ChartEmpty({ label }: { label: string }) {
   return (
     <div className="flex h-56 flex-col items-center justify-center gap-2 text-sm text-zinc-400">
-      <span className="inline-flex h-10 w-10 animate-float items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#f4f0ff,#fdf0f7)]" />
+      <span className="inline-flex h-10 w-10 animate-float items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#effaf5,#fdf0f7)]" />
       {label}
     </div>
   );

@@ -140,7 +140,7 @@ export async function OutboundModule({ tenantId }: { tenantId: string }) {
                 campaigns.map((c, i) => (
                   <div
                     key={c.campaignId}
-                    className="rounded-2xl border border-[--color-border] p-3 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-[0_12px_26px_-18px_rgba(23,20,41,0.5)]"
+                    className="rounded-2xl border border-[--color-border] p-3 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-[0_12px_26px_-18px_rgba(20,33,29,0.5)]"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">

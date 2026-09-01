@@ -123,7 +123,7 @@ export async function WhatsappPanel() {
             <code className="block break-all text-[11px] text-zinc-600">{twilioWebhookUrl}</code>
             <div className="mt-2 font-medium">Cómo configurarlo</div>
             <p className="text-[11px] text-zinc-600">
-              En Twilio Console → Messaging → WhatsApp sender, pegá la URL en
+              En Twilio Console → Messaging → WhatsApp sender, pega la URL en
               <em> When a message comes in</em> con método HTTP <code>POST</code>. Twilio firma cada
               request con tu Auth Token; lo verificamos en cada callback.
             </p>

@@ -83,7 +83,7 @@ export function TreatmentDialog({
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Editar tratamiento' : 'Nuevo tratamiento'}</DialogTitle>
           <DialogDescription>
-            El agente lo va a ofrecer y agendar usando este nombre, duración y precio.
+            El agente lo ofrecerá y dará cita con este nombre, esta duración y este precio.
           </DialogDescription>
         </DialogHeader>
 
@@ -155,7 +155,7 @@ export function TreatmentDialog({
           </div>
 
           <div>
-            <Label htmlFor="price">Precio referencial (€)</Label>
+            <Label htmlFor="price">Precio de referencia (€)</Label>
             <Input
               id="price"
               name="price"
@@ -169,24 +169,24 @@ export function TreatmentDialog({
               className="mt-1.5"
             />
             <p className="text-xs text-zinc-500 mt-1.5">
-              Se usa para calcular el revenue recuperado cuando el sistema llena un slot cancelado
-              con este tratamiento. Dejalo vacío si no querés contabilizarlo.
+              Se usa para calcular los ingresos recuperados cuando el sistema cubre un hueco
+              cancelado con este tratamiento. Déjalo vacío si no quieres contabilizarlo.
             </p>
           </div>
 
           {!isEdit && (
-            <div className="rounded-xl border border-[--color-border] bg-[#fbfaff] p-4 space-y-3">
+            <div className="rounded-xl border border-[--color-border] bg-[#fafdfb] p-4 space-y-3">
               <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-violet-600" />
+                <Calendar className="h-4 w-4 text-brand-600" />
                 <p className="text-sm font-medium">Horarios de atención (opcional)</p>
               </div>
               <p className="text-xs text-zinc-500">
-                Si lo definís acá, vamos a crear un calendario en GHL automáticamente con estos días
-                y horarios. Si no, podés conectar uno existente después.
+                Si los defines aquí, crearemos un calendario en GoHighLevel con estos días y estas
+                horas. Si no, puedes conectar uno que ya tengas más adelante.
               </p>
 
               <div>
-                <Label>Días que se ofrece</Label>
+                <Label>Días en que se ofrece</Label>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {WEEK_DAYS.map((d) => {
                     const active = selectedDays.has(d.key);

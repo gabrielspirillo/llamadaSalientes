@@ -20,7 +20,7 @@ export default function BillingPage() {
         eyebrow="Cuenta"
         icon={<Wallet className="h-5 w-5" />}
         title="Facturación"
-        description="Plan, consumo del mes y historial de facturas."
+        description="Tu plan, el consumo del mes y el historial de facturas."
         demoBadge
       />
 
@@ -30,7 +30,7 @@ export default function BillingPage() {
           <Card tone="night" className="h-full overflow-hidden p-6">
             <div
               aria-hidden
-              className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 animate-float rounded-full bg-[radial-gradient(circle,rgba(139,92,246,0.55),transparent_70%)] blur-3xl"
+              className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 animate-float rounded-full bg-[radial-gradient(circle,rgba(95,168,150,0.55),transparent_70%)] blur-3xl"
             />
             <div className="relative flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
@@ -56,7 +56,7 @@ export default function BillingPage() {
                     <div className="bar-fill h-full w-[64%] rounded-full bg-[linear-gradient(90deg,#34d399,#a7f3d0)]" />
                   </div>
                   <p className="mt-2 text-[11px] text-white/50">
-                    213 min restantes · Overage 0,20 €/min
+                    Quedan 213 min · Cada minuto extra, 0,20 €
                   </p>
                 </div>
 
@@ -88,8 +88,8 @@ export default function BillingPage() {
               subtitle="Tarjeta asociada a la suscripción"
             />
             <div className="px-5 pb-5 sm:px-6 sm:pb-6">
-              <div className="flex items-center gap-3 rounded-2xl border border-[--color-border] bg-[#fbfaff] p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]">
-                <div className="flex h-10 w-14 items-center justify-center rounded-lg bg-[linear-gradient(135deg,#7139e8,#a855f7)] text-[11px] font-bold tracking-wide text-white">
+              <div className="flex items-center gap-3 rounded-2xl border border-[--color-border] bg-[#fafdfb] p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]">
+                <div className="flex h-10 w-14 items-center justify-center rounded-lg bg-[linear-gradient(135deg,#37766a,#5fa896)] text-[11px] font-bold tracking-wide text-white">
                   VISA
                 </div>
                 <div>

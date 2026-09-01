@@ -20,15 +20,15 @@ export default async function ContactsPage() {
       <>
         <PageHeader
           eyebrow="CRM"
-          title="Contactos"
+          title="Pacientes"
           description="Pacientes registrados en tu CRM."
           icon={<Contact className="h-5 w-5" />}
         />
         <Card>
           <EmptyState
             icon={<PlugZap className="h-5 w-5" />}
-            title="Conectá GoHighLevel primero"
-            description="Para ver tus contactos necesitamos la integración con GHL configurada."
+            title="Conecta GoHighLevel primero"
+            description="Para ver tus contactos, antes tienes que configurar la integración con GoHighLevel."
             action={
               <Button asChild size="sm">
                 <Link href="/dashboard/configuration?tab=integrations">Ir a configuración</Link>
@@ -47,7 +47,7 @@ export default async function ContactsPage() {
       <PageHeader
         eyebrow="CRM"
         icon={<Contact className="h-5 w-5" />}
-        title="Contactos"
+        title="Pacientes"
         description={
           total > 0
             ? `${total.toLocaleString('es-ES')} pacientes registrados en tu CRM`

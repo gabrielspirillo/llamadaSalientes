@@ -36,7 +36,7 @@ export default async function TeamPage() {
         <EmptyState
           icon={<Users className="h-5 w-5" />}
           title="Sin organización activa"
-          description="Necesitás una organización activa para ver al equipo."
+          description="Necesitas una organización activa para ver el equipo."
         />
       </Card>
     );
@@ -77,7 +77,7 @@ export default async function TeamPage() {
             description={
               impersonating
                 ? 'La gestión del equipo se hace desde la cuenta de la clínica.'
-                : 'Reintentá en unos segundos.'
+                : 'Vuelve a intentarlo en unos segundos.'
             }
           />
         </Card>
@@ -96,8 +96,8 @@ export default async function TeamPage() {
 
       {impersonating ? (
         <Callout tone="brand" icon={<Info className="h-4 w-4" />} className="mb-5">
-          En modo Futura no podés invitar miembros de esta clínica. La gestión del equipo se hace
-          desde la cuenta de la clínica.
+          En modo Futura no puedes invitar a miembros de esta clínica. El equipo se gestiona desde
+          la cuenta de la propia clínica.
         </Callout>
       ) : (
         <div className="mb-5">
@@ -111,7 +111,7 @@ export default async function TeamPage() {
             <EmptyState
               icon={<MailPlus className="h-5 w-5" />}
               title="Aún no hay miembros"
-              description="Usá “Invitar miembro” para sumar a tu equipo al panel."
+              description="Usa “Invitar miembro” para dar acceso al panel a tu equipo."
             />
           ) : null}
 

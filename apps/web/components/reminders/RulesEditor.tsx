@@ -135,7 +135,7 @@ export function RulesEditor(props: {
           return [...without, data.template];
         });
       } else {
-        alert(`No se pudo guardar la plantilla: ${data.error ?? 'error desconocido'}`);
+        alert(`No se ha podido guardar la plantilla: ${data.error ?? 'error desconocido'}`);
         console.error('[upsertTemplate] failed', { status: res.status, data });
       }
     });
@@ -144,7 +144,7 @@ export function RulesEditor(props: {
   async function runBackfill() {
     if (
       !confirm(
-        'Esto va a programar recordatorios para TODAS las citas futuras que ya tengas cargadas en GHL. ¿Confirmás?',
+        'Se van a programar recordatorios para TODAS las citas futuras que ya tengas en GoHighLevel. ¿Continuamos?',
       )
     )
       return;
@@ -153,14 +153,16 @@ export function RulesEditor(props: {
     console.debug('[reminders] backfill response', { status: res.status, data });
     if (res.ok && data.ok) {
       alert(
-        `✓ Backfill completo.\n\n` +
+        `✓ Recordatorios programados.\n\n` +
           `Citas procesadas: ${data.appointmentsProcessed}\n` +
           `Recordatorios programados: ${data.scheduled}\n` +
           `Omitidos: ${data.skipped}\n` +
           (data.errors ? `Errores: ${data.errors}\n` : ''),
       );
     } else {
-      alert(`No se pudo correr el backfill.\n\nMotivo: ${data.error ?? 'error desconocido'}`);
+      alert(
+        `No se han podido programar los recordatorios.\n\nMotivo: ${data.error ?? 'error desconocido'}`,
+      );
     }
   }
 
@@ -175,18 +177,18 @@ export function RulesEditor(props: {
             <p className="mt-1 text-xs text-zinc-600">
               Una vez que configures las reglas y plantillas, el sistema programa los recordatorios
               <b> automáticamente</b> cada vez que se crea o se modifica una cita en GoHighLevel.
-              Para las citas que <b>ya estaban</b> agendadas antes de configurar esto, usá el botón
-              de la derecha para programarlas en lote.
+              Para las citas que <b>ya estaban</b> puestas antes de configurar esto, usa el botón de
+              la derecha y se programarán todas de golpe.
             </p>
           </div>
           <Button size="sm" variant="secondary" onClick={runBackfill} className="shrink-0">
-            Backfill citas existentes
+            Programar las citas ya existentes
           </Button>
         </div>
       </section>
 
       <section>
-        <h2 className="text-sm font-semibold text-zinc-700 mb-2">Reglas globales</h2>
+        <h2 className="text-sm font-semibold text-zinc-700 mb-2">Reglas generales</h2>
         {global ? (
           <RuleSetSection
             ruleSet={global}
@@ -201,19 +203,19 @@ export function RulesEditor(props: {
           />
         ) : (
           <div className="rounded-lg border border-dashed border-[--color-border] p-4 text-sm text-zinc-500">
-            <p>Todavía no hay configuración global. Creala para arrancar.</p>
+            <p>Todavía no hay una configuración general. Créala para empezar.</p>
             <Button size="sm" className="mt-3" onClick={createGlobal} disabled={pending}>
-              Crear set global
+              Crear configuración general
             </Button>
           </div>
         )}
       </section>
 
       <section>
-        <h2 className="text-sm font-semibold text-zinc-700 mb-2">Overrides por tratamiento</h2>
+        <h2 className="text-sm font-semibold text-zinc-700 mb-2">Reglas por tratamiento</h2>
         <p className="text-xs text-zinc-500 mb-2">
-          Si querés reglas distintas para un tratamiento específico, créalas acá. Cuando una cita es
-          de ese tratamiento, se usan estas reglas en lugar de las globales.
+          Si quieres reglas distintas para un tratamiento concreto, créalas aquí. Cuando la cita sea
+          de ese tratamiento, se usarán estas reglas en lugar de las generales.
         </p>
         <TreatmentOverridesSection
           ruleSets={ruleSets}
@@ -260,7 +262,7 @@ function RuleSetSection(props: {
     <div className="space-y-3">
       {props.rules.length === 0 ? (
         <Card className="p-4 text-sm text-zinc-500">
-          Sin reglas. Añadí la primera para programar recordatorios.
+          Todavía no hay reglas. Añade la primera para empezar a programar recordatorios.
         </Card>
       ) : (
         props.rules.map((r) => (
@@ -299,7 +301,7 @@ function RuleRow(props: {
         <input
           type="text"
           defaultValue={props.rule.label ?? ''}
-          placeholder="Etiqueta (ej: 24h antes)"
+          placeholder="Nombre (por ejemplo: 24 h antes)"
           onBlur={(e) => props.onPatch({ label: e.target.value || null })}
           className="rounded-md border border-[--color-border] px-3 py-1.5 text-sm w-full md:w-44"
         />
@@ -329,9 +331,9 @@ function RuleRow(props: {
           }}
           className="rounded-md border border-[--color-border] px-2 py-1.5 text-sm"
         >
-          <option value="">Sin fallback</option>
-          <option value="WHATSAPP">Fallback WA</option>
-          <option value="VOICE">Fallback voz</option>
+          <option value="">Sin segundo intento</option>
+          <option value="WHATSAPP">Si no responde, WhatsApp</option>
+          <option value="VOICE">Si no responde, llamada</option>
         </select>
         {props.rule.fallbackChannel && (
           <div className="flex items-center gap-2">
@@ -575,12 +577,12 @@ function TemplateEditor(props: {
     console.debug('[reminders] test-send response', { status: res.status, data });
     if (res.ok && data.ok !== false) {
       if (data.callId) {
-        alert(`✓ Llamada de prueba iniciada a ${testPhone}.\nID Retell: ${data.callId}`);
+        alert(`✓ Llamada de prueba iniciada a ${testPhone}.\nID de la llamada: ${data.callId}`);
       } else {
-        alert(`✓ Mensaje de prueba enviado a ${testPhone}.\nRevisá tu WhatsApp en unos segundos.`);
+        alert(`✓ Mensaje de prueba enviado a ${testPhone}.\nRevisa tu WhatsApp en unos segundos.`);
       }
     } else {
-      alert(`No se pudo enviar la prueba.\n\nMotivo: ${data.error ?? 'error desconocido'}`);
+      alert(`No se ha podido enviar la prueba.\n\nMotivo: ${data.error ?? 'error desconocido'}`);
     }
   }
 
@@ -601,7 +603,7 @@ function TemplateEditor(props: {
           </select>
         ) : (
           <span className="rounded-md border border-[--color-border] bg-zinc-50 px-3 py-1.5 text-sm text-zinc-700">
-            {available[0]?.label ?? 'Sin driver disponible'}
+            {available[0]?.label ?? 'Sin canal disponible'}
           </span>
         )}
         <Badge tone={current ? 'success' : 'neutral'}>
@@ -609,7 +611,7 @@ function TemplateEditor(props: {
         </Badge>
         {!props.activeWhatsAppMode && driverChannel === 'WHATSAPP' && (
           <span className="text-xs text-amber-600">
-            ⚠ Conecta WhatsApp en /dashboard/whatsapp para habilitar esta plantilla.
+            ⚠ Conecta una cuenta de WhatsApp para poder usar esta plantilla.
           </span>
         )}
       </div>
@@ -618,7 +620,7 @@ function TemplateEditor(props: {
       <div className="rounded-md border border-[--color-border] bg-zinc-50 p-3">
         <p className="mb-2 text-xs font-medium text-zinc-700">
           Variables disponibles{' '}
-          <span className="font-normal text-zinc-500">(click para insertar)</span>
+          <span className="font-normal text-zinc-500">(haz clic para insertarlas)</span>
         </p>
         <div className="flex flex-wrap gap-1.5">
           {REMINDER_VARIABLES.map((v) => (
@@ -638,7 +640,7 @@ function TemplateEditor(props: {
       {driverChannel === 'WHATSAPP' && selectedDriver !== 'whatsapp_evolution' && (
         <input
           type="text"
-          placeholder="Nombre de plantilla aprobada (ej: dental_reminder_24h)"
+          placeholder="Nombre de la plantilla aprobada (por ejemplo: dental_reminder_24h)"
           value={templateName}
           onChange={(e) => setTemplateName(e.target.value)}
           className="w-full rounded-md border border-[--color-border] px-3 py-1.5 text-sm"
@@ -734,7 +736,7 @@ function TreatmentOverridesSection(props: {
         return (
           <div key={rs.id}>
             <h3 className="text-sm font-medium text-zinc-700 mb-2">
-              {treatment?.name ?? `Treatment ${rs.treatmentId}`}
+              {treatment?.name ?? `Tratamiento ${rs.treatmentId}`}
             </h3>
             <RuleSetSection
               ruleSet={rs}
@@ -759,7 +761,7 @@ function TreatmentOverridesSection(props: {
             defaultValue=""
           >
             <option value="" disabled>
-              Seleccionar tratamiento…
+              Elige un tratamiento…
             </option>
             {available.map((t) => (
               <option key={t.id} value={t.id}>
@@ -775,7 +777,7 @@ function TreatmentOverridesSection(props: {
               if (el?.value) props.onCreateSet(el.value);
             }}
           >
-            + Crear override
+            + Crear reglas para este tratamiento
           </Button>
         </div>
       )}

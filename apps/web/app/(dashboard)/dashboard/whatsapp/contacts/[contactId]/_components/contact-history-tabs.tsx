@@ -109,13 +109,13 @@ function Atributos({
     <div className="space-y-4">
       <div>
         <div className="flex items-center justify-between text-xs">
-          <span className="font-semibold uppercase text-zinc-500">CRM_LINK</span>
+          <span className="font-semibold uppercase text-zinc-500">Ficha en el CRM</span>
           {ghlContactId ? (
             <span className="font-mono text-[10px] text-zinc-600">
               {ghlContactId.slice(0, 12)}…
             </span>
           ) : (
-            <span className="text-zinc-400">Sin enlace</span>
+            <span className="text-zinc-400">Sin vincular</span>
           )}
         </div>
       </div>
@@ -328,7 +328,7 @@ function Notas({ contactId, notes }: { contactId: string; notes: NoteItem[] }) {
           {error ? (
             <span className="text-xs text-rose-700">{error}</span>
           ) : (
-            <span className="text-[10px] text-zinc-400">Markdown soportado</span>
+            <span className="text-[10px] text-zinc-400">Admite formato Markdown</span>
           )}
           <button
             type="button"
@@ -343,8 +343,7 @@ function Notas({ contactId, notes }: { contactId: string; notes: NoteItem[] }) {
 
       {notes.length === 0 ? (
         <p className="text-center text-sm text-zinc-500">
-          No hay notas asociadas a este contacto. Puede añadir una nota escribiendo en el recuadro
-          superior.
+          No hay notas de este contacto. Puedes añadir una escribiendo en el recuadro de arriba.
         </p>
       ) : (
         <ul className="space-y-2">
@@ -438,7 +437,7 @@ function Combinar({ contactId }: { contactId: string }) {
     if (!selected) return;
     setError(null);
     const confirmed = window.confirm(
-      `¿Combinar este contacto con "${selected.name ?? selected.phoneE164}"? El contacto seleccionado se borrará y todas sus conversaciones, notas y citas pasarán al actual.`,
+      `¿Combinar este contacto con "${selected.name ?? selected.phoneE164}"? El contacto seleccionado se borrará y todas sus conversaciones, notas y citas pasarán a este.`,
     );
     if (!confirmed) return;
     startTransition(async () => {
@@ -457,8 +456,8 @@ function Combinar({ contactId }: { contactId: string }) {
   return (
     <div className="space-y-3">
       <p className="text-xs text-zinc-500">
-        Buscá el contacto duplicado a combinar. Sus conversaciones, notas y citas pasarán al
-        contacto actual y luego será eliminado.
+        Busca el contacto duplicado que quieres combinar. Sus conversaciones, notas y citas pasarán
+        a este contacto y después se eliminará.
       </p>
       <input
         type="text"
@@ -503,7 +502,7 @@ function Combinar({ contactId }: { contactId: string }) {
       {selected && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
           <p className="text-xs text-amber-800">
-            Vas a mergear <strong>{selected.name ?? selected.phoneE164}</strong> en este contacto.
+            Vas a combinar <strong>{selected.name ?? selected.phoneE164}</strong> con este contacto.
             Esta acción no se puede deshacer.
           </p>
           {error && <p className="mt-1 text-xs text-rose-700">{error}</p>}

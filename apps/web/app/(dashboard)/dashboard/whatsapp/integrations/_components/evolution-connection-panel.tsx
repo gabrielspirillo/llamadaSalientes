@@ -49,7 +49,7 @@ export function EvolutionConnectionPanel({ initial }: Props) {
         if (res.data.status === 'CONNECTED') {
           setQrBase64(null);
           setPairingCode(null);
-          setFeedback({ ok: true, msg: '¡Número vinculado! La instancia está conectada.' });
+          setFeedback({ ok: true, msg: 'Número vinculado. La conexión está activa.' });
         }
       }
     }, 4000);
@@ -72,7 +72,7 @@ export function EvolutionConnectionPanel({ initial }: Props) {
         setStatus('PENDING');
         setFeedback({
           ok: true,
-          msg: 'Escaneá el QR (o usá el código de vinculación) desde WhatsApp → Dispositivos vinculados.',
+          msg: 'Escanea el QR (o usa el código de vinculación) desde WhatsApp → Dispositivos vinculados.',
         });
       } else {
         // Sin QR ⇒ la instancia ya estaba conectada. Confirmamos el estado real.
@@ -91,7 +91,7 @@ export function EvolutionConnectionPanel({ initial }: Props) {
         setStatus(res.data.status);
         setFeedback({
           ok: true,
-          msg: `Estado servidor: ${res.data.state} → mapeado a ${res.data.status}`,
+          msg: `Estado en el servidor: ${res.data.state} → se interpreta como ${res.data.status}`,
         });
       } else {
         setFeedback({ ok: false, msg: res.error });
@@ -100,14 +100,15 @@ export function EvolutionConnectionPanel({ initial }: Props) {
   }
 
   function onDisconnect() {
-    if (!confirm('¿Desconectar Evolution? Se cerrará la sesión WhatsApp en el servidor.')) return;
+    if (!confirm('¿Desconectar Evolution? Se cerrará la sesión de WhatsApp en el servidor.'))
+      return;
     startTransition(async () => {
       const res = await disconnect({ mode: 'EVOLUTION' });
       if (res.success) {
         setQrBase64(null);
         setPairingCode(null);
         setStatus('DISCONNECTED');
-        setFeedback({ ok: true, msg: 'Desconectado. La sesión WhatsApp se cerró.' });
+        setFeedback({ ok: true, msg: 'Desconectado. La sesión de WhatsApp se ha cerrado.' });
       } else {
         setFeedback({ ok: false, msg: res.error });
       }
@@ -118,14 +119,14 @@ export function EvolutionConnectionPanel({ initial }: Props) {
     <div className="space-y-3">
       {instanceName && (
         <div className="text-xs text-zinc-600">
-          Instancia: <code className="rounded bg-zinc-100 px-1 py-0.5">{instanceName}</code>
+          Conexión: <code className="rounded bg-zinc-100 px-1 py-0.5">{instanceName}</code>
         </div>
       )}
 
       {qrBase64 && status !== 'CONNECTED' && (
         <div className="rounded-lg border border-[--color-border] bg-zinc-50 p-4 text-center">
           <p className="mb-2 text-xs text-zinc-600">
-            Escaneá este QR desde WhatsApp → Dispositivos vinculados
+            Escanea este QR desde WhatsApp → Dispositivos vinculados
           </p>
           <Image
             src={qrBase64.startsWith('data:') ? qrBase64 : `data:image/png;base64,${qrBase64}`}
@@ -137,13 +138,14 @@ export function EvolutionConnectionPanel({ initial }: Props) {
           />
           {pairingCode && (
             <div className="mt-2 text-xs text-zinc-600">
-              ¿No podés escanear? Usá este código:{' '}
+              ¿No puedes escanear? Usa este código:{' '}
               <code className="rounded bg-white px-2 py-0.5 font-mono text-sm">{pairingCode}</code>
             </div>
           )}
           {status === 'PENDING' && (
             <p className="mt-2 text-[11px] text-zinc-500">
-              Verificando estado cada 4s… El QR caduca en ~60s; volvé a tocar "Pedir QR" si tarda.
+              Comprobando el estado cada 4 s. El QR caduca en unos 60 s; vuelve a pulsar «Pedir QR»
+              si tarda.
             </p>
           )}
         </div>
@@ -184,7 +186,7 @@ export function EvolutionConnectionPanel({ initial }: Props) {
             disabled={pending}
             className="rounded-full border border-[--color-border] bg-white px-4 py-2 text-[13px] font-semibold text-zinc-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:text-brand-700 active:scale-95 disabled:opacity-50"
           >
-            Verificar estado
+            Comprobar estado
           </button>
         )}
         {initial && (
@@ -210,7 +212,7 @@ export function EvolutionConnectionPanel({ initial }: Props) {
             onClick={() => setShowChatwoot((v) => !v)}
             className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-medium text-zinc-700"
           >
-            <span>Bridge Chatwoot (opcional)</span>
+            <span>Conexión con Chatwoot (opcional)</span>
             <span>{showChatwoot ? '▾' : '▸'}</span>
           </button>
           {showChatwoot && <ChatwootBridgeForm />}
@@ -239,7 +241,7 @@ function ChatwootBridgeForm() {
       const res = await setChatwoot(input);
       setFeedback(
         res.success
-          ? { ok: true, msg: 'Chatwoot conectado. Mirá tu inbox "API" en Chatwoot.' }
+          ? { ok: true, msg: 'Chatwoot conectado. Revisa tu bandeja «API» en Chatwoot.' }
           : { ok: false, msg: res.error },
       );
     });
@@ -251,7 +253,7 @@ function ChatwootBridgeForm() {
       const res = await disconnectChatwoot();
       setFeedback(
         res.success
-          ? { ok: true, msg: 'Bridge Chatwoot desactivado.' }
+          ? { ok: true, msg: 'Conexión con Chatwoot desactivada.' }
           : { ok: false, msg: res.error },
       );
     });
@@ -304,7 +306,8 @@ function ChatwootBridgeForm() {
           <input type="checkbox" name="signMsg" /> Firmar mensajes salientes
         </label>
         <label className="inline-flex items-center gap-1">
-          <input type="checkbox" name="reopenConversation" defaultChecked /> Reabrir conv si vuelve
+          <input type="checkbox" name="reopenConversation" defaultChecked /> Reabrir la conversación
+          si vuelve a escribir
         </label>
       </div>
       {feedback && (
@@ -330,7 +333,7 @@ function ChatwootBridgeForm() {
           disabled={pending}
           className="rounded border border-[--color-border] bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-brand-50/50 disabled:opacity-50"
         >
-          Desactivar bridge
+          Desactivar conexión
         </button>
       </div>
     </form>

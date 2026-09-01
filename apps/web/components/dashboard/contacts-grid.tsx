@@ -24,7 +24,7 @@ type Contact = {
 };
 
 const GRADIENTS = [
-  'from-violet-500 to-pink-500',
+  'from-brand-500 to-pink-500',
   'from-blue-500 to-cyan-500',
   'from-emerald-500 to-teal-500',
   'from-amber-500 to-orange-500',
@@ -174,7 +174,7 @@ export function ContactsGrid({ initial }: { initial: Contact[] }) {
                 <div className="p-4 sm:p-5">
                   <div className="flex items-start gap-3">
                     <div
-                      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${gradientFor(c.id)} text-sm font-bold text-white shadow-[0_8px_20px_-10px_rgba(23,20,41,0.7)] ring-2 ring-white transition-transform duration-500 group-hover:-rotate-6 group-hover:scale-110`}
+                      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${gradientFor(c.id)} text-sm font-bold text-white shadow-[0_8px_20px_-10px_rgba(20,33,29,0.7)] ring-2 ring-white transition-transform duration-500 group-hover:-rotate-6 group-hover:scale-110`}
                     >
                       {initialsOf(c)}
                     </div>

@@ -50,7 +50,7 @@ export async function updateFaqAction(id: string, formData: FormData): Promise<A
   }
 
   const before = await getFaqById(tenant.id, id);
-  if (!before) return { ok: false, error: 'FAQ no encontrada' };
+  if (!before) return { ok: false, error: 'No se ha encontrado la pregunta' };
 
   const after = await updateFaq(tenant.id, id, parsed.data);
 
@@ -70,7 +70,7 @@ export async function updateFaqAction(id: string, formData: FormData): Promise<A
 export async function deleteFaqAction(id: string): Promise<ActionResult> {
   const { tenant } = await getCurrentTenant();
   const before = await getFaqById(tenant.id, id);
-  if (!before) return { ok: false, error: 'FAQ no encontrada' };
+  if (!before) return { ok: false, error: 'No se ha encontrado la pregunta' };
 
   await deleteFaq(tenant.id, id);
 

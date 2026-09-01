@@ -34,7 +34,7 @@ export async function inviteMemberAction(input: {
   if (impersonating) {
     return {
       ok: false,
-      error: 'La gestión del equipo de una clínica se hace desde su propia cuenta, no en modo Futura.',
+      error: 'El equipo de una clínica se gestiona desde su propia cuenta, no en modo Futura.',
     };
   }
 

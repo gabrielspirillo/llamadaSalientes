@@ -73,8 +73,8 @@ function DisconnectedState() {
           <span className="text-zinc-600">No conectada</span>
         </div>
         <p className="text-sm text-zinc-500 mt-3 leading-relaxed">
-          Conectá tu sub-account de GHL para que el agente pueda agendar citas, sincronizar
-          contactos y leer calendarios.
+          Conecta tu subcuenta de GoHighLevel para que el agente pueda dar citas, sincronizar
+          contactos y consultar los calendarios.
         </p>
 
         <div className="mt-5 space-y-2">
@@ -88,8 +88,8 @@ function DisconnectedState() {
               <DialogHeader>
                 <DialogTitle>Conectar GHL con Private Integration Token</DialogTitle>
                 <DialogDescription>
-                  En GHL: Settings → Integrations → Private Integrations → New Integration. Copiá el
-                  token y el Location ID de tu sub-account.
+                  En GoHighLevel: Settings → Integrations → Private Integrations → New Integration.
+                  Copia el token y el Location ID de tu subcuenta.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3 mt-2">
@@ -118,8 +118,8 @@ function DisconnectedState() {
                     className="mt-1.5 w-full h-10 rounded-lg border border-[--color-border] px-3 text-sm font-mono"
                   />
                   <p className="text-xs text-zinc-500 mt-1.5">
-                    Lo encontrás en GHL → Settings → Business Profile, o en la URL después de
-                    /location/
+                    Lo encuentras en GoHighLevel → Settings → Business Profile, o en la URL después
+                    de /location/
                   </p>
                 </div>
               </div>
@@ -142,7 +142,7 @@ function DisconnectedState() {
 
           <Button asChild variant="secondary" className="w-full">
             <a href="/api/ghl/oauth/authorize">
-              <ExternalLink className="h-4 w-4" /> O usar OAuth (marketplace)
+              <ExternalLink className="h-4 w-4" /> O conectar con OAuth (marketplace)
             </a>
           </Button>
         </div>
@@ -208,9 +208,9 @@ function ConnectedState({
             <DialogHeader>
               <DialogTitle>Desconectar GoHighLevel</DialogTitle>
               <DialogDescription>
-                El agente dejará de poder agendar citas o consultar contactos. Las llamadas
-                entrantes van a seguir contestándose, pero sin acceso al calendario van a derivarse
-                a humano para agendar. ¿Seguro?
+                El agente dejará de dar citas y de consultar contactos. Las llamadas entrantes se
+                seguirán atendiendo, pero, sin acceso al calendario, habrá que pasarlas a una
+                persona para dar cita. ¿Quieres continuar?
               </DialogDescription>
             </DialogHeader>
             {error && (

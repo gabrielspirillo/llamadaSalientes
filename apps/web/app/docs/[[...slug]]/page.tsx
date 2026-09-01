@@ -118,7 +118,7 @@ const DOCS_CSS = `
 /* Visor de documentación — mismo lenguaje visual que el panel (Aurora). */
 .docs-page {
   max-width: 940px; margin: 0 auto; padding: 40px 20px 96px;
-  color: #171429; font-size: 15px; line-height: 1.7;
+  color: #14211d; font-size: 15px; line-height: 1.7;
 }
 .docs-nav {
   display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 32px;
@@ -131,10 +131,10 @@ const DOCS_CSS = `
   padding: 7px 14px; border-radius: 999px; color: #6d6883;
   transition: background-color .3s, color .3s;
 }
-.docs-nav a:hover { background: #f4f1ff; color: #5f2acc; }
+.docs-nav a:hover { background: #f4f1ff; color: #2e5f56; }
 .docs-nav a.active {
-  background: linear-gradient(120deg,#7139e8,#8b5cf6); color: #fff;
-  box-shadow: 0 6px 18px -8px rgba(113,57,232,.8);
+  background: linear-gradient(120deg,#37766a,#5fa896); color: #fff;
+  box-shadow: 0 6px 18px -8px rgba(55,118,106,.8);
 }
 .docs-nav a.external { color: #a29dba; }
 .docs-body h1 {
@@ -146,16 +146,16 @@ const DOCS_CSS = `
   margin-top: 1.8em; padding-bottom: .3em; border-bottom: 1px solid #f3f1f9;
 }
 .docs-body h3 { font-size: 1.14em; font-weight: 700; margin-top: 1.5em; }
-.docs-body a { color: #7139e8; text-decoration: none; font-weight: 500; }
+.docs-body a { color: #37766a; text-decoration: none; font-weight: 500; }
 .docs-body a:hover { text-decoration: underline; }
 .docs-body code {
-  background: #f4f1ff; color: #5f2acc; padding: .16em .45em;
+  background: #f4f1ff; color: #2e5f56; padding: .16em .45em;
   border-radius: 7px; font-size: .87em;
 }
 .docs-body pre {
-  background: #fbfaff; border: 1px solid #ebe8f6; border-radius: 16px;
+  background: #fafdfb; border: 1px solid #ebe8f6; border-radius: 16px;
   padding: 16px; overflow-x: auto;
-  box-shadow: 0 1px 2px rgba(23,20,41,.04), 0 8px 24px -12px rgba(23,20,41,.12);
+  box-shadow: 0 1px 2px rgba(20,33,29,.04), 0 8px 24px -12px rgba(20,33,29,.12);
 }
 .docs-body pre code { background: none; color: inherit; padding: 0; font-size: .85em; }
 .docs-body table {
@@ -166,12 +166,12 @@ const DOCS_CSS = `
 .docs-body th, .docs-body td { border-bottom: 1px solid #f3f1f9; padding: 9px 14px; text-align: left; }
 .docs-body tr:last-child td { border-bottom: 0; }
 .docs-body th {
-  background: #fbfaff; font-size: 11px; font-weight: 700;
+  background: #fafdfb; font-size: 11px; font-weight: 700;
   text-transform: uppercase; letter-spacing: .1em; color: #a29dba;
 }
 .docs-body blockquote {
   border-left: 3px solid #bfaeff; margin: 1.2em 0; padding: .2em 1em;
-  color: #6d6883; background: #fbfaff; border-radius: 0 12px 12px 0;
+  color: #6d6883; background: #fafdfb; border-radius: 0 12px 12px 0;
 }
 .docs-body .mermaid { display: flex; justify-content: center; margin: 1.6em 0; overflow-x: auto; }
 `;

@@ -40,7 +40,7 @@ export function BackfillButton({ pending }: { pending: number }) {
     <Card>
       <div className="p-5">
         <div className="flex items-center gap-2 mb-2">
-          <Wand2 className="h-4 w-4 text-violet-600" />
+          <Wand2 className="h-4 w-4 text-brand-600" />
           <h3 className="text-sm font-semibold tracking-tight">Procesar llamadas pendientes</h3>
         </div>
         <p className="text-xs text-zinc-500 mb-4">

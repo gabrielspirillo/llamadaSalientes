@@ -90,12 +90,12 @@ export default async function FuturaPanelPage() {
         eyebrow="Interno"
         icon={<LayoutDashboard className="h-5 w-5" />}
         title="Panel Futura"
-        description="Gestioná las clínicas de la plataforma: activá altas nuevas y controlá sus módulos."
+        description="Gestiona las clínicas de la plataforma: activa las altas nuevas y controla sus módulos."
       />
 
       <p className="mb-5 text-[11.5px] text-zinc-400">
         Tu tenant (Futura):{' '}
-        <code className="rounded-lg bg-violet-50 px-1.5 py-0.5 font-mono text-violet-600">
+        <code className="rounded-lg bg-brand-50 px-1.5 py-0.5 font-mono text-brand-600">
           {realTenant.id}
         </code>{' '}
         · {realTenant.slug}
@@ -123,7 +123,7 @@ export default async function FuturaPanelPage() {
               <div
                 key={c.id}
                 className={`rounded-[22px] border bg-white p-5 shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[var(--shadow-lifted)] ${
-                  needsAttention ? 'border-violet-200/70' : 'border-[--color-border]'
+                  needsAttention ? 'border-brand-200' : 'border-[--color-border]'
                 }`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -186,7 +186,7 @@ function StatCard({
   tone: 'neutral' | 'success' | 'violet';
 }) {
   const ring =
-    tone === 'success' ? 'from-emerald-50' : tone === 'violet' ? 'from-violet-50' : 'from-zinc-50';
+    tone === 'success' ? 'from-emerald-50' : tone === 'violet' ? 'from-brand-50' : 'from-zinc-50';
   return (
     <div
       className={`rounded-[22px] border border-[--color-border] bg-gradient-to-br ${ring} to-white p-5 shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-lifted)]`}

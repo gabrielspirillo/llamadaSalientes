@@ -38,7 +38,7 @@ export function HistoryTable({
           <div className="text-2xl font-semibold text-zinc-900">{totals.count}</div>
         </div>
         <div>
-          <div className="text-xs uppercase tracking-wide text-zinc-500">Revenue recuperado</div>
+          <div className="text-xs uppercase tracking-wide text-zinc-500">Ingresos recuperados</div>
           <div className="text-2xl font-semibold text-emerald-600">
             {money(totals.revenueCents, totals.currency)}
           </div>
@@ -55,21 +55,21 @@ export function HistoryTable({
 
       {rows.length === 0 ? (
         <p className="py-10 text-center text-[13px] text-zinc-500">
-          Todavía no hay citas adelantadas. El histórico se llena a medida que los pacientes aceptan
-          ofertas.
+          Todavía no hay citas adelantadas. El histórico se va llenando a medida que los pacientes
+          aceptan las ofertas.
         </p>
       ) : (
         <div className="overflow-hidden rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)]">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-sm">
-              <thead className="border-b border-[--color-border] bg-[#fbfaff] text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+              <thead className="border-b border-[--color-border] bg-[#fafdfb] text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400">
                 <tr>
                   <th className="text-left px-4 py-2.5">Paciente</th>
                   <th className="text-left px-4 py-2.5">Cita original → Cita nueva</th>
                   <th className="text-left px-4 py-2.5">Tratamiento</th>
                   <th className="text-left px-4 py-2.5">Canal</th>
-                  <th className="text-left px-4 py-2.5">Cerrada</th>
-                  <th className="text-right px-4 py-2.5">Revenue</th>
+                  <th className="text-left px-4 py-2.5">Aceptada el</th>
+                  <th className="text-right px-4 py-2.5">Ingresos</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[--color-border-subtle]">
@@ -96,9 +96,11 @@ export function HistoryTable({
                       </td>
                       <td className="px-4 py-3">{r.treatmentName ?? '—'}</td>
                       <td className="px-4 py-3">
-                        <Badge tone="neutral">{r.channel}</Badge>
+                        <Badge tone="neutral">
+                          {r.channel === 'VOICE' ? 'Llamada' : 'WhatsApp'}
+                        </Badge>
                         {r.source ? (
-                          <div className="text-xs text-zinc-500 mt-1">via {r.source}</div>
+                          <div className="text-xs text-zinc-500 mt-1">por {r.source}</div>
                         ) : null}
                       </td>
                       <td className="px-4 py-3 text-zinc-500">

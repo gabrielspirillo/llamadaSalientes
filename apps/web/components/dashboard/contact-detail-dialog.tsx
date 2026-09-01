@@ -187,7 +187,7 @@ export function ContactDetailDialog({
         <DialogHeader className="px-4 sm:px-6 pt-5 pb-4 border-b border-[--color-border-subtle]">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <DialogTitle className="text-lg flex items-center gap-3 min-w-0">
-              <User className="h-5 w-5 text-violet-600 shrink-0" />
+              <User className="h-5 w-5 text-brand-600 shrink-0" />
               <span className="truncate">{fullName}</span>
             </DialogTitle>
             {contact?.phone && (

@@ -98,7 +98,7 @@ export function InsightsPanel() {
 
             {data.promptSuggestions.length > 0 && (
               <Section
-                icon={<Lightbulb className="h-3.5 w-3.5 text-violet-600" />}
+                icon={<Lightbulb className="h-3.5 w-3.5 text-brand-600" />}
                 title="Sugerencias para el prompt"
               >
                 {data.promptSuggestions.map((s) => (

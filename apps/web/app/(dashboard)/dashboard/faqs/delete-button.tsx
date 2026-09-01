@@ -37,7 +37,7 @@ export function DeleteFaqButton({ id, question }: { id: string; question: string
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Eliminar FAQ</DialogTitle>
+          <DialogTitle>Eliminar pregunta</DialogTitle>
           <DialogDescription>
             Vas a eliminar la pregunta:
             <br />

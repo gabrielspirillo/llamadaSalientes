@@ -17,7 +17,7 @@ export const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'fixed inset-0 z-50 bg-[#171429]/45 backdrop-blur-md',
+      'fixed inset-0 z-50 bg-[#14211d]/45 backdrop-blur-md',
       'data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out',
       className,
     )}
@@ -36,7 +36,7 @@ export const DialogContent = React.forwardRef<
       ref={ref}
       className={cn(
         'fixed left-1/2 top-1/2 z-50 max-h-[calc(100vh-2rem)] w-[calc(100vw-1rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto',
-        'rounded-[26px] border border-white/60 bg-white p-5 shadow-[0_40px_90px_-30px_rgba(23,20,41,0.5)] sm:p-7',
+        'rounded-[26px] border border-white/60 bg-white p-5 shadow-[0_40px_90px_-30px_rgba(20,33,29,0.5)] sm:p-7',
         'data-[state=open]:animate-zoom-in data-[state=closed]:animate-zoom-out',
         'focus-visible:outline-none',
         className,
@@ -46,7 +46,7 @@ export const DialogContent = React.forwardRef<
       {/* Halo superior de marca — da profundidad sin recargar */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-28 rounded-t-[26px] bg-[radial-gradient(60%_100%_at_50%_0%,rgba(139,92,246,0.14),transparent_70%)]"
+        className="pointer-events-none absolute inset-x-0 top-0 h-28 rounded-t-[26px] bg-[radial-gradient(60%_100%_at_50%_0%,rgba(95,168,150,0.14),transparent_70%)]"
       />
       <div className="relative">{children}</div>
       <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full p-1.5 text-zinc-400 transition-all duration-300 hover:rotate-90 hover:bg-zinc-100 hover:text-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40">

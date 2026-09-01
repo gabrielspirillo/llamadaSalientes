@@ -50,7 +50,7 @@ export function PlaygroundPanel() {
           Probador del agente de WhatsApp
         </h2>
         <p className="text-sm text-zinc-500">
-          Chateá con el agente usando la configuración real de tu clínica (persona, tratamientos,
+          Chatea con el agente usando la configuración real de tu clínica (persona, tratamientos,
           FAQs con búsqueda semántica, guardrails). Las acciones que agendan/cancelan/registran se{' '}
           <strong>simulan</strong>: no se crea nada real, no se envía WhatsApp ni se guarda nada.
         </p>
@@ -82,11 +82,11 @@ export function PlaygroundPanel() {
 
       <div
         ref={listRef}
-        className="h-[420px] overflow-y-auto rounded-xl border border-[--color-border] bg-[#fbfaff] p-4"
+        className="h-[420px] overflow-y-auto rounded-xl border border-[--color-border] bg-[#fafdfb] p-4"
       >
         {turns.length === 0 ? (
           <p className="text-sm text-zinc-400">
-            Escribí un mensaje como lo haría un paciente para ver cómo responde el agente.
+            Escribe un mensaje como lo haría un paciente para ver cómo responde el agente.
           </p>
         ) : (
           <ul className="space-y-3">
@@ -131,7 +131,7 @@ export function PlaygroundPanel() {
           type="button"
           onClick={send}
           disabled={pending || !input.trim()}
-          className="self-end rounded-lg bg-[linear-gradient(120deg,#7139e8,#8b5cf6)] px-4 py-2 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-50"
+          className="self-end rounded-lg bg-[linear-gradient(120deg,#37766a,#5fa896)] px-4 py-2 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-50"
         >
           {pending ? 'Enviando…' : 'Enviar'}
         </button>

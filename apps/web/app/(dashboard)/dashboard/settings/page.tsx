@@ -18,10 +18,10 @@ export default async function SettingsPage() {
       <div>
         <PageHeader
           title="Clínica"
-          description="Información que el agente usa al hablar con pacientes."
+          description="Información que el agente usa cuando habla con los pacientes."
         />
         <p className="text-sm text-zinc-500">
-          No se encontró la configuración de la clínica. Contactá soporte.
+          No se ha encontrado la configuración de la clínica. Ponte en contacto con soporte.
         </p>
       </div>
     );
@@ -33,7 +33,7 @@ export default async function SettingsPage() {
         eyebrow="Datos de la clínica"
         icon={<Building2 className="h-5 w-5" />}
         title={tenant.name}
-        description="Información que el agente usa al hablar con pacientes."
+        description="Información que el agente usa cuando habla con los pacientes."
       />
 
       <SettingsForm
@@ -54,8 +54,8 @@ export default async function SettingsPage() {
           <CardTopbar
             icon={<Sparkles className="h-4 w-4" />}
             tone="blossom"
-            title="Personalización del agente IA"
-            subtitle="Nombre y tono con que el agente de WhatsApp atiende a tus pacientes. Es aditivo: no cambia las reglas de seguridad ni los datos oficiales."
+            title="Personalización del agente"
+            subtitle="Nombre y tono con los que el agente de WhatsApp atiende a tus pacientes. Solo añade estilo: no cambia las reglas de seguridad ni los datos oficiales de la clínica."
           />
           <div className="px-5 pb-5 sm:px-6 sm:pb-6">
             <AgentPersonaForm

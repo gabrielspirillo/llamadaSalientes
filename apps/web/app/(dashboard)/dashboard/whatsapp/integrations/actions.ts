@@ -2,16 +2,16 @@
 
 import { Buffer } from 'node:buffer';
 
-import { revalidatePath } from 'next/cache';
 import { and, eq } from 'drizzle-orm';
+import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
+import { decrypt, encrypt } from '@/lib/crypto';
+import { upsertWhatsappAgentSettings } from '@/lib/data/whatsapp-agent-settings';
 import { db } from '@/lib/db/client';
 import { auditLogs, users, whatsappConnections } from '@/lib/db/schema';
-import { decrypt, encrypt } from '@/lib/crypto';
 import { env } from '@/lib/env';
 import { getCurrentTenant } from '@/lib/tenant';
-import { upsertWhatsappAgentSettings } from '@/lib/data/whatsapp-agent-settings';
 import { auth } from '@clerk/nextjs/server';
 
 export type ActionResult<T> =
@@ -289,20 +289,17 @@ async function setEvolutionWebhook(
   // v2 flat body (camelCase). Ver
   // https://doc.evolution-api.com/v2/api-reference/webhook/set
   try {
-    const res = await fetch(
-      `${baseUrl}/webhook/set/${encodeURIComponent(instanceName)}`,
-      {
-        method: 'POST',
-        headers: { apikey: apiKey, 'content-type': 'application/json' },
-        body: JSON.stringify({
-          enabled: true,
-          url: evolutionWebhookUrl(),
-          webhookByEvents: false,
-          webhookBase64: false,
-          events: [...EVOLUTION_WEBHOOK_EVENTS],
-        }),
-      },
-    );
+    const res = await fetch(`${baseUrl}/webhook/set/${encodeURIComponent(instanceName)}`, {
+      method: 'POST',
+      headers: { apikey: apiKey, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        enabled: true,
+        url: evolutionWebhookUrl(),
+        webhookByEvents: false,
+        webhookBase64: false,
+        events: [...EVOLUTION_WEBHOOK_EVENTS],
+      }),
+    });
     if (!res.ok) {
       const body = await res.text().catch(() => '');
       return { ok: false, error: `HTTP ${res.status}: ${body.slice(0, 200)}` };
@@ -389,7 +386,7 @@ export async function connectEvolution(): Promise<
   }
   const created = (await createRes.json()) as EvolutionInstanceCreateResponse;
   const instanceHash = typeof created.hash === 'string' ? created.hash : created.hash?.apikey;
-  if (!instanceHash) return fail('Evolution no devolvió hash/apikey de la instancia');
+  if (!instanceHash) return fail('Evolution no ha devuelto la clave de la conexión');
   const qrBase64 = created.qrcode?.base64 ?? null;
   const pairingCode = created.qrcode?.pairingCode ?? created.qrcode?.code ?? null;
 
@@ -444,7 +441,7 @@ async function refreshEvolutionQrInternal(params: {
   instanceName: string;
   apiKey: string;
 }): Promise<
-  { ok: true; qrBase64: string | null; pairingCode: string | null; state: string }
+  | { ok: true; qrBase64: string | null; pairingCode: string | null; state: string }
   | { ok: false; error: string }
 > {
   try {
@@ -490,7 +487,7 @@ export async function refreshEvolutionQr(): Promise<
     .limit(1);
   const conn = rows[0];
   if (!conn?.evolutionInstance) {
-    return fail('No hay instancia Evolution creada para este tenant');
+    return fail('Todavía no hay una conexión Evolution creada para esta clínica');
   }
   // Admin key global: re-pide el QR aunque el token por-instancia se haya
   // borrado (p.ej. tras Desconectar).
@@ -527,7 +524,7 @@ export async function getEvolutionConnectionState(): Promise<
     .limit(1);
   const conn = rows[0];
   if (!conn?.evolutionInstance) {
-    return fail('No hay instancia Evolution creada para este tenant');
+    return fail('Todavía no hay una conexión Evolution creada para esta clínica');
   }
   try {
     const res = await fetch(
@@ -603,7 +600,7 @@ export async function setChatwoot(input: unknown): Promise<ActionResult<null>> {
     .limit(1);
   const conn = rows[0];
   if (!conn?.evolutionInstance || !conn.evolutionTokenEnc) {
-    return fail('Crea primero la instancia Evolution');
+    return fail('Crea primero la conexión con Evolution');
   }
   try {
     const res = await fetch(
@@ -668,7 +665,7 @@ export async function disconnectChatwoot(): Promise<ActionResult<null>> {
     .limit(1);
   const conn = rows[0];
   if (!conn?.evolutionInstance || !conn.evolutionTokenEnc) {
-    return fail('No hay instancia Evolution');
+    return fail('No hay ninguna conexión Evolution');
   }
   try {
     await fetch(`${cfg.baseUrl}/chatwoot/set/${encodeURIComponent(conn.evolutionInstance)}`, {
@@ -752,10 +749,7 @@ export async function disconnect(input: unknown): Promise<ActionResult<null>> {
       .select()
       .from(whatsappConnections)
       .where(
-        and(
-          eq(whatsappConnections.tenantId, tenant.id),
-          eq(whatsappConnections.mode, 'EVOLUTION'),
-        ),
+        and(eq(whatsappConnections.tenantId, tenant.id), eq(whatsappConnections.mode, 'EVOLUTION')),
       )
       .limit(1);
     const conn = rows[0];
@@ -777,9 +771,10 @@ export async function disconnect(input: unknown): Promise<ActionResult<null>> {
         });
         // Tratamos como éxito (idempotente) si la instancia ya estaba
         // deslogueada / no conectada / no existe: el objetivo ya se cumplió.
-        const yaDesconectada = /not.?connected|logged.?out|not.?logged|does not exist|not.?found|Cannot destroy/i.test(
-          body,
-        );
+        const yaDesconectada =
+          /not.?connected|logged.?out|not.?logged|does not exist|not.?found|Cannot destroy/i.test(
+            body,
+          );
         if (!res.ok && !yaDesconectada) {
           return fail(
             `No pude cerrar la sesión en Evolution (HTTP ${res.status}): ${body.slice(0, 200)}`,

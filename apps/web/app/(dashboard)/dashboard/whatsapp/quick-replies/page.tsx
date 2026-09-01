@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import { desc, eq } from 'drizzle-orm';
+import Link from 'next/link';
 
 import { db } from '@/lib/db/client';
 import { whatsappQuickReplies } from '@/lib/db/schema';
@@ -32,7 +32,7 @@ export default async function QuickRepliesPage() {
       <div>
         <h1 className="text-xl font-semibold text-zinc-900">Respuestas rápidas</h1>
         <p className="text-sm text-zinc-500">
-          Crea atajos que puedes invocar con &quot;/&quot; en el composer de mensajes.
+          Crea atajos que puedes usar escribiendo &quot;/&quot; en el cuadro de mensaje.
         </p>
       </div>
 

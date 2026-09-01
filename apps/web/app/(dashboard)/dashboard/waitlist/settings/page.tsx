@@ -70,8 +70,8 @@ export default async function WaitlistSettingsPage() {
       <PageHeader
         eyebrow="Recuperación de huecos"
         icon={<ListChecks className="h-5 w-5" />}
-        title="Configuración de Waitlist"
-        description="Ajustá el canal de oferta, TTL, umbrales de elegibilidad, tratamientos y plantillas."
+        title="Configuración de la lista de espera"
+        description="Ajusta por qué canal se avisa, cuánto tiempo vale cada oferta, qué citas entran, los tratamientos y las plantillas."
         actions={
           <Link href="/dashboard/waitlist">
             <Button size="sm" variant="secondary">
@@ -105,7 +105,7 @@ export default async function WaitlistSettingsPage() {
               Tratamientos elegibles
             </h2>
             <p className="text-sm text-zinc-500">
-              Activá los tratamientos para los que querés que el sistema gestione waitlist.
+              Activa los tratamientos que quieres que el sistema gestione con la lista de espera.
             </p>
           </div>
           <TreatmentsToggle rows={treatmentsRows} />

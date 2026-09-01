@@ -3,6 +3,7 @@
 import { DashboardSidebarMobile } from '@/components/dashboard/sidebar';
 import { StatusDot } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/feedback';
+import { Avatar } from '@/components/ui/stat';
 import { cn } from '@/lib/cn';
 import type { EnabledModules } from '@/lib/modules';
 import { UserButton, useUser } from '@clerk/nextjs';
@@ -16,7 +17,6 @@ import {
   MessageCircle,
   Phone,
   Search,
-  Sparkles,
   X,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -108,18 +108,19 @@ export function DashboardTopbar({
 
           <Link
             href="/dashboard"
-            className="flex shrink-0 items-center gap-2 lg:hidden"
+            className="flex shrink-0 items-center gap-1.5 lg:hidden"
             aria-label="FUTURA"
           >
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-[11px] bg-[linear-gradient(135deg,#7139e8,#a855f7_60%,#ec4899)] text-white">
-              <Sparkles className="h-3.5 w-3.5" />
+            <span className="text-[17px] font-extrabold leading-none tracking-tight text-[#0f1f2e]">
+              FUTURA
             </span>
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#5fa896]" />
           </Link>
 
           {/* Saludo — equivalente al "Welcome, …" de la referencia */}
           <div className="hidden min-w-0 lg:block">
-            <p className="text-[11px] font-medium leading-none text-zinc-400">{hello},</p>
-            <p className="mt-1 truncate text-[15px] font-bold leading-none tracking-tight text-zinc-900">
+            <p className="text-[12.5px] font-medium leading-none text-zinc-500">{hello},</p>
+            <p className="mt-1.5 truncate text-[20px] font-extrabold leading-none tracking-tight text-zinc-900">
               {firstName || 'bienvenido'}
             </p>
           </div>
@@ -130,7 +131,7 @@ export function DashboardTopbar({
             onClick={() => setSearchOpen(true)}
             className={cn(
               'group hidden items-center gap-2.5 rounded-full border border-[--color-border] bg-white/80 px-4 py-2.5 text-sm text-zinc-400',
-              'w-full max-w-md transition-all duration-300 hover:border-brand-200 hover:bg-white hover:shadow-[0_10px_26px_-16px_rgba(23,20,41,0.5)] md:flex',
+              'w-full max-w-md transition-all duration-300 hover:border-brand-200 hover:bg-white hover:shadow-[0_10px_26px_-16px_rgba(20,33,29,0.5)] md:flex',
             )}
           >
             <Search className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:text-brand-500" />
@@ -143,7 +144,7 @@ export function DashboardTopbar({
 
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
           {impersonatingClinic && (
-            <span className="hidden max-w-[220px] items-center gap-1.5 rounded-full bg-[linear-gradient(120deg,#f4f0ff,#fdf0f7)] px-3 py-1.5 text-[11px] font-semibold text-violet-700 ring-1 ring-violet-100 sm:inline-flex">
+            <span className="hidden max-w-[220px] items-center gap-1.5 rounded-full bg-[linear-gradient(120deg,#effaf5,#fdf0f7)] px-3 py-1.5 text-[11px] font-semibold text-brand-700 ring-1 ring-violet-100 sm:inline-flex">
               <StatusDot tone="violet" />
               <span className="truncate">Gestionando: {impersonatingClinic}</span>
             </span>
@@ -164,10 +165,12 @@ export function DashboardTopbar({
             onClose={() => setNotifOpen(false)}
           />
 
-          <div className="ml-0.5 rounded-full p-0.5 ring-1 ring-[--color-border] transition-all hover:ring-brand-200">
+          <TeamAvatars />
+
+          <div className="ml-0.5 rounded-full p-1 ring-1 ring-[--color-border] transition-all hover:ring-brand-300">
             <UserButton
               appearance={{
-                elements: { avatarBox: 'h-8 w-8' },
+                elements: { avatarBox: 'h-11 w-11' },
               }}
             />
           </div>
@@ -226,17 +229,17 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex animate-fade-in items-start justify-center bg-[#171429]/40 pt-[10vh] backdrop-blur-md"
+      className="fixed inset-0 z-50 flex animate-fade-in items-start justify-center bg-[#14211d]/25 pt-[10vh] backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="w-[620px] max-w-[95vw] animate-pop overflow-hidden rounded-[26px] border border-white/60 bg-white shadow-[0_40px_90px_-30px_rgba(23,20,41,0.55)]"
+        className="w-[620px] max-w-[95vw] animate-pop overflow-hidden rounded-[26px] border border-white/70 bg-white/90 shadow-[0_40px_90px_-30px_rgba(20,33,29,0.4)] backdrop-blur-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative flex items-center gap-3 border-b border-[--color-border-subtle] px-5 py-4">
           <span
             aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(139,92,246,0.12),transparent_70%)]"
+            className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(95,168,150,0.12),transparent_70%)]"
           />
           <Search className="relative h-4 w-4 shrink-0 text-brand-500" />
           <input
@@ -310,12 +313,63 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
           )}
         </div>
 
-        <div className="flex items-center justify-between border-t border-[--color-border-subtle] bg-[#fbfaff] px-5 py-2.5 text-[11px] text-zinc-400">
+        <div className="flex items-center justify-between border-t border-[--color-border-subtle] bg-[#fafdfb] px-5 py-2.5 text-[11px] text-zinc-400">
           <span>↵ para abrir · Esc para cerrar</span>
           <span className="tabular-nums">{hits.length} resultados</span>
         </div>
       </div>
     </div>
+  );
+}
+
+type TeamAvatar = { id: string; name: string; imageUrl: string | null };
+
+/**
+ * Pila de avatares del equipo de la clínica. Se carga después del montaje
+ * para no añadir una llamada a Clerk al render de cada página.
+ */
+function TeamAvatars() {
+  const [members, setMembers] = useState<TeamAvatar[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    fetch('/api/team/avatars')
+      .then((r) => (r.ok ? r.json() : { members: [] }))
+      .then((d: { members?: TeamAvatar[] }) => {
+        if (mounted) setMembers(d.members ?? []);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (members.length === 0) return null;
+
+  const shown = members.slice(0, 4);
+  const rest = members.length - shown.length;
+
+  return (
+    <Link
+      href="/dashboard/team"
+      title="Ver el equipo de la clínica"
+      className="mr-1 hidden items-center rounded-full py-1 pl-1 pr-2 transition-colors duration-300 hover:bg-brand-50 sm:flex"
+    >
+      {shown.map((m, i) => (
+        <span
+          key={m.id}
+          className="-ml-2.5 transition-transform duration-300 first:ml-0 hover:-translate-y-1"
+          style={{ zIndex: shown.length - i }}
+        >
+          <Avatar name={m.name} src={m.imageUrl} size={34} />
+        </span>
+      ))}
+      {rest > 0 && (
+        <span className="-ml-2.5 inline-flex h-[34px] w-[34px] items-center justify-center rounded-full bg-brand-100 text-[11px] font-bold text-brand-700 ring-2 ring-white">
+          +{rest}
+        </span>
+      )}
+    </Link>
   );
 }
 
@@ -425,12 +479,12 @@ function NotificationsBell({
       {open && (
         <div
           data-notif-panel
-          className="fixed left-2 right-2 z-50 mt-2 flex max-h-[75vh] animate-fade-down flex-col overflow-hidden rounded-[24px] border border-white/60 bg-white shadow-[0_40px_90px_-30px_rgba(23,20,41,0.5)] sm:absolute sm:left-auto sm:right-0 sm:max-h-[70vh] sm:w-[390px] sm:max-w-[calc(100vw-1rem)]"
+          className="fixed left-2 right-2 z-50 mt-2 flex max-h-[75vh] animate-fade-down flex-col overflow-hidden rounded-[24px] border border-white/60 bg-white shadow-[0_40px_90px_-30px_rgba(20,33,29,0.5)] sm:absolute sm:left-auto sm:right-0 sm:max-h-[70vh] sm:w-[390px] sm:max-w-[calc(100vw-1rem)]"
         >
           <div className="relative flex shrink-0 items-center justify-between border-b border-[--color-border-subtle] px-5 py-3.5">
             <span
               aria-hidden
-              className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(139,92,246,0.12),transparent_70%)]"
+              className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(95,168,150,0.12),transparent_70%)]"
             />
             <div className="relative">
               <h3 className="text-sm font-bold tracking-tight text-zinc-900">Notificaciones</h3>
@@ -507,7 +561,7 @@ function NotificationsBell({
             )}
           </div>
 
-          <div className="shrink-0 border-t border-[--color-border-subtle] bg-[#fbfaff]">
+          <div className="shrink-0 border-t border-[--color-border-subtle] bg-[#fafdfb]">
             <Link
               href="/dashboard/calls"
               onClick={onClose}

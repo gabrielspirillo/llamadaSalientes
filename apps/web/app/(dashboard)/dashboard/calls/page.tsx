@@ -17,9 +17,9 @@ const motivoMap: Record<
   string,
   { label: string; tone: 'success' | 'info' | 'warn' | 'violet' | 'neutral' | 'danger' }
 > = {
-  agendar: { label: 'Agendar', tone: 'success' },
-  reagendar: { label: 'Reagendar', tone: 'info' },
-  cancelar: { label: 'Cancelar', tone: 'warn' },
+  agendar: { label: 'Pedir cita', tone: 'success' },
+  reagendar: { label: 'Cambiar cita', tone: 'info' },
+  cancelar: { label: 'Anular cita', tone: 'warn' },
   consulta: { label: 'Consulta', tone: 'violet' },
   pregunta: { label: 'Consulta', tone: 'violet' }, // legacy
   queja: { label: 'Queja', tone: 'danger' },
@@ -75,7 +75,7 @@ export default async function CallsPage({
       <PageHeader
         eyebrow="Canal entrante"
         title="Llamadas"
-        description="Todas las llamadas atendidas por el agente, con transcript, resumen y sentimiento."
+        description="Todas las llamadas atendidas por el agente, con transcripción, resumen y sentimiento."
         icon={<PhoneCall className="h-5 w-5" />}
         actions={<BackfillMetadataButton pending={missingMetadata} />}
       />
@@ -99,9 +99,9 @@ export default async function CallsPage({
             <div className="grid grid-cols-2 gap-2 md:flex md:items-center md:gap-3">
               <Select name="intent" defaultValue={sp.intent ?? ''} className="w-full md:w-auto">
                 <option value="">Todos los motivos</option>
-                <option value="agendar">Agendar</option>
-                <option value="reagendar">Reagendar</option>
-                <option value="cancelar">Cancelar</option>
+                <option value="agendar">Pedir cita</option>
+                <option value="reagendar">Cambiar cita</option>
+                <option value="cancelar">Anular cita</option>
                 <option value="consulta">Consulta</option>
                 <option value="queja">Queja</option>
                 <option value="otro">Otro</option>
@@ -136,10 +136,10 @@ export default async function CallsPage({
             <EmptyState
               icon={<Phone className="h-5 w-5" />}
               title="Aún no hay llamadas"
-              description="Cuando llegue la primera, va a aparecer acá con su transcript, resumen y sentimiento."
+              description="Cuando llegue la primera, aparecerá aquí con su transcripción, resumen y sentimiento."
               action={
                 <Button asChild size="sm">
-                  <Link href="/dashboard/agent">Probar agente</Link>
+                  <Link href="/dashboard/agent">Probar el agente</Link>
                 </Button>
               }
             />
@@ -279,7 +279,7 @@ export default async function CallsPage({
                 </TableWrap>
               </div>
 
-              <div className="flex items-center justify-between border-t border-[--color-border-subtle] bg-[#fbfaff] p-4 text-[12px] text-zinc-500 sm:px-5">
+              <div className="flex items-center justify-between border-t border-[--color-border-subtle] bg-[#fafdfb] p-4 text-[12px] text-zinc-500 sm:px-5">
                 <span className="inline-flex items-center gap-2">
                   <Phone className="h-3.5 w-3.5" />
                   Mostrando {realCalls.length} de {realCalls.length}

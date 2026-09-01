@@ -37,8 +37,8 @@ export async function IntegrationsPanel({
       )}
       {flash.ghl_error && (
         <Banner kind="error">
-          La conexión con GoHighLevel falló: <code>{flash.ghl_error}</code>. Probá de nuevo o
-          contactá soporte.
+          La conexión con GoHighLevel ha fallado: <code>{flash.ghl_error}</code>. Inténtalo de nuevo
+          o escribe a soporte.
         </Banner>
       )}
 

@@ -86,7 +86,7 @@ export default async function RemindersPage() {
         eyebrow="Automatizaciones"
         icon={<BellRing className="h-5 w-5" />}
         title="Recordatorios"
-        description="Pipeline de recordatorios de citas multi-canal (WhatsApp + voz)."
+        description="Estado de cada recordatorio de cita, por WhatsApp y por llamada."
         actions={
           <Link href="/dashboard/reminders/settings">
             <Button size="sm" variant="secondary">

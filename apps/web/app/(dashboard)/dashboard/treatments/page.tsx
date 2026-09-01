@@ -103,7 +103,7 @@ export default async function TreatmentsPage() {
                           </span>
                           {t.priceCents != null && (
                             <div className="mt-0.5 text-[11px] text-zinc-500">
-                              {(t.priceCents / 100).toFixed(0)} € · revenue
+                              {(t.priceCents / 100).toFixed(0)} € · ingresos
                             </div>
                           )}
                         </TD>
@@ -149,8 +149,8 @@ function EmptyState() {
     <Card>
       <UiEmptyState
         icon={<Stethoscope className="h-5 w-5" />}
-        title="Sin tratamientos todavía"
-        description="Cargá tu primer tratamiento para que el agente lo pueda ofrecer y agendar."
+        title="Aún no hay tratamientos"
+        description="Añade tu primer tratamiento para que el agente pueda ofrecerlo y dar cita."
         action={
           <TreatmentDialog
             trigger={

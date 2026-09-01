@@ -18,15 +18,15 @@ import {
   toPayload,
 } from '@/lib/onboarding/schema';
 import { useClerk } from '@clerk/nextjs';
-import { ArrowLeft, ArrowRight, Check, Loader2, LogOut, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Loader2, LogOut } from 'lucide-react';
 import * as React from 'react';
 
 const STEPS = [
   { n: 1, title: 'Datos de la clínica' },
   { n: 2, title: 'Horarios' },
   { n: 3, title: 'Tratamientos' },
-  { n: 4, title: 'FAQs' },
-  { n: 5, title: 'El agente' },
+  { n: 4, title: 'Preguntas frecuentes' },
+  { n: 5, title: 'El asistente' },
   { n: 6, title: 'Revisión y envío' },
 ] as const;
 
@@ -120,7 +120,7 @@ export function OnboardingWizard({
 
   const submit = async () => {
     if (!confirmed) {
-      setConfirmError('Marcá la casilla para confirmar antes de enviar.');
+      setConfirmError('Marca la casilla para confirmar antes de enviar.');
       return;
     }
     setConfirmError(undefined);
@@ -147,7 +147,7 @@ export function OnboardingWizard({
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        throw new Error(data.error ?? 'No pudimos enviar el onboarding. Reintentá en un momento.');
+        throw new Error(data.error ?? 'No hemos podido enviar los datos. Inténtalo de nuevo.');
       }
       // Éxito: limpiar el borrador local y mostrar confirmación.
       try {
@@ -159,7 +159,7 @@ export function OnboardingWizard({
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       // Error: NO perdemos datos (siguen en el form + localStorage).
-      setSubmitError(err instanceof Error ? err.message : 'Error inesperado.');
+      setSubmitError(err instanceof Error ? err.message : 'Ha ocurrido un error inesperado.');
     } finally {
       setSubmitting(false);
     }
@@ -173,10 +173,12 @@ export function OnboardingWizard({
   if (!tenant && !selfRegister && !authenticated) {
     return (
       <div className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center">
-        <h1 className="text-[22px] font-extrabold tracking-tight text-zinc-900">Link incompleto</h1>
+        <h1 className="text-[22px] font-extrabold tracking-tight text-zinc-900">
+          Enlace incompleto
+        </h1>
         <p className="mt-2 text-[13px] leading-relaxed text-zinc-500">
-          Este link de onboarding no identifica a ninguna clínica. Pedinos el link correcto para
-          completar tus datos.
+          Este enlace no identifica a ninguna clínica. Pídenos el enlace correcto para completar tus
+          datos.
         </p>
       </div>
     );
@@ -189,21 +191,19 @@ export function OnboardingWizard({
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-4 py-8 sm:px-6 sm:py-12">
       {/* Header + progreso */}
       <header className="mb-6">
-        <div className="mb-6 flex items-center gap-2.5">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-[13px] bg-[linear-gradient(135deg,#7139e8,#a855f7_60%,#ec4899)] text-white shadow-[0_8px_20px_-8px_rgba(113,57,232,0.9)]">
-            <Sparkles className="h-4 w-4" />
-          </span>
-          <span className="text-[18px] font-extrabold leading-none tracking-tight text-zinc-900">
+        <div className="mb-6 flex items-center gap-1.5">
+          <span className="text-[19px] font-extrabold leading-none tracking-tight text-[#0f1f2e]">
             FUTURA
           </span>
+          <span className="inline-block h-2 w-2 rounded-full bg-[#5fa896]" />
           <span className="mx-0.5 text-zinc-300">·</span>
           <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-400">
-            Onboarding
+            Alta de clínica
           </span>
         </div>
 
         {/* Pasos: puntos conectados que se llenan al avanzar */}
-        <ol className="mb-5 flex items-center gap-1.5" aria-label="Progreso del onboarding">
+        <ol className="mb-5 flex items-center gap-1.5" aria-label="Progreso del alta">
           {STEPS.map((st) => {
             const done = st.n < step;
             const active = st.n === step;
@@ -213,7 +213,7 @@ export function OnboardingWizard({
                   title={st.title}
                   className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold transition-all duration-500 ${
                     done
-                      ? 'bg-[linear-gradient(120deg,#7139e8,#a855f7)] text-white'
+                      ? 'bg-[linear-gradient(120deg,#37766a,#5fa896)] text-white'
                       : active
                         ? 'bg-white text-brand-700 ring-2 ring-brand-400 animate-pulse-ring'
                         : 'bg-white/70 text-zinc-400 ring-1 ring-[--color-border]'
@@ -224,7 +224,7 @@ export function OnboardingWizard({
                 {st.n < STEPS.length && (
                   <span className="h-0.5 flex-1 overflow-hidden rounded-full bg-zinc-200">
                     <span
-                      className="block h-full rounded-full bg-[linear-gradient(90deg,#7139e8,#ec4899)] transition-transform duration-500 ease-out"
+                      className="block h-full rounded-full bg-[linear-gradient(90deg,#37766a,#6bc2a4)] transition-transform duration-500 ease-out"
                       style={{
                         transform: `scaleX(${done ? 1 : 0})`,
                         transformOrigin: 'left center',
@@ -290,7 +290,7 @@ export function OnboardingWizard({
         ) : (
           <Button onClick={submit} disabled={submitting} type="button">
             {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-            {submitting ? 'Enviando…' : 'Enviar onboarding'}
+            {submitting ? 'Enviando…' : 'Enviar datos'}
           </Button>
         )}
       </footer>

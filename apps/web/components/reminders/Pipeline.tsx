@@ -2,9 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { ChevronRight } from 'lucide-react';
-
 import { Badge } from '@/components/ui/badge';
+import { BoardCard, BoardColumn, type BoardTone } from '@/components/ui/board';
 import { Card } from '@/components/ui/card';
 import { ReminderDetailDialog } from './ReminderDetailDialog';
 import { SkipList } from './SkipList';
@@ -50,15 +49,28 @@ export type SkipRow = {
 const COLUMNS: {
   status: ReminderStatus;
   title: string;
-  tone: 'neutral' | 'success' | 'warn' | 'danger' | 'info';
+  tone: BoardTone;
 }[] = [
-  { status: 'SCHEDULED', title: 'Programado', tone: 'info' },
-  { status: 'SENT', title: 'Enviado', tone: 'neutral' },
-  { status: 'CONFIRMED', title: 'Confirmado', tone: 'success' },
-  { status: 'RESCHEDULE_REQUESTED', title: 'Pidió reagendar', tone: 'warn' },
-  { status: 'CANCELLED', title: 'Cancelado', tone: 'danger' },
-  { status: 'NO_RESPONSE', title: 'Sin respuesta', tone: 'warn' },
+  { status: 'SCHEDULED', title: 'Programados', tone: 'sky' },
+  { status: 'SENT', title: 'Enviados', tone: 'grape' },
+  { status: 'CONFIRMED', title: 'Confirmados', tone: 'mint' },
+  { status: 'RESCHEDULE_REQUESTED', title: 'Piden cambiar la cita', tone: 'honey' },
+  { status: 'CANCELLED', title: 'Cancelados', tone: 'coral' },
+  { status: 'NO_RESPONSE', title: 'Sin respuesta', tone: 'blossom' },
 ];
+
+/** Avance del recordatorio dentro de su ciclo de vida, en porcentaje. */
+const STATUS_PROGRESS: Partial<Record<ReminderStatus, number>> = {
+  SCHEDULED: 25,
+  SENT: 60,
+  DELIVERED: 70,
+  CONFIRMED: 100,
+  RESCHEDULE_REQUESTED: 75,
+  CANCELLED: 100,
+  NO_RESPONSE: 85,
+  SKIPPED: 100,
+  FAILED: 100,
+};
 
 function offsetToHuman(minutes: number): string {
   if (minutes % (60 * 24) === 0) return `${minutes / 60 / 24}d`;
@@ -200,7 +212,7 @@ export function RemindersPipeline({
           onChange={(e) => setSearch(e.target.value)}
           className="h-11 w-full max-w-sm rounded-[14px] border border-[--color-border] bg-white px-4 text-sm transition-[border-color,box-shadow] duration-300 placeholder:text-zinc-400 hover:border-brand-200 focus-visible:border-brand-400 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/12"
         />
-        <span className="text-xs text-zinc-500">{filtered.length} reminders</span>
+        <span className="text-xs text-zinc-500">{filtered.length} recordatorios</span>
         <span className="ml-auto text-[11px] text-zinc-400">
           Actualizado{' '}
           {new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' }).format(
@@ -214,23 +226,12 @@ export function RemindersPipeline({
         {COLUMNS.map((col) => {
           const items = byStatus.get(col.status) ?? [];
           return (
-            <div
-              key={col.status}
-              className="flex flex-col gap-2 rounded-[22px] border border-[--color-border] bg-white/60 p-2.5 backdrop-blur-xl"
-            >
-              <div className="flex items-center justify-between px-1.5 pt-0.5">
-                <span className="flex items-center gap-1.5 text-[12px] font-bold tracking-tight text-zinc-700">
-                  <ChevronRight className="h-3 w-3 text-zinc-400" />
-                  {col.title}
-                </span>
-                <Badge tone={col.tone}>{items.length}</Badge>
-              </div>
-              {/* max-h ~ 4 cards visibles (cada card ~108px + gap 8px = ~480px).
-                  Scroll vertical interno por columna. */}
-              <div className="flex flex-col gap-2 overflow-y-auto pr-1" style={{ maxHeight: 480 }}>
+            <BoardColumn key={col.status} title={col.title} count={items.length}>
+              {/* Scroll vertical interno por columna: ~4 tarjetas visibles. */}
+              <div className="flex flex-col gap-3 overflow-y-auto pr-1" style={{ maxHeight: 520 }}>
                 {items.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-[--color-border-strong] p-4 text-center text-[11px] text-zinc-400">
-                    Vacío
+                  <div className="rounded-[18px] border border-dashed border-[--color-border-strong] p-5 text-center text-[11px] text-zinc-400">
+                    Sin recordatorios
                   </div>
                 ) : (
                   items.map((r) => (
@@ -238,19 +239,21 @@ export function RemindersPipeline({
                       key={r.id}
                       reminder={r}
                       rule={rulesById[r.ruleId] ?? null}
+                      tone={col.tone}
+                      progress={STATUS_PROGRESS[r.status] ?? 50}
                       onClick={() => setSelectedId(r.id)}
                     />
                   ))
                 )}
               </div>
-            </div>
+            </BoardColumn>
           );
         })}
       </div>
 
       <div className="mt-8">
         <h2 className="mb-3 flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.14em] text-zinc-400">
-          <span className="h-3 w-1 rounded-full bg-[linear-gradient(180deg,#7139e8,#ec4899)]" />
+          <span className="h-3 w-1 rounded-full bg-[linear-gradient(180deg,#37766a,#6bc2a4)]" />
           Omitidos ({skipped.length})
         </h2>
         <SkipList skipped={skipped} />
@@ -273,38 +276,47 @@ export function RemindersPipeline({
 function ReminderCard({
   reminder,
   rule,
+  tone,
+  progress,
   onClick,
 }: {
   reminder: Reminder;
   rule: Rule | null;
+  tone: BoardTone;
+  progress: number;
   onClick: () => void;
 }) {
   const name = extractContactName(reminder.payloadSnapshot);
   const appt = extractAppointmentParts(reminder.payloadSnapshot);
+
+  // Las etiquetas resumen canal y antelación, igual que los #tags del tablero.
+  const tags = [reminder.channelPlanned === 'VOICE' ? 'voz' : 'whatsapp'];
+  if (rule) tags.push(rule.label ?? offsetToHuman(rule.offsetMinutes));
+
   return (
-    <Card
-      onClick={onClick}
-      className="group cursor-pointer p-3 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-[var(--shadow-lifted)]"
-    >
-      <div className="flex items-start justify-between gap-2">
-        <span className="truncate text-[13.5px] font-bold text-zinc-800">{name}</span>
-        <Badge tone={reminder.channelPlanned === 'VOICE' ? 'warn' : 'info'}>
-          {reminder.channelPlanned === 'VOICE' ? 'Voz' : 'WA'}
-        </Badge>
-      </div>
-      {appt.treatment && <p className="mt-1 text-xs text-zinc-600 truncate">{appt.treatment}</p>}
-      {appt.dateTime && (
-        <p className="mt-0.5 text-[11px] text-zinc-500 truncate">{appt.dateTime}</p>
-      )}
-      <div className="mt-2 flex items-center justify-between text-[11px] text-zinc-400">
-        <span>Envío: {fmtDateShort(reminder.scheduledFor)}</span>
-        {rule && <span>{rule.label ?? `−${offsetToHuman(rule.offsetMinutes)}`}</span>}
-      </div>
-      {reminder.failureReason && (
-        <p className="mt-1 truncate text-[11px] text-rose-500" title={reminder.failureReason}>
-          ⚠ {reminder.failureReason}
+    <button type="button" onClick={onClick} className="block w-full text-left">
+      <BoardCard
+        tone={tone}
+        tags={tags}
+        title={name}
+        noteLabel={appt.treatment ? `${appt.treatment}:` : undefined}
+        note={appt.dateTime ?? undefined}
+        progress={progress}
+        progressLabel="Avance"
+        people={[name]}
+      >
+        <p className="mt-2 text-[11px] text-zinc-500">
+          Se envía: {fmtDateShort(reminder.scheduledFor)}
         </p>
-      )}
-    </Card>
+        {reminder.failureReason && (
+          <p
+            className="mt-1 truncate text-[11px] font-medium text-rose-600"
+            title={reminder.failureReason}
+          >
+            {reminder.failureReason}
+          </p>
+        )}
+      </BoardCard>
+    </button>
   );
 }

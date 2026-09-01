@@ -141,7 +141,7 @@ export function SettingsForm({
                   id="address"
                   name="address"
                   defaultValue={initial.address ?? ''}
-                  placeholder="Av. Reforma 123, Col. Centro, CDMX"
+                  placeholder="Calle Mayor 12, 28013 Madrid"
                   className="mt-2"
                 />
               </div>
@@ -169,7 +169,7 @@ export function SettingsForm({
                   <Input
                     value={phoneDraft}
                     onChange={(e) => setPhoneDraft(e.target.value)}
-                    placeholder="+52 555 100 2000"
+                    placeholder="+34 910 000 000"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -178,7 +178,7 @@ export function SettingsForm({
                     }}
                   />
                   <Button type="button" variant="secondary" onClick={addPhone}>
-                    Agregar
+                    Añadir
                   </Button>
                 </div>
               </div>
@@ -220,18 +220,19 @@ export function SettingsForm({
               </div>
 
               <div>
-                <Label htmlFor="transferNumber">Número de transferencia a humano</Label>
+                <Label htmlFor="transferNumber">Número para pasar la llamada a una persona</Label>
                 <Input
                   id="transferNumber"
                   name="transferNumber"
                   type="tel"
                   defaultValue={initial.transferNumber ?? ''}
-                  placeholder="+5491139530968"
+                  placeholder="+34600123456"
                   className="mt-2"
                 />
                 <p className="mt-1.5 text-xs text-zinc-500">
-                  Cuando el paciente pida hablar con una persona, ambos agentes (entrante y
-                  saliente) transfieren la llamada a este número. Formato E.164 (con +).
+                  Cuando el paciente pida hablar con una persona, el agente pasa la llamada a este
+                  número, tanto en llamadas entrantes como salientes. Escríbelo en formato
+                  internacional, con el prefijo del país (p. ej. +34600123456).
                 </p>
               </div>
             </div>
@@ -292,8 +293,8 @@ export function SettingsForm({
                 Texto de consentimiento
               </h3>
               <p className="text-sm text-zinc-500 mt-1 mb-4">
-                Lo que el agente dice <span className="font-medium">verbatim</span> al inicio de
-                cada llamada (compliance de grabación).
+                Lo que el agente dice <span className="font-medium">palabra por palabra</span> al
+                empezar cada llamada, para cumplir con la normativa de grabación.
               </p>
               <Textarea
                 name="recordingConsentText"
@@ -311,14 +312,14 @@ export function SettingsForm({
 
           <Card>
             <div className="p-4 sm:p-6">
-              <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">Tips</h3>
+              <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">Consejos</h3>
               <ul className="mt-3 space-y-2 text-sm text-zinc-600">
-                <li>• La zona horaria afecta cómo el agente lee horarios al paciente.</li>
+                <li>• La zona horaria determina las horas que el agente le dice al paciente.</li>
                 <li>
                   • El mensaje de consentimiento es <span className="font-medium">obligatorio</span>{' '}
-                  por compliance.
+                  por normativa.
                 </li>
-                <li>• Podés tener múltiples teléfonos de contacto.</li>
+                <li>• Puedes añadir varios teléfonos de contacto.</li>
               </ul>
             </div>
           </Card>

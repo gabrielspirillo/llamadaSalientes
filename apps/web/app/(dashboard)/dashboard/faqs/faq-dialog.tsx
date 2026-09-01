@@ -45,9 +45,9 @@ export function FaqDialog({ faq, trigger }: { faq?: Faq; trigger: React.ReactNod
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Editar FAQ' : 'Nueva FAQ'}</DialogTitle>
+          <DialogTitle>{isEdit ? 'Editar pregunta' : 'Nueva pregunta'}</DialogTitle>
           <DialogDescription>
-            El agente puede usar esta respuesta cuando un paciente pregunta algo similar.
+            El agente usará esta respuesta cuando un paciente pregunte algo parecido.
           </DialogDescription>
         </DialogHeader>
         <form action={handleSubmit} className="space-y-4">

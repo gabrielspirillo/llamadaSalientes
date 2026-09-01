@@ -89,7 +89,7 @@ export function StepClinic({ form, mutate, errors }: StepProps) {
             </div>
           ))}
           <IconTextButton onClick={() => mutate((d) => d.clinic.phones.push(''))}>
-            <Plus className="h-3.5 w-3.5" /> Agregar teléfono
+            <Plus className="h-3.5 w-3.5" /> Añadir teléfono
           </IconTextButton>
         </div>
       </Field>
@@ -113,7 +113,7 @@ export function StepClinic({ form, mutate, errors }: StepProps) {
           </Select>
         </Field>
 
-        <Field label="Idioma del agente" required htmlFor="clinic-lang">
+        <Field label="Idioma del asistente" required htmlFor="clinic-lang">
           <Select
             id="clinic-lang"
             value={form.clinic.defaultLanguage}
@@ -171,7 +171,7 @@ export function StepHours({ form, mutate, errors }: StepProps) {
     <div className="flex flex-col gap-4">
       <div className="flex justify-end">
         <Button variant="secondary" size="sm" onClick={copyMondayToAll} type="button">
-          <Copy className="h-3.5 w-3.5" /> Copiar Lunes a todos
+          <Copy className="h-3.5 w-3.5" /> Copiar el lunes al resto
         </Button>
       </div>
 
@@ -190,7 +190,7 @@ export function StepHours({ form, mutate, errors }: StepProps) {
                         d.hours[day].enabled = ev.target.checked;
                       })
                     }
-                    className="h-4 w-4 rounded border-zinc-300 accent-violet-600"
+                    className="h-4 w-4 rounded border-zinc-300 accent-brand-600"
                   />
                   <span className="text-sm font-medium text-zinc-800">{DAY_LABELS[day]}</span>
                 </label>
@@ -344,7 +344,7 @@ export function StepTreatments({ form, mutate, errors }: StepProps) {
                   <Field
                     label="Precio ref. €"
                     error={errors[`treatments.${i}.priceReferencial`]}
-                    hint="Se usa para calcular el revenue recuperado; vacío si no querés contabilizarlo."
+                    hint="Se usa para calcular los ingresos recuperados. Déjalo vacío si no quieres contarlo."
                   >
                     <Input
                       inputMode="decimal"
@@ -366,7 +366,7 @@ export function StepTreatments({ form, mutate, errors }: StepProps) {
           setOpenIdx(form.treatments.length);
         }}
       >
-        <Plus className="h-3.5 w-3.5" /> Agregar tratamiento
+        <Plus className="h-3.5 w-3.5" /> Añadir tratamiento
       </IconTextButton>
     </div>
   );
@@ -386,7 +386,7 @@ export function StepFaqs({ form, mutate, errors }: StepProps) {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-zinc-500">
-        Opcional. Cargá las preguntas frecuentes que quieras que el agente sepa responder.
+        Opcional. Añade las preguntas que más te hacen para que el asistente sepa responderlas.
       </p>
 
       {form.faqs.map((f, i) => {
@@ -400,10 +400,10 @@ export function StepFaqs({ form, mutate, errors }: StepProps) {
             )}
           >
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-zinc-800">FAQ {i + 1}</span>
+              <span className="text-sm font-medium text-zinc-800">Pregunta {i + 1}</span>
               <button
                 type="button"
-                aria-label="Eliminar FAQ"
+                aria-label="Eliminar pregunta"
                 onClick={() => mutate((d) => d.faqs.splice(i, 1))}
                 className="rounded-full p-2 text-zinc-400 hover:bg-zinc-100 hover:text-rose-600"
               >
@@ -423,7 +423,7 @@ export function StepFaqs({ form, mutate, errors }: StepProps) {
               <Input
                 value={f.question}
                 onChange={(ev) => updateF(i, { question: ev.target.value })}
-                placeholder="¿Aceptan obra social?"
+                placeholder="¿Trabajáis con seguros dentales?"
               />
             </Field>
             <Field label="Respuesta" required error={errors[`faqs.${i}.answer`]}>
@@ -431,7 +431,7 @@ export function StepFaqs({ form, mutate, errors }: StepProps) {
                 className="min-h-[80px]"
                 value={f.answer}
                 onChange={(ev) => updateF(i, { answer: ev.target.value })}
-                placeholder="Sí, trabajamos con las principales obras sociales…"
+                placeholder="Sí, trabajamos con las principales aseguradoras dentales…"
               />
             </Field>
           </div>
@@ -445,7 +445,7 @@ export function StepFaqs({ form, mutate, errors }: StepProps) {
       </datalist>
 
       <IconTextButton onClick={() => mutate((d) => d.faqs.push(emptyFaq()))}>
-        <Plus className="h-3.5 w-3.5" /> Agregar FAQ
+        <Plus className="h-3.5 w-3.5" /> Añadir pregunta
       </IconTextButton>
     </div>
   );
@@ -458,7 +458,7 @@ export function StepFaqs({ form, mutate, errors }: StepProps) {
 export function StepAgent({ form, mutate, errors }: StepProps) {
   return (
     <div className="flex flex-col gap-5">
-      <Field label="Nombre del agente" htmlFor="agent-name" hint="Opcional. Ej: Sofía.">
+      <Field label="Nombre del asistente" htmlFor="agent-name" hint="Opcional. Por ejemplo: Sofía.">
         <Input
           id="agent-name"
           value={form.agent.name}
@@ -481,7 +481,7 @@ export function StepAgent({ form, mutate, errors }: StepProps) {
               d.agent.tone = ev.target.value;
             })
           }
-          placeholder="Cercano y profesional. Tratá de usted. Nunca des precios exactos sin confirmar…"
+          placeholder="Cercano y profesional. Trata de usted. Nunca des precios exactos sin confirmar…"
         />
         <div className="flex justify-end">
           <CharCount value={form.agent.tone} max={2000} />
@@ -498,15 +498,15 @@ export function StepAgent({ form, mutate, errors }: StepProps) {
               d.agent.afterHoursMessage = ev.target.value;
             })
           }
-          placeholder="Ahora estamos cerrados. Dejanos tu consulta y te contactamos apenas abramos."
+          placeholder="Ahora estamos cerrados. Déjanos tu consulta y te llamamos en cuanto abramos."
         />
       </Field>
 
       <Field
-        label="Número de transferencia a humano"
+        label="Número al que pasar la llamada"
         required
         htmlFor="agent-transfer"
-        hint="Formato internacional E.164, ej: +34611223344"
+        hint="Cuando haga falta una persona, el asistente pasa la llamada a este número. Formato internacional, por ejemplo: +34611223344"
         error={errors['agent.transferNumber']}
       >
         <Input
@@ -526,7 +526,7 @@ export function StepAgent({ form, mutate, errors }: StepProps) {
         label="Texto de consentimiento de grabación"
         required
         htmlFor="agent-consent"
-        hint="Lo dice el agente al inicio de cada llamada"
+        hint="El asistente lo dice al principio de cada llamada"
         error={errors['agent.recordingConsentText']}
       >
         <Textarea

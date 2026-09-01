@@ -36,7 +36,10 @@ const settingsSchema = z.object({
   recordingConsentText: z.string().min(20, 'El mensaje de consentimiento es obligatorio'),
   transferNumber: z
     .string()
-    .regex(e164Regex, 'El número de transferencia debe estar en formato E.164 (ej. +5491139530968)')
+    .regex(
+      e164Regex,
+      'El número al que se pasa la llamada debe ir en formato E.164 (p. ej. +34600123456)',
+    )
     .or(z.literal(''))
     .optional()
     .nullable()

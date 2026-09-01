@@ -1,11 +1,7 @@
 'use server';
 
 import { recordAudit } from '@/lib/audit';
-import {
-  deleteGhlIntegration,
-  getGhlIntegration,
-  upsertGhlPit,
-} from '@/lib/data/ghl-integration';
+import { deleteGhlIntegration, getGhlIntegration, upsertGhlPit } from '@/lib/data/ghl-integration';
 import { ghlFetch } from '@/lib/ghl/client';
 import { getCurrentTenant } from '@/lib/tenant';
 import { revalidatePath } from 'next/cache';
@@ -16,7 +12,7 @@ export async function disconnectGhlAction(): Promise<ActionResult> {
   const { tenant } = await getCurrentTenant();
 
   const before = await getGhlIntegration(tenant.id);
-  if (!before) return { ok: false, error: 'No hay integración GHL conectada' };
+  if (!before) return { ok: false, error: 'No hay ninguna integración de GoHighLevel conectada' };
 
   await deleteGhlIntegration(tenant.id);
 
@@ -45,10 +41,10 @@ export async function connectGhlPitAction(input: {
   const locationId = input.locationId.trim();
 
   if (!pit.startsWith('pit-')) {
-    return { ok: false, error: 'El token no parece un PIT válido (debe empezar con "pit-")' };
+    return { ok: false, error: 'El token no parece válido: debe empezar por "pit-"' };
   }
   if (!locationId) {
-    return { ok: false, error: 'Location ID es requerido' };
+    return { ok: false, error: 'El Location ID es obligatorio' };
   }
 
   // Persistimos primero (si verifica falla, podemos rollback — pero para simplicidad
@@ -68,11 +64,11 @@ export async function connectGhlPitAction(input: {
     });
   } catch (err) {
     // Mantenemos lo que guardamos pero avisamos
-    const msg = err instanceof Error ? err.message : 'Verificación falló';
+    const msg = err instanceof Error ? err.message : 'La verificación ha fallado';
     revalidatePath('/dashboard/configuration');
     return {
       ok: false,
-      error: `Guardado, pero la verificación falló: ${msg}. Revisá que el token y Location ID sean correctos.`,
+      error: `Guardado, pero la verificación ha fallado: ${msg}. Revisa que el token y el Location ID sean correctos.`,
     };
   }
 

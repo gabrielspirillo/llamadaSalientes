@@ -23,8 +23,8 @@ export function DemoBanner() {
               Estás viendo datos de ejemplo
             </p>
             <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-amber-800/80">
-              Así se verá tu panel cuando el agente empiece a atender llamadas, agendar turnos y
-              recuperar cancelaciones para tu clínica.
+              Así se verá tu panel cuando el asistente empiece a atender llamadas, dar citas y
+              recuperar las que se cancelan.
             </p>
           </div>
         </div>
@@ -33,7 +33,7 @@ export function DemoBanner() {
             <Link href="/dashboard/configuration?tab=telephony">Conectar mi clínica</Link>
           </Button>
           <Button asChild variant="ghost" size="sm">
-            <Link href="/dashboard">Salir del demo</Link>
+            <Link href="/dashboard">Salir del modo demo</Link>
           </Button>
         </div>
       </div>

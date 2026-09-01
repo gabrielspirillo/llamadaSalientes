@@ -132,7 +132,7 @@ export default async function WhatsappConversationsPage() {
           <EmptyState
             icon={<MessageCircle className="h-5 w-5" />}
             title="Aún no hay conversaciones"
-            description="Configurá una integración de WhatsApp para empezar a recibir mensajes."
+            description="Configura una conexión de WhatsApp para empezar a recibir mensajes."
             action={
               <Button asChild size="sm">
                 <Link href="/dashboard/configuration?tab=whatsapp">Configurar WhatsApp</Link>

@@ -14,9 +14,9 @@ export type StatTone = 'grape' | 'blossom' | 'mint' | 'sky' | 'honey' | 'coral';
 const TONE: Record<StatTone, { chip: string; bar: string; glow: string; stroke: string }> = {
   grape: {
     chip: 'bg-violet-100 text-violet-600',
-    bar: 'bg-[linear-gradient(90deg,#7139e8,#a855f7)]',
+    bar: 'bg-[linear-gradient(90deg,#37766a,#5fa896)]',
     glow: 'from-violet-200/60',
-    stroke: '#8b5cf6',
+    stroke: '#5fa896',
   },
   blossom: {
     chip: 'bg-pink-100 text-pink-600',
@@ -166,7 +166,7 @@ export function StatTile({
 /** Mini gráfico de línea con área y animación de trazo. */
 export function Sparkline({
   data,
-  stroke = '#8b5cf6',
+  stroke = '#5fa896',
   height = 36,
   className,
 }: {
@@ -329,7 +329,7 @@ export function ProgressRing({
           cy={size / 2}
           r={r}
           fill="none"
-          stroke="#f1eefb"
+          stroke="#e8f4ee"
           strokeWidth={stroke}
         />
         <circle

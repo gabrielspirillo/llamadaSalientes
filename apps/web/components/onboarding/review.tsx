@@ -36,7 +36,7 @@ function SectionCard({
         <button
           type="button"
           onClick={onEdit}
-          className="inline-flex items-center gap-1 text-xs font-medium text-violet-700 hover:underline"
+          className="inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:underline"
         >
           <Pencil className="h-3 w-3" /> Editar
         </button>
@@ -72,7 +72,7 @@ export function ReviewStep({
         <Row label="Teléfonos" value={clinic.phones.filter(Boolean).join(' · ')} />
         <Row label="Zona horaria" value={clinic.timezone} />
         <Row label="Idioma" value={clinic.defaultLanguage === 'es' ? 'Español' : 'English'} />
-        <Row label="Email de contacto" value={clinic.contactEmail} />
+        <Row label="Correo de contacto" value={clinic.contactEmail} />
       </SectionCard>
 
       <SectionCard title="Horarios" onEdit={() => goToStep(2)}>
@@ -107,18 +107,21 @@ export function ReviewStep({
       </SectionCard>
 
       {form.faqs.length > 0 && (
-        <SectionCard title={`FAQs (${form.faqs.length})`} onEdit={() => goToStep(4)}>
+        <SectionCard
+          title={`Preguntas frecuentes (${form.faqs.length})`}
+          onEdit={() => goToStep(4)}
+        >
           {form.faqs.map((f, i) => (
-            <Row key={f.id} label={f.category || `FAQ ${i + 1}`} value={f.question} />
+            <Row key={f.id} label={f.category || `Pregunta ${i + 1}`} value={f.question} />
           ))}
         </SectionCard>
       )}
 
-      <SectionCard title="El agente" onEdit={() => goToStep(5)}>
+      <SectionCard title="El asistente" onEdit={() => goToStep(5)}>
         <Row label="Nombre" value={agent.name} />
         <Row label="Tono / instrucciones" value={agent.tone} />
         <Row label="Mensaje fuera de horario" value={agent.afterHoursMessage} />
-        <Row label="Transferencia a humano" value={agent.transferNumber} />
+        <Row label="Número al que pasar la llamada" value={agent.transferNumber} />
         <Row label="Consentimiento de grabación" value={agent.recordingConsentText} />
       </SectionCard>
 
@@ -132,7 +135,7 @@ export function ReviewStep({
           type="checkbox"
           checked={confirmed}
           onChange={(ev) => setConfirmed(ev.target.checked)}
-          className="mt-0.5 h-4 w-4 rounded border-zinc-300 accent-violet-600"
+          className="mt-0.5 h-4 w-4 rounded border-zinc-300 accent-brand-600"
         />
         <span className="text-sm text-zinc-800">
           Confirmo que los datos son correctos.
@@ -182,9 +185,9 @@ function buildOnboardingHtml(payload: OnboardingPayload) {
             `<div class="item"><div class="item-name">${esc(f.question)}${f.category ? ` <span class="tag">${esc(f.category)}</span>` : ''}</div><div class="item-desc">${esc(f.answer)}</div></div>`,
         )
         .join('')
-    : '<div class="muted">Sin preguntas cargadas.</div>';
+    : '<div class="muted">No se han añadido preguntas.</div>';
 
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8" /><title>Onboarding — ${esc(clinic.name)}</title><style>
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8" /><title>Alta de clínica — ${esc(clinic.name)}</title><style>
 *{box-sizing:border-box}html,body{margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:#0f1f2e;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .wrap{max-width:720px;margin:0 auto;padding:40px 40px 56px}
@@ -216,22 +219,22 @@ td.d{color:#6b7580;width:130px}
 .foot{margin-top:40px;text-align:center;color:#b3bcc4;font-size:11px}
 @page{margin:16mm}
 </style></head><body><div class="wrap">
-<div class="brand"><span class="name">FUTURA</span><span class="dot"></span><span class="sep">·</span><span class="kicker">Formulario de onboarding</span></div>
+<div class="brand"><span class="name">FUTURA</span><span class="dot"></span><span class="sep">·</span><span class="kicker">Formulario de alta</span></div>
 <h1>${esc(clinic.name)}</h1>
-<p class="sub">Datos cargados para la activación del agente de voz.</p>
+<p class="sub">Datos enviados para activar el asistente de voz.</p>
 <section><h2>Clínica</h2><div class="card grid">
 <div class="field"><div class="k">Dirección</div><div class="v">${esc(clinic.address)}</div></div>
 <div class="field"><div class="k">Teléfonos</div><div class="v">${esc(clinic.phones.join(' · '))}</div></div>
-<div class="field"><div class="k">Email de contacto</div><div class="v">${esc(clinic.contactEmail)}</div></div>
+<div class="field"><div class="k">Correo de contacto</div><div class="v">${esc(clinic.contactEmail)}</div></div>
 <div class="field"><div class="k">Zona horaria</div><div class="v">${esc(clinic.timezone)}</div></div>
-<div class="field"><div class="k">Idioma del agente</div><div class="v">${esc(langLabel)}</div></div>
+<div class="field"><div class="k">Idioma del asistente</div><div class="v">${esc(langLabel)}</div></div>
 </div></section>
 <section><h2>Horarios</h2><div class="card"><table>${hoursRows}</table></div></section>
 <section><h2>Tratamientos (${treatments.length})</h2><div class="card">${treatmentRows}</div></section>
 <section><h2>Preguntas frecuentes (${faqs.length})</h2><div class="card">${faqRows}</div></section>
-<section><h2>El agente</h2><div class="card grid">
-${agent.name ? `<div class="field"><div class="k">Nombre del agente</div><div class="v">${esc(agent.name)}</div></div>` : ''}
-<div class="field"><div class="k">Transferencia a humano</div><div class="v">${esc(agent.transferNumber)}</div></div>
+<section><h2>El asistente</h2><div class="card grid">
+${agent.name ? `<div class="field"><div class="k">Nombre del asistente</div><div class="v">${esc(agent.name)}</div></div>` : ''}
+<div class="field"><div class="k">Número al que pasar la llamada</div><div class="v">${esc(agent.transferNumber)}</div></div>
 ${agent.tone ? `<div class="field"><div class="k">Tono / instrucciones</div><div class="v">${esc(agent.tone)}</div></div>` : ''}
 ${agent.afterHoursMessage ? `<div class="field"><div class="k">Mensaje fuera de horario</div><div class="v">${esc(agent.afterHoursMessage)}</div></div>` : ''}
 <div class="field"><div class="k">Consentimiento de grabación</div><div class="v">${esc(agent.recordingConsentText)}</div></div>
@@ -287,12 +290,12 @@ export function SuccessScreen({
         <Check className="h-7 w-7 text-white" />
       </div>
       <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
-        ¡Listo! Recibimos los datos de {payload.clinic.name}
+        Listo. Hemos recibido los datos de {payload.clinic.name}
       </h1>
       <p className="mt-2 text-zinc-500">
         {authenticated
-          ? 'Nuestro equipo revisa los datos y activa tu agente. Ya podés entrar al panel.'
-          : 'Nuestro equipo lo revisa y activa tu agente.'}{' '}
+          ? 'Revisamos los datos y activamos tu asistente. Ya puedes entrar al panel.'
+          : 'Revisamos los datos y activamos tu asistente.'}{' '}
         {payload.clinic.contactEmail && (
           <>
             Te avisamos a{' '}
@@ -302,14 +305,14 @@ export function SuccessScreen({
       </p>
 
       <div className="mt-8 w-full rounded-2xl border border-[--color-border] bg-white p-5 text-left">
-        <h2 className="mb-3 text-sm font-semibold text-zinc-900">Resumen de lo que cargaste</h2>
+        <h2 className="mb-3 text-sm font-semibold text-zinc-900">Resumen de lo que has enviado</h2>
         <div className="divide-y divide-[--color-border-subtle]">
           <Row label="Clínica" value={payload.clinic.name} />
           <Row label="Dirección" value={payload.clinic.address} />
           <Row label="Teléfonos" value={payload.clinic.phones.join(' · ')} />
-          <Row label="Tratamientos" value={`${payload.treatments.length} cargados`} />
-          <Row label="FAQs" value={`${payload.faqs.length} cargadas`} />
-          <Row label="Transferencia a humano" value={payload.agent.transferNumber} />
+          <Row label="Tratamientos" value={`${payload.treatments.length} añadidos`} />
+          <Row label="Preguntas frecuentes" value={`${payload.faqs.length} añadidas`} />
+          <Row label="Número al que pasar la llamada" value={payload.agent.transferNumber} />
         </div>
       </div>
 

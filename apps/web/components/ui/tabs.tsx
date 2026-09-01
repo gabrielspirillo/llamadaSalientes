@@ -33,8 +33,8 @@ export const TabsTrigger = React.forwardRef<
       'hover:text-brand-700',
       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40',
       'disabled:pointer-events-none disabled:opacity-50',
-      'data-[state=active]:bg-[linear-gradient(120deg,#7139e8,#8b5cf6)] data-[state=active]:text-white',
-      'data-[state=active]:shadow-[0_6px_18px_-8px_rgba(113,57,232,0.8)]',
+      'data-[state=active]:bg-[linear-gradient(120deg,#37766a,#5fa896)] data-[state=active]:text-white',
+      'data-[state=active]:shadow-[0_6px_18px_-8px_rgba(55,118,106,0.8)]',
       className,
     )}
     {...props}
@@ -83,7 +83,7 @@ export function SegmentedNav({
             className={cn(
               'inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-semibold transition-all duration-300',
               active
-                ? 'bg-[linear-gradient(120deg,#7139e8,#8b5cf6)] text-white shadow-[0_6px_18px_-8px_rgba(113,57,232,0.8)]'
+                ? 'bg-[linear-gradient(120deg,#37766a,#5fa896)] text-white shadow-[0_6px_18px_-8px_rgba(55,118,106,0.8)]'
                 : 'text-zinc-500 hover:bg-brand-50 hover:text-brand-700',
             )}
           >
