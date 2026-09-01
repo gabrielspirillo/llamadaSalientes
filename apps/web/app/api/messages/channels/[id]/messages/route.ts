@@ -88,8 +88,11 @@ const attachmentSchema = z.object({
 const postSchema = z
   .object({
     body: z.string().max(MAX_BODY_LENGTH).default(''),
-    clientNonce: z.string().trim().max(80).optional(),
-    parentId: z.string().uuid().optional(),
+    // `nullish`, no `optional`: el cliente manda `null` explícito en un mensaje
+    // de primer nivel, y `optional()` solo acepta `undefined`. Con `optional()`
+    // TODOS los envíos se rechazaban con 400.
+    clientNonce: z.string().trim().max(80).nullish(),
+    parentId: z.string().uuid().nullish(),
     attachments: z.array(attachmentSchema).max(MAX_ATTACHMENTS_PER_MESSAGE).default([]),
   })
   .refine((v) => v.body.trim().length > 0 || v.attachments.length > 0, {
