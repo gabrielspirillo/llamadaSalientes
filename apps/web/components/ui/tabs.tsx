@@ -84,7 +84,7 @@ export function SegmentedNav({
               'inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-semibold transition-all duration-300',
               active
                 ? 'bg-[linear-gradient(120deg,#37766a,#5fa896)] text-white shadow-[0_6px_18px_-8px_rgba(55,118,106,0.8)]'
-                : 'text-zinc-500 hover:bg-brand-50 hover:text-brand-700',
+                : 'text-zinc-500 hover:bg-zinc-100 hover:text-brand-700',
             )}
           >
             {it.label}

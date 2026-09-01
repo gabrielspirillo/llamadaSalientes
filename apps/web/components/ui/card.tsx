@@ -10,7 +10,7 @@ const cardVariants = cva('relative rounded-[22px] transition-all duration-300', 
       /* Vidrio esmerilado — para paneles sobre gradientes */
       glass: 'glass shadow-[var(--shadow-soft)]',
       /* Tarjetas pastel tipo tablero (referencia weihu) */
-      grape: 'bg-[#effaf5] border border-[#cfe9dc]',
+      grape: 'bg-[#f4f7f6] border border-[#cfe9dc]',
       blossom: 'bg-[#fdf0f7] border border-[#f9dcec]',
       mint: 'bg-[#e9f9f2] border border-[#cdf0e1]',
       sky: 'bg-[#e9f4fe] border border-[#d0e8fb]',
@@ -18,7 +18,7 @@ const cardVariants = cva('relative rounded-[22px] transition-all duration-300', 
       coral: 'bg-[#fef0f2] border border-[#fbdbe1]',
       /* Panel oscuro para destacar un bloque hero */
       night:
-        'bg-[linear-gradient(140deg,#12241f_0%,#1e4239_55%,#26594b_100%)] text-white border border-white/10 shadow-[var(--shadow-float)]',
+        'bg-[linear-gradient(140deg,#171b1a_0%,#20302c_55%,#27403a_100%)] text-white border border-white/10 shadow-[var(--shadow-float)]',
       /* Sin fondo — sólo estructura */
       plain: 'bg-transparent',
     },

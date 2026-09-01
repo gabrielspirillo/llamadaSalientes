@@ -22,9 +22,9 @@ const buttonVariants = cva(
           'bg-white text-zinc-800 border border-[--color-border] shadow-[0_1px_2px_rgba(20,33,29,0.04)] hover:border-brand-200 hover:text-brand-700 hover:shadow-[0_10px_22px_-14px_rgba(20,33,29,0.45)] hover:-translate-y-0.5',
         /* Suave: pastel de marca, para acciones frecuentes no destructivas */
         soft: 'bg-brand-50 text-brand-700 hover:bg-brand-100 hover:-translate-y-0.5',
-        ghost: 'text-zinc-600 hover:bg-brand-50 hover:text-brand-700',
+        ghost: 'text-zinc-600 hover:bg-zinc-100 hover:text-brand-700',
         outline:
-          'border border-brand-200 text-brand-700 bg-transparent hover:bg-brand-50 hover:border-brand-300',
+          'border border-brand-200 text-brand-700 bg-transparent hover:bg-zinc-100 hover:border-brand-300',
         link: 'text-brand-700 underline-offset-4 hover:underline rounded-none p-0 h-auto shadow-none',
         danger:
           'sheen text-white bg-[linear-gradient(120deg,#f43f5e_0%,#fb7185_100%)] shadow-[0_8px_24px_-10px_rgba(244,63,94,0.7)] hover:-translate-y-0.5',
@@ -78,7 +78,7 @@ export const IconButton = React.forwardRef<
     title={label}
     className={cn(
       'inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-400',
-      'transition-all duration-300 hover:bg-brand-50 hover:text-brand-600 hover:scale-110 active:scale-95',
+      'transition-all duration-300 hover:bg-zinc-100 hover:text-brand-600 hover:scale-110 active:scale-95',
       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40',
       className,
     )}

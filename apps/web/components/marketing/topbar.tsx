@@ -67,7 +67,7 @@ export function MarketingTopbar() {
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-label={open ? 'Cerrar menú' : 'Abrir menú'}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-zinc-600 transition-all hover:bg-brand-50 hover:text-brand-700 active:scale-95 sm:hidden"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-zinc-600 transition-all hover:bg-zinc-100 hover:text-brand-700 active:scale-95 sm:hidden"
         >
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
@@ -79,28 +79,28 @@ export function MarketingTopbar() {
             <Link
               href="#producto"
               onClick={() => setOpen(false)}
-              className="rounded-xl px-3 py-2.5 font-medium text-zinc-700 transition-colors hover:bg-brand-50 hover:text-brand-700"
+              className="rounded-xl px-3 py-2.5 font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-brand-700"
             >
               Producto
             </Link>
             <Link
               href="#integraciones"
               onClick={() => setOpen(false)}
-              className="rounded-xl px-3 py-2.5 font-medium text-zinc-700 transition-colors hover:bg-brand-50 hover:text-brand-700"
+              className="rounded-xl px-3 py-2.5 font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-brand-700"
             >
               Integraciones
             </Link>
             <Link
               href="#precios"
               onClick={() => setOpen(false)}
-              className="rounded-xl px-3 py-2.5 font-medium text-zinc-700 transition-colors hover:bg-brand-50 hover:text-brand-700"
+              className="rounded-xl px-3 py-2.5 font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-brand-700"
             >
               Precios
             </Link>
             <Link
               href="/dashboard"
               onClick={() => setOpen(false)}
-              className="rounded-xl px-3 py-2.5 font-medium text-zinc-700 transition-colors hover:bg-brand-50 hover:text-brand-700"
+              className="rounded-xl px-3 py-2.5 font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-brand-700"
             >
               Demo
             </Link>

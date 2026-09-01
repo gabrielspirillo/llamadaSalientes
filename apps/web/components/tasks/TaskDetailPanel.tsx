@@ -493,7 +493,7 @@ export function TaskDetailPanel({
                       void patch({ evidenceNote: evidence || null });
                     }
                   }}
-                  className="w-full resize-y rounded-xl border border-brand-200 bg-brand-50/40 px-3 py-2 text-sm text-zinc-700 focus:border-brand-400 focus:outline-none"
+                  className="w-full resize-y rounded-xl border border-brand-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700 focus:border-brand-400 focus:outline-none"
                 />
               </section>
             )}

@@ -159,7 +159,7 @@ export default async function CallsPage({
                     <li key={c.id} style={{ ['--i' as string]: Math.min(i, 12) }}>
                       <Link
                         href={`/dashboard/calls/${c.id}`}
-                        className="flex items-start gap-3 rounded-2xl px-3 py-3 transition-colors hover:bg-brand-50/50"
+                        className="flex items-start gap-3 rounded-2xl px-3 py-3 transition-colors hover:bg-zinc-50"
                       >
                         <div className="relative shrink-0">
                           <Avatar name={display} size={38} />
@@ -279,7 +279,7 @@ export default async function CallsPage({
                 </TableWrap>
               </div>
 
-              <div className="flex items-center justify-between border-t border-[--color-border-subtle] bg-[#fafdfb] p-4 text-[12px] text-zinc-500 sm:px-5">
+              <div className="flex items-center justify-between border-t border-[--color-border-subtle] bg-[#fafbfb] p-4 text-[12px] text-zinc-500 sm:px-5">
                 <span className="inline-flex items-center gap-2">
                   <Phone className="h-3.5 w-3.5" />
                   Mostrando {realCalls.length} de {realCalls.length}

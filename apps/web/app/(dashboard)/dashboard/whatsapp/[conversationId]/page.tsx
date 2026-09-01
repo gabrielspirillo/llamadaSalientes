@@ -135,7 +135,7 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
             <Link
               href="/dashboard/whatsapp"
               aria-label="Volver a conversaciones"
-              className="group inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-all duration-300 hover:bg-brand-50 hover:text-brand-700"
+              className="group inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-all duration-300 hover:bg-zinc-100 hover:text-brand-700"
             >
               <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
             </Link>

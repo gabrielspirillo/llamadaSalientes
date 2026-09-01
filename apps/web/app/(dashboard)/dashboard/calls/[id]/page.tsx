@@ -156,7 +156,7 @@ export default async function CallDetailPage({
                           <p
                             className={`break-words rounded-2xl px-4 py-2.5 text-[13.5px] leading-relaxed ${
                               turn.speaker === 'agent'
-                                ? 'rounded-tl-md bg-[#effaf5] text-violet-900'
+                                ? 'rounded-tl-md bg-[#f4f7f6] text-violet-900'
                                 : 'rounded-tl-md bg-[#e9f4fe] text-sky-900'
                             }`}
                           >
@@ -193,7 +193,7 @@ export default async function CallDetailPage({
                   </p>
                 )}
                 <div className="mt-5 grid grid-cols-2 gap-2.5">
-                  <div className="rounded-2xl bg-[#effaf5] p-3">
+                  <div className="rounded-2xl bg-[#f4f7f6] p-3">
                     <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-brand-400">
                       Sentimiento
                     </p>

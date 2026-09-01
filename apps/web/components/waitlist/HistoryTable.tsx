@@ -62,7 +62,7 @@ export function HistoryTable({
         <div className="overflow-hidden rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)]">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-sm">
-              <thead className="border-b border-[--color-border] bg-[#fafdfb] text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+              <thead className="border-b border-[--color-border] bg-[#fafbfb] text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400">
                 <tr>
                   <th className="text-left px-4 py-2.5">Paciente</th>
                   <th className="text-left px-4 py-2.5">Cita original → Cita nueva</th>
@@ -87,7 +87,7 @@ export function HistoryTable({
                       timeZone: tz,
                     });
                   return (
-                    <tr key={r.id} className="transition-colors duration-200 hover:bg-brand-50/40">
+                    <tr key={r.id} className="transition-colors duration-200 hover:bg-zinc-50">
                       <td className="px-4 py-3 font-medium text-zinc-900">{r.patientName}</td>
                       <td className="px-4 py-3">
                         <div className="text-xs text-zinc-500">{fmt(oldT)}</div>

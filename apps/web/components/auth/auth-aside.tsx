@@ -29,7 +29,7 @@ export function AuthAside({
   children: ReactNode;
 }) {
   return (
-    <aside className="relative hidden items-center justify-center overflow-hidden bg-[linear-gradient(150deg,#11221d_0%,#1d4238_50%,#276150_100%)] p-12 text-white lg:flex">
+    <aside className="relative hidden items-center justify-center overflow-hidden bg-[linear-gradient(150deg,#161a19_0%,#1f2d29_50%,#26403a_100%)] p-12 text-white lg:flex">
       {/* Auroras */}
       <div
         aria-hidden

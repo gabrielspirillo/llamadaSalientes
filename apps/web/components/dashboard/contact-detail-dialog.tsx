@@ -325,7 +325,7 @@ export function ContactDetailDialog({
                           key={c.id}
                           href={`/dashboard/calls/${c.id}`}
                           onClick={onClose}
-                          className="block rounded-lg border border-[--color-border] hover:border-brand-200 hover:bg-brand-50/50 p-4 transition-colors"
+                          className="block rounded-lg border border-[--color-border] hover:border-brand-200 hover:bg-zinc-50 p-4 transition-colors"
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex-1 min-w-0">

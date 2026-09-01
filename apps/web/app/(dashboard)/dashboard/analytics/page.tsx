@@ -324,7 +324,7 @@ function RangePill({ href, active, label }: { href: string; active: boolean; lab
       className={`rounded-full px-3.5 py-2 font-semibold transition-all duration-300 ${
         active
           ? 'bg-[linear-gradient(120deg,#37766a,#5fa896)] text-white shadow-[0_6px_18px_-8px_rgba(55,118,106,0.8)]'
-          : 'text-zinc-500 hover:bg-brand-50 hover:text-brand-700'
+          : 'text-zinc-500 hover:bg-zinc-100 hover:text-brand-700'
       }`}
     >
       {label}

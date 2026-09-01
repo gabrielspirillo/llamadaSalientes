@@ -326,7 +326,7 @@ function SidebarNav({
 /* La barra lateral usa un verde más saturado que el lienzo para que se lea
    como una zona fija, distinta del contenido. */
 const SIDEBAR_SURFACE =
-  'bg-[linear-gradient(190deg,#e4f3ec_0%,#dbeee5_45%,#d4ebe1_100%)] border-r border-[#c6e0d5]';
+  'bg-[linear-gradient(190deg,#f1f3f2_0%,#ecefee_50%,#e8ecea_100%)] border-r border-[#dfe4e2]';
 
 export function DashboardSidebar({
   enabledModules,
