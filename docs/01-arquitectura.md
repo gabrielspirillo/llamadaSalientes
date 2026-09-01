@@ -166,6 +166,8 @@ Productores: API routes (webhooks, endpoints de dispatch). Consumidor: proceso `
 | `reminder-fallback-check` | El propio `reminder-send` al terminar | Verifica confirmación; dispara canal de fallback si no hubo respuesta |
 | `waitlist-offer-send` | Detección de `cancelled_slots` | Ofrece el hueco liberado al siguiente de la lista de espera |
 | `waitlist-offer-expire` | `waitlist-offer-send` (delay = TTL de la oferta) | Expira la oferta y avanza al siguiente candidato |
+| `task-routines-tick` | Repeatable cada 15 min (lo registra el propio worker) | Materializa las rutinas de cada clínica en su timezone (apertura, cierre, control biológico, RGPD…) |
+| `task-daily-sweep` | Repeatable diario 06:10 UTC | Barre estados sin webhook: presupuestos aceptados sin cita y pacientes inactivos |
 
 Los jobs se definen tipados en `apps/web/lib/queue/queues.ts` (una cola = un tipo de job). `lib/queue/step.ts` provee un runner de pasos idempotentes al estilo Inngest.
 

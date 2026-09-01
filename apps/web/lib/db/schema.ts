@@ -1,6 +1,8 @@
 import { sql } from 'drizzle-orm';
 import {
   boolean,
+  date,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -99,6 +101,10 @@ export const treatments = pgTable(
     // Si true, este tratamiento entra al pool de waitlist (citas adelantadas).
     // Ver migración 0014_waitlist.sql.
     waitlistEligible: boolean('waitlist_eligible').notNull().default(false),
+    // Si true, al completarse una cita de este tratamiento se genera una tarea
+    // de llamada postoperatoria. Ver migración 0018_tasks.sql.
+    postOpFollowUp: boolean('post_op_follow_up').notNull().default(false),
+    postOpFollowUpHours: integer('post_op_follow_up_hours').notNull().default(24),
     // RAG: embedding (text-embedding-3-small, 1536 floats) de nombre+descripción.
     // Sin pgvector — coseno en memoria (set chico por tenant). Null = sin embeber.
     embedding: jsonb('embedding').$type<number[]>(),
@@ -1395,6 +1401,249 @@ export const waitlistMessageTemplates = pgTable(
       t.tenantId,
       t.channel,
     ),
+  }),
+);
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tareas (módulo core) — ver supabase/migrations/0018_tasks.sql
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const taskStatusEnum = pgEnum('task_status', [
+  'TODO',
+  'IN_PROGRESS',
+  'IN_REVIEW',
+  'DONE',
+]);
+export const taskPriorityEnum = pgEnum('task_priority', ['LOW', 'MEDIUM', 'HIGH', 'URGENT']);
+export const taskCategoryEnum = pgEnum('task_category', [
+  'PATIENT',
+  'CLINICAL',
+  'ADMIN',
+  'COMPLIANCE',
+  'TEAM',
+  'MARKETING',
+]);
+export const taskSourceEnum = pgEnum('task_source', ['MANUAL', 'ROUTINE', 'AUTOMATION']);
+export const taskRecurrenceFreqEnum = pgEnum('task_recurrence_freq', [
+  'DAILY',
+  'WEEKDAYS',
+  'WEEKLY',
+  'MONTHLY',
+  'QUARTERLY',
+  'YEARLY',
+]);
+export const taskAutomationTriggerEnum = pgEnum('task_automation_trigger', [
+  'MISSED_CALL',
+  'CALL_INTENT_UNRESOLVED',
+  'APPOINTMENT_CANCELLED',
+  'APPOINTMENT_NO_SHOW',
+  'REMINDER_NO_RESPONSE',
+  'POST_TREATMENT_FOLLOWUP',
+  'PENDING_TREATMENT_UNSCHEDULED',
+  'PATIENT_INACTIVE',
+  'WHATSAPP_HANDOFF',
+  'WAITLIST_ACCEPTED_UNSCHEDULED',
+]);
+
+export const taskTemplates = pgTable(
+  'task_templates',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    key: text('key'),
+    name: text('name').notNull(),
+    description: text('description'),
+    category: taskCategoryEnum('category').notNull().default('ADMIN'),
+    priority: taskPriorityEnum('priority').notNull().default('MEDIUM'),
+    recurrenceFreq: taskRecurrenceFreqEnum('recurrence_freq').notNull().default('DAILY'),
+    recurrenceInterval: integer('recurrence_interval').notNull().default(1),
+    recurrenceWeekdays: integer('recurrence_weekdays').array().notNull().default([]),
+    recurrenceMonthDay: integer('recurrence_month_day'),
+    recurrenceMonth: integer('recurrence_month'),
+    dueTime: text('due_time').notNull().default('09:00'),
+    leadDays: integer('lead_days').notNull().default(0),
+    defaultRole: text('default_role'),
+    defaultAssigneeUserId: uuid('default_assignee_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    requiresEvidence: boolean('requires_evidence').notNull().default(false),
+    enabled: boolean('enabled').notNull().default(true),
+    isSystem: boolean('is_system').notNull().default(false),
+    lastMaterializedOn: date('last_materialized_on'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantEnabledIdx: index('task_templates_tenant_enabled_idx').on(t.tenantId, t.enabled),
+  }),
+);
+
+export const taskTemplateItems = pgTable(
+  'task_template_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    templateId: uuid('template_id')
+      .references(() => taskTemplates.id, { onDelete: 'cascade' })
+      .notNull(),
+    content: text('content').notNull(),
+    order: integer('order').notNull().default(0),
+  },
+  (t) => ({
+    templateIdx: index('task_template_items_template_idx').on(t.templateId, t.order),
+  }),
+);
+
+export const taskAutomationRules = pgTable(
+  'task_automation_rules',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    trigger: taskAutomationTriggerEnum('trigger').notNull(),
+    enabled: boolean('enabled').notNull().default(true),
+    titleTemplate: text('title_template').notNull(),
+    descriptionTemplate: text('description_template'),
+    category: taskCategoryEnum('category').notNull().default('PATIENT'),
+    priority: taskPriorityEnum('priority').notNull().default('HIGH'),
+    dueOffsetMinutes: integer('due_offset_minutes').notNull().default(120),
+    assigneeUserId: uuid('assignee_user_id').references(() => users.id, { onDelete: 'set null' }),
+    assigneeRole: text('assignee_role'),
+    requiresEvidence: boolean('requires_evidence').notNull().default(false),
+    params: jsonb('params').$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantTriggerUnique: unique('task_automation_rules_tenant_id_trigger_key').on(
+      t.tenantId,
+      t.trigger,
+    ),
+  }),
+);
+
+export const tasks = pgTable(
+  'tasks',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    title: text('title').notNull(),
+    description: text('description'),
+    category: taskCategoryEnum('category').notNull().default('ADMIN'),
+    priority: taskPriorityEnum('priority').notNull().default('MEDIUM'),
+    status: taskStatusEnum('status').notNull().default('TODO'),
+    boardPosition: doublePrecision('board_position').notNull().default(1000),
+    dueAt: timestamp('due_at', { withTimezone: true }),
+    dueAllDay: boolean('due_all_day').notNull().default(false),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    completedByUserId: uuid('completed_by_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    createdByUserId: uuid('created_by_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    source: taskSourceEnum('source').notNull().default('MANUAL'),
+    templateId: uuid('template_id').references(() => taskTemplates.id, { onDelete: 'set null' }),
+    automationTrigger: taskAutomationTriggerEnum('automation_trigger'),
+    dedupeKey: text('dedupe_key'),
+    requiresEvidence: boolean('requires_evidence').notNull().default(false),
+    evidenceNote: text('evidence_note'),
+    labels: text('labels').array().notNull().default([]),
+    patientGhlContactId: text('patient_ghl_contact_id'),
+    patientName: text('patient_name'),
+    patientPhone: text('patient_phone'),
+    callId: uuid('call_id').references(() => calls.id, { onDelete: 'set null' }),
+    whatsappConversationId: uuid('whatsapp_conversation_id').references(
+      () => whatsappConversations.id,
+      { onDelete: 'set null' },
+    ),
+    ghlAppointmentId: text('ghl_appointment_id'),
+    reminderId: uuid('reminder_id'),
+    waitlistEntryId: uuid('waitlist_entry_id'),
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantStatusPosIdx: index('tasks_tenant_status_pos_idx').on(
+      t.tenantId,
+      t.status,
+      t.boardPosition,
+    ),
+    tenantDueIdx: index('tasks_tenant_due_idx').on(t.tenantId, t.dueAt),
+    tenantPatientIdx: index('tasks_tenant_patient_idx').on(t.tenantId, t.patientGhlContactId),
+    tenantSourceIdx: index('tasks_tenant_source_idx').on(t.tenantId, t.source, t.createdAt),
+  }),
+);
+
+export const taskAssignees = pgTable(
+  'task_assignees',
+  {
+    taskId: uuid('task_id')
+      .references(() => tasks.id, { onDelete: 'cascade' })
+      .notNull(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.taskId, t.userId] }),
+    userIdx: index('task_assignees_user_idx').on(t.userId),
+    tenantIdx: index('task_assignees_tenant_idx').on(t.tenantId),
+  }),
+);
+
+export const taskChecklistItems = pgTable(
+  'task_checklist_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    taskId: uuid('task_id')
+      .references(() => tasks.id, { onDelete: 'cascade' })
+      .notNull(),
+    content: text('content').notNull(),
+    done: boolean('done').notNull().default(false),
+    doneAt: timestamp('done_at', { withTimezone: true }),
+    doneByUserId: uuid('done_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+    order: integer('order').notNull().default(0),
+  },
+  (t) => ({
+    taskIdx: index('task_checklist_task_idx').on(t.taskId, t.order),
+  }),
+);
+
+export const taskComments = pgTable(
+  'task_comments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    taskId: uuid('task_id')
+      .references(() => tasks.id, { onDelete: 'cascade' })
+      .notNull(),
+    authorUserId: uuid('author_user_id').references(() => users.id, { onDelete: 'set null' }),
+    kind: text('kind').notNull().default('comment'), // comment|activity
+    body: text('body').notNull(),
+    meta: jsonb('meta').$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    taskIdx: index('task_comments_task_idx').on(t.taskId, t.createdAt),
   }),
 );
 

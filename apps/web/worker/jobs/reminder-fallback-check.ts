@@ -59,7 +59,13 @@ export async function processReminderFallbackCheckJob(
       .from(reminderRules)
       .where(eq(reminderRules.id, rem.ruleId))
       .limit(1);
-    if (!rule?.fallbackChannel) return { status: 'skipped', reason: 'no_fallback' };
+    if (!rule?.fallbackChannel) {
+      // Sin canal de fallback el recordatorio muere sin respuesta: la única
+      // recuperación posible es que alguien levante el teléfono.
+      const { onReminderNoResponse } = await import('@/lib/tasks/hooks');
+      await onReminderNoResponse({ tenantId, reminderId });
+      return { status: 'skipped', reason: 'no_fallback' };
+    }
 
     // Re-verificar cita.
     const [appt] = await db
@@ -99,6 +105,8 @@ export async function processReminderFallbackCheckJob(
       });
       if (!result.ok) {
         await markFallbackFailed(reminderId, result.reason);
+        const { onReminderNoResponse } = await import('@/lib/tasks/hooks');
+        await onReminderNoResponse({ tenantId, reminderId });
         return { status: 'failed', reason: result.reason };
       }
       await markFallbackSent(reminderId, 'WHATSAPP', result.externalMessageId, null);
@@ -116,6 +124,8 @@ export async function processReminderFallbackCheckJob(
       });
       if (!result.ok) {
         await markFallbackFailed(reminderId, result.reason);
+        const { onReminderNoResponse } = await import('@/lib/tasks/hooks');
+        await onReminderNoResponse({ tenantId, reminderId });
         return { status: 'failed', reason: result.reason };
       }
       await markFallbackSent(reminderId, 'VOICE', null, result.callId);

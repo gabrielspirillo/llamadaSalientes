@@ -11,10 +11,13 @@ import 'server-only';
 import { Worker, type Job } from 'bullmq';
 
 import { env } from '@/lib/env';
+import { scheduleTaskCrons } from '@/lib/queue/client';
 import { getRedis } from '@/lib/queue/connection';
 import type { QueueJobs } from '@/lib/queue/queues';
 import { createStepRunner } from '@/lib/queue/step';
 import { processCallJob } from '@/worker/jobs/process-call';
+import { processTaskDailySweepJob } from '@/worker/jobs/task-daily-sweep';
+import { processTaskRoutinesTickJob } from '@/worker/jobs/task-routines-tick';
 import { processReminderFallbackCheckJob } from '@/worker/jobs/reminder-fallback-check';
 import { processReminderSendJob } from '@/worker/jobs/reminder-send';
 import { processWaitlistOfferExpireJob } from '@/worker/jobs/waitlist-offer-expire';
@@ -232,6 +235,62 @@ function buildReminderFallbackCheckWorker(): Worker<QueueJobs['reminder-fallback
   return worker;
 }
 
+function buildTaskRoutinesTickWorker(): Worker<QueueJobs['task-routines-tick']> {
+  const worker = new Worker<QueueJobs['task-routines-tick']>(
+    'task-routines-tick',
+    async (job: Job<QueueJobs['task-routines-tick']>) => {
+      const step = createStepRunner(job.id ?? `task-tick-${job.timestamp}`);
+      return processTaskRoutinesTickJob(job.data, step);
+    },
+    {
+      connection: getRedis(),
+      // Uno solo: el tick recorre todos los tenants y no queremos dos
+      // materializaciones simultáneas peleando por el mismo dedupe_key.
+      concurrency: 1,
+    },
+  );
+
+  worker.on('completed', (job, result) => {
+    console.log('[worker:task-routines-tick] completed', { jobId: job.id, result });
+  });
+  worker.on('failed', (job, err) => {
+    console.error('[worker:task-routines-tick] failed', {
+      jobId: job?.id,
+      attemptsMade: job?.attemptsMade,
+      err: err?.message,
+    });
+  });
+
+  return worker;
+}
+
+function buildTaskDailySweepWorker(): Worker<QueueJobs['task-daily-sweep']> {
+  const worker = new Worker<QueueJobs['task-daily-sweep']>(
+    'task-daily-sweep',
+    async (job: Job<QueueJobs['task-daily-sweep']>) => {
+      const step = createStepRunner(job.id ?? `task-sweep-${job.timestamp}`);
+      return processTaskDailySweepJob(job.data, step);
+    },
+    {
+      connection: getRedis(),
+      concurrency: 1,
+    },
+  );
+
+  worker.on('completed', (job, result) => {
+    console.log('[worker:task-daily-sweep] completed', { jobId: job.id, result });
+  });
+  worker.on('failed', (job, err) => {
+    console.error('[worker:task-daily-sweep] failed', {
+      jobId: job?.id,
+      attemptsMade: job?.attemptsMade,
+      err: err?.message,
+    });
+  });
+
+  return worker;
+}
+
 async function main(): Promise<void> {
   logStart();
 
@@ -242,7 +301,15 @@ async function main(): Promise<void> {
     buildReminderFallbackCheckWorker(),
     buildWaitlistOfferSendWorker(),
     buildWaitlistOfferExpireWorker(),
+    buildTaskRoutinesTickWorker(),
+    buildTaskDailySweepWorker(),
   ];
+
+  // Los crons de tareas se registran acá (no en la web) para que existan aunque
+  // nadie abra el dashboard. El repeat + jobId fijo los hace idempotentes.
+  await scheduleTaskCrons().catch((err) => {
+    console.error('[worker] no se pudieron registrar los crons de tareas', err);
+  });
 
   const shutdown = async (signal: string) => {
     console.log(`[worker] received ${signal}, draining...`);

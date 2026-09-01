@@ -221,6 +221,12 @@ export async function processWhatsappJob(
           urgent: agentOutput.urgent,
         });
       });
+      // El agente soltó la conversación: alguien del equipo tiene que cerrarla.
+      await step.run('create-handoff-task', async () => {
+        const { onWhatsappHandoff } = await import('@/lib/tasks/hooks');
+        await onWhatsappHandoff({ tenantId, conversationId });
+        return { ok: true };
+      });
     }
 
     // 8. Enviar outbound (si hay connector y respuesta).

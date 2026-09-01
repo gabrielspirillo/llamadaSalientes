@@ -56,6 +56,16 @@ export async function sendQueueEvent(
   data: QueueJobs['waitlist-offer-expire'],
   opts?: { delayMs?: number },
 ): Promise<void>;
+export async function sendQueueEvent(
+  name: 'task-routines-tick',
+  data: QueueJobs['task-routines-tick'],
+  opts?: { delayMs?: number },
+): Promise<void>;
+export async function sendQueueEvent(
+  name: 'task-daily-sweep',
+  data: QueueJobs['task-daily-sweep'],
+  opts?: { delayMs?: number },
+): Promise<void>;
 export async function sendQueueEvent<K extends QueueName>(
   name: K,
   data: QueueJobs[K],
@@ -160,6 +170,34 @@ export async function sendQueueEvent<K extends QueueName>(
     return;
   }
 
+  if (name === 'task-routines-tick') {
+    await getQueue('task-routines-tick').add(
+      'task-routines-tick',
+      {},
+      {
+        ...DEFAULT_OPTS,
+        delay: Math.max(0, opts?.delayMs ?? 0),
+        attempts: 2,
+        backoff: { type: 'exponential', delay: 30_000 },
+      },
+    );
+    return;
+  }
+
+  if (name === 'task-daily-sweep') {
+    await getQueue('task-daily-sweep').add(
+      'task-daily-sweep',
+      {},
+      {
+        ...DEFAULT_OPTS,
+        delay: Math.max(0, opts?.delayMs ?? 0),
+        attempts: 2,
+        backoff: { type: 'exponential', delay: 30_000 },
+      },
+    );
+    return;
+  }
+
   // Type-level guard: la exhaustividad la garantizan los overloads.
   const _exhaustive: never = name;
   throw new Error(`Queue desconocida: ${String(_exhaustive)}`);
@@ -208,4 +246,42 @@ export async function removeWaitlistOfferExpireJob(offerId: string): Promise<voi
   if (!env.REDIS_URL) return;
   const queue = getQueue('waitlist-offer-expire');
   await queue.remove(waitlistOfferExpireJobId(offerId)).catch(() => undefined);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Crons del módulo Tareas.
+//
+// BullMQ repeatable jobs en vez de un cron del sistema: el worker ya está
+// corriendo, sobrevive a los redeploys de Dokploy y no necesita un contenedor
+// extra. Se registran al arrancar el worker; el jobId fijo los hace idempotentes.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function scheduleTaskCrons(): Promise<void> {
+  if (!env.REDIS_URL) {
+    console.log('[queue] sin REDIS_URL, crons de tareas no registrados');
+    return;
+  }
+
+  // Cada 15 minutos: cubre clínicas en zonas horarias distintas sin depender
+  // de a qué hora arrancó el worker.
+  await getQueue('task-routines-tick').add(
+    'task-routines-tick',
+    {},
+    {
+      ...DEFAULT_OPTS,
+      repeat: { pattern: '*/15 * * * *' },
+      jobId: 'task-routines-tick-cron',
+    },
+  );
+
+  // Una vez al día a las 06:10 UTC: antes de que abra la primera clínica.
+  await getQueue('task-daily-sweep').add(
+    'task-daily-sweep',
+    {},
+    {
+      ...DEFAULT_OPTS,
+      repeat: { pattern: '10 6 * * *' },
+      jobId: 'task-daily-sweep-cron',
+    },
+  );
 }

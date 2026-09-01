@@ -8,6 +8,7 @@ import {
   BellRing,
   Bot,
   Check,
+  ClipboardCheck,
   Contact,
   HelpCircle,
   MessageCircle,
@@ -40,6 +41,14 @@ const STEPS: Step[] = [
     eyebrow: 'Bienvenido',
     title: 'Conoce Futura en 1 minuto',
     body: 'Tu asistente con IA atiende las llamadas y los WhatsApp de la clínica las 24 horas del día. Te vamos señalando cada parte del menú para que sepas dónde está todo.',
+  },
+  {
+    target: '[data-tour="/dashboard/tasks"]',
+    icon: ClipboardCheck,
+    tint: 'bg-gradient-to-br from-sky-500 to-blue-500',
+    eyebrow: 'El día a día',
+    title: 'Tareas',
+    body: 'El tablero del equipo. Se llena solo: la llamada que quedó sin devolver, el paciente que no vino, el presupuesto parado, la apertura y el cierre de cada día.',
   },
   {
     target: '[data-tour="/dashboard/agent"]',
