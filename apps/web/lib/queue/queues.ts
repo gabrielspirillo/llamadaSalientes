@@ -39,6 +39,12 @@ export type QueueJobs = {
     tenantId: string;
     offerId: string;
   };
+  // Tareas: tick repetible que materializa las rutinas de todas las clínicas
+  // (apertura, cierre, control biológico...) en su propia timezone.
+  'task-routines-tick': Record<string, never>;
+  // Tareas: barrido diario sobre datos de estado (presupuestos aceptados sin
+  // agendar, pacientes inactivos). No hay webhook que los dispare.
+  'task-daily-sweep': Record<string, never>;
 };
 
 export type QueueName = keyof QueueJobs;
@@ -50,4 +56,6 @@ export const QUEUE_NAMES = [
   'reminder-fallback-check',
   'waitlist-offer-send',
   'waitlist-offer-expire',
+  'task-routines-tick',
+  'task-daily-sweep',
 ] as const satisfies readonly QueueName[];

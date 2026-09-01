@@ -47,10 +47,12 @@ export function DashboardTopbar({
   enabledModules,
   isSuperAdmin = false,
   impersonatingClinic,
+  tasksBadge = 0,
 }: {
   enabledModules: EnabledModules;
   isSuperAdmin?: boolean;
   impersonatingClinic?: string;
+  tasksBadge?: number;
 }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -140,6 +142,7 @@ export function DashboardTopbar({
         onClose={() => setMobileNavOpen(false)}
         enabledModules={enabledModules}
         isSuperAdmin={isSuperAdmin}
+        tasksBadge={tasksBadge}
       />
       {searchOpen && <SearchPalette onClose={() => setSearchOpen(false)} />}
     </>

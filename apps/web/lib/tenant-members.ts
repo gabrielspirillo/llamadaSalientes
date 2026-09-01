@@ -10,6 +10,9 @@ export interface TenantMember {
   clerkUserId: string;
   email: string;
   role: string;
+  /** Nombre y apellido de Clerk. Null cuando se leyó del fallback local. */
+  firstName: string | null;
+  lastName: string | null;
 }
 
 /**
@@ -54,9 +57,21 @@ export async function listTenantMembersSynced(
       const clerkUserId = m.publicUserData?.userId ?? null;
       const email = m.publicUserData?.identifier ?? null;
       const role = (m.role ?? 'org:member').replace(/^org:/, '');
-      return clerkUserId && email ? { clerkUserId, email, role } : null;
+      const firstName = m.publicUserData?.firstName ?? null;
+      const lastName = m.publicUserData?.lastName ?? null;
+      return clerkUserId && email ? { clerkUserId, email, role, firstName, lastName } : null;
     })
-    .filter((x): x is { clerkUserId: string; email: string; role: string } => x !== null);
+    .filter(
+      (
+        x,
+      ): x is {
+        clerkUserId: string;
+        email: string;
+        role: string;
+        firstName: string | null;
+        lastName: string | null;
+      } => x !== null,
+    );
 
   if (parsed.length === 0) return readLocalMembers(tenantId);
 
@@ -101,7 +116,14 @@ export async function listTenantMembersSynced(
     .map((p) => {
       const local = idMap.get(p.clerkUserId);
       return local
-        ? { userId: local.id, clerkUserId: p.clerkUserId, email: local.email, role: p.role }
+        ? {
+            userId: local.id,
+            clerkUserId: p.clerkUserId,
+            email: local.email,
+            role: p.role,
+            firstName: p.firstName,
+            lastName: p.lastName,
+          }
         : null;
     })
     .filter((x): x is TenantMember => x !== null)
@@ -119,7 +141,9 @@ async function readLocalMembers(tenantId: string): Promise<TenantMember[]> {
     .from(tenantMemberships)
     .innerJoin(users, eq(users.id, tenantMemberships.userId))
     .where(eq(tenantMemberships.tenantId, tenantId));
-  return rows.sort((a, b) => a.email.localeCompare(b.email));
+  return rows
+    .map((r) => ({ ...r, firstName: null, lastName: null }))
+    .sort((a, b) => a.email.localeCompare(b.email));
 }
 
 /**

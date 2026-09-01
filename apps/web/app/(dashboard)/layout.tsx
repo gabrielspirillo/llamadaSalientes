@@ -3,6 +3,7 @@ import { ImpersonationBanner } from '@/components/dashboard/impersonation-banner
 import { WelcomeTour } from '@/components/dashboard/welcome-tour';
 import { DashboardTopbar } from '@/components/dashboard/topbar';
 import { DEFAULT_ENABLED_MODULES, type EnabledModules } from '@/lib/modules';
+import { countActionableTasks, internalUserIdFor } from '@/lib/tasks/queries';
 import { getCurrentTenantOrNull } from '@/lib/tenant';
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
@@ -41,9 +42,25 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // Futura (super-admin) ve las conexiones técnicas; la clínica ve solo lectura.
   const isSuperAdmin = tenantCtx?.isSuperAdmin ?? false;
 
+  // Badge de Tareas: lo mío vencido o para hoy. Una query barata por render;
+  // si falla (tenant recién creado, DB lenta) el sidebar se dibuja sin badge.
+  let tasksBadge = 0;
+  if (tenantCtx) {
+    try {
+      const internalUserId = await internalUserIdFor(userId);
+      tasksBadge = await countActionableTasks(tenantCtx.tenant.id, internalUserId);
+    } catch {
+      tasksBadge = 0;
+    }
+  }
+
   return (
     <div className="flex min-h-screen bg-white text-zinc-900">
-      <DashboardSidebar enabledModules={enabledModules} isSuperAdmin={isSuperAdmin} />
+      <DashboardSidebar
+        enabledModules={enabledModules}
+        isSuperAdmin={isSuperAdmin}
+        tasksBadge={tasksBadge}
+      />
       <div className="flex-1 flex flex-col min-w-0">
         {tenantCtx?.impersonating && (
           <ImpersonationBanner clinicName={tenantCtx.tenant.name} />
@@ -52,6 +69,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           enabledModules={enabledModules}
           isSuperAdmin={isSuperAdmin}
           impersonatingClinic={tenantCtx?.impersonating ? tenantCtx.tenant.name : undefined}
+          tasksBadge={tasksBadge}
         />
         <main className="flex-1 px-4 sm:px-6 lg:px-10 py-5 sm:py-8">{children}</main>
       </div>

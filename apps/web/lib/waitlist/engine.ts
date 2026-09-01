@@ -532,6 +532,15 @@ export async function markOfferAccepted(args: {
       .update(waitlistOffers)
       .set({ errorMessage: `book_failed: ${bookRes.result}`, updatedAt: new Date() })
       .where(eq(waitlistOffers.id, args.offerId));
+    // El paciente ya dijo que sí y la cita no se creó: es lo más caro que se
+    // puede perder. Queda como tarea urgente para cerrarlo a mano.
+    const { onWaitlistAcceptedUnscheduled } = await import('@/lib/tasks/hooks');
+    await onWaitlistAcceptedUnscheduled({
+      tenantId: offer.tenantId,
+      entryId: entry.id,
+      ghlContactId: entry.ghlContactId,
+      slotStart: slot.startTime,
+    });
     return { ok: false, reason: 'book_failed' };
   }
 

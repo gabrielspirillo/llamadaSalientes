@@ -113,6 +113,41 @@ Scripts de migración (`scripts/migrate/`) existen por si en el futuro se necesi
 
 Zadarma webhook se configura **manualmente en cabinet** (no expone API). Cabinet → Configuración → Integraciones → Notificaciones de eventos. URL: `https://app.futuradigital.es/api/zadarma/webhook`. Soporta el handshake `zd_echo`. El path está exentido del Clerk middleware (`/api/zadarma/(.*)` es ruta pública).
 
+## Módulo Tareas (core, sin gate de `enabled_modules`)
+
+Sección `/dashboard/tasks` (label "Tareas"). Es transversal: no se contrata, viene con todas las clínicas.
+
+**Migración**: `supabase/migrations/0018_tasks.sql`. Tablas `tasks`, `task_assignees`, `task_checklist_items`, `task_comments`, `task_templates`, `task_template_items`, `task_automation_rules` + columnas `treatments.post_op_follow_up{,_hours}`.
+
+**Tres orígenes de tarea** (`tasks.source`):
+
+| source | Quién la crea | Dónde vive la lógica |
+|---|---|---|
+| `MANUAL` | Una persona desde el tablero | `lib/tasks/service.ts` |
+| `ROUTINE` | Plantilla recurrente materializada por el worker | `lib/tasks/templates.ts` (catálogo) + `lib/tasks/materialize.ts` |
+| `AUTOMATION` | Regla que reacciona a un evento del producto | `lib/tasks/automation.ts` + `lib/tasks/hooks.ts` |
+
+**Idempotencia**: `tasks.dedupe_key` con índice único parcial por tenant. Rutinas usan `routine:<templateId>:<YYYY-MM-DD>`, automatizaciones `auto:<trigger>:<entidad>`. Cualquier reintento de webhook o job es seguro.
+
+**Puntos de enganche** (todos best-effort, nunca rompen el flujo principal — están en `lib/tasks/hooks.ts`):
+
+- `worker/jobs/process-call.ts` → `MISSED_CALL` / `CALL_INTENT_UNRESOLVED`
+- `app/api/webhooks/ghl/appointment/route.ts` → `APPOINTMENT_CANCELLED` / `APPOINTMENT_NO_SHOW` / `POST_TREATMENT_FOLLOWUP`
+- `worker/jobs/reminder-fallback-check.ts` → `REMINDER_NO_RESPONSE`
+- `worker/jobs/whatsapp-process.ts` (handoff del agente) → `WHATSAPP_HANDOFF`
+- `lib/waitlist/engine.ts` (`book_failed`) → `WAITLIST_ACCEPTED_UNSCHEDULED`
+- Barrido diario → `PENDING_TREATMENT_UNSCHEDULED` / `PATIENT_INACTIVE`
+
+**Crons**: `scheduleTaskCrons()` en `lib/queue/client.ts`, registrada por `worker/index.ts` al arrancar (repeatable BullMQ con `jobId` fijo, idempotente). `task-routines-tick` cada 15 min, `task-daily-sweep` diario 06:10 UTC. No hay cron del sistema ni contenedor extra.
+
+**Timezone**: las rutinas se materializan en la timezone de `clinic_settings.timezone` (helpers puros en `lib/tasks/tz.ts`, recurrencia en `lib/tasks/recurrence.ts`). Ambos con tests unitarios.
+
+**Evidencia**: `tasks.requires_evidence` bloquea el pase a `DONE` sin `evidence_note`, tanto por PATCH como por drag & drop. Es lo que sostiene el registro de esterilización, el arqueo y las revisiones legales.
+
+**Roles**: `viewer` mira, `operator` crea/mueve/cierra, `admin` toca rutinas y automatizaciones (`lib/tasks/auth.ts`).
+
+**Auto-provisión**: la primera visita a la página siembra el catálogo de rutinas dentales, las reglas de automatización y materializa lo del día. Idempotente.
+
 ## Idioma
 
 Comentarios de código, commit messages y mensajes UI: **español**. (Existing code convention.) PR descriptions y CLAUDE.md pueden ir en español o inglés, lo que sea más claro.
@@ -143,4 +178,4 @@ Estos quedan como TODO para futuras sesiones:
 
 ---
 
-**Última actualización**: 2026-05-26 (post-migración + setup Zadarma outbound).
+**Última actualización**: 2026-09-01 (módulo Tareas: tablero, rutinas y automatizaciones).

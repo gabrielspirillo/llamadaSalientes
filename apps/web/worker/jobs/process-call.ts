@@ -143,6 +143,14 @@ export async function processCallJob(
     }
   });
 
+  // Tareas: de la llamada ya procesada salen los pendientes humanos (devolver
+  // la llamada, cerrar la agenda que quedó a medias). Best-effort.
+  await step.run('create-task-followups', async () => {
+    const { onCallProcessed } = await import('@/lib/tasks/hooks');
+    await onCallProcessed({ tenantId, retellCallId });
+    return { ok: true };
+  });
+
   return {
     tenantId,
     retellCallId,

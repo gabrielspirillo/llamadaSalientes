@@ -6,6 +6,7 @@ import { OrganizationSwitcher } from '@clerk/nextjs';
 import {
   BarChart3,
   BellRing,
+  ClipboardCheck,
   Bot,
   Building2,
   Contact,
@@ -30,6 +31,7 @@ import { useEffect } from 'react';
 
 const items = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
+  { href: '/dashboard/tasks', label: 'Tareas', icon: ClipboardCheck },
   { href: '/dashboard/calls', label: 'Llamadas', icon: PhoneCall },
   { href: '/dashboard/outbound', label: 'Salientes', icon: PhoneOutgoing },
   { href: '/dashboard/reminders', label: 'Recordatorios', icon: BellRing },
@@ -49,11 +51,14 @@ function SidebarNav({
   enabledModules,
   isSuperAdmin = false,
   anchorTour = false,
+  tasksBadge = 0,
 }: {
   onNavigate?: () => void;
   enabledModules: EnabledModules;
   isSuperAdmin?: boolean;
   anchorTour?: boolean;
+  /** Tareas mías vencidas o para hoy. 0 = no se muestra nada. */
+  tasksBadge?: number;
 }) {
   const pathname = usePathname();
   return (
@@ -114,6 +119,14 @@ function SidebarNav({
             >
               <Icon className="h-4 w-4 shrink-0" />
               <span className="flex-1">{it.label}</span>
+              {it.href === '/dashboard/tasks' && tasksBadge > 0 && (
+                <span
+                  className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-zinc-900 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-white"
+                  aria-label={`${tasksBadge} tareas para hoy o vencidas`}
+                >
+                  {tasksBadge > 99 ? '99+' : tasksBadge}
+                </span>
+              )}
               {locked && (
                 <Lock
                   className="h-3 w-3 shrink-0 text-zinc-400"
@@ -184,13 +197,20 @@ function SidebarNav({
 export function DashboardSidebar({
   enabledModules,
   isSuperAdmin = false,
+  tasksBadge = 0,
 }: {
   enabledModules: EnabledModules;
   isSuperAdmin?: boolean;
+  tasksBadge?: number;
 }) {
   return (
     <aside className="hidden lg:flex sticky top-0 h-screen w-60 shrink-0 flex-col border-r border-zinc-200/70 bg-zinc-50/40">
-      <SidebarNav enabledModules={enabledModules} isSuperAdmin={isSuperAdmin} anchorTour />
+      <SidebarNav
+        enabledModules={enabledModules}
+        isSuperAdmin={isSuperAdmin}
+        tasksBadge={tasksBadge}
+        anchorTour
+      />
     </aside>
   );
 }
@@ -200,11 +220,13 @@ export function DashboardSidebarMobile({
   onClose,
   enabledModules,
   isSuperAdmin = false,
+  tasksBadge = 0,
 }: {
   open: boolean;
   onClose: () => void;
   enabledModules: EnabledModules;
   isSuperAdmin?: boolean;
+  tasksBadge?: number;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -239,6 +261,7 @@ export function DashboardSidebarMobile({
           onNavigate={onClose}
           enabledModules={enabledModules}
           isSuperAdmin={isSuperAdmin}
+          tasksBadge={tasksBadge}
         />
       </aside>
     </div>
