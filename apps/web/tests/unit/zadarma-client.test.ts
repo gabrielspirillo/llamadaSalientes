@@ -112,7 +112,7 @@ describe('ZadarmaRestClient', () => {
     const [url, init] = (fetchMock as unknown as {
       mock: { calls: [string, RequestInit][] };
     }).mock.calls[0]!;
-    expect(url).toBe('https://api.zadarma.com/v1/webhook/notification/');
+    expect(url).toBe('https://api.zadarma.com/v1/webhook/');
     expect(init.method).toBe('POST');
     expect((init.headers as Record<string, string>)['content-type']).toBe(
       'application/x-www-form-urlencoded',

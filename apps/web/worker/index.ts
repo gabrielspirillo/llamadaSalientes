@@ -10,12 +10,13 @@
 import 'server-only';
 import { type Job, Worker } from 'bullmq';
 
+import { closeDb } from '@/lib/db/client';
 import { runPendingMigrations } from '@/lib/db/migrate';
 import { env } from '@/lib/env';
 import { scheduleMessagingCrons, scheduleTaskCrons } from '@/lib/queue/client';
 import { getRedis } from '@/lib/queue/connection';
 import type { QueueJobs } from '@/lib/queue/queues';
-import { createStepRunner } from '@/lib/queue/step';
+import { createStepRunner, stepScope } from '@/lib/queue/step';
 import { processImDigestJob } from '@/worker/jobs/im-digest';
 import { processImMentionEscalateJob } from '@/worker/jobs/im-mention-escalate';
 import { processImRetentionSweepJob } from '@/worker/jobs/im-retention-sweep';
@@ -52,7 +53,7 @@ function buildWaWorker(): Worker<QueueJobs['wa-process']> {
   const worker = new Worker<QueueJobs['wa-process']>(
     'wa-process',
     async (job: Job<QueueJobs['wa-process']>) => {
-      const step = createStepRunner(job.id ?? `wa-${job.timestamp}`);
+      const step = createStepRunner(stepScope(job.id, job.timestamp, 'wa'));
       return processWhatsappJob(job.data, step);
     },
     {
@@ -84,7 +85,7 @@ function buildCallWorker(): Worker<QueueJobs['process-call']> {
   const worker = new Worker<QueueJobs['process-call']>(
     'process-call',
     async (job: Job<QueueJobs['process-call']>) => {
-      const step = createStepRunner(job.id ?? `call-${job.timestamp}`);
+      const step = createStepRunner(stepScope(job.id, job.timestamp, 'call'));
       return processCallJob(job.data, step);
     },
     {
@@ -116,7 +117,7 @@ function buildReminderSendWorker(): Worker<QueueJobs['reminder-send']> {
   const worker = new Worker<QueueJobs['reminder-send']>(
     'reminder-send',
     async (job: Job<QueueJobs['reminder-send']>) => {
-      const step = createStepRunner(job.id ?? `rem-${job.timestamp}`);
+      const step = createStepRunner(stepScope(job.id, job.timestamp, 'rem'));
       return processReminderSendJob(job.data, step);
     },
     {
@@ -148,7 +149,7 @@ function buildWaitlistOfferSendWorker(): Worker<QueueJobs['waitlist-offer-send']
   const worker = new Worker<QueueJobs['waitlist-offer-send']>(
     'waitlist-offer-send',
     async (job: Job<QueueJobs['waitlist-offer-send']>) => {
-      const step = createStepRunner(job.id ?? `wlo-send-${job.timestamp}`);
+      const step = createStepRunner(stepScope(job.id, job.timestamp, 'wlo-send'));
       return processWaitlistOfferSendJob(job.data, step);
     },
     {
@@ -180,7 +181,7 @@ function buildWaitlistOfferExpireWorker(): Worker<QueueJobs['waitlist-offer-expi
   const worker = new Worker<QueueJobs['waitlist-offer-expire']>(
     'waitlist-offer-expire',
     async (job: Job<QueueJobs['waitlist-offer-expire']>) => {
-      const step = createStepRunner(job.id ?? `wlo-exp-${job.timestamp}`);
+      const step = createStepRunner(stepScope(job.id, job.timestamp, 'wlo-exp'));
       return processWaitlistOfferExpireJob(job.data, step);
     },
     {
@@ -212,7 +213,7 @@ function buildReminderFallbackCheckWorker(): Worker<QueueJobs['reminder-fallback
   const worker = new Worker<QueueJobs['reminder-fallback-check']>(
     'reminder-fallback-check',
     async (job: Job<QueueJobs['reminder-fallback-check']>) => {
-      const step = createStepRunner(job.id ?? `rem-fb-${job.timestamp}`);
+      const step = createStepRunner(stepScope(job.id, job.timestamp, 'rem-fb'));
       return processReminderFallbackCheckJob(job.data, step);
     },
     {
@@ -244,7 +245,7 @@ function buildTaskRoutinesTickWorker(): Worker<QueueJobs['task-routines-tick']> 
   const worker = new Worker<QueueJobs['task-routines-tick']>(
     'task-routines-tick',
     async (job: Job<QueueJobs['task-routines-tick']>) => {
-      const step = createStepRunner(job.id ?? `task-tick-${job.timestamp}`);
+      const step = createStepRunner(stepScope(job.id, job.timestamp, 'task-tick'));
       return processTaskRoutinesTickJob(job.data, step);
     },
     {
@@ -273,7 +274,7 @@ function buildTaskDailySweepWorker(): Worker<QueueJobs['task-daily-sweep']> {
   const worker = new Worker<QueueJobs['task-daily-sweep']>(
     'task-daily-sweep',
     async (job: Job<QueueJobs['task-daily-sweep']>) => {
-      const step = createStepRunner(job.id ?? `task-sweep-${job.timestamp}`);
+      const step = createStepRunner(stepScope(job.id, job.timestamp, 'task-sweep'));
       return processTaskDailySweepJob(job.data, step);
     },
     {
@@ -300,7 +301,7 @@ function buildImDigestWorker(): Worker<QueueJobs['im-digest']> {
   const worker = new Worker<QueueJobs['im-digest']>(
     'im-digest',
     async (job: Job<QueueJobs['im-digest']>) => {
-      const step = createStepRunner(job.id ?? `im-digest-${job.timestamp}`);
+      const step = createStepRunner(stepScope(job.id, job.timestamp, 'im-digest'));
       return processImDigestJob(job.data, step);
     },
     {
@@ -329,7 +330,7 @@ function buildImMentionEscalateWorker(): Worker<QueueJobs['im-mention-escalate']
   const worker = new Worker<QueueJobs['im-mention-escalate']>(
     'im-mention-escalate',
     async (job: Job<QueueJobs['im-mention-escalate']>) => {
-      const step = createStepRunner(job.id ?? `im-esc-${job.timestamp}`);
+      const step = createStepRunner(stepScope(job.id, job.timestamp, 'im-esc'));
       return processImMentionEscalateJob(job.data, step);
     },
     {
@@ -361,7 +362,7 @@ function buildImRetentionSweepWorker(): Worker<QueueJobs['im-retention-sweep']> 
   const worker = new Worker<QueueJobs['im-retention-sweep']>(
     'im-retention-sweep',
     async (job: Job<QueueJobs['im-retention-sweep']>) => {
-      const step = createStepRunner(job.id ?? `im-ret-${job.timestamp}`);
+      const step = createStepRunner(stepScope(job.id, job.timestamp, 'im-ret'));
       return processImRetentionSweepJob(job.data, step);
     },
     {
@@ -385,8 +386,43 @@ function buildImRetentionSweepWorker(): Worker<QueueJobs['im-retention-sweep']> 
   return worker;
 }
 
+// Cierre ordenado. Se instala ANTES de las migraciones: sin esto, un SIGTERM
+// durante el boot (redeploy encima de otro redeploy) mata el proceso con el
+// handler por defecto de Node, sin drenar nada.
+function installShutdown(getWorkers: () => Worker<never>[]): void {
+  let closing = false;
+  const shutdown = async (signal: string) => {
+    if (closing) return;
+    closing = true;
+    console.log(`[worker] received ${signal}, draining...`);
+
+    const workers = getWorkers();
+    // `close()` sin tope espera al job activo; si Docker manda SIGKILL antes,
+    // el job queda `active` y con maxStalledCount=1 un segundo redeploy en esa
+    // ventana lo manda a failed sin reintento. Preferimos cerrar a tiempo.
+    await Promise.race([
+      Promise.all(workers.map((w) => w.close())),
+      new Promise((r) => setTimeout(r, 8_000)),
+    ]).catch((err) => console.error('[worker] error cerrando workers', err));
+
+    await closeDb().catch(() => undefined);
+    await getRedis()
+      .quit()
+      .catch(() => undefined);
+
+    console.log('[worker] all workers closed, exiting');
+    process.exit(0);
+  };
+
+  process.on('SIGTERM', () => void shutdown('SIGTERM'));
+  process.on('SIGINT', () => void shutdown('SIGINT'));
+}
+
 async function main(): Promise<void> {
   logStart();
+
+  let workers: Worker<never>[] = [];
+  installShutdown(() => workers);
 
   // Migraciones primero: los handlers asumen que el schema está al día.
   // Nunca tira el proceso — si una falla, se loguea y el worker igual levanta
@@ -402,7 +438,7 @@ async function main(): Promise<void> {
     console.error('[worker] MIGRACIÓN PENDIENTE CON ERROR', migrations.failed);
   }
 
-  const workers = [
+  workers = [
     buildWaWorker(),
     buildCallWorker(),
     buildReminderSendWorker(),
@@ -414,7 +450,7 @@ async function main(): Promise<void> {
     buildImDigestWorker(),
     buildImMentionEscalateWorker(),
     buildImRetentionSweepWorker(),
-  ];
+  ] as unknown as Worker<never>[];
 
   // Los crons de tareas se registran acá (no en la web) para que existan aunque
   // nadie abra el dashboard. El repeat + jobId fijo los hace idempotentes.
@@ -426,16 +462,6 @@ async function main(): Promise<void> {
   await scheduleMessagingCrons().catch((err) => {
     console.error('[worker] no se pudieron registrar los crons de mensajería', err);
   });
-
-  const shutdown = async (signal: string) => {
-    console.log(`[worker] received ${signal}, draining...`);
-    await Promise.all(workers.map((w) => w.close()));
-    console.log('[worker] all workers closed, exiting');
-    process.exit(0);
-  };
-
-  process.on('SIGTERM', () => void shutdown('SIGTERM'));
-  process.on('SIGINT', () => void shutdown('SIGINT'));
 
   console.log('[worker] ready');
 }

@@ -7,7 +7,10 @@ function getOpenAI(): OpenAI {
   if (_client) return _client;
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error('OPENAI_API_KEY no está configurada');
-  _client = new OpenAI({ apiKey });
+  // Los defaults del SDK son 10 min de timeout × 3 reintentos: un endpoint
+  // colgado retenía un slot del worker media hora. Con concurrency 2, dos
+  // llamadas así dejan la cola muerta sin que nada lo reporte.
+  _client = new OpenAI({ apiKey, timeout: 60_000, maxRetries: 1 });
   return _client;
 }
 

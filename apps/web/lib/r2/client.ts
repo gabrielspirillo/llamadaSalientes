@@ -73,10 +73,25 @@ export async function r2Upload(input: UploadInput): Promise<{ key: string; bucke
  * Descarga un recurso público (ej: la grabación firmada que devuelve Retell)
  * y lo retorna como Buffer. Útil como input para r2Upload.
  */
+const FETCH_TIMEOUT_MS = 30_000;
+const MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024;
+
 export async function fetchAsBuffer(url: string): Promise<{ buffer: Buffer; contentType: string }> {
-  const res = await fetch(url);
+  // Sin timeout, un endpoint que acepta la conexión y no responde cuelga el
+  // handler para siempre: BullMQ renueva el lock mientras el job sigue vivo,
+  // así que nunca se marca como stalled y el slot se pierde.
+  const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   if (!res.ok) throw new Error(`Fetch ${url} falló: ${res.status}`);
+
+  const declared = Number.parseInt(res.headers.get('content-length') ?? '', 10);
+  if (Number.isFinite(declared) && declared > MAX_DOWNLOAD_BYTES) {
+    throw new Error(`Descarga demasiado grande (${declared} bytes)`);
+  }
+
   const arrayBuf = await res.arrayBuffer();
+  if (arrayBuf.byteLength > MAX_DOWNLOAD_BYTES) {
+    throw new Error(`Descarga demasiado grande (${arrayBuf.byteLength} bytes)`);
+  }
   return {
     buffer: Buffer.from(arrayBuf),
     contentType: res.headers.get('content-type') ?? 'application/octet-stream',

@@ -8,6 +8,7 @@ import {
   whatsappConversations,
   whatsappMessages,
 } from '@/lib/db/schema';
+import { acquireLock } from '@/lib/queue/lock';
 import type { StepRunner } from '@/lib/queue/step';
 import type { QueueJobs } from '@/lib/queue/queues';
 import { runWhatsappAgent } from '@/lib/whatsapp/agent';
@@ -45,16 +46,50 @@ import type { WhatsAppConnector } from '@/lib/whatsapp/types';
 const MAX_HISTORY_TURNS = 10;
 const MAX_INBOUND_BATCH = 20;
 
-export async function processWhatsappJob(
-  data: QueueJobs['wa-process'],
-  step: StepRunner,
-): Promise<{
+type WhatsappJobResult = {
   ok: boolean;
   reason?: string;
   intent?: string | null;
   handoff?: boolean;
   urgent?: boolean;
-}> {
+};
+
+// Techo por encima del peor caso realista (LLM + envío + persistencia). Si el
+// job muere sin liberar, el lock caduca solo y la conversación se destraba.
+const CONVERSATION_LOCK_TTL_MS = 120_000;
+
+/**
+ * Serializa el procesamiento por conversación.
+ *
+ * `alreadyProcessed` (paso 2) es un read-then-act contra `whatsapp_agent_runs`
+ * y esa fila recién se escribe en el paso 9, después de llamar al LLM y de
+ * enviar la respuesta. Con concurrency 2, una ráfaga de mensajes hacía que dos
+ * jobs vieran la conversación libre y le mandaran DOS respuestas al paciente.
+ *
+ * Si otro job la tiene tomada lanzamos para que BullMQ reintente: cuando el
+ * reintento entre, el primero ya escribió su run y `alreadyProcessed` corta
+ * limpio. El batch del primer job ya incluye los mensajes de la ráfaga, así
+ * que no se pierde nada.
+ */
+export async function processWhatsappJob(
+  data: QueueJobs['wa-process'],
+  step: StepRunner,
+): Promise<WhatsappJobResult> {
+  const lock = await acquireLock(`wa-conv:${data.conversationId}`, CONVERSATION_LOCK_TTL_MS);
+  if (!lock) {
+    throw new Error(`Conversación ${data.conversationId} en proceso por otro job; reintentar`);
+  }
+  try {
+    return await runWhatsappJob(data, step);
+  } finally {
+    await lock.release();
+  }
+}
+
+async function runWhatsappJob(
+  data: QueueJobs['wa-process'],
+  step: StepRunner,
+): Promise<WhatsappJobResult> {
   const { tenantId, conversationId, contactPhoneE164 } = data;
   const agentEnabled = process.env.WHATSAPP_AGENT_ENABLED === 'true';
   console.log('[wa-process] job recibido', {

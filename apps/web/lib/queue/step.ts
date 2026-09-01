@@ -16,6 +16,20 @@ export type StepRunner = {
   run: <T>(stepId: string, fn: () => Promise<T>) => Promise<T>;
 };
 
+/**
+ * Deriva la clave de caché de un job concreto.
+ *
+ * Ojo con usar sólo `job.id`: varios jobIds son estables por entidad
+ * (`rem-send-<reminderId>`), así que al reagendar una cita se reutiliza el
+ * mismo id y los pasos de la corrida ANTERIOR seguían en caché hasta 24 h.
+ * Efecto: el recordatorio nuevo devolvía el `{status:'sent'}` viejo y no se
+ * enviaba nada. `job.timestamp` es del alta del job y no cambia entre
+ * reintentos, que es justo lo que queremos memoizar.
+ */
+export function stepScope(jobId: string | undefined, timestamp: number, fallback: string): string {
+  return `${jobId ?? fallback}:${timestamp}`;
+}
+
 export function createStepRunner(jobId: string): StepRunner {
   const redis = getRedis();
   return {

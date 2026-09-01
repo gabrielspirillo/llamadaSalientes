@@ -93,48 +93,56 @@ export async function processReminderSendJob(
     const displayName = deriveContactDisplayName(vars);
 
     // 5. Enviar por canal correcto.
-    let externalMessageId: string | null = null;
-    let externalCallId: string | null = null;
+    //
+    // El envío va en su propio step para que quede memoizado aparte del
+    // UPDATE de más abajo. Si sólo se cacheara el paso completo, un fallo al
+    // marcar SENT (un blip de Postgres) haría que el reintento volviera a
+    // mandarle el mensaje al paciente.
+    const sent = await step.run('send-channel', async () => {
+      if (rem.channelPlanned === 'WHATSAPP') {
+        const result = await sendWhatsAppReminder({
+          tenantId,
+          reminderId,
+          toPhoneE164: phone,
+          vars,
+          contactDisplayName: displayName,
+        });
+        return result.ok
+          ? { ok: true as const, externalMessageId: result.externalMessageId, externalCallId: null }
+          : { ok: false as const, reason: result.reason };
+      }
 
-    if (rem.channelPlanned === 'WHATSAPP') {
-      const result = await sendWhatsAppReminder({
-        tenantId,
-        reminderId,
-        toPhoneE164: phone,
-        vars,
-        contactDisplayName: displayName,
-      });
-      if (!result.ok) {
-        await markStatus(reminderId, 'FAILED', result.reason);
-        return { status: 'failed', reason: result.reason };
+      if (rem.channelPlanned === 'VOICE') {
+        // PR-5: implementación de send-voice. Por ahora reportamos failure.
+        const { sendVoiceReminder } = await import('@/lib/reminders/send-voice').catch(() => ({
+          sendVoiceReminder: null as never,
+        }));
+        if (!sendVoiceReminder) {
+          return { ok: false as const, reason: 'voice_sender_unavailable' };
+        }
+        const result = await sendVoiceReminder({
+          tenantId,
+          reminderId,
+          toPhoneE164: phone,
+          vars,
+          contactDisplayName: displayName,
+          appointmentContactId: appt.contactId,
+        });
+        return result.ok
+          ? { ok: true as const, externalMessageId: null, externalCallId: result.callId }
+          : { ok: false as const, reason: result.reason };
       }
-      externalMessageId = result.externalMessageId;
-    } else if (rem.channelPlanned === 'VOICE') {
-      // PR-5: implementación de send-voice. Por ahora reportamos failure.
-      const { sendVoiceReminder } = await import('@/lib/reminders/send-voice').catch(
-        () => ({ sendVoiceReminder: null as never }),
-      );
-      if (!sendVoiceReminder) {
-        await markStatus(reminderId, 'FAILED', 'voice_sender_unavailable');
-        return { status: 'failed', reason: 'voice_sender_unavailable' };
-      }
-      const result = await sendVoiceReminder({
-        tenantId,
-        reminderId,
-        toPhoneE164: phone,
-        vars,
-        contactDisplayName: displayName,
-        appointmentContactId: appt.contactId,
-      });
-      if (!result.ok) {
-        await markStatus(reminderId, 'FAILED', result.reason);
-        return { status: 'failed', reason: result.reason };
-      }
-      externalCallId = result.callId;
-    } else {
-      await markStatus(reminderId, 'FAILED', 'unknown_channel');
-      return { status: 'failed', reason: 'unknown_channel' };
+
+      return { ok: false as const, reason: 'unknown_channel' };
+    });
+
+    if (!sent.ok) {
+      await markStatus(reminderId, 'FAILED', sent.reason);
+      return { status: 'failed', reason: sent.reason };
     }
+
+    const externalMessageId = sent.externalMessageId;
+    const externalCallId = sent.externalCallId;
 
     // 6. Marcar SENT.
     await db
@@ -148,7 +156,12 @@ export async function processReminderSendJob(
         failureReason: null,
         updatedAt: new Date(),
       })
-      .where(eq(appointmentReminders.id, reminderId));
+      .where(
+        and(
+          eq(appointmentReminders.tenantId, tenantId),
+          eq(appointmentReminders.id, reminderId),
+        ),
+      );
 
     // 7. Encolar fallback-check si la regla lo tiene.
     if (rule?.fallbackChannel && rule?.fallbackWindowHours) {

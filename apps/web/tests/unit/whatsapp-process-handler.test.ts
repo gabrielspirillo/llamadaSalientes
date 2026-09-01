@@ -2,6 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
 
+// El handler toma un lock por conversación antes de correr; acá no hay Redis.
+vi.mock('@/lib/queue/lock', () => ({
+  acquireLock: vi.fn().mockResolvedValue({ release: async () => undefined }),
+}));
+
 // Stubbeamos las dependencias pesadas (DB, factory, agente, multimodal,
 // outbound) para poder ejercitar el control de flujo sin red ni Postgres.
 const mocks = vi.hoisted(() => {

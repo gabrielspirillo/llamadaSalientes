@@ -54,6 +54,10 @@ export async function GET(req: Request): Promise<Response> {
 
   const encoder = new TextEncoder();
 
+  // cancel() puede dispararse sin abortar req.signal; sin esto quedarían vivos
+  // el heartbeat, el tick de presencia y las dos suscripciones del hub.
+  let cleanup: () => void = () => undefined;
+
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       let closed = false;
@@ -62,7 +66,7 @@ export async function GET(req: Request): Promise<Response> {
       let unsubUser: (() => void) | null = null;
       let unsubTenant: (() => void) | null = null;
 
-      const cleanup = () => {
+      cleanup = () => {
         if (closed) return;
         closed = true;
 
@@ -151,6 +155,9 @@ export async function GET(req: Request): Promise<Response> {
       presenceTick = setInterval(() => {
         void touchPresence(tenantId, userId);
       }, PRESENCE_MS);
+    },
+    cancel() {
+      cleanup();
     },
   });
 

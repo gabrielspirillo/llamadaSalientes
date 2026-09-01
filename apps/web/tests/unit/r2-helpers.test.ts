@@ -29,7 +29,11 @@ describe('R2 helpers', () => {
     const { fetchAsBuffer } = await import('@/lib/r2/client');
     const result = await fetchAsBuffer('https://retell-recordings.example/abc.wav');
 
-    expect(fetchMock).toHaveBeenCalledWith('https://retell-recordings.example/abc.wav');
+    // El segundo argumento es el AbortSignal del timeout de descarga.
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://retell-recordings.example/abc.wav',
+      expect.objectContaining({ signal: expect.anything() }),
+    );
     expect(result.contentType).toBe('audio/wav');
     expect(result.buffer.length).toBe(8);
   });
