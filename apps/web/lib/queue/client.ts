@@ -66,6 +66,21 @@ export async function sendQueueEvent(
   data: QueueJobs['task-daily-sweep'],
   opts?: { delayMs?: number },
 ): Promise<void>;
+export async function sendQueueEvent(
+  name: 'im-digest',
+  data: QueueJobs['im-digest'],
+  opts?: { delayMs?: number },
+): Promise<void>;
+export async function sendQueueEvent(
+  name: 'im-mention-escalate',
+  data: QueueJobs['im-mention-escalate'],
+  opts?: { delayMs?: number },
+): Promise<void>;
+export async function sendQueueEvent(
+  name: 'im-retention-sweep',
+  data: QueueJobs['im-retention-sweep'],
+  opts?: { delayMs?: number },
+): Promise<void>;
 export async function sendQueueEvent<K extends QueueName>(
   name: K,
   data: QueueJobs[K],
@@ -198,6 +213,49 @@ export async function sendQueueEvent<K extends QueueName>(
     return;
   }
 
+  if (name === 'im-digest') {
+    await getQueue('im-digest').add(
+      'im-digest',
+      {},
+      {
+        ...DEFAULT_OPTS,
+        delay: Math.max(0, opts?.delayMs ?? 0),
+        attempts: 2,
+        backoff: { type: 'exponential', delay: 30_000 },
+      },
+    );
+    return;
+  }
+
+  if (name === 'im-mention-escalate') {
+    const d = data as QueueJobs['im-mention-escalate'];
+    // jobId por mención: si el mensaje se reintenta o el usuario recibe dos
+    // menciones del mismo mensaje, BullMQ dedupea y sólo queda un escalado.
+    const jobId = mentionEscalateJobId(d.mentionId);
+    await getQueue('im-mention-escalate').add('im-mention-escalate', d, {
+      ...DEFAULT_OPTS,
+      jobId,
+      delay: Math.max(0, opts?.delayMs ?? 0),
+      attempts: 2,
+      backoff: { type: 'exponential', delay: 30_000 },
+    });
+    return;
+  }
+
+  if (name === 'im-retention-sweep') {
+    await getQueue('im-retention-sweep').add(
+      'im-retention-sweep',
+      {},
+      {
+        ...DEFAULT_OPTS,
+        delay: Math.max(0, opts?.delayMs ?? 0),
+        attempts: 2,
+        backoff: { type: 'exponential', delay: 60_000 },
+      },
+    );
+    return;
+  }
+
   // Type-level guard: la exhaustividad la garantizan los overloads.
   const _exhaustive: never = name;
   throw new Error(`Queue desconocida: ${String(_exhaustive)}`);
@@ -248,6 +306,17 @@ export async function removeWaitlistOfferExpireJob(offerId: string): Promise<voi
   await queue.remove(waitlistOfferExpireJobId(offerId)).catch(() => undefined);
 }
 
+export function mentionEscalateJobId(mentionId: string): string {
+  return `im-esc-${mentionId}`;
+}
+
+/** Se llama al resolver o leer una mención: si nadie la escaló todavía, sobra. */
+export async function removeMentionEscalateJob(mentionId: string): Promise<void> {
+  if (!env.REDIS_URL) return;
+  const queue = getQueue('im-mention-escalate');
+  await queue.remove(mentionEscalateJobId(mentionId)).catch(() => undefined);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Crons del módulo Tareas.
 //
@@ -282,6 +351,45 @@ export async function scheduleTaskCrons(): Promise<void> {
       ...DEFAULT_OPTS,
       repeat: { pattern: '10 6 * * *' },
       jobId: 'task-daily-sweep-cron',
+    },
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Crons del módulo Mensajes.
+//
+// Gemela de `scheduleTaskCrons()`: mismos repeatable jobs de BullMQ, mismo
+// jobId fijo para que registrarlos en cada arranque del worker sea idempotente.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function scheduleMessagingCrons(): Promise<void> {
+  if (!env.REDIS_URL) {
+    console.log('[queue] sin REDIS_URL, crons de mensajería no registrados');
+    return;
+  }
+
+  // Cada 30 minutos: el job mira la timezone de cada clínica y publica el
+  // resumen sólo a las que les son las 08:00. El `dedupe_key` por día impide
+  // que dos ticks dentro de la misma ventana publiquen dos veces.
+  await getQueue('im-digest').add(
+    'im-digest',
+    {},
+    {
+      ...DEFAULT_OPTS,
+      repeat: { pattern: '*/30 * * * *' },
+      jobId: 'im-digest-cron',
+    },
+  );
+
+  // 04:40 UTC: hueco muerto entre el último turno europeo y la apertura.
+  // El borrado por lotes puede tardar y no queremos competir con el tráfico.
+  await getQueue('im-retention-sweep').add(
+    'im-retention-sweep',
+    {},
+    {
+      ...DEFAULT_OPTS,
+      repeat: { pattern: '40 4 * * *' },
+      jobId: 'im-retention-sweep-cron',
     },
   );
 }
