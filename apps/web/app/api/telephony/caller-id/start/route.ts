@@ -4,9 +4,9 @@ import {
   getZadarmaClientFor,
   upsertTenantTelephony,
 } from '@/lib/data/tenant-telephony';
+import { getCurrentTenant } from '@/lib/tenant';
 import { TwilioApiError } from '@/lib/twilio/client';
 import { ZadarmaApiError } from '@/lib/zadarma/client';
-import { getCurrentTenant } from '@/lib/tenant';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -98,9 +98,7 @@ export async function POST(req: NextRequest) {
       client.listVerifiedCallerIds(),
       client.listDirectNumbers(),
     ]);
-    const isVerified = verified.some(
-      (v) => v.number === normalized && v.status === 'verified',
-    );
+    const isVerified = verified.some((v) => v.number === normalized && v.status === 'verified');
     const isOwnDid = dids.some((d) => d.number === normalized);
 
     if (isVerified || isOwnDid) {
@@ -126,10 +124,7 @@ export async function POST(req: NextRequest) {
     );
   } catch (err) {
     if (err instanceof TwilioApiError || err instanceof ZadarmaApiError) {
-      return NextResponse.json(
-        { error: err.message, code: err.code },
-        { status: err.status },
-      );
+      return NextResponse.json({ error: err.message, code: err.code }, { status: err.status });
     }
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }

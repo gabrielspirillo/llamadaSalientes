@@ -3,14 +3,7 @@ import { getClinicSettings, getTenant } from '@/lib/data/clinic';
 import { getLeadMemory } from '@/lib/memory/lead-memory';
 import { speakWorkingHoursRange } from '@/lib/retell/time-speech';
 
-type DayKey =
-  | 'monday'
-  | 'tuesday'
-  | 'wednesday'
-  | 'thursday'
-  | 'friday'
-  | 'saturday'
-  | 'sunday';
+type DayKey = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
 
 const DAY_LABEL: Record<DayKey, string> = {
   monday: 'lunes',

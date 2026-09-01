@@ -2,9 +2,9 @@ import 'server-only';
 import { decrypt, encrypt } from '@/lib/crypto';
 import { db } from '@/lib/db/client';
 import { ghlIntegrations } from '@/lib/db/schema';
-import { getGhlOverride } from '@/lib/ghl/override-context';
 import type { GhlTokenResponse } from '@/lib/ghl/oauth';
 import { refreshAccessToken } from '@/lib/ghl/oauth';
+import { getGhlOverride } from '@/lib/ghl/override-context';
 import { eq } from 'drizzle-orm';
 
 const REFRESH_BUFFER_MS = 5 * 60 * 1000; // refresca si quedan < 5 min

@@ -1,7 +1,7 @@
 import { resolveTenantId } from '@/lib/data/phone-tenant';
 import { buildDemoOverrideFromEnv, withGhlOverride } from '@/lib/ghl/override-context';
-import { verifyRetellSignature } from '@/lib/retell/verify';
 import { dispatchTool } from '@/lib/retell/tools';
+import { verifyRetellSignature } from '@/lib/retell/verify';
 import { type NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -46,8 +46,7 @@ export async function POST(req: NextRequest) {
   if (!tenantId) {
     // Devolvemos 200 con un result entendible para que el agente no quede colgado
     return NextResponse.json({
-      result:
-        'No pude identificar la clínica para esta llamada. El equipo te contactará en breve.',
+      result: 'No pude identificar la clínica para esta llamada. El equipo te contactará en breve.',
     });
   }
 

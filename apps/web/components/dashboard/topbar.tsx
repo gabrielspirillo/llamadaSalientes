@@ -146,8 +146,8 @@ export function DashboardTopbar({
 
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
           {impersonatingClinic && (
-            <span className="hidden max-w-[220px] items-center gap-1.5 rounded-full bg-[linear-gradient(120deg,#effaf5,#fdf0f7)] px-3 py-1.5 text-[11px] font-semibold text-brand-700 ring-1 ring-violet-100 sm:inline-flex">
-              <StatusDot tone="violet" />
+            <span className="hidden max-w-[220px] items-center gap-1.5 rounded-full bg-[linear-gradient(120deg,#effaf5,#ddf3ea)] px-3 py-1.5 text-[11px] font-semibold text-brand-700 ring-1 ring-brand-100 sm:inline-flex">
+              <StatusDot tone="success" />
               <span className="truncate">Gestionando: {impersonatingClinic}</span>
             </span>
           )}

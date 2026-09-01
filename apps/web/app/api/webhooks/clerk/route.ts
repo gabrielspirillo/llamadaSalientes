@@ -42,7 +42,7 @@ type ClerkMembershipEvent = {
 type ClerkEvent = ClerkOrgEvent | ClerkUserEvent | ClerkMembershipEvent;
 
 const DEFAULT_RECORDING_CONSENT =
-  'Esta llamada se está grabando para mejorar la calidad del servicio. Si no querés que se grabe, podés colgar y nuestra recepción te llamará de vuelta.';
+  'Esta llamada se está grabando para mejorar la calidad del servicio. Si no quieres que se grabe, puedes colgar y te llamamos desde recepción.';
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
@@ -242,9 +242,7 @@ async function handleMembershipDeleted(evt: ClerkMembershipEvent) {
 
   await db
     .delete(tenantMemberships)
-    .where(
-      and(eq(tenantMemberships.tenantId, tenant.id), eq(tenantMemberships.userId, user.id)),
-    );
+    .where(and(eq(tenantMemberships.tenantId, tenant.id), eq(tenantMemberships.userId, user.id)));
 }
 
 async function handleUserUpsert(evt: ClerkUserEvent) {

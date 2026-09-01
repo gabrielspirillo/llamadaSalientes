@@ -1,5 +1,5 @@
 import 'server-only';
-import { buildZadarmaSignature, buildSortedParamsString } from './signing';
+import { buildSortedParamsString, buildZadarmaSignature } from './signing';
 
 /**
  * Cliente REST de Zadarma acotado a las operaciones que necesitamos para el

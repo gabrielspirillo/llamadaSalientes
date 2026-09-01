@@ -90,8 +90,7 @@ export function normalizeCloudMessage(
   contactName: string | null,
 ): NormalizedInboundMessage {
   const type = cloudMessageType(msg.type);
-  const media =
-    msg.image ?? msg.audio ?? msg.video ?? msg.document ?? msg.sticker ?? null;
+  const media = msg.image ?? msg.audio ?? msg.video ?? msg.document ?? msg.sticker ?? null;
   const text =
     msg.text?.body ??
     (msg.location
@@ -127,11 +126,19 @@ const evolutionKeySchema = z.object({
 const evolutionMessageContentSchema = z.object({
   conversation: z.string().optional(),
   extendedTextMessage: z.object({ text: z.string() }).optional(),
-  imageMessage: z.object({ caption: z.string().optional(), mimetype: z.string().optional() }).optional(),
+  imageMessage: z
+    .object({ caption: z.string().optional(), mimetype: z.string().optional() })
+    .optional(),
   audioMessage: z.object({ mimetype: z.string().optional() }).optional(),
-  videoMessage: z.object({ caption: z.string().optional(), mimetype: z.string().optional() }).optional(),
+  videoMessage: z
+    .object({ caption: z.string().optional(), mimetype: z.string().optional() })
+    .optional(),
   documentMessage: z
-    .object({ caption: z.string().optional(), mimetype: z.string().optional(), fileName: z.string().optional() })
+    .object({
+      caption: z.string().optional(),
+      mimetype: z.string().optional(),
+      fileName: z.string().optional(),
+    })
     .optional(),
   stickerMessage: z.object({ mimetype: z.string().optional() }).optional(),
 });
@@ -173,9 +180,7 @@ function evolutionText(data: EvolutionUpsert['data']): string | null {
   );
 }
 
-function evolutionMediaInfo(
-  data: EvolutionUpsert['data'],
-): { mimeType: string | null } {
+function evolutionMediaInfo(data: EvolutionUpsert['data']): { mimeType: string | null } {
   const m = data.message ?? {};
   const mimeType =
     m.imageMessage?.mimetype ??

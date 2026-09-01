@@ -15,9 +15,9 @@ import {
 import { getContact } from '@/lib/ghl/contacts';
 import { ReminderForbiddenError, requireReminderRole } from '@/lib/reminders/auth';
 import {
+  type ReminderTemplateRow,
   defaultReminderButtons,
   driverScopeForWhatsAppMode,
-  type ReminderTemplateRow,
   resolveTemplate,
 } from '@/lib/reminders/template-resolver';
 import { buildReminderVars, interpolate } from '@/lib/reminders/variables';
@@ -45,7 +45,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const body = (await req.json().catch(() => null)) as unknown;
   const parsed = inputSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Datos inválidos', issues: parsed.error.issues }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Datos inválidos', issues: parsed.error.issues },
+      { status: 400 },
+    );
   }
 
   // 1. Cargar regla.
@@ -160,7 +163,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // activo del tenant: si tiene freeText (Evolution), interpolamos; si tiene
   // templateName (Cloud/Twilio), mostramos el formato Meta; si es voice, el
   // voicePromptOverride.
-  const buttons = template.buttons.length > 0 ? template.buttons : defaultReminderButtons('preview');
+  const buttons =
+    template.buttons.length > 0 ? template.buttons : defaultReminderButtons('preview');
 
   let renderedText: string;
   if (rule.primaryChannel === 'VOICE' || template.driverScope === 'voice_retell') {
@@ -208,8 +212,5 @@ function errResp(err: unknown): NextResponse {
     return NextResponse.json({ error: err.message }, { status: 403 });
   }
   console.error('[reminders-api] auth error', err);
-  return NextResponse.json(
-    { error: (err as Error)?.message ?? 'Unauthorized' },
-    { status: 401 },
-  );
+  return NextResponse.json({ error: (err as Error)?.message ?? 'Unauthorized' }, { status: 401 });
 }

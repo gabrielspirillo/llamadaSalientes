@@ -71,7 +71,9 @@ async function gatherMaterial(
     const contactRows = await db
       .select()
       .from(whatsappContacts)
-      .where(and(eq(whatsappContacts.tenantId, tenantId), eq(whatsappContacts.phoneE164, phoneE164)))
+      .where(
+        and(eq(whatsappContacts.tenantId, tenantId), eq(whatsappContacts.phoneE164, phoneE164)),
+      )
       .limit(1);
     const contact = contactRows[0];
     if (contact) {
@@ -125,8 +127,7 @@ async function gatherMaterial(
       .orderBy(desc(calls.startedAt))
       .limit(MAX_CALLS);
     if (callRows.length) {
-      ghlContactId =
-        ghlContactId ?? callRows.find((c) => c.ghlContactId)?.ghlContactId ?? null;
+      ghlContactId = ghlContactId ?? callRows.find((c) => c.ghlContactId)?.ghlContactId ?? null;
       const lines = callRows
         .map((c) => {
           const when = c.startedAt ? c.startedAt.toISOString().slice(0, 10) : 's/f';

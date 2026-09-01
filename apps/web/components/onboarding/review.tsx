@@ -286,7 +286,7 @@ export function SuccessScreen({
 }) {
   return (
     <div className="mx-auto flex max-w-lg flex-col items-center px-4 py-16 text-center">
-      <div className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-600">
+      <div className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#37766a,#5fa896)]">
         <Check className="h-7 w-7 text-white" />
       </div>
       <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">

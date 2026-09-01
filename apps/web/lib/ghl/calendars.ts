@@ -1,6 +1,6 @@
 import 'server-only';
-import { ghlFetch } from '@/lib/ghl/client';
 import { getGhlIntegration } from '@/lib/data/ghl-integration';
+import { ghlFetch } from '@/lib/ghl/client';
 import { getGhlOverride } from '@/lib/ghl/override-context';
 
 export type GhlCalendar = {
@@ -130,7 +130,7 @@ export async function getFreeSlots(
 
   // Shape 1: slots[] directo (legacy)
   if (Array.isArray((data as { slots?: GhlSlot[] }).slots)) {
-    return ((data as { slots: GhlSlot[] }).slots) ?? [];
+    return (data as { slots: GhlSlot[] }).slots ?? [];
   }
 
   // Shape 2: keys son fechas YYYY-MM-DD; cada una tiene { slots: ['ISO', ...] }
@@ -169,7 +169,14 @@ export async function createCalendarForTreatment(
   // GHL espera openHours como array por día numérico (Sun=0 .. Sat=6)
   const openHours = args.days.map((d) => ({
     daysOfTheWeek: [DAY_TO_NUMBER[d]],
-    hours: [{ openHour: parseHour(args.startTime), openMinute: parseMinute(args.startTime), closeHour: parseHour(args.endTime), closeMinute: parseMinute(args.endTime) }],
+    hours: [
+      {
+        openHour: parseHour(args.startTime),
+        openMinute: parseMinute(args.startTime),
+        closeHour: parseHour(args.endTime),
+        closeMinute: parseMinute(args.endTime),
+      },
+    ],
   }));
 
   const body = {

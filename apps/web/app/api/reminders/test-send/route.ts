@@ -14,14 +14,11 @@ import {
 import { getContact } from '@/lib/ghl/contacts';
 import { ReminderForbiddenError, requireReminderRole } from '@/lib/reminders/auth';
 import { sendVoiceReminder } from '@/lib/reminders/send-voice';
+import { resolveActiveConnection, sendWhatsAppDirect } from '@/lib/reminders/send-whatsapp';
 import {
-  resolveActiveConnection,
-  sendWhatsAppDirect,
-} from '@/lib/reminders/send-whatsapp';
-import {
+  type ReminderTemplateRow,
   driverScopeForWhatsAppMode,
   resolveTemplate,
-  type ReminderTemplateRow,
 } from '@/lib/reminders/template-resolver';
 import { buildReminderVars } from '@/lib/reminders/variables';
 
@@ -50,7 +47,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const body = (await req.json().catch(() => null)) as unknown;
   const parsed = inputSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Datos inválidos', issues: parsed.error.issues }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Datos inválidos', issues: parsed.error.issues },
+      { status: 400 },
+    );
   }
 
   const [rule] = await db
@@ -139,11 +139,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       .select()
       .from(reminderMessageTemplates)
       .where(eq(reminderMessageTemplates.ruleId, rule.id));
-    const template = resolveTemplate(
-      templates as ReminderTemplateRow[],
-      'WHATSAPP',
-      driverScope,
-    );
+    const template = resolveTemplate(templates as ReminderTemplateRow[], 'WHATSAPP', driverScope);
     if (!template) {
       return NextResponse.json(
         { ok: false, error: 'No hay plantilla configurada para esta regla y driver activo.' },
@@ -194,8 +190,5 @@ function errResp(err: unknown): NextResponse {
     return NextResponse.json({ error: err.message }, { status: 403 });
   }
   console.error('[reminders-api] auth error', err);
-  return NextResponse.json(
-    { error: (err as Error)?.message ?? 'Unauthorized' },
-    { status: 401 },
-  );
+  return NextResponse.json({ error: (err as Error)?.message ?? 'Unauthorized' }, { status: 401 });
 }

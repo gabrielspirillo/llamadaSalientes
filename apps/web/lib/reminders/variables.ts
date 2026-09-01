@@ -89,9 +89,7 @@ export function buildReminderVars(input: BuildReminderVarsInput): ReminderVars {
       dateTime: dateTimeStr,
       treatment: safe(input.treatmentName, 'tu cita'),
       durationMinutes:
-        input.appointmentDurationMinutes != null
-          ? String(input.appointmentDurationMinutes)
-          : '',
+        input.appointmentDurationMinutes != null ? String(input.appointmentDurationMinutes) : '',
     },
     clinic: {
       name: safe(input.clinicName, 'la clínica'),

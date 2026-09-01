@@ -31,12 +31,7 @@ export async function getWhatsappKPIs(tenantId: string): Promise<WhatsappKPIs> {
   const [msg] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(whatsappMessages)
-    .where(
-      and(
-        eq(whatsappMessages.tenantId, tenantId),
-        gte(whatsappMessages.createdAt, since24h),
-      ),
-    );
+    .where(and(eq(whatsappMessages.tenantId, tenantId), gte(whatsappMessages.createdAt, since24h)));
 
   const monthStart = startOfCurrentMonth();
   const [revenue] = await db
@@ -86,12 +81,7 @@ export async function getMessagesByHour(tenantId: string): Promise<MessagesByHou
       count: sql<number>`count(*)::int`,
     })
     .from(whatsappMessages)
-    .where(
-      and(
-        eq(whatsappMessages.tenantId, tenantId),
-        gte(whatsappMessages.createdAt, since),
-      ),
-    )
+    .where(and(eq(whatsappMessages.tenantId, tenantId), gte(whatsappMessages.createdAt, since)))
     .groupBy(sql`extract(hour from ${whatsappMessages.createdAt})`, whatsappMessages.direction);
 
   const buckets: MessagesByHourPoint[] = Array.from({ length: 24 }, (_, h) => ({

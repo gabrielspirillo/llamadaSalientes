@@ -35,12 +35,7 @@ export async function getOutboundKPIs(tenantId: string, days = 30): Promise<Outb
       failed: sql<number>`count(*) filter (where ${outboundTargets.status} in ('failed','skipped'))::int`,
     })
     .from(outboundTargets)
-    .where(
-      and(
-        eq(outboundTargets.tenantId, tenantId),
-        gte(outboundTargets.lastAttemptAt, since),
-      ),
-    );
+    .where(and(eq(outboundTargets.tenantId, tenantId), gte(outboundTargets.lastAttemptAt, since)));
 
   const total = row?.total ?? 0;
   const ended = row?.ended ?? 0;
@@ -94,12 +89,7 @@ export async function getOutboundDailyTrend(
       failed: sql<number>`count(*) filter (where ${outboundTargets.status} in ('failed','skipped'))::int`,
     })
     .from(outboundTargets)
-    .where(
-      and(
-        eq(outboundTargets.tenantId, tenantId),
-        gte(outboundTargets.lastAttemptAt, since),
-      ),
-    )
+    .where(and(eq(outboundTargets.tenantId, tenantId), gte(outboundTargets.lastAttemptAt, since)))
     .groupBy(sql`date_trunc('day', ${outboundTargets.lastAttemptAt})`)
     .orderBy(sql`date_trunc('day', ${outboundTargets.lastAttemptAt})`);
 
@@ -131,12 +121,7 @@ export async function getCampaignPerformance(
     })
     .from(outboundCampaigns)
     .leftJoin(outboundTargets, eq(outboundTargets.campaignId, outboundCampaigns.id))
-    .where(
-      and(
-        eq(outboundCampaigns.tenantId, tenantId),
-        gte(outboundCampaigns.createdAt, since),
-      ),
-    )
+    .where(and(eq(outboundCampaigns.tenantId, tenantId), gte(outboundCampaigns.createdAt, since)))
     .groupBy(outboundCampaigns.id, outboundCampaigns.name, outboundCampaigns.status)
     .orderBy(desc(outboundCampaigns.createdAt))
     .limit(limit);

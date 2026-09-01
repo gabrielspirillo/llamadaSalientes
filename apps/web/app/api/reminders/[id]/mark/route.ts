@@ -4,10 +4,7 @@ import { z } from 'zod';
 
 import { db } from '@/lib/db/client';
 import { appointmentReminders, reminderConfirmations } from '@/lib/db/schema';
-import {
-  removeReminderFallbackJob,
-  removeReminderSendJob,
-} from '@/lib/queue/client';
+import { removeReminderFallbackJob, removeReminderSendJob } from '@/lib/queue/client';
 import { ReminderForbiddenError, requireReminderRole } from '@/lib/reminders/auth';
 import { cancelFollowingReminders } from '@/lib/reminders/cancel';
 
@@ -40,7 +37,10 @@ export async function POST(
   const body = (await req.json().catch(() => null)) as unknown;
   const parsed = inputSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Datos inválidos', issues: parsed.error.issues }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Datos inválidos', issues: parsed.error.issues },
+      { status: 400 },
+    );
   }
 
   const [rem] = await db
@@ -91,8 +91,5 @@ function errResp(err: unknown): NextResponse {
     return NextResponse.json({ error: err.message }, { status: 403 });
   }
   console.error('[reminders-api] auth error', err);
-  return NextResponse.json(
-    { error: (err as Error)?.message ?? 'Unauthorized' },
-    { status: 401 },
-  );
+  return NextResponse.json({ error: (err as Error)?.message ?? 'Unauthorized' }, { status: 401 });
 }

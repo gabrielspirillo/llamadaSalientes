@@ -23,18 +23,69 @@ const clinic: ClinicGrounding = {
 };
 
 const treatments: TreatmentLine[] = [
-  { name: 'Limpieza dental', durationMinutes: 30, priceMin: 50, priceMax: 60, currency: 'EUR', description: 'Higiene y profilaxis.' },
-  { name: 'Ortodoncia invisible', durationMinutes: 45, priceMin: 2500, priceMax: 4000, currency: 'EUR', description: 'Alineadores transparentes.' },
-  { name: 'Implante dental', durationMinutes: 60, priceMin: 900, priceMax: 1400, currency: 'EUR', description: 'Implante de titanio + corona.' },
-  { name: 'Blanqueamiento', durationMinutes: 45, priceMin: 200, priceMax: 350, currency: 'EUR', description: 'Blanqueamiento en clínica.' },
-  { name: 'Revisión / valoración', durationMinutes: 20, priceMin: 0, priceMax: 0, currency: 'EUR', description: 'Primera visita y diagnóstico.' },
+  {
+    name: 'Limpieza dental',
+    durationMinutes: 30,
+    priceMin: 50,
+    priceMax: 60,
+    currency: 'EUR',
+    description: 'Higiene y profilaxis.',
+  },
+  {
+    name: 'Ortodoncia invisible',
+    durationMinutes: 45,
+    priceMin: 2500,
+    priceMax: 4000,
+    currency: 'EUR',
+    description: 'Alineadores transparentes.',
+  },
+  {
+    name: 'Implante dental',
+    durationMinutes: 60,
+    priceMin: 900,
+    priceMax: 1400,
+    currency: 'EUR',
+    description: 'Implante de titanio + corona.',
+  },
+  {
+    name: 'Blanqueamiento',
+    durationMinutes: 45,
+    priceMin: 200,
+    priceMax: 350,
+    currency: 'EUR',
+    description: 'Blanqueamiento en clínica.',
+  },
+  {
+    name: 'Revisión / valoración',
+    durationMinutes: 20,
+    priceMin: 0,
+    priceMax: 0,
+    currency: 'EUR',
+    description: 'Primera visita y diagnóstico.',
+  },
 ];
 
 const faqs: FaqLine[] = [
-  { category: 'parking', question: '¿Tenéis parking?', answer: 'Sí, parking gratuito para pacientes en el mismo edificio.' },
-  { category: 'seguros', question: '¿Aceptáis seguros?', answer: 'Trabajamos con Adeslas, Sanitas y DKV.' },
-  { category: 'financiacion', question: '¿Se puede financiar?', answer: 'Sí, financiación hasta 24 meses sin intereses.' },
-  { category: 'primera-visita', question: '¿La primera visita es gratis?', answer: 'La valoración inicial es gratuita y sin compromiso.' },
+  {
+    category: 'parking',
+    question: '¿Tenéis parking?',
+    answer: 'Sí, parking gratuito para pacientes en el mismo edificio.',
+  },
+  {
+    category: 'seguros',
+    question: '¿Aceptáis seguros?',
+    answer: 'Trabajamos con Adeslas, Sanitas y DKV.',
+  },
+  {
+    category: 'financiacion',
+    question: '¿Se puede financiar?',
+    answer: 'Sí, financiación hasta 24 meses sin intereses.',
+  },
+  {
+    category: 'primera-visita',
+    question: '¿La primera visita es gratis?',
+    answer: 'La valoración inicial es gratuita y sin compromiso.',
+  },
 ];
 
 export async function fixtureLoadGrounding(): Promise<{
@@ -66,7 +117,12 @@ export async function fixtureExecuteTool(input: ExecuteToolInput): Promise<ToolC
   const base = { name, args, latencyMs: 1 };
 
   const ok = (result: string): ToolCallTrace => ({ ...base, ok: true, result });
-  const fail = (result: string, error: string): ToolCallTrace => ({ ...base, ok: false, result, error });
+  const fail = (result: string, error: string): ToolCallTrace => ({
+    ...base,
+    ok: false,
+    result,
+    error,
+  });
 
   switch (name) {
     case 'request_handoff':
@@ -79,13 +135,18 @@ export async function fixtureExecuteTool(input: ExecuteToolInput): Promise<ToolC
       return ok(`Huecos para ${treatment} (${date}): 10:00, 11:30, 16:00.`);
     }
     case 'book_appointment':
-      return ok(`Cita agendada correctamente para ${String(args.start_time ?? 'el horario indicado')}.`);
+      return ok(
+        `Cita agendada correctamente para ${String(args.start_time ?? 'el horario indicado')}.`,
+      );
     case 'cancel_appointment':
       // Como en prod: cancelar requiere un appointment_id concreto. Sin id no
       // se puede cancelar (no inventamos un éxito).
       return String(args.appointment_id ?? '').trim()
         ? ok('La cita fue cancelada correctamente.')
-        : fail('Falta appointment_id: no se puede cancelar sin saber qué cita.', 'missing_appointment_id');
+        : fail(
+            'Falta appointment_id: no se puede cancelar sin saber qué cita.',
+            'missing_appointment_id',
+          );
     case 'get_patient_info': {
       const phone = String(args.phone ?? '').replace(/\s+/g, '');
       const match = KNOWN_PATIENTS[phone];
@@ -96,12 +157,16 @@ export async function fixtureExecuteTool(input: ExecuteToolInput): Promise<ToolC
     case 'register_patient':
       return ok('Paciente creado (contact_id: ghl_eval_nuevo).');
     case 'list_treatments':
-      return ok(treatments.map((t) => `- ${t.name}: ${t.priceMin}-${t.priceMax} ${t.currency}`).join('\n'));
+      return ok(
+        treatments.map((t) => `- ${t.name}: ${t.priceMin}-${t.priceMax} ${t.currency}`).join('\n'),
+      );
     case 'get_treatment_details': {
       const q = String(args.name ?? '').toLowerCase();
       const t = treatments.find((x) => x.name.toLowerCase().includes(q));
       return t
-        ? ok(`${t.name}: ${t.durationMinutes} min, ${t.priceMin}-${t.priceMax} ${t.currency}. ${t.description ?? ''}`)
+        ? ok(
+            `${t.name}: ${t.durationMinutes} min, ${t.priceMin}-${t.priceMax} ${t.currency}. ${t.description ?? ''}`,
+          )
         : ok('Tratamiento no encontrado en el catálogo.');
     }
     case 'search_faqs': {
@@ -109,7 +174,11 @@ export async function fixtureExecuteTool(input: ExecuteToolInput): Promise<ToolC
       const hits = faqs
         .filter((f) => `${f.question} ${f.answer} ${f.category}`.toLowerCase().includes(q))
         .slice(0, 3);
-      return ok(hits.length ? hits.map((f) => `- ${f.question}\n  R: ${f.answer}`).join('\n') : 'Sin resultados.');
+      return ok(
+        hits.length
+          ? hits.map((f) => `- ${f.question}\n  R: ${f.answer}`).join('\n')
+          : 'Sin resultados.',
+      );
     }
     default:
       return fail(`Herramienta desconocida: ${name}`, 'unknown_tool');

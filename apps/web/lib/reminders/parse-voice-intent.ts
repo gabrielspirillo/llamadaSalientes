@@ -46,9 +46,7 @@ Reglas:
 - confidence baja (<0.7) si hay ambigüedad o el paciente habla de OTRA cita.
 - NO markdown, NO texto fuera del JSON.`;
 
-export async function parseReminderVoiceIntent(
-  transcript: string,
-): Promise<ReminderVoiceIntent> {
+export async function parseReminderVoiceIntent(transcript: string): Promise<ReminderVoiceIntent> {
   if (!transcript || transcript.trim().length < 10) {
     return { action: 'none', confidence: 0 };
   }

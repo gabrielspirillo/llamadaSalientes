@@ -37,9 +37,7 @@ export async function syncWhatsappContactWithGhl(
     // Dynamic import: los helpers de GHL importan transitive `env.ts` que
     // valida con zod al cargar el módulo. Lo postergamos a runtime para que
     // tests que mockean este archivo no exploten por env vars faltantes.
-    const { createContact, lookupContactByPhone } = await import(
-      '@/lib/ghl/contacts-mutations'
-    );
+    const { createContact, lookupContactByPhone } = await import('@/lib/ghl/contacts-mutations');
 
     // 1. Buscar match por teléfono.
     let ghlContact = await lookupContactByPhone(tenantId, contact.phoneE164);
@@ -128,11 +126,10 @@ async function hydrateAppointmentsForContact(
 ): Promise<void> {
   // Dynamic imports por la misma razón que arriba: evitar arrastrar env.ts
   // en módulos cargados desde tests.
-  const [{ listAppointmentsForContact }, { upsertAppointmentCacheMany }] =
-    await Promise.all([
-      import('@/lib/ghl/appointments'),
-      import('@/lib/appointments/cache'),
-    ]);
+  const [{ listAppointmentsForContact }, { upsertAppointmentCacheMany }] = await Promise.all([
+    import('@/lib/ghl/appointments'),
+    import('@/lib/appointments/cache'),
+  ]);
   const appts = await listAppointmentsForContact(tenantId, ghlContactId);
   if (appts.length === 0) return;
   await upsertAppointmentCacheMany({ tenantId, appts });

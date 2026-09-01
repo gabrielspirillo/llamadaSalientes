@@ -4,10 +4,7 @@ import { z } from 'zod';
 
 import { db } from '@/lib/db/client';
 import { waitlistSettings } from '@/lib/db/schema';
-import {
-  WaitlistForbiddenError,
-  requireWaitlistRole,
-} from '@/lib/waitlist/auth';
+import { WaitlistForbiddenError, requireWaitlistRole } from '@/lib/waitlist/auth';
 import { getOrCreateWaitlistSettings } from '@/lib/waitlist/settings';
 
 export const runtime = 'nodejs';
@@ -16,11 +13,26 @@ export const dynamic = 'force-dynamic';
 const updateSchema = z.object({
   enabled: z.boolean().optional(),
   channelMode: z.enum(['WHATSAPP_ONLY', 'VOICE_ONLY', 'WHATSAPP_THEN_VOICE']).optional(),
-  ttlMinutesDefault: z.number().int().min(15).max(7 * 24 * 60).optional(),
-  ttlMinutesNearSlot: z.number().int().min(5).max(24 * 60).optional(),
+  ttlMinutesDefault: z
+    .number()
+    .int()
+    .min(15)
+    .max(7 * 24 * 60)
+    .optional(),
+  ttlMinutesNearSlot: z
+    .number()
+    .int()
+    .min(5)
+    .max(24 * 60)
+    .optional(),
   nearSlotHoursThreshold: z.number().int().min(1).max(72).optional(),
   minSkipHoursThreshold: z.number().int().min(0).max(72).optional(),
-  whatsappToVoiceWindowMinutes: z.number().int().min(5).max(24 * 60).optional(),
+  whatsappToVoiceWindowMinutes: z
+    .number()
+    .int()
+    .min(5)
+    .max(24 * 60)
+    .optional(),
   minAppointmentDistanceDays: z.number().int().min(0).max(365).optional(),
   maxAppointmentDistanceDays: z.number().int().min(1).max(365).nullable().optional(),
   minAdvanceDays: z.number().int().min(0).max(180).optional(),

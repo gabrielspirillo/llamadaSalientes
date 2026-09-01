@@ -4,21 +4,18 @@ import { and, eq } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import {
   waitlistMessageTemplates,
-  whatsappConnections,
+  type whatsappConnections,
   whatsappMessages,
 } from '@/lib/db/schema';
-import { buildConnector } from '@/lib/whatsapp/factory';
-import { getOrCreateOpenConversation, upsertWhatsappContact } from '@/lib/whatsapp/persist';
-import { sendAgentResponse } from '@/lib/whatsapp/outbound/send-response';
-import { publishMessageEvent } from '@/lib/whatsapp/realtime/publisher';
-import { driverScopeForWhatsAppMode } from '@/lib/reminders/template-resolver';
 import { resolveActiveConnection } from '@/lib/reminders/send-whatsapp';
-import {
-  defaultWaitlistButtons,
-  resolveWaitlistTemplate,
-} from '@/lib/waitlist/template-resolver';
-import { interpolateWaitlist } from '@/lib/waitlist/variables';
+import { driverScopeForWhatsAppMode } from '@/lib/reminders/template-resolver';
+import { defaultWaitlistButtons, resolveWaitlistTemplate } from '@/lib/waitlist/template-resolver';
 import type { WaitlistTemplateRow, WaitlistVars } from '@/lib/waitlist/types';
+import { interpolateWaitlist } from '@/lib/waitlist/variables';
+import { buildConnector } from '@/lib/whatsapp/factory';
+import { sendAgentResponse } from '@/lib/whatsapp/outbound/send-response';
+import { getOrCreateOpenConversation, upsertWhatsappContact } from '@/lib/whatsapp/persist';
+import { publishMessageEvent } from '@/lib/whatsapp/realtime/publisher';
 
 // Envío de oferta waitlist por WhatsApp. Misma estrategia multi-driver que
 // reminders. Reutiliza la conexión activa del tenant y el flujo de persistencia.

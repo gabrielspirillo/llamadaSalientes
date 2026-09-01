@@ -1,6 +1,6 @@
 import 'server-only';
-import { and, eq, inArray, sql } from 'drizzle-orm';
 import { clerkClient } from '@clerk/nextjs/server';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import { tenantMemberships, users } from '@/lib/db/schema';

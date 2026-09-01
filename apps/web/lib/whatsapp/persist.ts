@@ -2,11 +2,7 @@ import 'server-only';
 import { and, eq, ne, sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
-import {
-  whatsappContacts,
-  whatsappConversations,
-  whatsappMessages,
-} from '@/lib/db/schema';
+import { whatsappContacts, whatsappConversations, whatsappMessages } from '@/lib/db/schema';
 
 import { publishMessageEvent } from './realtime/publisher';
 import type { NormalizedInboundMessage } from './types';
@@ -125,9 +121,7 @@ export async function persistInboundMessage(msg: NormalizedInboundMessage) {
     .set({
       lastMsgAt: msg.timestamp,
       updatedAt: new Date(),
-      ...(inserted
-        ? { unreadCount: sql`${whatsappConversations.unreadCount} + 1` }
-        : {}),
+      ...(inserted ? { unreadCount: sql`${whatsappConversations.unreadCount} + 1` } : {}),
     })
     .where(eq(whatsappConversations.id, conversation.id));
 

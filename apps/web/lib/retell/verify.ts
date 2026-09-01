@@ -1,4 +1,4 @@
-import { verify as retellVerify, sign as retellSign } from 'retell-sdk';
+import { sign as retellSign, verify as retellVerify } from 'retell-sdk';
 
 /**
  * Verifica la firma de Retell. El SDK firma con formato `v=<ts>,d=<digest>`

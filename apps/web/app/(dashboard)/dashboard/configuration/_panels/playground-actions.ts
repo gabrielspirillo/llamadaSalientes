@@ -3,7 +3,7 @@
 import { z } from 'zod';
 
 import { getCurrentTenant } from '@/lib/tenant';
-import { runWhatsappAgent, type AgentRunDeps } from '@/lib/whatsapp/agent';
+import { type AgentRunDeps, runWhatsappAgent } from '@/lib/whatsapp/agent';
 import { sandboxExecuteTool } from '@/lib/whatsapp/agent/sandbox-tools';
 
 const schema = z.object({

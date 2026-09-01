@@ -8,13 +8,12 @@ import type { WhatsAppConnector } from '@/lib/whatsapp/types';
 // Type guard para los connectors que sí saben fetchear la foto de perfil.
 // Hoy solo Evolution lo implementa; Cloud y Twilio no exponen API pública
 // para profile pictures.
-function supportsProfilePicture(
-  connector: WhatsAppConnector,
-): connector is WhatsAppConnector & {
+function supportsProfilePicture(connector: WhatsAppConnector): connector is WhatsAppConnector & {
   fetchProfilePictureUrl(toE164: string): Promise<string | null>;
 } {
-  return typeof (connector as { fetchProfilePictureUrl?: unknown }).fetchProfilePictureUrl ===
-    'function';
+  return (
+    typeof (connector as { fetchProfilePictureUrl?: unknown }).fetchProfilePictureUrl === 'function'
+  );
 }
 
 /**

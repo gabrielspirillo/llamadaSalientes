@@ -1,7 +1,7 @@
 import 'server-only';
+import { decrypt } from '@/lib/crypto';
 import { db } from '@/lib/db/client';
 import { whatsappConnections } from '@/lib/db/schema';
-import { decrypt } from '@/lib/crypto';
 import { and, desc, eq } from 'drizzle-orm';
 
 import { WhatsAppCloudConnector } from './cloud';
@@ -69,9 +69,7 @@ export function buildConnector(conn: WhatsAppConnectionRow): WhatsAppConnector {
       accountSid: conn.twilioAccountSid,
       authToken: decrypt(conn.twilioAuthTokenEnc),
       fromNumber: conn.twilioFromNumber,
-      statusCallbackUrl: appUrl
-        ? `${appUrl}/api/webhooks/whatsapp/twilio/status`
-        : undefined,
+      statusCallbackUrl: appUrl ? `${appUrl}/api/webhooks/whatsapp/twilio/status` : undefined,
     });
   }
 

@@ -8,17 +8,17 @@ import {
   whatsappConnections,
   whatsappMessages,
 } from '@/lib/db/schema';
-import { publishMessageEvent } from '@/lib/whatsapp/realtime/publisher';
-import { buildConnector } from '@/lib/whatsapp/factory';
-import { getOrCreateOpenConversation, upsertWhatsappContact } from '@/lib/whatsapp/persist';
-import { sendAgentResponse } from '@/lib/whatsapp/outbound/send-response';
 import {
+  type ReminderTemplateRow,
   defaultReminderButtons,
   driverScopeForWhatsAppMode,
   resolveTemplate,
-  type ReminderTemplateRow,
 } from '@/lib/reminders/template-resolver';
-import { interpolate, type ReminderVars } from '@/lib/reminders/variables';
+import { type ReminderVars, interpolate } from '@/lib/reminders/variables';
+import { buildConnector } from '@/lib/whatsapp/factory';
+import { sendAgentResponse } from '@/lib/whatsapp/outbound/send-response';
+import { getOrCreateOpenConversation, upsertWhatsappContact } from '@/lib/whatsapp/persist';
+import { publishMessageEvent } from '@/lib/whatsapp/realtime/publisher';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Envío de un recordatorio por WhatsApp (multi-driver).
@@ -77,11 +77,7 @@ export async function sendWhatsAppReminder(args: {
       ),
     );
 
-  const template = resolveTemplate(
-    templates as ReminderTemplateRow[],
-    'WHATSAPP',
-    driverScope,
-  );
+  const template = resolveTemplate(templates as ReminderTemplateRow[], 'WHATSAPP', driverScope);
   if (!template) return { ok: false, reason: 'no_template' };
 
   return sendWhatsAppDirect({
@@ -101,10 +97,7 @@ export async function resolveActiveConnection(tenantId: string): Promise<WaConnR
     .select()
     .from(whatsappConnections)
     .where(
-      and(
-        eq(whatsappConnections.tenantId, tenantId),
-        eq(whatsappConnections.status, 'CONNECTED'),
-      ),
+      and(eq(whatsappConnections.tenantId, tenantId), eq(whatsappConnections.status, 'CONNECTED')),
     )
     .orderBy(desc(whatsappConnections.updatedAt))
     .limit(1);

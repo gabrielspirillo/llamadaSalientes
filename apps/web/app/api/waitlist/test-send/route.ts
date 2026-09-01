@@ -3,23 +3,15 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { db } from '@/lib/db/client';
-import {
-  clinicSettings,
-  tenants,
-  treatments,
-  waitlistMessageTemplates,
-} from '@/lib/db/schema';
-import { driverScopeForWhatsAppMode } from '@/lib/reminders/template-resolver';
+import { clinicSettings, tenants, treatments, waitlistMessageTemplates } from '@/lib/db/schema';
 import { resolveActiveConnection } from '@/lib/reminders/send-whatsapp';
-import {
-  WaitlistForbiddenError,
-  requireWaitlistRole,
-} from '@/lib/waitlist/auth';
-import {
-  sendWaitlistWhatsAppDirect,
-  deriveContactDisplayNameFromWaitlistVars,
-} from '@/lib/waitlist/send-whatsapp';
+import { driverScopeForWhatsAppMode } from '@/lib/reminders/template-resolver';
+import { WaitlistForbiddenError, requireWaitlistRole } from '@/lib/waitlist/auth';
 import { sendWaitlistVoice } from '@/lib/waitlist/send-voice';
+import {
+  deriveContactDisplayNameFromWaitlistVars,
+  sendWaitlistWhatsAppDirect,
+} from '@/lib/waitlist/send-whatsapp';
 import { resolveWaitlistTemplate } from '@/lib/waitlist/template-resolver';
 import type { WaitlistTemplateRow } from '@/lib/waitlist/types';
 import { buildWaitlistVars } from '@/lib/waitlist/variables';
@@ -99,10 +91,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (parsed.data.channel === 'WHATSAPP') {
       const conn = await resolveActiveConnection(tenantId);
       if (!conn) {
-        return NextResponse.json(
-          { ok: false, error: 'no_whatsapp_connection' },
-          { status: 400 },
-        );
+        return NextResponse.json({ ok: false, error: 'no_whatsapp_connection' }, { status: 400 });
       }
       const driverScope = driverScopeForWhatsAppMode(conn.mode);
       const templates = await db

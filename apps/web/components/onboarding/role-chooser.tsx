@@ -106,7 +106,7 @@ function RoleCard({
       onClick={onClick}
       className="group flex items-center gap-4 rounded-[22px] border border-[--color-border] bg-white p-5 text-left shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-[var(--shadow-lifted)]"
     >
-      <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#effaf5,#fdf0f7)] text-brand-600 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">
+      <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#effaf5,#ddf3ea)] text-brand-600 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">
         {icon}
       </span>
       <span className="min-w-0 flex-1">

@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { getWhatsappAgentSettings } from '@/lib/data/whatsapp-agent-settings';
+import { getLeadMemory } from '@/lib/memory/lead-memory';
 import { type LlmCallResult, type LlmMessage, callLLM } from './llm';
 import {
   HANDOFF_RESPONSE_TEXT,
@@ -7,8 +9,6 @@ import {
   formatNowInClinicZone,
   loadGroundingForTenant,
 } from './prompt';
-import { getWhatsappAgentSettings } from '@/lib/data/whatsapp-agent-settings';
-import { getLeadMemory } from '@/lib/memory/lead-memory';
 
 import { detectDiagnosis, detectInjection, redactPii } from './guardrails';
 import {

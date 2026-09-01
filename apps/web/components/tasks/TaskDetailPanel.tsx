@@ -118,7 +118,7 @@ export function TaskDetailPanel({
         body: JSON.stringify(body),
       });
       const data = (await res.json()) as { task?: TaskDetailDTO; error?: string };
-      if (!res.ok) throw new Error(data.error ?? 'No se pudo actualizar el checklist');
+      if (!res.ok) throw new Error(data.error ?? 'No se pudo actualizar la lista de comprobación');
       if (data.task) setTask(data.task);
       onChanged();
     } catch (err) {
@@ -289,7 +289,7 @@ export function TaskDetailPanel({
                   ))}
                 </select>
               </Field>
-              <Field label="Vence">
+              <Field label="Fecha límite">
                 <input
                   type="datetime-local"
                   disabled={!canEdit}
@@ -331,7 +331,7 @@ export function TaskDetailPanel({
                 })}
                 {members.length === 0 && (
                   <p className="text-xs text-zinc-500">
-                    Invitá al equipo desde Clínica → Equipo para poder repartir tareas.
+                    Invita al equipo desde Clínica → Equipo para poder repartir tareas.
                   </p>
                 )}
               </div>
@@ -405,7 +405,7 @@ export function TaskDetailPanel({
             {/* ── Checklist ──────────────────────────────────────────────── */}
             <section>
               <SectionTitle>
-                Checklist
+                Lista de comprobación
                 {task.checklistTotal > 0 && (
                   <span className="ml-2 font-normal text-zinc-400 tabular-nums">
                     {task.checklistDone}/{task.checklistTotal}
@@ -443,7 +443,7 @@ export function TaskDetailPanel({
                       <button
                         type="button"
                         onClick={() => void checklistCall('DELETE', { itemId: item.id })}
-                        aria-label="Quitar del checklist"
+                        aria-label="Quitar de la lista"
                         className="opacity-0 transition-opacity group-hover:opacity-100"
                       >
                         <Trash2 className="h-3.5 w-3.5 text-zinc-400 hover:text-red-600" />
@@ -479,7 +479,7 @@ export function TaskDetailPanel({
               <section>
                 <SectionTitle>Evidencia para cerrar</SectionTitle>
                 <p className="mb-2 text-xs text-zinc-500">
-                  Esta tarea no se puede pasar a "Hecho" sin dejar constancia. Anotá el número de
+                  Esta tarea no se puede pasar a "Hecho" sin dejar constancia. Anota el número de
                   ciclo, el importe cuadrado, el resultado del control o lo que corresponda.
                 </p>
                 <textarea
@@ -531,7 +531,7 @@ export function TaskDetailPanel({
                   </li>
                 ))}
                 {task.comments.length === 0 && (
-                  <li className="text-xs text-zinc-400">Todavía no pasó nada acá.</li>
+                  <li className="text-xs text-zinc-400">Todavía no ha pasado nada aquí.</li>
                 )}
               </ul>
             </section>

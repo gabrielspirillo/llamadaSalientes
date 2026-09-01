@@ -1,12 +1,12 @@
 import 'server-only';
 import { upsertAppointmentCache } from '@/lib/appointments/cache';
-import { GhlApiError, ghlFetch } from '@/lib/ghl/client';
-import { getFreeSlots, resolveCalendarId } from '@/lib/ghl/calendars';
-import { createContact, lookupContactByPhone, updateContact } from '@/lib/ghl/contacts-mutations';
 import { patchCallCustomData, setCallGhlContact } from '@/lib/data/calls';
+import { listFaqsForTenant } from '@/lib/data/faqs';
 import { getGhlIntegration } from '@/lib/data/ghl-integration';
 import { listTreatmentsForTenant } from '@/lib/data/treatments';
-import { listFaqsForTenant } from '@/lib/data/faqs';
+import { getFreeSlots, resolveCalendarId } from '@/lib/ghl/calendars';
+import { GhlApiError, ghlFetch } from '@/lib/ghl/client';
+import { createContact, lookupContactByPhone, updateContact } from '@/lib/ghl/contacts-mutations';
 import { embedText } from '@/lib/openai/client';
 import { cosineSimilarity } from '@/lib/rag/cosine';
 import { clockArticle, speakClockTime } from '@/lib/retell/time-speech';
@@ -81,11 +81,15 @@ function looksLikeGhlId(s: string | undefined | null): boolean {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function ghlNotConnected(): ToolResult {
-  return { result: 'El CRM no está conectado aún. Tomá nota del nombre y teléfono del paciente para que recepción lo contacte.' };
+  return {
+    result:
+      'El CRM no está conectado aún. Tomá nota del nombre y teléfono del paciente para que recepción lo contacte.',
+  };
 }
 
 function formatSlots(slots: GhlSlot[]): string {
-  if (slots.length === 0) return 'No hay disponibilidad en esa fecha. Proponé al paciente otra fecha.';
+  if (slots.length === 0)
+    return 'No hay disponibilidad en esa fecha. Proponé al paciente otra fecha.';
   const tz = 'Europe/Madrid';
   const formatted = slots
     .slice(0, 4)
@@ -136,7 +140,10 @@ export async function checkAvailability(
     // Parser de fecha tolerante: acepta YYYY-MM-DD o ISO completo.
     let day = new Date(args.preferred_date);
     if (Number.isNaN(day.getTime())) {
-      console.warn('[check_availability] preferred_date inválido, asumo mañana:', args.preferred_date);
+      console.warn(
+        '[check_availability] preferred_date inválido, asumo mañana:',
+        args.preferred_date,
+      );
       day = new Date();
       day.setDate(day.getDate() + 1);
     }
@@ -149,7 +156,13 @@ export async function checkAvailability(
     now.setUTCHours(0, 0, 0, 0);
     if (day.getTime() < now.getTime()) {
       const todayStr = now.toISOString().slice(0, 10);
-      console.warn('[check_availability] fecha en el pasado:', args.preferred_date, '(hoy es', todayStr, ')');
+      console.warn(
+        '[check_availability] fecha en el pasado:',
+        args.preferred_date,
+        '(hoy es',
+        todayStr,
+        ')',
+      );
       return {
         result: `Esa fecha (${args.preferred_date}) ya pasó. Hoy es ${todayStr}. Recalculá la fecha correcta del año actual y volvé a llamar al tool con preferred_date en formato YYYY-MM-DD.`,
       };
@@ -322,7 +335,8 @@ export async function registerPatient(
   });
   if (!created) {
     return {
-      result: 'No pude crear al paciente en el sistema. Tomá nombre y teléfono — recepción confirma manualmente.',
+      result:
+        'No pude crear al paciente en el sistema. Tomá nombre y teléfono — recepción confirma manualmente.',
     };
   }
 
@@ -354,10 +368,14 @@ export async function cancelAppointment(
     return { result: 'La cita fue cancelada correctamente.' };
   } catch (err) {
     if (err instanceof GhlApiError && err.status === 404) {
-      return { result: 'No encontré esa cita. Puede que ya haya sido cancelada o el ID sea incorrecto.' };
+      return {
+        result: 'No encontré esa cita. Puede que ya haya sido cancelada o el ID sea incorrecto.',
+      };
     }
     if (err instanceof GhlApiError) {
-      return { result: 'No pude cancelar la cita en este momento. Por favor comunícate con la clínica.' };
+      return {
+        result: 'No pude cancelar la cita en este momento. Por favor comunícate con la clínica.',
+      };
     }
     throw err;
   }
@@ -420,10 +438,7 @@ function priceRange(
 }
 
 function normalize(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '');
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
 export async function listTreatments(tenantId: string): Promise<ToolResult> {
@@ -498,10 +513,14 @@ export async function getTreatmentDetails(
 }
 
 // Fallback por keyword (cuando no hay embeddings o el semántico falla).
-function keywordFaqMatch<T extends { question: string; answer: string; category?: string | null; priority?: number | null }>(
-  rows: T[],
-  query: string,
-): T[] {
+function keywordFaqMatch<
+  T extends {
+    question: string;
+    answer: string;
+    category?: string | null;
+    priority?: number | null;
+  },
+>(rows: T[], query: string): T[] {
   const q = normalize(query);
   const terms = q.split(/\s+/).filter((t) => t.length >= 3);
   return rows
@@ -518,10 +537,7 @@ function keywordFaqMatch<T extends { question: string; answer: string; category?
 
 const FAQ_SIM_THRESHOLD = 0.3;
 
-export async function searchFaqs(
-  tenantId: string,
-  args: SearchFaqsArgs,
-): Promise<ToolResult> {
+export async function searchFaqs(tenantId: string, args: SearchFaqsArgs): Promise<ToolResult> {
   if (!args.query?.trim()) {
     return { result: 'Necesito una palabra clave para buscar en las FAQs.' };
   }
@@ -587,26 +603,34 @@ export async function setLeadEmail(
     const contact = await lookupContactByPhone(tenantId, phone);
     if (!contact) {
       return {
-        result: 'No encontré al contacto en el CRM. Usá register_patient primero con first_name, phone y email.',
+        result:
+          'No encontré al contacto en el CRM. Usá register_patient primero con first_name, phone y email.',
       };
     }
 
     const updated = await updateContact(tenantId, contact.id, { email: args.email.trim() });
     if (!updated) {
-      return { result: 'No pude actualizar el email en el CRM. Tomá nota del correo para cargarlo manualmente.' };
+      return {
+        result:
+          'No pude actualizar el email en el CRM. Tomá nota del correo para cargarlo manualmente.',
+      };
     }
 
     console.log('[set_lead_email] ok:', { contactId: contact.id, email: args.email });
 
     if (ctx.retellCallId) {
-      await patchCallCustomData(ctx.retellCallId, { lead_email: args.email.trim() }).catch(() => undefined);
+      await patchCallCustomData(ctx.retellCallId, { lead_email: args.email.trim() }).catch(
+        () => undefined,
+      );
     }
 
     return { result: `Email ${args.email} guardado correctamente en el CRM.` };
   } catch (err) {
     console.error('[set_lead_email]', err);
     if (err instanceof GhlApiError) {
-      return { result: `No pude guardar el email (error ${err.status}). Tomá nota para cargarlo después.` };
+      return {
+        result: `No pude guardar el email (error ${err.status}). Tomá nota para cargarlo después.`,
+      };
     }
     throw err;
   }

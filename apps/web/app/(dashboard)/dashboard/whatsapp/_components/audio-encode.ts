@@ -15,7 +15,8 @@ export async function encodeBlobToMp3(blob: Blob): Promise<Blob> {
   // AudioContext está disponible en navegadores modernos. Si no, el caller
   // debería detectar y mostrar error antes de llamar a esta función.
   const AudioCtx: typeof AudioContext =
-    window.AudioContext ?? (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext!;
+    window.AudioContext ??
+    (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext!;
   const ctx = new AudioCtx();
   let audioBuffer: AudioBuffer;
   try {
@@ -28,8 +29,7 @@ export async function encodeBlobToMp3(blob: Blob): Promise<Blob> {
   const channels = Math.min(2, audioBuffer.numberOfChannels);
   const sampleRate = audioBuffer.sampleRate || SAMPLE_RATE_TARGET;
   const left = float32ToInt16(audioBuffer.getChannelData(0));
-  const right =
-    channels === 2 ? float32ToInt16(audioBuffer.getChannelData(1)) : undefined;
+  const right = channels === 2 ? float32ToInt16(audioBuffer.getChannelData(1)) : undefined;
 
   const mp3encoder = new lamejs.Mp3Encoder(channels, sampleRate, KBPS);
   const blockSize = 1152; // tamaño de frame MP3 estándar

@@ -30,12 +30,7 @@ export async function requireReminderRole(min: ReminderRole): Promise<{
     })
     .from(tenantMemberships)
     .innerJoin(users, eq(users.id, tenantMemberships.userId))
-    .where(
-      and(
-        eq(tenantMemberships.tenantId, tenant.id),
-        eq(users.clerkUserId, clerkUserId),
-      ),
-    )
+    .where(and(eq(tenantMemberships.tenantId, tenant.id), eq(users.clerkUserId, clerkUserId)))
     .limit(1);
 
   if (!m) {

@@ -55,7 +55,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const body = (await req.json().catch(() => null)) as unknown;
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Datos inválidos', issues: parsed.error.issues }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Datos inválidos', issues: parsed.error.issues },
+      { status: 400 },
+    );
   }
   const [rule] = await db
     .select({ id: reminderRules.id })
@@ -99,8 +102,5 @@ function errResp(err: unknown): NextResponse {
     return NextResponse.json({ error: err.message }, { status: 403 });
   }
   console.error('[reminders-api] auth error', err);
-  return NextResponse.json(
-    { error: (err as Error)?.message ?? 'Unauthorized' },
-    { status: 401 },
-  );
+  return NextResponse.json({ error: (err as Error)?.message ?? 'Unauthorized' }, { status: 401 });
 }

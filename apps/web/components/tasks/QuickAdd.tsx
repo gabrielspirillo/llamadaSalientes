@@ -52,7 +52,7 @@ export function QuickAdd({
   const submit = async () => {
     const title = parsed.title.trim();
     if (!title) {
-      setError('Escribí al menos qué hay que hacer');
+      setError('Escribe al menos qué hay que hacer');
       return;
     }
     setBusy(true);

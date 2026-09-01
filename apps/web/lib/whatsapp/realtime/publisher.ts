@@ -1,10 +1,10 @@
 import 'server-only';
 
 import {
-  conversationChannel,
-  serializeMessage,
   type WhatsappMessageRow,
   type WhatsappRealtimeEvent,
+  conversationChannel,
+  serializeMessage,
 } from './events';
 
 // Publicación de eventos de conversación al canal Redis correspondiente.

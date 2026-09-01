@@ -10,15 +10,12 @@ import {
   waitlistMessageTemplates,
   whatsappConnections,
 } from '@/lib/db/schema';
-import { driverScopeForWhatsAppMode } from '@/lib/reminders/template-resolver';
 import { resolveActiveConnection } from '@/lib/reminders/send-whatsapp';
-import {
-  defaultWaitlistButtons,
-  resolveWaitlistTemplate,
-} from '@/lib/waitlist/template-resolver';
-import { buildWaitlistVars, interpolateWaitlist } from '@/lib/waitlist/variables';
+import { driverScopeForWhatsAppMode } from '@/lib/reminders/template-resolver';
 import { WaitlistForbiddenError, requireWaitlistRole } from '@/lib/waitlist/auth';
+import { defaultWaitlistButtons, resolveWaitlistTemplate } from '@/lib/waitlist/template-resolver';
 import type { WaitlistTemplateRow } from '@/lib/waitlist/types';
+import { buildWaitlistVars, interpolateWaitlist } from '@/lib/waitlist/variables';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -70,10 +67,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       driverScope as never,
     );
     if (!template) {
-      return NextResponse.json(
-        { ok: false, error: 'no_template', driverScope },
-        { status: 404 },
-      );
+      return NextResponse.json({ ok: false, error: 'no_template', driverScope }, { status: 404 });
     }
 
     const [tenant] = await db
@@ -82,7 +76,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       .where(eq(tenants.id, tenantId))
       .limit(1);
     const [clinic] = await db
-      .select({ timezone: clinicSettings.timezone, address: clinicSettings.address, phones: clinicSettings.phones })
+      .select({
+        timezone: clinicSettings.timezone,
+        address: clinicSettings.address,
+        phones: clinicSettings.phones,
+      })
       .from(clinicSettings)
       .where(eq(clinicSettings.tenantId, tenantId))
       .limit(1);

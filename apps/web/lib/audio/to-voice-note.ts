@@ -1,9 +1,9 @@
 import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-import { writeFile, unlink, readFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { readFile, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
 
@@ -11,8 +11,15 @@ const execFileAsync = promisify(execFile);
  * Convierte cualquier audio a OGG Opus mono 48kHz —
  * el formato que WhatsApp renderiza como nota de voz (PTT).
  */
-export async function toVoiceNote(input: Buffer<ArrayBuffer>, inputMime: string): Promise<Buffer<ArrayBuffer>> {
-  if (inputMime === 'audio/ogg' || inputMime === 'audio/ogg; codecs=opus' || inputMime === 'audio/ogg;codecs=opus') {
+export async function toVoiceNote(
+  input: Buffer<ArrayBuffer>,
+  inputMime: string,
+): Promise<Buffer<ArrayBuffer>> {
+  if (
+    inputMime === 'audio/ogg' ||
+    inputMime === 'audio/ogg; codecs=opus' ||
+    inputMime === 'audio/ogg;codecs=opus'
+  ) {
     return input;
   }
 
@@ -23,16 +30,26 @@ export async function toVoiceNote(input: Buffer<ArrayBuffer>, inputMime: string)
 
   try {
     await writeFile(inPath, input);
-    await execFileAsync('ffmpeg', [
-      '-i', inPath,
-      '-c:a', 'libopus',
-      '-b:a', '48k',
-      '-ac', '1',
-      '-ar', '48000',
-      '-application', 'voip',
-      '-y',
-      outPath,
-    ], { timeout: 30_000 });
+    await execFileAsync(
+      'ffmpeg',
+      [
+        '-i',
+        inPath,
+        '-c:a',
+        'libopus',
+        '-b:a',
+        '48k',
+        '-ac',
+        '1',
+        '-ar',
+        '48000',
+        '-application',
+        'voip',
+        '-y',
+        outPath,
+      ],
+      { timeout: 30_000 },
+    );
     return await readFile(outPath);
   } finally {
     await Promise.allSettled([unlink(inPath), unlink(outPath)]);

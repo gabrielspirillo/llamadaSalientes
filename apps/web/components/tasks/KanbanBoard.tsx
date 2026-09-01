@@ -131,7 +131,7 @@ export function KanbanBoard({
 
               {column.length === 0 && !draggingId && (
                 <p className="px-1 py-6 text-center text-xs text-zinc-400">
-                  {status === 'TODO' ? 'Sin pendientes acá' : meta.hint}
+                  {status === 'TODO' ? 'Sin pendientes aquí' : meta.hint}
                 </p>
               )}
             </div>

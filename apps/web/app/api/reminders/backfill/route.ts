@@ -33,10 +33,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: err.message }, { status: 403 });
     }
     console.error('[reminders-backfill] auth error', err);
-    return NextResponse.json(
-      { error: (err as Error)?.message ?? 'Unauthorized' },
-      { status: 401 },
-    );
+    return NextResponse.json({ error: (err as Error)?.message ?? 'Unauthorized' }, { status: 401 });
   }
   const { tenantId } = auth;
 

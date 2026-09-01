@@ -99,11 +99,7 @@ export async function POST(req: NextRequest) {
     .select({ id: calls.id })
     .from(calls)
     .where(
-      and(
-        eq(calls.tenantId, tenantId),
-        eq(calls.toNumber, phone),
-        gte(calls.createdAt, cutoff),
-      ),
+      and(eq(calls.tenantId, tenantId), eq(calls.toNumber, phone), gte(calls.createdAt, cutoff)),
     )
     .limit(1);
   if (recent) {
@@ -167,10 +163,7 @@ export async function POST(req: NextRequest) {
         : result.reason === 'no_agent' || result.reason === 'no_phone'
           ? 503
           : 502;
-    return NextResponse.json(
-      { error: result.error, reason: result.reason },
-      { status, headers },
-    );
+    return NextResponse.json({ error: result.error, reason: result.reason }, { status, headers });
   }
 
   return NextResponse.json(

@@ -87,10 +87,7 @@ export async function deleteAppointmentCache(input: {
  * matchee con el nombre de un tratamiento (ILIKE), devolvemos su id.
  * No es perfecto pero alcanza para "Limpieza dental" → treatment "Limpieza".
  */
-async function resolveTreatmentId(
-  tenantId: string,
-  title: string,
-): Promise<string | null> {
+async function resolveTreatmentId(tenantId: string, title: string): Promise<string | null> {
   const candidate = title.trim().toLowerCase();
   if (!candidate) return null;
   const rows = await db

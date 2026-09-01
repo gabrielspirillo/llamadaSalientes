@@ -1,5 +1,5 @@
-import IORedis from 'ioredis';
 import { and, eq } from 'drizzle-orm';
+import IORedis from 'ioredis';
 import { z } from 'zod';
 
 import { db } from '@/lib/db/client';
@@ -110,9 +110,7 @@ export async function GET(
         try {
           const parsedEvent = JSON.parse(payload) as { kind: string };
           const eventName = parsedEvent.kind;
-          const data =
-            `event: ${eventName}\n` +
-            `data: ${payload}\n\n`;
+          const data = `event: ${eventName}\n` + `data: ${payload}\n\n`;
           safeEnqueue(encoder.encode(data));
         } catch {
           // Payload malformed: ignorar.

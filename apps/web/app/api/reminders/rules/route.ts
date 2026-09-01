@@ -48,13 +48,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const body = (await req.json().catch(() => null)) as unknown;
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Datos inválidos', issues: parsed.error.issues }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Datos inválidos', issues: parsed.error.issues },
+      { status: 400 },
+    );
   }
   // Validar ruleSet pertenece al tenant.
   const [rs] = await db
     .select({ id: reminderRuleSets.id })
     .from(reminderRuleSets)
-    .where(and(eq(reminderRuleSets.id, parsed.data.ruleSetId), eq(reminderRuleSets.tenantId, auth.tenantId)))
+    .where(
+      and(
+        eq(reminderRuleSets.id, parsed.data.ruleSetId),
+        eq(reminderRuleSets.tenantId, auth.tenantId),
+      ),
+    )
     .limit(1);
   if (!rs) return NextResponse.json({ error: 'Rule set no pertenece al tenant' }, { status: 404 });
 
@@ -96,8 +104,5 @@ function errResp(err: unknown): NextResponse {
     return NextResponse.json({ error: err.message }, { status: 403 });
   }
   console.error('[reminders-api] auth error', err);
-  return NextResponse.json(
-    { error: (err as Error)?.message ?? 'Unauthorized' },
-    { status: 401 },
-  );
+  return NextResponse.json({ error: (err as Error)?.message ?? 'Unauthorized' }, { status: 401 });
 }

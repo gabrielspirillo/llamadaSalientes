@@ -1,10 +1,7 @@
 import 'server-only';
 import { resolveRetellAgentId } from '@/lib/data/agent-config';
 import { getGhlIntegration } from '@/lib/data/ghl-integration';
-import {
-  getTenantTelephony,
-  getZadarmaClientFor,
-} from '@/lib/data/tenant-telephony';
+import { getTenantTelephony, getZadarmaClientFor } from '@/lib/data/tenant-telephony';
 import { db } from '@/lib/db/client';
 import { phoneNumbers } from '@/lib/db/schema';
 import { createContact, lookupContactByPhone } from '@/lib/ghl/contacts-mutations';

@@ -37,9 +37,7 @@ export async function POST(_req: NextRequest) {
       summary: calls.summary,
     })
     .from(calls)
-    .where(
-      and(eq(calls.tenantId, tenantId), isNotNull(calls.transcriptEnc), isNull(calls.intent)),
-    )
+    .where(and(eq(calls.tenantId, tenantId), isNotNull(calls.transcriptEnc), isNull(calls.intent)))
     .limit(50);
 
   const results: Array<{
@@ -68,7 +66,11 @@ export async function POST(_req: NextRequest) {
         .where(eq(calls.id, r.id));
       results.push({ id: r.id, ok: true, intent: ai.intent });
     } catch (err) {
-      results.push({ id: r.id, ok: false, error: err instanceof Error ? err.message : String(err) });
+      results.push({
+        id: r.id,
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 

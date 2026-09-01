@@ -40,11 +40,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const body = (await req.json().catch(() => null)) as unknown;
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Datos inválidos', issues: parsed.error.issues }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Datos inválidos', issues: parsed.error.issues },
+      { status: 400 },
+    );
   }
   const { scope, treatmentId, enabled, quietMode } = parsed.data;
   if (scope === 'TREATMENT' && !treatmentId) {
-    return NextResponse.json({ error: 'treatmentId requerido para scope TREATMENT' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'treatmentId requerido para scope TREATMENT' },
+      { status: 400 },
+    );
   }
 
   // Si scope=GLOBAL, asegurar que no exista otro GLOBAL para el tenant.
@@ -57,7 +63,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       )
       .limit(1);
     if (existing) {
-      return NextResponse.json({ error: 'Ya existe un rule set global', existingId: existing.id }, { status: 409 });
+      return NextResponse.json(
+        { error: 'Ya existe un rule set global', existingId: existing.id },
+        { status: 409 },
+      );
     }
   }
 
@@ -81,8 +90,5 @@ function errResp(err: unknown): NextResponse {
     return NextResponse.json({ error: err.message }, { status: 403 });
   }
   console.error('[reminders-api] auth error', err);
-  return NextResponse.json(
-    { error: (err as Error)?.message ?? 'Unauthorized' },
-    { status: 401 },
-  );
+  return NextResponse.json({ error: (err as Error)?.message ?? 'Unauthorized' }, { status: 401 });
 }

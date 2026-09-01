@@ -96,7 +96,8 @@ export const SEED_FAQS = [
   {
     category: 'Política',
     question: '¿Cuál es la política de cancelación?',
-    answer: 'Pedimos avisar al menos 24 horas antes para reagendar sin costo.',
+    answer:
+      'Te pedimos que avises con al menos 24 horas de antelación para cambiar la cita sin coste.',
     priority: 5,
   },
   {

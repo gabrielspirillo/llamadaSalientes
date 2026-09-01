@@ -5,7 +5,7 @@ import { SEED_FAQS, SEED_TREATMENTS } from '@/lib/seed-data';
 import { eq } from 'drizzle-orm';
 
 const DEFAULT_RECORDING_CONSENT =
-  'Esta llamada se está grabando para mejorar la calidad del servicio. Si no querés que se grabe, podés colgar y nuestra recepción te llamará de vuelta.';
+  'Esta llamada se está grabando para mejorar la calidad del servicio. Si no quieres que se grabe, puedes colgar y te llamamos desde recepción.';
 
 function slugify(name: string) {
   return (

@@ -15,10 +15,10 @@ import {
   whatsappConnections,
   whatsappContacts,
 } from '@/lib/db/schema';
-import { getContact, type GhlContact } from '@/lib/ghl/contacts';
-import { sendQueueEvent, reminderSendJobId } from '@/lib/queue/client';
+import { type GhlContact, getContact } from '@/lib/ghl/contacts';
+import { reminderSendJobId, sendQueueEvent } from '@/lib/queue/client';
 import { cancelReminders } from '@/lib/reminders/cancel';
-import { applyQuietHours, type WorkingHours } from '@/lib/reminders/quiet-hours';
+import { type WorkingHours, applyQuietHours } from '@/lib/reminders/quiet-hours';
 import { logReminderSkip } from '@/lib/reminders/skip-log';
 import { driverScopeForWhatsAppMode } from '@/lib/reminders/template-resolver';
 import { buildReminderVars } from '@/lib/reminders/variables';
@@ -192,10 +192,7 @@ export async function materializeReminders(args: {
     .select()
     .from(whatsappConnections)
     .where(
-      and(
-        eq(whatsappConnections.tenantId, tenantId),
-        eq(whatsappConnections.status, 'CONNECTED'),
-      ),
+      and(eq(whatsappConnections.tenantId, tenantId), eq(whatsappConnections.status, 'CONNECTED')),
     )
     .orderBy(desc(whatsappConnections.updatedAt))
     .limit(1);
@@ -207,7 +204,8 @@ export async function materializeReminders(args: {
     .limit(1);
 
   const hasWhatsApp = !!waConn;
-  const hasVoiceAgent = !!outboundAgent?.retellAgentId || !!process.env.RETELL_OUTBOUND_DEFAULT_AGENT_ID;
+  const hasVoiceAgent =
+    !!outboundAgent?.retellAgentId || !!process.env.RETELL_OUTBOUND_DEFAULT_AGENT_ID;
 
   // Variables para snapshot (sobrevive a cambios en GHL/cache).
   const vars = buildReminderVars({

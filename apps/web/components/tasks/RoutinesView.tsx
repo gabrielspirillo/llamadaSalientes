@@ -57,7 +57,7 @@ export function RoutinesView({
   const runNow = () =>
     call(
       () => fetch('/api/tasks/run-routines', { method: 'POST' }),
-      'Listo: se generaron las tareas que tocaban.',
+      'Listo: ya se han creado las tareas que tocaban.',
     );
 
   const seedCatalog = () =>
@@ -111,8 +111,8 @@ export function RoutinesView({
               Rutinas de la clínica
             </h2>
             <p className="mt-0.5 max-w-2xl text-xs text-zinc-500">
-              El estándar escrito. Si el proceso vive solo en la cabeza de alguien, no es un
-              proceso: acá cada rutina se materializa sola el día que toca, con su checklist.
+              El estándar escrito. Si el proceso solo vive en la cabeza de alguien, no es un
+              proceso: aquí cada rutina se crea sola el día que toca, con su lista de comprobación.
             </p>
           </div>
           {isAdmin && (
@@ -132,7 +132,7 @@ export function RoutinesView({
         {templates.length === 0 ? (
           <EmptyState
             title="Todavía no hay rutinas"
-            description="Instalá el catálogo de clínica dental: apertura, huddle, cierre, esterilización, control biológico, recall, presupuestos, no-shows, stock, KPIs, RGPD, validación del autoclave y revisión de rayos."
+            description="Instala el catálogo de clínica dental: apertura, reunión diaria, cierre, esterilización, control biológico, avisos de revisión, presupuestos, pacientes que no acuden, stock, indicadores, RGPD, validación del autoclave y revisión de los equipos de rayos."
             action={
               isAdmin ? (
                 <Button size="sm" onClick={seedCatalog} disabled={busy}>
@@ -169,9 +169,9 @@ export function RoutinesView({
             Tareas que se crean solas
           </h2>
           <p className="mt-0.5 max-w-2xl text-xs text-zinc-500">
-            Si hay que acordarse de crear la tarea, la tarea no se crea. Estas reglas escuchan lo
-            que ya pasa en la clínica —llamadas, citas, recordatorios, WhatsApp— y dejan el
-            pendiente con dueño y plazo.
+            Si alguien tiene que acordarse de crear la tarea, la tarea no se crea. Estas reglas
+            escuchan lo que ya pasa en la clínica —llamadas, citas, recordatorios, WhatsApp— y dejan
+            la tarea creada, con responsable y fecha límite.
           </p>
         </header>
 
@@ -189,7 +189,7 @@ export function RoutinesView({
           {rules.length === 0 && (
             <EmptyState
               title="Sin reglas cargadas"
-              description="Se crean solas al entrar a la sección. Recargá la página si no aparecen."
+              description="Se crean solas al entrar en la sección. Recarga la página si no aparecen."
             />
           )}
         </div>
@@ -283,7 +283,7 @@ function TemplateCard({
           onClick={() => setOpen((v) => !v)}
           className="ml-auto inline-flex items-center gap-1 font-medium text-zinc-600 hover:text-zinc-900"
         >
-          {open ? 'Ocultar' : 'Ver checklist'}
+          {open ? 'Ocultar' : 'Ver los pasos'}
           <ChevronDown className={cn('h-3 w-3 transition-transform', open && 'rotate-180')} />
         </button>
       </div>
@@ -568,8 +568,8 @@ function PostOpSection({ isAdmin }: { isAdmin: boolean }) {
           Tratamientos con llamada postoperatoria
         </h2>
         <p className="mt-0.5 max-w-2xl text-xs text-zinc-500">
-          Marcá los que justifican una llamada a las 24-48 h. Al completarse una cita de esos
-          tratamientos se crea la tarea sola. Los que no marques no generan nada.
+          Marca los tratamientos que justifican una llamada a las 24-48 h. Cuando se complete una
+          cita de uno de ellos, la tarea se crea sola. Los que no marques no generan nada.
         </p>
       </header>
 
@@ -582,7 +582,7 @@ function PostOpSection({ isAdmin }: { isAdmin: boolean }) {
       ) : items.length === 0 ? (
         <EmptyState
           title="Sin tratamientos cargados"
-          description="Cargá los tratamientos de la clínica en la sección Tratamientos y volvé acá para elegir cuáles llevan seguimiento."
+          description="Carga los tratamientos de la clínica en la sección Tratamientos y vuelve aquí para elegir cuáles llevan seguimiento."
         />
       ) : (
         <ul className="flex flex-wrap gap-2">

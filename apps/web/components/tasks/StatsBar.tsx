@@ -28,7 +28,7 @@ export function StatsBar({
         label="Vencidas"
         value={stats.overdue}
         tone={stats.overdue === 0 ? 'good' : stats.overdue > 5 ? 'bad' : 'warn'}
-        hint={stats.overdue === 0 ? 'Nada arrastrado' : 'Lo primero de la mañana'}
+        hint={stats.overdue === 0 ? 'Nada sin cerrar de otros días' : 'Lo primero de la mañana'}
       />
       <Tile
         icon={<Clock className="h-4 w-4" />}
@@ -39,13 +39,13 @@ export function StatsBar({
       />
       <Tile
         icon={<TrendingUp className="h-4 w-4" />}
-        label="Cumplimiento 7 días"
+        label="Cumplimiento (7 días)"
         value={`${stats.complianceRate}%`}
         tone={stats.complianceRate >= 85 ? 'good' : stats.complianceRate >= 60 ? 'warn' : 'bad'}
         hint={
           stats.avgCloseHours !== null
             ? `Se cierran en ${stats.avgCloseHours} h de media`
-            : 'Todavía sin histórico'
+            : 'Aún no hay histórico'
         }
       />
       <Tile

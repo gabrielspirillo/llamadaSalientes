@@ -3,8 +3,18 @@
 // El LLM recibe el texto ya hablado y lo repite tal cual al paciente.
 
 const HOUR_NAMES = [
-  'doce', 'una', 'dos', 'tres', 'cuatro', 'cinco',
-  'seis', 'siete', 'ocho', 'nueve', 'diez', 'once',
+  'doce',
+  'una',
+  'dos',
+  'tres',
+  'cuatro',
+  'cinco',
+  'seis',
+  'siete',
+  'ocho',
+  'nueve',
+  'diez',
+  'once',
 ];
 
 const MINUTE_NAMES: Record<number, string> = {

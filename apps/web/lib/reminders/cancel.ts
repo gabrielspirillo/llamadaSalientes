@@ -46,10 +46,7 @@ export async function cancelReminders(args: {
 
   // Remover jobs de BullMQ (best-effort, no bloquea si el job ya corrió).
   await Promise.all(
-    pending.flatMap((r) => [
-      removeReminderSendJob(r.id),
-      removeReminderFallbackJob(r.id),
-    ]),
+    pending.flatMap((r) => [removeReminderSendJob(r.id), removeReminderFallbackJob(r.id)]),
   );
 
   return { cancelled: pending.length };
@@ -94,10 +91,7 @@ export async function cancelFollowingReminders(args: {
     );
 
   await Promise.all(
-    toCancel.flatMap((r) => [
-      removeReminderSendJob(r.id),
-      removeReminderFallbackJob(r.id),
-    ]),
+    toCancel.flatMap((r) => [removeReminderSendJob(r.id), removeReminderFallbackJob(r.id)]),
   );
 
   return { cancelled: toCancel.length };

@@ -80,7 +80,7 @@ export function AvatarStack({
   if (resolved.length === 0) {
     return (
       <span className="inline-flex h-6 items-center rounded-full bg-zinc-100 px-2 text-[10px] font-medium text-zinc-500">
-        Sin dueño
+        Sin responsable
       </span>
     );
   }
@@ -121,7 +121,7 @@ export function ChecklistProgress({
         <span>Progreso</span>
         <span className="tabular-nums">{pct}%</span>
       </div>
-      <div className="mt-1 flex gap-[3px]" aria-label={`${done} de ${total} completado`}>
+      <div className="mt-1 flex gap-[3px]" aria-label={`${done} de ${total} pasos hechos`}>
         {Array.from({ length: segments }).map((_, i) => (
           <span
             key={`seg-${category}-${

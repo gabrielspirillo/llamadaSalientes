@@ -194,10 +194,10 @@ export default async function CallDetailPage({
                 )}
                 <div className="mt-5 grid grid-cols-2 gap-2.5">
                   <div className="rounded-2xl bg-[#effaf5] p-3">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-violet-400">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-brand-400">
                       Sentimiento
                     </p>
-                    <p className="mt-1 text-[14px] font-bold capitalize text-violet-800">
+                    <p className="mt-1 text-[14px] font-bold capitalize text-brand-800">
                       {call.sentiment ?? '—'}
                     </p>
                   </div>

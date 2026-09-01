@@ -1,6 +1,6 @@
-import { findTenantByInboundNumber } from '@/lib/data/tenant-telephony';
 import { getAgentConfig } from '@/lib/data/agent-config';
 import { getClinicSettings } from '@/lib/data/clinic';
+import { findTenantByInboundNumber } from '@/lib/data/tenant-telephony';
 import { type NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';

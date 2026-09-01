@@ -119,9 +119,7 @@ export function applyQuietHours(args: {
 
   while (dayCursor < 8) {
     // Calcular el wall-clock { y, m, d } para el cursor.
-    const cursorDate = new Date(
-      Date.UTC(seen.year, seen.month - 1, seen.day + dayCursor, 0, 0, 0),
-    );
+    const cursorDate = new Date(Date.UTC(seen.year, seen.month - 1, seen.day + dayCursor, 0, 0, 0));
     const cursorParts = partsInTimeZone(cursorDate, timeZone);
     const dayKey = DAY_KEYS[cursorParts.weekdayIdx] ?? 'monday';
     const hours = workingHours[dayKey];

@@ -1,7 +1,7 @@
 import { db } from '@/lib/db/client';
 import { calls } from '@/lib/db/schema';
-import { getContact } from '@/lib/ghl/contacts';
 import { ghlFetch } from '@/lib/ghl/client';
+import { getContact } from '@/lib/ghl/contacts';
 import { getCurrentTenant } from '@/lib/tenant';
 import { and, desc, eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';

@@ -1,5 +1,5 @@
-import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { Buffer } from 'node:buffer';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 
 /**
  * Firma de requests Zadarma API:

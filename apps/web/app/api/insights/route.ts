@@ -69,9 +69,6 @@ export async function GET(_req: NextRequest) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Error desconocido';
     console.error('[insights] gemini failed:', err);
-    return NextResponse.json(
-      { error: `Gemini falló: ${msg.slice(0, 200)}` },
-      { status: 502 },
-    );
+    return NextResponse.json({ error: `Gemini falló: ${msg.slice(0, 200)}` }, { status: 502 });
   }
 }

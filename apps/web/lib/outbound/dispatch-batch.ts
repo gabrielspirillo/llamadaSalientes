@@ -107,33 +107,33 @@ export async function dispatchCampaign(
 
   const tasks = await Promise.all(
     targets.map(async (t) => {
-    const targetVars = (t.dynamicVars ?? {}) as Record<string, string>;
-    // Memoria del lead (cross-canal) por destinatario. Best-effort.
-    const leadMem = await getLeadMemory(tenantId, t.toNumber).catch(() => null);
-    return {
-      to_number: t.toNumber,
-      retell_llm_dynamic_variables: {
-        clinic_name: clinicName,
-        current_date: today,
-        direction: 'outbound',
-        use_case: campaign.useCase,
-        patient_name: t.patientName ?? targetVars.patient_name ?? 'paciente',
-        campaign_name: campaign.name,
-        lead_memory: leadMem?.profileSummary?.trim() || '',
-        ...shared,
-        ...targetVars,
-      },
-      metadata: {
-        tenant_id: tenantId,
-        campaign_id: campaign.id,
-        target_id: t.id,
-        ghl_contact_id: t.ghlContactId ?? null,
-        patient_name: t.patientName ?? null,
-        source: 'campaign',
-        direction: 'outbound',
-        use_case: campaign.useCase,
-      },
-    } as const;
+      const targetVars = (t.dynamicVars ?? {}) as Record<string, string>;
+      // Memoria del lead (cross-canal) por destinatario. Best-effort.
+      const leadMem = await getLeadMemory(tenantId, t.toNumber).catch(() => null);
+      return {
+        to_number: t.toNumber,
+        retell_llm_dynamic_variables: {
+          clinic_name: clinicName,
+          current_date: today,
+          direction: 'outbound',
+          use_case: campaign.useCase,
+          patient_name: t.patientName ?? targetVars.patient_name ?? 'paciente',
+          campaign_name: campaign.name,
+          lead_memory: leadMem?.profileSummary?.trim() || '',
+          ...shared,
+          ...targetVars,
+        },
+        metadata: {
+          tenant_id: tenantId,
+          campaign_id: campaign.id,
+          target_id: t.id,
+          ghl_contact_id: t.ghlContactId ?? null,
+          patient_name: t.patientName ?? null,
+          source: 'campaign',
+          direction: 'outbound',
+          use_case: campaign.useCase,
+        },
+      } as const;
     }),
   );
 

@@ -1,9 +1,5 @@
 import 'server-only';
-import {
-  GetObjectCommand,
-  PutObjectCommand,
-  S3Client,
-} from '@aws-sdk/client-s3';
+import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 import { env } from '@/lib/env';
@@ -91,11 +87,7 @@ export async function mediaSignedUrl(
   const bucket = options?.bucket ?? env.S3_BUCKET_WHATSAPP;
   const expiresIn = options?.expiresInSeconds ?? 60 * 60 * 24; // 24h
   const client = getClient();
-  return getSignedUrl(
-    client,
-    new GetObjectCommand({ Bucket: bucket, Key: path }),
-    { expiresIn },
-  );
+  return getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: path }), { expiresIn });
 }
 
 export function buildWhatsappMediaPath(

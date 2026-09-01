@@ -61,7 +61,11 @@ export async function translateToSpanish(text: string): Promise<string> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       systemInstruction: {
-        parts: [{ text: 'Traducí al español neutro el texto siguiente. Devolvé SOLO la traducción sin comentarios.' }],
+        parts: [
+          {
+            text: 'Traducí al español neutro el texto siguiente. Devolvé SOLO la traducción sin comentarios.',
+          },
+        ],
       },
       contents: [{ role: 'user', parts: [{ text }] }],
       generationConfig: { temperature: 0.1 },

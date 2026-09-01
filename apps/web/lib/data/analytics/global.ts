@@ -62,10 +62,7 @@ export type NoShowSeriesPoint = {
  * Granularidad semanal porque diaria es demasiado ruidosa en clínicas
  * con bajo volumen.
  */
-export async function getNoShowSeries(
-  tenantId: string,
-  days = 90,
-): Promise<NoShowSeriesPoint[]> {
+export async function getNoShowSeries(tenantId: string, days = 90): Promise<NoShowSeriesPoint[]> {
   const since = daysAgo(days);
   const rows = await db
     .select({
@@ -114,10 +111,7 @@ export async function getOptimizedRevenueMTD(tenantId: string): Promise<Optimize
     })
     .from(schedulingOffers)
     .where(
-      and(
-        eq(schedulingOffers.tenantId, tenantId),
-        gte(schedulingOffers.acceptedAt, monthStart),
-      ),
+      and(eq(schedulingOffers.tenantId, tenantId), gte(schedulingOffers.acceptedAt, monthStart)),
     )
     .groupBy(schedulingOffers.source, schedulingOffers.currency);
 
@@ -165,12 +159,7 @@ export async function getCancellationRecoveryStats(
       recovered: sql<number>`count(*) filter (where ${cancelledSlots.recoveredAt} is not null)::int`,
     })
     .from(cancelledSlots)
-    .where(
-      and(
-        eq(cancelledSlots.tenantId, tenantId),
-        gte(cancelledSlots.cancelledAt, since),
-      ),
-    );
+    .where(and(eq(cancelledSlots.tenantId, tenantId), gte(cancelledSlots.cancelledAt, since)));
 
   const total = row?.total ?? 0;
   const recovered = row?.recovered ?? 0;
@@ -232,8 +221,9 @@ export async function getTopTreatments(
     .limit(limit);
 
   return rows
-    .filter((r): r is { treatmentId: string; name: string; count: number } =>
-      r.treatmentId !== null && r.name !== null,
+    .filter(
+      (r): r is { treatmentId: string; name: string; count: number } =>
+        r.treatmentId !== null && r.name !== null,
     )
     .map((r) => ({ treatmentId: r.treatmentId, name: r.name, count: r.count }));
 }

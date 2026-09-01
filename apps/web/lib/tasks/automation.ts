@@ -44,7 +44,7 @@ export const AUTOMATION_DEFAULTS: AutomationRuleDefaults[] = [
     trigger: 'CALL_INTENT_UNRESOLVED',
     titleTemplate: 'Cerrar la cita de {{patientName}}',
     descriptionTemplate:
-      'Llamó para pedir cita y la llamada terminó sin agenda. Es el lead más caliente que hay: {{phone}}.',
+      'Llamó para pedir cita y colgó sin reservarla. Es el contacto más receptivo que hay: {{phone}}.',
     category: 'PATIENT',
     priority: 'URGENT',
     dueOffsetMinutes: 180,
@@ -54,9 +54,9 @@ export const AUTOMATION_DEFAULTS: AutomationRuleDefaults[] = [
   },
   {
     trigger: 'APPOINTMENT_CANCELLED',
-    titleTemplate: 'Reagendar a {{patientName}}',
+    titleTemplate: 'Dar nueva cita a {{patientName}}',
     descriptionTemplate:
-      'Canceló la cita del {{date}}. Llamalo hoy: cuanto más se enfría, menos vuelve. Teléfono: {{phone}}.',
+      'Canceló la cita del {{date}}. Llámale hoy: cuanto más tiempo pasa, menos probable es que vuelva. Teléfono: {{phone}}.',
     category: 'PATIENT',
     priority: 'HIGH',
     dueOffsetMinutes: 480,
@@ -68,7 +68,7 @@ export const AUTOMATION_DEFAULTS: AutomationRuleDefaults[] = [
     trigger: 'APPOINTMENT_NO_SHOW',
     titleTemplate: 'No se presentó: {{patientName}}',
     descriptionTemplate:
-      'Faltó a la cita del {{date}}. Contactalo, anotá el motivo y aplicá la política de faltas. Teléfono: {{phone}}.',
+      'No acudió a la cita del {{date}}. Contacta con él, anota el motivo y aplica la política de faltas. Teléfono: {{phone}}.',
     category: 'PATIENT',
     priority: 'HIGH',
     dueOffsetMinutes: 240,
@@ -92,7 +92,7 @@ export const AUTOMATION_DEFAULTS: AutomationRuleDefaults[] = [
     trigger: 'POST_TREATMENT_FOLLOWUP',
     titleTemplate: 'Llamada postoperatoria a {{patientName}}',
     descriptionTemplate:
-      'Tratamiento: {{treatment}} el {{date}}. Preguntá por dolor, inflamación y medicación. Teléfono: {{phone}}.',
+      'Tratamiento: {{treatment}} el {{date}}. Pregunta por dolor, inflamación y medicación. Teléfono: {{phone}}.',
     category: 'PATIENT',
     priority: 'MEDIUM',
     dueOffsetMinutes: 1440,
@@ -104,7 +104,7 @@ export const AUTOMATION_DEFAULTS: AutomationRuleDefaults[] = [
     trigger: 'PENDING_TREATMENT_UNSCHEDULED',
     titleTemplate: 'Perseguir presupuesto de {{patientName}}',
     descriptionTemplate:
-      'Tiene pendiente: {{treatment}}. No tiene ninguna cita futura. Llamá, resolvé la objeción real y agendá. Teléfono: {{phone}}.',
+      'Tiene pendiente: {{treatment}}. No tiene ninguna cita futura. Llama, resuelve lo que le frena y dale cita. Teléfono: {{phone}}.',
     category: 'PATIENT',
     priority: 'HIGH',
     dueOffsetMinutes: 2880,

@@ -2,15 +2,8 @@ import 'server-only';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
-import {
-  waitlistEntries,
-  waitlistOffers,
-  whatsappContacts,
-} from '@/lib/db/schema';
-import {
-  removeWaitlistOfferExpireJob,
-  removeWaitlistOfferSendJob,
-} from '@/lib/queue/client';
+import { waitlistEntries, waitlistOffers, whatsappContacts } from '@/lib/db/schema';
+import { removeWaitlistOfferExpireJob, removeWaitlistOfferSendJob } from '@/lib/queue/client';
 import { markOfferAccepted, markOfferDeclined } from '@/lib/waitlist/engine';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -106,9 +99,6 @@ export async function tryHandleWaitlistTextReply(args: {
   } else {
     await markOfferDeclined({ offerId: offer.id, via: 'text' });
   }
-  await Promise.all([
-    removeWaitlistOfferExpireJob(offer.id),
-    removeWaitlistOfferSendJob(offer.id),
-  ]);
+  await Promise.all([removeWaitlistOfferExpireJob(offer.id), removeWaitlistOfferSendJob(offer.id)]);
   return { consumed: true, intent };
 }

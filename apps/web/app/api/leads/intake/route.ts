@@ -1,5 +1,5 @@
-import { triggerCallback } from '@/lib/calls/trigger-callback';
 import { verifyIntakeKey } from '@/lib/auth/intake-key';
+import { triggerCallback } from '@/lib/calls/trigger-callback';
 import { db } from '@/lib/db/client';
 import { tenants } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -80,8 +80,7 @@ export async function POST(req: NextRequest) {
   });
 
   if (!result.ok) {
-    const status =
-      result.reason === 'invalid_input' ? 422 : 400;
+    const status = result.reason === 'invalid_input' ? 422 : 400;
     return NextResponse.json({ error: result.error, reason: result.reason }, { status });
   }
 

@@ -2,8 +2,8 @@
 
 import { IMPERSONATION_COOKIE, findTenantById } from '@/lib/impersonation';
 import { getCurrentTenant } from '@/lib/tenant';
-import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import { cookies } from 'next/headers';
 
 export type ImpersonateResult = { ok: true } | { ok: false; error: string };
 

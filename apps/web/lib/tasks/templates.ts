@@ -172,7 +172,7 @@ export const SYSTEM_TEMPLATES: SystemTemplate[] = [
   },
   {
     key: 'no-shows-semana',
-    name: 'Repaso de no-shows y cancelaciones',
+    name: 'Repaso de citas no asistidas y cancelaciones',
     description:
       'No es solo recuperar al paciente: es detectar qué franja horaria o qué tratamiento falla siempre.',
     category: 'PATIENT',
@@ -181,7 +181,7 @@ export const SYSTEM_TEMPLATES: SystemTemplate[] = [
     recurrenceWeekdays: [5],
     dueTime: '12:00',
     items: [
-      'Listar los no-shows y cancelaciones de la semana',
+      'Listar las citas no asistidas y las cancelaciones de la semana',
       'Contactar uno por uno para reagendar',
       'Aplicar la política de segunda falta',
       'Anotar la causa declarada',
@@ -221,7 +221,7 @@ export const SYSTEM_TEMPLATES: SystemTemplate[] = [
       'Producción y cobro del mes cerrado',
       '% de aceptación de presupuestos',
       'Ocupación de gabinetes y huecos perdidos',
-      '% de no-shows y cancelaciones',
+      '% de citas no asistidas y cancelaciones',
       'Pacientes nuevos y de dónde vinieron',
       'Elegir UNA acción concreta para el mes que entra',
     ],

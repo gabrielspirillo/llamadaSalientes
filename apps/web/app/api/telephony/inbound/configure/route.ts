@@ -1,12 +1,12 @@
+import { recordAudit } from '@/lib/audit';
 import {
   getTelephonyProvider,
   getTwilioClientFor,
   upsertTenantTelephony,
 } from '@/lib/data/tenant-telephony';
-import { recordAudit } from '@/lib/audit';
-import { TwilioApiError } from '@/lib/twilio/client';
-import { getCurrentTenant } from '@/lib/tenant';
 import { env } from '@/lib/env';
+import { getCurrentTenant } from '@/lib/tenant';
+import { TwilioApiError } from '@/lib/twilio/client';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -21,7 +21,10 @@ const bodySchema = z.object({
    */
   sid: z.string().min(3, 'sid requerido'),
   route: z.enum(['agent', 'forward']).default('agent'),
-  forwardNumber: z.string().regex(/^\+[1-9]\d{6,14}$/).optional(),
+  forwardNumber: z
+    .string()
+    .regex(/^\+[1-9]\d{6,14}$/)
+    .optional(),
 });
 
 /**
@@ -144,8 +147,7 @@ export async function POST(req: NextRequest) {
       voiceUrl,
       smsUrl: null,
       manualWebhookConfigRequired: true,
-      manualWebhookConfigNote:
-        `Pegá ${voiceUrl} en cabinet.zadarma.com → Configuración → Integraciones → Notificaciones de eventos → "Sobre llamadas a la centralita". La API de Zadarma no expone endpoint para hacerlo automático.`,
+      manualWebhookConfigNote: `Pegá ${voiceUrl} en cabinet.zadarma.com → Configuración → Integraciones → Notificaciones de eventos → "Sobre llamadas a la centralita". La API de Zadarma no expone endpoint para hacerlo automático.`,
     });
   } catch (err) {
     if (err instanceof TwilioApiError) {

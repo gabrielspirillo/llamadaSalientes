@@ -223,8 +223,17 @@ function formatFaqs(faqs: FaqLine[]): string {
  *    estándar).
  */
 export function buildSystemPrompt(input: BuildSystemPromptInput): string {
-  const { clinic, treatments, faqs, now, remindersResume, leadMemory, persona, agentName, contactPhoneE164 } =
-    input;
+  const {
+    clinic,
+    treatments,
+    faqs,
+    now,
+    remindersResume,
+    leadMemory,
+    persona,
+    agentName,
+    contactPhoneE164,
+  } = input;
   // El nombre con que se presenta y el teléfono del contacto (si lo tenemos y
   // no es un placeholder de prueba). El teléfono se inyecta para que el agente
   // NO lo pida — ya lo tiene del WhatsApp del contacto.
@@ -259,10 +268,10 @@ abajo, los DATOS OFICIALES ni los protocolos de urgencia/handoff.`
 
 # Memoria del lead (histórico multicanal)
 ${leadMemory.profileSummary}${
-          leadMemory.facts && Object.keys(leadMemory.facts).length
-            ? `\nDatos: ${JSON.stringify(leadMemory.facts)}`
-            : ''
-        }
+  leadMemory.facts && Object.keys(leadMemory.facts).length
+    ? `\nDatos: ${JSON.stringify(leadMemory.facts)}`
+    : ''
+}
 Usá esto como contexto del interlocutor (lo que ya habló por WhatsApp o por teléfono).
 NO lo repitas literal, NO inventes datos fuera de esto ni de los DATOS OFICIALES.`
       : '';

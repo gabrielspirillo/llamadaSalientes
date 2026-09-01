@@ -1,28 +1,19 @@
-import { db } from '@/lib/db/client';
-import { ghlIntegrations, webhookLogs } from '@/lib/db/schema';
-import {
-  recordCancelledSlot,
-  tryAttributeNewAppointment,
-} from '@/lib/analytics/slot-attribution';
 import {
   type GhlAppointmentPayload,
   classifyEvent,
   normalizeAppointment,
   parseDate,
 } from '@/lib/analytics/ghl-webhook-helpers';
-import {
-  deleteAppointmentCache,
-  upsertAppointmentCache,
-} from '@/lib/appointments/cache';
+import { recordCancelledSlot, tryAttributeNewAppointment } from '@/lib/analytics/slot-attribution';
+import { deleteAppointmentCache, upsertAppointmentCache } from '@/lib/appointments/cache';
+import { db } from '@/lib/db/client';
+import { ghlIntegrations, webhookLogs } from '@/lib/db/schema';
 import {
   onAppointmentCancelled,
   onAppointmentCompleted,
   onAppointmentNoShow,
 } from '@/lib/tasks/hooks';
-import {
-  autoEnqueueOnNewAppointment,
-  enqueueOfferForCancelledSlot,
-} from '@/lib/waitlist/engine';
+import { autoEnqueueOnNewAppointment, enqueueOfferForCancelledSlot } from '@/lib/waitlist/engine';
 import { eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -49,8 +40,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { appointment: apt, locationId: locationFromPayload, type: eventType } =
-    normalizeAppointment(payload);
+  const {
+    appointment: apt,
+    locationId: locationFromPayload,
+    type: eventType,
+  } = normalizeAppointment(payload);
   const locationId = locationFromPayload ?? locationFromQuery;
   if (!locationId) {
     return NextResponse.json({ error: 'Falta locationId' }, { status: 400 });
@@ -95,9 +89,7 @@ export async function POST(req: NextRequest) {
     await deleteAppointmentCache({
       tenantId: integration.tenantId,
       ghlAppointmentId: apt.id,
-    }).catch((err) =>
-      console.warn('[ghl-webhook] cache delete failed', err),
-    );
+    }).catch((err) => console.warn('[ghl-webhook] cache delete failed', err));
   } else {
     // Algunos shapes traen extras (title, assignedUserId) sólo en el payload
     // bruto, no en la versión normalizada — los leemos directo de payload.
@@ -114,9 +106,7 @@ export async function POST(req: NextRequest) {
         startTime: apt.startTime ?? null,
         endTime: apt.endTime ?? null,
       },
-    }).catch((err) =>
-      console.warn('[ghl-webhook] cache upsert failed', err),
-    );
+    }).catch((err) => console.warn('[ghl-webhook] cache upsert failed', err));
   }
 
   // ── Tareas: los pendientes humanos que nacen de la cita ────────────────────

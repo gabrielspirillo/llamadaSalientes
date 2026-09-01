@@ -44,7 +44,12 @@ export async function PATCH(
   const [updated] = await db
     .update(reminderMessageTemplates)
     .set({ ...parsed.data, updatedAt: new Date() })
-    .where(and(eq(reminderMessageTemplates.tenantId, auth.tenantId), eq(reminderMessageTemplates.id, id)))
+    .where(
+      and(
+        eq(reminderMessageTemplates.tenantId, auth.tenantId),
+        eq(reminderMessageTemplates.id, id),
+      ),
+    )
     .returning();
   if (!updated) return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
   return NextResponse.json({ template: updated });
@@ -63,7 +68,12 @@ export async function DELETE(
   const { id } = await params;
   const deleted = await db
     .delete(reminderMessageTemplates)
-    .where(and(eq(reminderMessageTemplates.tenantId, auth.tenantId), eq(reminderMessageTemplates.id, id)))
+    .where(
+      and(
+        eq(reminderMessageTemplates.tenantId, auth.tenantId),
+        eq(reminderMessageTemplates.id, id),
+      ),
+    )
     .returning({ id: reminderMessageTemplates.id });
   if (deleted.length === 0) return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
   return NextResponse.json({ ok: true });
@@ -74,8 +84,5 @@ function errResp(err: unknown): NextResponse {
     return NextResponse.json({ error: err.message }, { status: 403 });
   }
   console.error('[reminders-api] auth error', err);
-  return NextResponse.json(
-    { error: (err as Error)?.message ?? 'Unauthorized' },
-    { status: 401 },
-  );
+  return NextResponse.json({ error: (err as Error)?.message ?? 'Unauthorized' }, { status: 401 });
 }

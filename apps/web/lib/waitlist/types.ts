@@ -3,11 +3,7 @@
 // Las filas crudas Drizzle se exponen vía $inferSelect; estos tipos son shapes
 // "ligeros" para señales/contratos entre engine, senders y handlers.
 
-import type {
-  ReminderButton,
-  ReminderDriverScope,
-  ReminderTemplateParam,
-} from '@/lib/db/schema';
+import type { ReminderButton, ReminderDriverScope, ReminderTemplateParam } from '@/lib/db/schema';
 
 export type WaitlistDriverScope = ReminderDriverScope;
 export type WaitlistButton = ReminderButton;

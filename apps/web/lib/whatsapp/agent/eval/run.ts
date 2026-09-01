@@ -97,7 +97,9 @@ async function main(): Promise<void> {
       }
     }
     if (verbose) {
-      console.log(`        intent=${output.intent} model=${output.model} tools=[${output.toolsCalled.map((t) => t.name).join(', ') || '—'}]`);
+      console.log(
+        `        intent=${output.intent} model=${output.model} tools=[${output.toolsCalled.map((t) => t.name).join(', ') || '—'}]`,
+      );
       console.log(`        respuesta: ${JSON.stringify(output.responseText)}`);
     }
   }

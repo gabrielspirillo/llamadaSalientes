@@ -159,14 +159,14 @@ export function MyDayView({
     {
       key: 'overdue',
       title: 'Vencidas',
-      hint: 'Lo primero: cada día que pasa se recupera menos',
+      hint: 'Lo primero del día: cuanto más esperan, más difícil es recuperarlas',
       items: overdue,
     },
     { key: 'today', title: 'Para hoy', items: today },
     {
       key: 'undated',
       title: 'Sin fecha',
-      hint: 'Ponéles una o no van a pasar nunca',
+      hint: 'Ponles fecha o no se harán nunca',
       items: undated,
     },
     { key: 'upcoming', title: 'Próximas', items: upcoming.slice(0, 20) },
@@ -213,7 +213,7 @@ export function MyDayView({
       {total === 0 && (
         <EmptyState
           title="Día limpio"
-          description="No queda nada abierto con esta vista. Si la clínica acaba de empezar con Tareas, activá las rutinas para que el tablero se llene solo."
+          description="No queda nada abierto en esta vista. Si la clínica acaba de empezar con Tareas, activa las rutinas para que el tablero se llene solo."
         />
       )}
 
@@ -387,7 +387,7 @@ export function WeekView({
           <h2 className="mb-2 text-sm font-semibold text-zinc-800">
             Sin fecha{' '}
             <span className="font-normal text-zinc-400">
-              · no aparecen en ningún día hasta que se les ponga una
+              · no aparecen en ningún día hasta que les pongas una fecha
             </span>
           </h2>
           <ul className="space-y-2">
@@ -436,7 +436,7 @@ export function PatientsView({
     return (
       <EmptyState
         title="Ningún paciente esperando"
-        description="Acá caen solas las llamadas por devolver, los no-shows sin reagendar, los presupuestos parados y los recordatorios sin respuesta. Si está vacío es porque no hay nada pendiente con pacientes."
+        description="Aquí aparecen solas las llamadas por devolver, los pacientes que no acudieron y siguen sin nueva cita, los presupuestos parados y los recordatorios sin respuesta. Si está vacío, no hay nada pendiente con pacientes."
       />
     );
   }

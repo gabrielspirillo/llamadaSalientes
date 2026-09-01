@@ -1,7 +1,7 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
 import { and, desc, eq, ilike, inArray, ne, or, sql } from 'drizzle-orm';
+import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { db } from '@/lib/db/client';
@@ -23,10 +23,7 @@ export type ActionResult<T> =
 function ok<T>(data: T): ActionResult<T> {
   return { success: true, data };
 }
-function fail<T = never>(
-  error: string,
-  fieldErrors?: Record<string, string[]>,
-): ActionResult<T> {
+function fail<T = never>(error: string, fieldErrors?: Record<string, string[]>): ActionResult<T> {
   return { success: false, error, fieldErrors };
 }
 
@@ -76,10 +73,7 @@ export async function updateContactDetails(
     .select()
     .from(whatsappContacts)
     .where(
-      and(
-        eq(whatsappContacts.id, parsed.data.contactId),
-        eq(whatsappContacts.tenantId, tenant.id),
-      ),
+      and(eq(whatsappContacts.id, parsed.data.contactId), eq(whatsappContacts.tenantId, tenant.id)),
     )
     .limit(1);
   const contact = rows[0];
@@ -220,7 +214,9 @@ const searchSchema = z.object({
   excludeId: z.string().uuid(),
 });
 
-export async function searchContactsForMerge(input: unknown): Promise<
+export async function searchContactsForMerge(
+  input: unknown,
+): Promise<
   ActionResult<
     Array<{ id: string; name: string | null; phoneE164: string; ghlContactId: string | null }>
   >
@@ -346,10 +342,7 @@ export async function mergeContacts(input: unknown): Promise<ActionResult<{ targ
   return ok({ targetId: target.id });
 }
 
-function mergeSocial(
-  a: unknown,
-  b: unknown,
-): Record<string, string> {
+function mergeSocial(a: unknown, b: unknown): Record<string, string> {
   const safe = (x: unknown): Record<string, string> =>
     x && typeof x === 'object' ? (x as Record<string, string>) : {};
   return { ...safe(b), ...safe(a) };

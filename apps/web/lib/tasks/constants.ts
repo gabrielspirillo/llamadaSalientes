@@ -98,7 +98,7 @@ export const CATEGORY_META: Record<
 > = {
   PATIENT: {
     label: 'Paciente',
-    hint: 'Reagendar, presupuestos, postoperatorio, recall',
+    hint: 'Cambios de cita, presupuestos, postoperatorio, revisiones',
     card: 'bg-sky-50/80 border-sky-100',
     chip: 'bg-white/70 text-sky-700 ring-sky-200',
     bar: 'bg-sky-400',
@@ -207,16 +207,16 @@ export const TRIGGER_META: Record<
   CALL_INTENT_UNRESOLVED: {
     label: 'Quería cita y no quedó agendada',
     when: 'La llamada tuvo intención de agendar pero no se creó ninguna cita',
-    why: 'Es el lead más caliente que existe: ya levantó el teléfono',
+    why: 'Es el contacto más receptivo que hay: acaba de llamar por su cuenta',
   },
   APPOINTMENT_CANCELLED: {
     label: 'Cita cancelada',
     when: 'GHL avisa que una cita se canceló',
-    why: 'Reagendar en caliente evita que el paciente se caiga del sistema',
+    why: 'Darle nueva cita en el momento evita que el paciente se pierda',
   },
   APPOINTMENT_NO_SHOW: {
     label: 'No se presentó',
-    when: 'La cita queda marcada como no-show',
+    when: 'La cita queda marcada como no asistida',
     why: 'El sillón vacío ya se perdió; lo recuperable es la próxima cita',
   },
   REMINDER_NO_RESPONSE: {
@@ -246,7 +246,7 @@ export const TRIGGER_META: Record<
   },
   WAITLIST_ACCEPTED_UNSCHEDULED: {
     label: 'Hueco aceptado sin cerrar',
-    when: 'Un paciente acepta un hueco de la waitlist y la cita no se creó',
+    when: 'Un paciente acepta un hueco de la lista de espera y la cita no llega a crearse',
     why: 'Ya dijo que sí: solo falta que alguien lo confirme',
   },
 };

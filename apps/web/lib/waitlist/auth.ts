@@ -19,9 +19,7 @@ export async function requireWaitlistRole(min: WaitlistRole): Promise<{
     .select({ role: tenantMemberships.role, internalUserId: users.id })
     .from(tenantMemberships)
     .innerJoin(users, eq(users.id, tenantMemberships.userId))
-    .where(
-      and(eq(tenantMemberships.tenantId, tenant.id), eq(users.clerkUserId, clerkUserId)),
-    )
+    .where(and(eq(tenantMemberships.tenantId, tenant.id), eq(users.clerkUserId, clerkUserId)))
     .limit(1);
 
   if (!m) throw new WaitlistForbiddenError('viewer', min);
@@ -31,7 +29,10 @@ export async function requireWaitlistRole(min: WaitlistRole): Promise<{
 }
 
 export class WaitlistForbiddenError extends Error {
-  constructor(public actual: WaitlistRole, public required: WaitlistRole) {
+  constructor(
+    public actual: WaitlistRole,
+    public required: WaitlistRole,
+  ) {
     super(`Rol ${actual} insuficiente, se requiere ${required}+`);
     this.name = 'WaitlistForbiddenError';
   }

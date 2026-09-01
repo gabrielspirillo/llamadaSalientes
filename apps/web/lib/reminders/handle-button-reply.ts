@@ -56,7 +56,7 @@ export function extractInteractiveReplyId(
     // raw es el CloudMessage normalizado (interactive opcional unknown).
     const interactive = (raw as { interactive?: unknown }).interactive;
     if (interactive && typeof interactive === 'object') {
-      const br = (interactive as { button_reply?: { id?: string }; list_reply?: { id?: string } });
+      const br = interactive as { button_reply?: { id?: string }; list_reply?: { id?: string } };
       return br.button_reply?.id ?? br.list_reply?.id ?? null;
     }
     return null;

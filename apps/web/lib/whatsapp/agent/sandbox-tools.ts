@@ -10,7 +10,8 @@ import type { ToolCallTrace } from './types';
  * nada). Así se prueba el flujo completo sin efectos secundarios reales.
  */
 const SIMULATED: Record<string, string> = {
-  book_appointment: 'Cita agendada correctamente. (SIMULADO en el probador — no se creó nada real.)',
+  book_appointment:
+    'Cita agendada correctamente. (SIMULADO en el probador — no se creó nada real.)',
   cancel_appointment: 'La cita fue cancelada correctamente. (SIMULADO en el probador.)',
   register_patient: 'Paciente registrado. (SIMULADO en el probador, contact_id: sandbox-test.)',
   set_lead_email: 'Email guardado. (SIMULADO en el probador.)',

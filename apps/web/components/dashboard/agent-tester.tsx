@@ -244,7 +244,7 @@ export function AgentTester() {
         <div className="border-t border-[--color-border-subtle] px-4 sm:px-6 py-4 sm:py-5 space-y-4 min-h-[300px] sm:min-h-[400px] max-h-[60vh] sm:max-h-[500px] overflow-y-auto">
           {transcript.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-[360px] text-center text-sm text-zinc-400">
-              <span className="mb-3 inline-flex h-12 w-12 animate-float items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#effaf5,#fdf0f7)] text-violet-400">
+              <span className="mb-3 inline-flex h-12 w-12 animate-float items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#effaf5,#ddf3ea)] text-brand-500">
                 <Phone className="h-5 w-5" />
               </span>
               {state === 'idle'

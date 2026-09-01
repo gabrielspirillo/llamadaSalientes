@@ -1,6 +1,6 @@
-import { findTenantByInboundNumber, getZadarmaWebhookSecretFor } from '@/lib/data/tenant-telephony';
 import { getAgentConfig } from '@/lib/data/agent-config';
 import { getClinicSettings } from '@/lib/data/clinic';
+import { findTenantByInboundNumber, getZadarmaWebhookSecretFor } from '@/lib/data/tenant-telephony';
 import { verifyZadarmaWebhookSignature } from '@/lib/zadarma/signing';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const rawBody = await req.text();
   const ctype = req.headers.get('content-type') ?? '';
   const params = ctype.includes('application/json')
-    ? (safeJson(rawBody) as Record<string, string> | null) ?? {}
+    ? ((safeJson(rawBody) as Record<string, string> | null) ?? {})
     : Object.fromEntries(new URLSearchParams(rawBody));
 
   const event = String(params.event ?? '').trim();
@@ -100,10 +100,7 @@ async function handleNotifyStart(params: Record<string, string>): Promise<NextRe
   const signature = (params.signature ?? '').trim();
 
   // Zadarma devuelve called_did sin "+". Probamos ambas variantes.
-  const e164Candidates = [
-    calledDid.startsWith('+') ? calledDid : `+${calledDid}`,
-    calledDid,
-  ];
+  const e164Candidates = [calledDid.startsWith('+') ? calledDid : `+${calledDid}`, calledDid];
 
   let tenant = null;
   for (const candidate of e164Candidates) {

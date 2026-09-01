@@ -5,15 +5,15 @@ import { decrypt } from '@/lib/crypto';
 import { db } from '@/lib/db/client';
 import { whatsappConnections } from '@/lib/db/schema';
 import { sendQueueEvent } from '@/lib/queue/client';
+import { tryHandleReminderInbound } from '@/lib/reminders/handle-button-reply';
+import { tryHandleWaitlistInbound } from '@/lib/waitlist/handle-button-reply';
+import { tryHandleWaitlistTextReply } from '@/lib/waitlist/handle-text-reply';
 import {
   WhatsAppCloudConnector,
   cloudWebhookPayloadSchema,
   normalizeCloudMessage,
   persistInboundMessage,
 } from '@/lib/whatsapp';
-import { tryHandleReminderInbound } from '@/lib/reminders/handle-button-reply';
-import { tryHandleWaitlistInbound } from '@/lib/waitlist/handle-button-reply';
-import { tryHandleWaitlistTextReply } from '@/lib/waitlist/handle-text-reply';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

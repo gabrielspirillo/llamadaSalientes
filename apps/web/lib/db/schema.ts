@@ -559,12 +559,7 @@ export const conversationStatusEnum = pgEnum('conversation_status', [
   'CLOSED',
 ]);
 export const messageDirectionEnum = pgEnum('message_direction', ['INBOUND', 'OUTBOUND']);
-export const messageSenderEnum = pgEnum('message_sender', [
-  'CONTACT',
-  'AGENT',
-  'HUMAN',
-  'SYSTEM',
-]);
+export const messageSenderEnum = pgEnum('message_sender', ['CONTACT', 'AGENT', 'HUMAN', 'SYSTEM']);
 export const messageDeliveryStatusEnum = pgEnum('message_delivery_status', [
   'PENDING',
   'SENT',
@@ -640,10 +635,7 @@ export const whatsappContacts = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => ({
-    tenantPhoneUnique: unique('whatsapp_contacts_tenant_phone_unique').on(
-      t.tenantId,
-      t.phoneE164,
-    ),
+    tenantPhoneUnique: unique('whatsapp_contacts_tenant_phone_unique').on(t.tenantId, t.phoneE164),
     ghlIdx: index('whatsapp_contacts_ghl_idx').on(t.tenantId, t.ghlContactId),
   }),
 );
@@ -697,10 +689,7 @@ export const whatsappConversations = pgTable(
     // Estado libre para handoff específicos (ej: { remindersResume: { reminderId,
     // action: 'reschedule', expiresAt } }). El agente WA lo lee para arrancar
     // reagendado proactivamente con sus tools check_availability / book_appointment.
-    context: jsonb('context')
-      .$type<Record<string, unknown>>()
-      .notNull()
-      .default({}),
+    context: jsonb('context').$type<Record<string, unknown>>().notNull().default({}),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
@@ -970,10 +959,7 @@ export const schedulingOffers = pgTable(
       t.tenantId,
       t.ghlAppointmentId,
     ),
-    tenantAcceptedIdx: index('scheduling_offers_tenant_accepted_idx').on(
-      t.tenantId,
-      t.acceptedAt,
-    ),
+    tenantAcceptedIdx: index('scheduling_offers_tenant_accepted_idx').on(t.tenantId, t.acceptedAt),
     tenantSourceIdx: index('scheduling_offers_tenant_source_idx').on(t.tenantId, t.source),
     cancelledSlotIdx: index('scheduling_offers_cancelled_slot_idx').on(t.cancelledSlotId),
   }),
@@ -1027,10 +1013,7 @@ export const reminderConfirmationSourceEnum = pgEnum('reminder_confirmation_sour
   'manual',
   'inbound_text',
 ]);
-export const reminderQuietModeEnum = pgEnum('reminder_quiet_mode', [
-  'SHIFT_INTO_HOURS',
-  'SKIP',
-]);
+export const reminderQuietModeEnum = pgEnum('reminder_quiet_mode', ['SHIFT_INTO_HOURS', 'SKIP']);
 
 // driver_scope va como text (no enum) para permitir agregar nuevos drivers
 // sin migración (futuro: 'sms_twilio', 'voice_telnyx', etc.).
@@ -1108,8 +1091,10 @@ export const reminderMessageTemplates = pgTable(
     driverScope: text('driver_scope').notNull().$type<ReminderDriverScope>(),
     templateName: text('template_name'),
     templateLanguage: text('template_language').notNull().default('es'),
-    templateParamsMap:
-      jsonb('template_params_map').$type<ReminderTemplateParam[]>().notNull().default([]),
+    templateParamsMap: jsonb('template_params_map')
+      .$type<ReminderTemplateParam[]>()
+      .notNull()
+      .default([]),
     freeText: text('free_text'),
     buttons: jsonb('buttons').$type<ReminderButton[]>().notNull().default([]),
     voicePromptOverride: text('voice_prompt_override'),
@@ -1159,8 +1144,10 @@ export const appointmentReminders = pgTable(
     failureReason: text('failure_reason'),
     // Snapshot de variables al programar (firstName, fecha, etc.). Sobrevive
     // a cambios en appointments_cache para retry/debugging.
-    payloadSnapshot:
-      jsonb('payload_snapshot').$type<Record<string, unknown>>().notNull().default({}),
+    payloadSnapshot: jsonb('payload_snapshot')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
@@ -1175,7 +1162,10 @@ export const appointmentReminders = pgTable(
       t.status,
       t.scheduledFor,
     ),
-    tenantApptIdx: index('appointment_reminders_tenant_appt_idx').on(t.tenantId, t.ghlAppointmentId),
+    tenantApptIdx: index('appointment_reminders_tenant_appt_idx').on(
+      t.tenantId,
+      t.ghlAppointmentId,
+    ),
     externalCallIdx: index('appointment_reminders_external_call_idx').on(t.externalCallId),
   }),
 );
@@ -1354,8 +1344,10 @@ export const waitlistOffers = pgTable(
     externalCallId: text('external_call_id'),
     bullSendJobId: text('bull_send_job_id'),
     bullExpireJobId: text('bull_expire_job_id'),
-    payloadSnapshot:
-      jsonb('payload_snapshot').$type<Record<string, unknown>>().notNull().default({}),
+    payloadSnapshot: jsonb('payload_snapshot')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     errorMessage: text('error_message'),
     previousOfferId: uuid('previous_offer_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -1383,8 +1375,10 @@ export const waitlistMessageTemplates = pgTable(
     driverScope: text('driver_scope').notNull().$type<WaitlistDriverScope>(),
     templateName: text('template_name'),
     templateLanguage: text('template_language').notNull().default('es'),
-    templateParamsMap:
-      jsonb('template_params_map').$type<WaitlistTemplateParam[]>().notNull().default([]),
+    templateParamsMap: jsonb('template_params_map')
+      .$type<WaitlistTemplateParam[]>()
+      .notNull()
+      .default([]),
     freeText: text('free_text'),
     buttons: jsonb('buttons').$type<WaitlistButton[]>().notNull().default([]),
     voicePromptOverride: text('voice_prompt_override'),
@@ -1404,17 +1398,11 @@ export const waitlistMessageTemplates = pgTable(
   }),
 );
 
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Tareas (módulo core) — ver supabase/migrations/0018_tasks.sql
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const taskStatusEnum = pgEnum('task_status', [
-  'TODO',
-  'IN_PROGRESS',
-  'IN_REVIEW',
-  'DONE',
-]);
+export const taskStatusEnum = pgEnum('task_status', ['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE']);
 export const taskPriorityEnum = pgEnum('task_priority', ['LOW', 'MEDIUM', 'HIGH', 'URGENT']);
 export const taskCategoryEnum = pgEnum('task_category', [
   'PATIENT',

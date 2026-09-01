@@ -3,11 +3,8 @@ import { and, eq } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import { waitlistOffers } from '@/lib/db/schema';
+import { removeWaitlistOfferExpireJob, removeWaitlistOfferSendJob } from '@/lib/queue/client';
 import { extractInteractiveReplyId } from '@/lib/reminders/handle-button-reply';
-import {
-  removeWaitlistOfferExpireJob,
-  removeWaitlistOfferSendJob,
-} from '@/lib/queue/client';
 import { markOfferAccepted, markOfferDeclined } from '@/lib/waitlist/engine';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -57,10 +54,7 @@ export async function handleWaitlistButtonReply(args: {
 
   if (action === 'accept') {
     const res = await markOfferAccepted({ offerId, via: 'button' });
-    await Promise.all([
-      removeWaitlistOfferExpireJob(offerId),
-      removeWaitlistOfferSendJob(offerId),
-    ]);
+    await Promise.all([removeWaitlistOfferExpireJob(offerId), removeWaitlistOfferSendJob(offerId)]);
     if (!res.ok) {
       console.warn('[waitlist] accept failed', res.reason);
     }
@@ -69,10 +63,7 @@ export async function handleWaitlistButtonReply(args: {
 
   // action === 'decline'
   await markOfferDeclined({ offerId, via: 'button' });
-  await Promise.all([
-    removeWaitlistOfferExpireJob(offerId),
-    removeWaitlistOfferSendJob(offerId),
-  ]);
+  await Promise.all([removeWaitlistOfferExpireJob(offerId), removeWaitlistOfferSendJob(offerId)]);
   return { consumed: true, action };
 }
 

@@ -58,10 +58,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     .limit(1);
   const conn = conns[0];
   if (!conn) {
-    console.warn('[wa-evolution-webhook] instancia desconocida (ninguna conexión EVOLUTION matchea)', {
-      instance,
-      event: event.event,
-    });
+    console.warn(
+      '[wa-evolution-webhook] instancia desconocida (ninguna conexión EVOLUTION matchea)',
+      {
+        instance,
+        event: event.event,
+      },
+    );
     return NextResponse.json({ ok: true, ignored: 'unknown_instance' });
   }
 
@@ -209,10 +212,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
                 contactPhoneE164: persisted.contact.phoneE164,
               });
             } else {
-              console.log('[wa-evolution-webhook] mensaje consumido por handler (waitlist/reminder), NO va al agente', {
-                conversationId: persisted.conversation.id,
-                messageId: persisted.message.id,
-              });
+              console.log(
+                '[wa-evolution-webhook] mensaje consumido por handler (waitlist/reminder), NO va al agente',
+                {
+                  conversationId: persisted.conversation.id,
+                  messageId: persisted.message.id,
+                },
+              );
             }
           }
         } catch (err) {

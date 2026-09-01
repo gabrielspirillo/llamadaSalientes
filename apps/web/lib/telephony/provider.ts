@@ -12,7 +12,10 @@
 
 export type TelephonyProvider = 'twilio' | 'zadarma';
 
-export const TELEPHONY_PROVIDERS = ['twilio', 'zadarma'] as const satisfies readonly TelephonyProvider[];
+export const TELEPHONY_PROVIDERS = [
+  'twilio',
+  'zadarma',
+] as const satisfies readonly TelephonyProvider[];
 
 export function isTelephonyProvider(value: unknown): value is TelephonyProvider {
   return value === 'twilio' || value === 'zadarma';

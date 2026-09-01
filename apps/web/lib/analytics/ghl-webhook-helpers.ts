@@ -69,11 +69,7 @@ export function normalizeAppointment(payload: GhlAppointmentPayload): {
       contactId: apt.contactId ?? payload.contact_id,
       startTime: apt.startTime ?? cal.startTime,
       endTime: apt.endTime ?? cal.endTime,
-      status:
-        apt.status ??
-        cal.appoinmentStatus ??
-        cal.appointmentStatus ??
-        cal.status,
+      status: apt.status ?? cal.appoinmentStatus ?? cal.appointmentStatus ?? cal.status,
       treatmentId: apt.treatmentId,
       dateAdded: apt.dateAdded ?? cal.date_created,
     },
@@ -82,9 +78,7 @@ export function normalizeAppointment(payload: GhlAppointmentPayload): {
   };
 }
 
-export function classifyEvent(
-  payload: GhlAppointmentPayload,
-): 'create' | 'cancel' | null {
+export function classifyEvent(payload: GhlAppointmentPayload): 'create' | 'cancel' | null {
   const { appointment, type: rawType } = normalizeAppointment(payload);
   const type = (rawType ?? '').toLowerCase();
   const status = (appointment.status ?? '').toLowerCase();

@@ -16,8 +16,16 @@ const createSchema = z.object({
   assignedDentistId: z.string().nullable().optional(),
   originalStartTime: z.string().datetime(),
   originalEndTime: z.string().datetime().nullable().optional(),
-  preferredTimeWindowStart: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
-  preferredTimeWindowEnd: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+  preferredTimeWindowStart: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/)
+    .nullable()
+    .optional(),
+  preferredTimeWindowEnd: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/)
+    .nullable()
+    .optional(),
   notes: z.string().max(1000).nullable().optional(),
 });
 
@@ -44,9 +52,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         calendarId: parsed.data.calendarId ?? null,
         assignedDentistId: parsed.data.assignedDentistId ?? null,
         originalStartTime: new Date(parsed.data.originalStartTime),
-        originalEndTime: parsed.data.originalEndTime
-          ? new Date(parsed.data.originalEndTime)
-          : null,
+        originalEndTime: parsed.data.originalEndTime ? new Date(parsed.data.originalEndTime) : null,
         preferredTimeWindowStart: parsed.data.preferredTimeWindowStart ?? null,
         preferredTimeWindowEnd: parsed.data.preferredTimeWindowEnd ?? null,
         notes: parsed.data.notes ?? null,
@@ -58,10 +64,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       })
       .returning({ id: waitlistEntries.id });
     if (!row) {
-      return NextResponse.json(
-        { error: 'Ya existe una entrada para esa cita' },
-        { status: 409 },
-      );
+      return NextResponse.json({ error: 'Ya existe una entrada para esa cita' }, { status: 409 });
     }
     return NextResponse.json({ ok: true, entryId: row.id });
   } catch (err) {

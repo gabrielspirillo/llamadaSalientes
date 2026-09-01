@@ -1,9 +1,9 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
-import { and, eq } from 'drizzle-orm';
-import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
+import { and, eq } from 'drizzle-orm';
+import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
 
 import { db } from '@/lib/db/client';
 import {
@@ -50,7 +50,9 @@ const sendSchema = z.object({
   takeoverHours: z.number().int().min(0).max(72).default(2),
 });
 
-export async function sendManualMessage(input: unknown): Promise<ActionResult<{ messageId: string }>> {
+export async function sendManualMessage(
+  input: unknown,
+): Promise<ActionResult<{ messageId: string }>> {
   const parsed = sendSchema.safeParse(input);
   if (!parsed.success) {
     return fail('Datos inválidos', parsed.error.flatten().fieldErrors);

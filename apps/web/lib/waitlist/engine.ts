@@ -13,18 +13,18 @@ import {
   waitlistSettings as waitlistSettingsTable,
 } from '@/lib/db/schema';
 import { sendQueueEvent } from '@/lib/queue/client';
-import { getOrCreateWaitlistSettings, type WaitlistSettingsRow } from '@/lib/waitlist/settings';
+import { resolveActiveConnection } from '@/lib/reminders/send-whatsapp';
+import { driverScopeForWhatsAppMode } from '@/lib/reminders/template-resolver';
 import {
-  evaluateMatch,
   type MatchSettings,
   type SlotForMatching,
   type WaitlistEntryForMatching,
+  evaluateMatch,
 } from '@/lib/waitlist/match-rules';
+import { type WaitlistSettingsRow, getOrCreateWaitlistSettings } from '@/lib/waitlist/settings';
 import { computeTtl } from '@/lib/waitlist/ttl';
-import { buildWaitlistVars } from '@/lib/waitlist/variables';
 import type { WaitlistChannel, WaitlistDriverScope } from '@/lib/waitlist/types';
-import { driverScopeForWhatsAppMode } from '@/lib/reminders/template-resolver';
-import { resolveActiveConnection } from '@/lib/reminders/send-whatsapp';
+import { buildWaitlistVars } from '@/lib/waitlist/variables';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Engine de waitlist.
@@ -398,9 +398,7 @@ export async function expireOfferAndAdvance(offerId: string): Promise<EnqueueRes
   const settings = await getOrCreateWaitlistSettings(offer.tenantId);
   if (settings.channelMode === 'WHATSAPP_THEN_VOICE' && offer.channel === 'WHATSAPP') {
     const voiceTtl = computeTtl(
-      new Date(
-        (offer.payloadSnapshot as { slotStartTime?: string })?.slotStartTime ?? Date.now(),
-      ),
+      new Date((offer.payloadSnapshot as { slotStartTime?: string })?.slotStartTime ?? Date.now()),
       settings,
     );
     if (!voiceTtl.shouldSkip) {
@@ -478,8 +476,7 @@ export async function markOfferAccepted(args: {
   offerId: string;
   via: 'button' | 'text' | 'voice_tool' | 'manual';
 }): Promise<
-  | { ok: true; newAppointmentId: string; oldAppointmentId: string }
-  | { ok: false; reason: string }
+  { ok: true; newAppointmentId: string; oldAppointmentId: string } | { ok: false; reason: string }
 > {
   const [offer] = await db
     .select()
@@ -545,8 +542,8 @@ export async function markOfferAccepted(args: {
   }
 
   // Cancelar cita vieja en GHL — el webhook GHL hará el cascade.
-  await cancelAppointment(offer.tenantId, { appointment_id: entry.ghlAppointmentId }).catch(
-    (err) => console.error('[waitlist] cancel old appt failed', err),
+  await cancelAppointment(offer.tenantId, { appointment_id: entry.ghlAppointmentId }).catch((err) =>
+    console.error('[waitlist] cancel old appt failed', err),
   );
 
   // Marcar la oferta como aceptada y la entry como fulfilled.
@@ -613,9 +610,7 @@ export async function autoEnqueueOnNewAppointment(input: {
   const [tx] = await db
     .select({ waitlistEligible: treatments.waitlistEligible })
     .from(treatments)
-    .where(
-      and(eq(treatments.tenantId, input.tenantId), eq(treatments.id, input.treatmentId)),
-    )
+    .where(and(eq(treatments.tenantId, input.tenantId), eq(treatments.id, input.treatmentId)))
     .limit(1);
   if (!tx?.waitlistEligible) return { ok: false, reason: 'treatment_not_eligible' };
 
