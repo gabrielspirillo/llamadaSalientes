@@ -13,6 +13,19 @@ export type CallRow = typeof calls.$inferSelect;
  */
 const occurredAt = sql`COALESCE(${calls.startedAt}, ${calls.createdAt})`;
 
+/**
+ * Fechas dentro de plantillas `sql` crudas.
+ *
+ * En una comparación contra una columna (`gte(calls.startedAt, d)`) Drizzle
+ * sabe el tipo y serializa el Date. Dentro de un `sql` template no hay columna
+ * de la que inferir —acá el lado izquierdo es un COALESCE—, así que el Date
+ * llega crudo al driver y postgres.js revienta con "Received an instance of
+ * Date". Lo mandamos como ISO y casteamos en SQL.
+ */
+function ts(d: Date): string {
+  return d.toISOString();
+}
+
 export type CallsFilter = {
   intent?: string;
   sentiment?: string;
@@ -30,7 +43,7 @@ export async function listCalls(
   const conditions: SQL[] = [eq(calls.tenantId, tenantId)];
   if (filter.intent) conditions.push(eq(calls.intent, filter.intent));
   if (filter.sentiment) conditions.push(eq(calls.sentiment, filter.sentiment));
-  if (filter.since) conditions.push(sql`${occurredAt} >= ${filter.since}`);
+  if (filter.since) conditions.push(sql`${occurredAt} >= ${ts(filter.since)}::timestamptz`);
   if (filter.q && filter.q.trim().length > 0) {
     const q = `%${filter.q.trim()}%`;
     const search = or(
@@ -92,12 +105,16 @@ export async function getDashboardStats(tenantId: string): Promise<DashboardStat
       transferred: calls.transferred,
     })
     .from(calls)
-    .where(and(eq(calls.tenantId, tenantId), sql`${occurredAt} >= ${startOfToday}`));
+    .where(
+      and(eq(calls.tenantId, tenantId), sql`${occurredAt} >= ${ts(startOfToday)}::timestamptz`),
+    );
 
   const yesterdayCount = await db
     .select({ id: calls.id })
     .from(calls)
-    .where(and(eq(calls.tenantId, tenantId), sql`${occurredAt} >= ${startOfYesterday}`));
+    .where(
+      and(eq(calls.tenantId, tenantId), sql`${occurredAt} >= ${ts(startOfYesterday)}::timestamptz`),
+    );
 
   const callsToday = todayRows.length;
   const durations = todayRows.map((r) => r.durationSeconds).filter((d): d is number => d !== null);
@@ -243,7 +260,11 @@ export async function getMotivoBreakdown(
     })
     .from(calls)
     .where(
-      and(eq(calls.tenantId, tenantId), sql`${occurredAt} >= ${since}`, isNotNull(calls.intent)),
+      and(
+        eq(calls.tenantId, tenantId),
+        sql`${occurredAt} >= ${ts(since)}::timestamptz`,
+        isNotNull(calls.intent),
+      ),
     )
     .groupBy(calls.intent);
 
