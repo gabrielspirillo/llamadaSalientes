@@ -1,15 +1,11 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
+import { Tag } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/feedback';
 import { Input } from '@/components/ui/input';
-import {
-  Loader2,
-  Mail,
-  Phone,
-  Search,
-  Users,
-} from 'lucide-react';
+import { Loader2, Mail, Phone, Search, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ContactDetailDialog } from './contact-detail-dialog';
 
@@ -128,17 +124,17 @@ export function ContactsGrid({ initial }: { initial: Contact[] }) {
       <Card className="mb-4 sm:mb-5">
         <div className="flex items-center gap-3 p-3 sm:p-5">
           <div className="relative flex-1 min-w-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Buscar por nombre, teléfono, email…"
-              className="pl-9"
+              className="pl-11"
             />
           </div>
           <div className="flex items-center gap-2 text-xs text-zinc-500 shrink-0">
             {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            <Badge>
+            <Badge tone="brand" size="lg">
               {contacts.length}
               <span className="hidden sm:inline ml-1">
                 {contacts.length === 1 ? 'contacto' : 'contactos'}
@@ -150,37 +146,42 @@ export function ContactsGrid({ initial }: { initial: Contact[] }) {
 
       {contacts.length === 0 ? (
         <Card>
-          <div className="px-6 py-20 text-center">
-            <Users className="mx-auto h-8 w-8 text-zinc-300 mb-3" />
-            <p className="text-base font-semibold tracking-tight">
-              {q.length > 0 ? 'Sin resultados' : 'Aún no hay contactos'}
-            </p>
-            <p className="text-sm text-zinc-500 mt-1.5 max-w-sm mx-auto">
-              {q.length > 0
-                ? `No encontré contactos para "${q}". Probá otro término.`
-                : 'Cuando el agente registre pacientes en GHL, vas a verlos acá.'}
-            </p>
-          </div>
+          <EmptyState
+            icon={<Users className="h-5 w-5" />}
+            title={q.length > 0 ? 'Sin resultados' : 'Aún no hay contactos'}
+            description={
+              q.length > 0
+                ? `No encontré contactos para “${q}”. Probá otro término.`
+                : 'Cuando el agente registre pacientes en GHL, vas a verlos acá.'
+            }
+          />
         </Card>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          {contacts.map((c) => {
+        <div
+          className="stagger grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3"
+          style={{ ['--stagger-step' as string]: '45ms' }}
+        >
+          {contacts.map((c, i) => {
             const tags = visibleTags(c);
             return (
               <Card
                 key={c.id}
-                className="overflow-hidden hover:shadow-lg hover:border-zinc-300 cursor-pointer transition-all"
+                interactive
+                className="group overflow-hidden"
+                style={{ ['--i' as string]: Math.min(i, 12) }}
                 onClick={() => setOpenContactId(c.id)}
               >
                 <div className="p-4 sm:p-5">
                   <div className="flex items-start gap-3">
                     <div
-                      className={`h-11 w-11 sm:h-12 sm:w-12 shrink-0 rounded-xl bg-gradient-to-br ${gradientFor(c.id)} flex items-center justify-center text-white font-semibold text-sm shadow-sm ring-2 ring-white`}
+                      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${gradientFor(c.id)} text-sm font-bold text-white shadow-[0_8px_20px_-10px_rgba(23,20,41,0.7)] ring-2 ring-white transition-transform duration-500 group-hover:-rotate-6 group-hover:scale-110`}
                     >
                       {initialsOf(c)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold tracking-tight truncate">{displayName(c)}</p>
+                      <p className="truncate text-[15px] font-bold tracking-tight text-zinc-900">
+                        {displayName(c)}
+                      </p>
                       <p className="text-xs text-zinc-500 mt-0.5">
                         {timeAgoEs(c.lastActivity ?? c.dateUpdated ?? c.dateAdded)}
                       </p>
@@ -210,12 +211,7 @@ export function ContactsGrid({ initial }: { initial: Contact[] }) {
                   {tags.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-1">
                       {tags.slice(0, 4).map((tag) => (
-                        <span
-                          key={tag}
-                          className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600"
-                        >
-                          {tag}
-                        </span>
+                        <Tag key={tag}>{tag}</Tag>
                       ))}
                       {tags.length > 4 && (
                         <span className="text-[11px] text-zinc-400">+{tags.length - 4}</span>

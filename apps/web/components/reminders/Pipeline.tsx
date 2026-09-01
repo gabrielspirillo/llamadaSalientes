@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { ChevronRight } from 'lucide-react';
+
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { ReminderDetailDialog } from './ReminderDetailDialog';
@@ -186,7 +188,7 @@ export function RemindersPipeline({
     return map;
   }, [filtered]);
 
-  const selected = selectedId ? reminders.find((r) => r.id === selectedId) ?? null : null;
+  const selected = selectedId ? (reminders.find((r) => r.id === selectedId) ?? null) : null;
 
   return (
     <div>
@@ -196,7 +198,7 @@ export function RemindersPipeline({
           placeholder="Buscar paciente, tratamiento o cita…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full max-w-sm rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-sm placeholder:text-zinc-400 focus:border-zinc-300 focus:outline-none"
+          className="h-11 w-full max-w-sm rounded-[14px] border border-[--color-border] bg-white px-4 text-sm transition-[border-color,box-shadow] duration-300 placeholder:text-zinc-400 hover:border-brand-200 focus-visible:border-brand-400 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/12"
         />
         <span className="text-xs text-zinc-500">{filtered.length} reminders</span>
         <span className="ml-auto text-[11px] text-zinc-400">
@@ -212,16 +214,22 @@ export function RemindersPipeline({
         {COLUMNS.map((col) => {
           const items = byStatus.get(col.status) ?? [];
           return (
-            <div key={col.status} className="flex flex-col gap-2">
-              <div className="flex items-center justify-between px-1">
-                <span className="text-xs font-medium text-zinc-700">{col.title}</span>
+            <div
+              key={col.status}
+              className="flex flex-col gap-2 rounded-[22px] border border-[--color-border] bg-white/60 p-2.5 backdrop-blur-xl"
+            >
+              <div className="flex items-center justify-between px-1.5 pt-0.5">
+                <span className="flex items-center gap-1.5 text-[12px] font-bold tracking-tight text-zinc-700">
+                  <ChevronRight className="h-3 w-3 text-zinc-400" />
+                  {col.title}
+                </span>
                 <Badge tone={col.tone}>{items.length}</Badge>
               </div>
               {/* max-h ~ 4 cards visibles (cada card ~108px + gap 8px = ~480px).
                   Scroll vertical interno por columna. */}
               <div className="flex flex-col gap-2 overflow-y-auto pr-1" style={{ maxHeight: 480 }}>
                 {items.length === 0 ? (
-                  <div className="rounded-md border border-dashed border-zinc-200 p-3 text-center text-xs text-zinc-400">
+                  <div className="rounded-2xl border border-dashed border-[--color-border-strong] p-4 text-center text-[11px] text-zinc-400">
                     Vacío
                   </div>
                 ) : (
@@ -241,7 +249,10 @@ export function RemindersPipeline({
       </div>
 
       <div className="mt-8">
-        <h2 className="text-sm font-semibold text-zinc-700 mb-3">Omitidos ({skipped.length})</h2>
+        <h2 className="mb-3 flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+          <span className="h-3 w-1 rounded-full bg-[linear-gradient(180deg,#7139e8,#ec4899)]" />
+          Omitidos ({skipped.length})
+        </h2>
         <SkipList skipped={skipped} />
       </div>
 
@@ -273,17 +284,15 @@ function ReminderCard({
   return (
     <Card
       onClick={onClick}
-      className="cursor-pointer p-3 hover:shadow-md hover:border-zinc-300 transition-all"
+      className="group cursor-pointer p-3 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-[var(--shadow-lifted)]"
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="text-sm font-medium text-zinc-800 truncate">{name}</span>
+        <span className="truncate text-[13.5px] font-bold text-zinc-800">{name}</span>
         <Badge tone={reminder.channelPlanned === 'VOICE' ? 'warn' : 'info'}>
           {reminder.channelPlanned === 'VOICE' ? 'Voz' : 'WA'}
         </Badge>
       </div>
-      {appt.treatment && (
-        <p className="mt-1 text-xs text-zinc-600 truncate">{appt.treatment}</p>
-      )}
+      {appt.treatment && <p className="mt-1 text-xs text-zinc-600 truncate">{appt.treatment}</p>}
       {appt.dateTime && (
         <p className="mt-0.5 text-[11px] text-zinc-500 truncate">{appt.dateTime}</p>
       )}

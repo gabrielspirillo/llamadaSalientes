@@ -66,8 +66,8 @@ export function ContactHistoryTabs({
   const [tab, setTab] = useState<Tab>('atributos');
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white">
-      <div className="flex border-b border-zinc-100">
+    <div className="rounded-2xl border border-[--color-border] bg-white">
+      <div className="flex border-b border-[--color-border-subtle]">
         {(['atributos', 'historial', 'notas', 'combinar'] as Tab[]).map((t) => (
           <button
             key={t}
@@ -111,7 +111,9 @@ function Atributos({
         <div className="flex items-center justify-between text-xs">
           <span className="font-semibold uppercase text-zinc-500">CRM_LINK</span>
           {ghlContactId ? (
-            <span className="font-mono text-[10px] text-zinc-600">{ghlContactId.slice(0, 12)}…</span>
+            <span className="font-mono text-[10px] text-zinc-600">
+              {ghlContactId.slice(0, 12)}…
+            </span>
           ) : (
             <span className="text-zinc-400">Sin enlace</span>
           )}
@@ -127,7 +129,7 @@ function Atributos({
             {appointments.map((a) => (
               <li
                 key={a.id}
-                className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2 text-sm"
+                className="rounded-lg border border-[--color-border-subtle] bg-zinc-50 px-3 py-2 text-sm"
               >
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-zinc-900">{a.treatment ?? 'Cita'}</span>
@@ -175,7 +177,7 @@ function Historial({
               <li key={c.id}>
                 <Link
                   href={`/dashboard/whatsapp/${c.id}`}
-                  className="flex items-start gap-2 rounded-lg p-2 hover:bg-zinc-50"
+                  className="flex items-start gap-2 rounded-lg p-2 hover:bg-brand-50/50"
                 >
                   <div
                     className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${
@@ -215,7 +217,7 @@ function Historial({
               <li key={c.id}>
                 <Link
                   href={`/dashboard/llamadas/${c.id}`}
-                  className="flex items-start gap-2 rounded-lg p-2 hover:bg-zinc-50"
+                  className="flex items-start gap-2 rounded-lg p-2 hover:bg-brand-50/50"
                 >
                   <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-purple-500" />
                   <div className="min-w-0 flex-1">
@@ -289,7 +291,7 @@ function Notas({ contactId, notes }: { contactId: string; notes: NoteItem[] }) {
   return (
     <div className="space-y-4">
       <div className="rounded-xl bg-zinc-50 p-3">
-        <div className="mb-2 flex items-center gap-1 border-b border-zinc-200 pb-2">
+        <div className="mb-2 flex items-center gap-1 border-b border-[--color-border] pb-2">
           <ToolbarButton onClick={() => applyWrap('**')} title="Negrita">
             <span className="font-bold">B</span>
           </ToolbarButton>
@@ -300,10 +302,7 @@ function Notas({ contactId, notes }: { contactId: string; notes: NoteItem[] }) {
             🔗
           </ToolbarButton>
           <div className="mx-1 h-4 w-px bg-zinc-300" />
-          <ToolbarButton
-            onClick={() => setBody((p) => (p ? `${p}\n- ` : '- '))}
-            title="Lista"
-          >
+          <ToolbarButton onClick={() => setBody((p) => (p ? `${p}\n- ` : '- '))} title="Lista">
             •
           </ToolbarButton>
           <ToolbarButton
@@ -327,7 +326,7 @@ function Notas({ contactId, notes }: { contactId: string; notes: NoteItem[] }) {
         />
         <div className="mt-2 flex items-center justify-between">
           {error ? (
-            <span className="text-xs text-red-700">{error}</span>
+            <span className="text-xs text-rose-700">{error}</span>
           ) : (
             <span className="text-[10px] text-zinc-400">Markdown soportado</span>
           )}
@@ -362,7 +361,7 @@ function Notas({ contactId, notes }: { contactId: string; notes: NoteItem[] }) {
                     type="button"
                     onClick={() => handleDelete(n.id)}
                     disabled={pending}
-                    className="text-amber-700 hover:text-red-700 disabled:text-amber-300"
+                    className="text-amber-700 hover:text-rose-700 disabled:text-amber-300"
                     aria-label="Eliminar nota"
                   >
                     ×
@@ -469,7 +468,7 @@ function Combinar({ contactId }: { contactId: string }) {
           setSelected(null);
         }}
         placeholder="Buscar por nombre o teléfono…"
-        className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+        className="w-full rounded-lg border border-[--color-border] px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
       />
       {searching && <p className="text-[11px] text-zinc-400">Buscando…</p>}
       {!searching && query.trim().length >= 2 && results.length === 0 && (
@@ -486,7 +485,7 @@ function Combinar({ contactId }: { contactId: string }) {
                 className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                   isSelected
                     ? 'border border-emerald-300 bg-emerald-50'
-                    : 'border border-transparent hover:bg-zinc-50'
+                    : 'border border-transparent hover:bg-brand-50/50'
                 }`}
               >
                 <div className="font-medium text-zinc-900">{r.name ?? '(sin nombre)'}</div>
@@ -507,12 +506,12 @@ function Combinar({ contactId }: { contactId: string }) {
             Vas a mergear <strong>{selected.name ?? selected.phoneE164}</strong> en este contacto.
             Esta acción no se puede deshacer.
           </p>
-          {error && <p className="mt-1 text-xs text-red-700">{error}</p>}
+          {error && <p className="mt-1 text-xs text-rose-700">{error}</p>}
           <button
             type="button"
             onClick={handleMerge}
             disabled={pending}
-            className="mt-2 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+            className="mt-2 rounded-full bg-[linear-gradient(120deg,#059669,#10b981)] px-4 py-2 text-sm font-semibold text-white shadow-[0_8px_24px_-10px_rgba(16,185,129,0.7)] transition-all duration-300 hover:-translate-y-0.5 active:scale-95 hover:opacity-95 disabled:opacity-50"
           >
             {pending ? 'Combinando…' : 'Combinar contactos'}
           </button>
@@ -528,7 +527,7 @@ function appointmentStatusClass(status: string): string {
   const s = status.toLowerCase();
   if (s.includes('confirm')) return 'bg-emerald-100 text-emerald-700';
   if (s.includes('show') && !s.includes('no')) return 'bg-blue-100 text-blue-700';
-  if (s.includes('no')) return 'bg-red-100 text-red-700';
+  if (s.includes('no')) return 'bg-rose-100 text-rose-700';
   if (s.includes('cancel')) return 'bg-zinc-200 text-zinc-700';
   return 'bg-zinc-100 text-zinc-700';
 }

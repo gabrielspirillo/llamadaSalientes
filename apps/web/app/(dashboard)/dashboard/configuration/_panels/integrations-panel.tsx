@@ -15,8 +15,7 @@ export async function IntegrationsPanel({
 
   const hdrs = await headers();
   const host = hdrs.get('host') ?? 'localhost:3000';
-  const proto =
-    hdrs.get('x-forwarded-proto') ?? (host.includes('localhost') ? 'http' : 'https');
+  const proto = hdrs.get('x-forwarded-proto') ?? (host.includes('localhost') ? 'http' : 'https');
   const baseUrl = `${proto}://${host}`;
   const intakeKey = deriveIntakeKey(tenant.id);
   const intakeUrl = `${baseUrl}/api/leads/intake?tenant=${encodeURIComponent(tenant.slug)}`;
@@ -27,7 +26,7 @@ export async function IntegrationsPanel({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-zinc-900">Integraciones</h2>
+        <h2 className="text-[18px] font-bold tracking-tight text-zinc-900">Integraciones</h2>
         <p className="text-sm text-zinc-500">
           Conexión con GoHighLevel y URLs de webhook para auto-callback.
         </p>
@@ -75,7 +74,7 @@ function Banner({ kind, children }: { kind: 'success' | 'error'; children: React
       className={`rounded-xl border px-4 py-3 text-sm ${
         kind === 'success'
           ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-          : 'bg-red-50 border-red-200 text-red-800'
+          : 'bg-rose-50 border-rose-200 text-rose-800'
       }`}
     >
       {children}

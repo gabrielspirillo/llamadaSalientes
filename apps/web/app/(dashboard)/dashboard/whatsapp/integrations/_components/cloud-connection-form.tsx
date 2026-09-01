@@ -46,15 +46,13 @@ export function CloudConnectionForm({ initial }: Props) {
   return (
     <form onSubmit={onSubmit} className="space-y-3">
       <div>
-        <label className="mb-1 block text-xs font-medium text-zinc-700">
-          Phone Number ID
-        </label>
+        <label className="mb-1 block text-xs font-medium text-zinc-700">Phone Number ID</label>
         <input
           type="text"
           value={phoneNumberId}
           onChange={(e) => setPhoneNumberId(e.target.value)}
           required
-          className="w-full rounded-lg border border-zinc-200 px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
+          className="w-full rounded-lg border border-[--color-border] px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
         />
       </div>
       <div>
@@ -64,7 +62,7 @@ export function CloudConnectionForm({ initial }: Props) {
           value={wabaId}
           onChange={(e) => setWabaId(e.target.value)}
           required
-          className="w-full rounded-lg border border-zinc-200 px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
+          className="w-full rounded-lg border border-[--color-border] px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
         />
       </div>
       <div>
@@ -76,8 +74,10 @@ export function CloudConnectionForm({ initial }: Props) {
           value={accessToken}
           onChange={(e) => setAccessToken(e.target.value)}
           required
-          placeholder={initial ? 'Dejar vacío para conservar el actual no es soportado — pega de nuevo' : ''}
-          className="w-full rounded-lg border border-zinc-200 px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
+          placeholder={
+            initial ? 'Dejar vacío para conservar el actual no es soportado — pega de nuevo' : ''
+          }
+          className="w-full rounded-lg border border-[--color-border] px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
         />
       </div>
       <div>
@@ -89,14 +89,14 @@ export function CloudConnectionForm({ initial }: Props) {
           value={appSecret}
           onChange={(e) => setAppSecret(e.target.value)}
           required
-          className="w-full rounded-lg border border-zinc-200 px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
+          className="w-full rounded-lg border border-[--color-border] px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
         />
       </div>
 
       {feedback && (
         <div
           className={`rounded px-3 py-2 text-xs ${
-            feedback.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+            feedback.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
           }`}
         >
           {feedback.msg}
@@ -107,7 +107,7 @@ export function CloudConnectionForm({ initial }: Props) {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+          className="rounded-full bg-[linear-gradient(120deg,#059669,#10b981)] px-5 py-2 text-sm font-semibold text-white shadow-[0_8px_24px_-10px_rgba(16,185,129,0.7)] transition-all duration-300 hover:-translate-y-0.5 active:scale-95 hover:opacity-95 disabled:opacity-50"
         >
           {pending ? 'Guardando…' : initial ? 'Actualizar conexión' : 'Conectar'}
         </button>
@@ -116,7 +116,7 @@ export function CloudConnectionForm({ initial }: Props) {
             type="button"
             onClick={onDisconnect}
             disabled={pending}
-            className="rounded-lg border border-red-200 bg-white px-4 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+            className="rounded-lg border border-rose-200 bg-white px-4 py-1.5 text-sm font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-50"
           >
             Desconectar
           </button>

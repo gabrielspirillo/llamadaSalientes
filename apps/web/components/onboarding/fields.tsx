@@ -26,11 +26,13 @@ export function Field({
     <div className="flex flex-col gap-1.5">
       <Label htmlFor={htmlFor}>
         {label}
-        {required && <span className="text-red-500"> *</span>}
+        {required && <span className="text-rose-500"> *</span>}
       </Label>
       {children}
-      {hint && !error && <p className="text-xs text-zinc-500">{hint}</p>}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {hint && !error && <p className="text-[11.5px] text-zinc-500">{hint}</p>}
+      {error && (
+        <p className="animate-fade-down text-[11.5px] font-medium text-rose-600">{error}</p>
+      )}
     </div>
   );
 }
@@ -39,7 +41,7 @@ export function Select({ className, ...props }: React.SelectHTMLAttributes<HTMLS
   return (
     <select
       className={cn(
-        'flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/15 focus-visible:border-zinc-300 disabled:opacity-50 transition-colors',
+        'h-11 w-full cursor-pointer rounded-[14px] border border-[--color-border] bg-white px-4 text-sm transition-[border-color,box-shadow] duration-300 hover:border-brand-200 focus-visible:border-brand-400 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/12 disabled:opacity-50',
         className,
       )}
       {...props}
@@ -51,7 +53,7 @@ export function Select({ className, ...props }: React.SelectHTMLAttributes<HTMLS
 export function CharCount({ value, max }: { value: string; max: number }) {
   const over = value.length > max;
   return (
-    <span className={cn('text-xs tabular-nums', over ? 'text-red-600' : 'text-zinc-400')}>
+    <span className={cn('text-[11px] tabular-nums', over ? 'text-rose-600' : 'text-zinc-400')}>
       {value.length}/{max}
     </span>
   );
@@ -75,7 +77,7 @@ export function IconTextButton({
       onClick={onClick}
       className={cn(
         'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
-        tone === 'danger' ? 'text-red-600 hover:bg-red-50' : 'text-violet-700 hover:bg-violet-50',
+        tone === 'danger' ? 'text-rose-600 hover:bg-rose-50' : 'text-violet-700 hover:bg-violet-50',
       )}
     >
       {children}

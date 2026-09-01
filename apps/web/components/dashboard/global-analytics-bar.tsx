@@ -1,5 +1,8 @@
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
+import { Card, CardTopbar } from '@/components/ui/card';
+import { SectionTitle } from '@/components/ui/feedback';
+import { Reveal } from '@/components/ui/motion';
+import { StatTile } from '@/components/ui/stat';
 import {
   getAppointmentsToday,
   getCancellationRecoveryStats,
@@ -9,7 +12,16 @@ import {
   getTopTreatments,
 } from '@/lib/data/analytics/global';
 import { getDemoAnalytics } from '@/lib/demo-data';
-import { CalendarCheck, Coins, MessageCircle, Phone, PhoneCall, TrendingDown } from 'lucide-react';
+import {
+  CalendarCheck,
+  Coins,
+  MessageCircle,
+  Phone,
+  PhoneCall,
+  Sparkles,
+  Stethoscope,
+  TrendingDown,
+} from 'lucide-react';
 import { NoShowTrendChart, TopTreatmentsChart } from './analytics-global-charts';
 
 function formatMoney(cents: number, currency: string): string {
@@ -24,10 +36,6 @@ function formatMoney(cents: number, currency: string): string {
     // Currency code inválido — fallback a número plano con el código.
     return `${(cents / 100).toFixed(0)} ${currency}`;
   }
-}
-
-function formatPercent(rate: number, digits = 1): string {
-  return `${(rate * 100).toFixed(digits)}%`;
 }
 
 export async function GlobalAnalyticsBar({
@@ -49,133 +57,130 @@ export async function GlobalAnalyticsBar({
         getNoShowSeries(tenantId, 90),
       ]);
 
+  // Serie corta para el sparkline de la tarjeta de no-show.
+  const noShowTrend = noShowSeries.slice(-10).map((p) => p.rate * 100);
+
   return (
     <section className="mb-8">
-      <div className="flex items-baseline justify-between mb-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-          Métricas globales
-        </h2>
-        <span className="text-xs text-zinc-400">Cross-channel</span>
-      </div>
+      <SectionTitle
+        title="Métricas globales"
+        description="Todos los canales combinados: llamadas, WhatsApp, recordatorios y waitlist."
+        action={
+          <Badge tone="violet" size="lg" className="hidden sm:inline-flex">
+            <Sparkles className="h-3 w-3" />
+            Cross-channel
+          </Badge>
+        }
+      />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
-        <KpiCard
-          label="Citas hoy"
-          value={String(today)}
-          hint="Agendadas y confirmadas"
-          icon={<CalendarCheck className="h-4 w-4" />}
-        />
-        <KpiCard
-          label="No-show (90 días)"
-          value={formatPercent(noShow.rate)}
-          hint={`${noShow.noShow} de ${noShow.finished} citas finalizadas`}
-          icon={<TrendingDown className="h-4 w-4" />}
-          tone="warn"
-        />
-        <KpiCard
-          label="Revenue slots optimizados"
-          value={formatMoney(revenue.cents, revenue.currency)}
-          hint="Acumulado del mes"
-          icon={<Coins className="h-4 w-4" />}
-          tone="success"
-        />
-        <KpiCard
-          label="Recuperación de cancelaciones"
-          value={formatPercent(recovery.rate)}
-          hint={`${recovery.recovered} de ${recovery.totalCancelled} canceladas`}
-          icon={<CalendarCheck className="h-4 w-4" />}
-        />
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+        <Reveal delay={0}>
+          <StatTile
+            label="Citas hoy"
+            numeric={today}
+            hint="Agendadas y confirmadas"
+            icon={<CalendarCheck className="h-4 w-4" />}
+            tone="grape"
+          />
+        </Reveal>
+        <Reveal delay={80}>
+          <StatTile
+            label="No-show (90 días)"
+            numeric={noShow.rate * 100}
+            decimals={1}
+            suffix="%"
+            hint={`${noShow.noShow} de ${noShow.finished} citas finalizadas`}
+            icon={<TrendingDown className="h-4 w-4" />}
+            tone="honey"
+            trend={noShowTrend.length > 1 ? noShowTrend : undefined}
+          />
+        </Reveal>
+        <Reveal delay={160}>
+          <StatTile
+            label="Revenue optimizado"
+            value={formatMoney(revenue.cents, revenue.currency)}
+            hint="Slots recuperados este mes"
+            icon={<Coins className="h-4 w-4" />}
+            tone="mint"
+          />
+        </Reveal>
+        <Reveal delay={240}>
+          <StatTile
+            label="Recuperación de cancelaciones"
+            numeric={recovery.rate * 100}
+            decimals={1}
+            suffix="%"
+            hint={`${recovery.recovered} de ${recovery.totalCancelled} canceladas`}
+            icon={<CalendarCheck className="h-4 w-4" />}
+            tone="sky"
+            progress={recovery.rate * 100}
+          />
+        </Reveal>
       </div>
 
       {revenue.cents > 0 && (
-        <Card className="p-4 mb-4">
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-              Revenue por canal (MTD)
-            </span>
-            <ChannelChip
-              icon={<PhoneCall className="h-3.5 w-3.5" />}
-              label="Salientes"
-              value={formatMoney(revenue.byChannel.outbound, revenue.currency)}
-            />
-            <ChannelChip
-              icon={<Phone className="h-3.5 w-3.5" />}
-              label="Entrantes"
-              value={formatMoney(revenue.byChannel.inbound, revenue.currency)}
-            />
-            <ChannelChip
-              icon={<MessageCircle className="h-3.5 w-3.5" />}
-              label="WhatsApp"
-              value={formatMoney(revenue.byChannel.whatsapp, revenue.currency)}
-            />
-          </div>
-        </Card>
+        <Reveal>
+          <Card className="mb-4 overflow-hidden p-0">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-3 p-4 sm:px-5">
+              <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+                Revenue por canal · mes en curso
+              </span>
+              <div className="flex flex-wrap gap-2">
+                <ChannelChip
+                  icon={<PhoneCall className="h-3.5 w-3.5" />}
+                  label="Salientes"
+                  value={formatMoney(revenue.byChannel.outbound, revenue.currency)}
+                  className="bg-pink-50 text-pink-700"
+                />
+                <ChannelChip
+                  icon={<Phone className="h-3.5 w-3.5" />}
+                  label="Entrantes"
+                  value={formatMoney(revenue.byChannel.inbound, revenue.currency)}
+                  className="bg-violet-50 text-violet-700"
+                />
+                <ChannelChip
+                  icon={<MessageCircle className="h-3.5 w-3.5" />}
+                  label="WhatsApp"
+                  value={formatMoney(revenue.byChannel.whatsapp, revenue.currency)}
+                  className="bg-emerald-50 text-emerald-700"
+                />
+              </div>
+            </div>
+          </Card>
+        </Reveal>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 sm:gap-4">
-        <Card className="xl:col-span-2">
-          <div className="flex items-center justify-between p-4 sm:p-5 pb-2">
-            <div>
-              <h3 className="text-base font-semibold tracking-tight">Tendencia de no-show</h3>
-              <p className="text-xs text-zinc-500 mt-0.5">Semanal, últimos 90 días</p>
+      <div className="grid grid-cols-1 gap-3 sm:gap-4 xl:grid-cols-3">
+        <Reveal direction="left" className="xl:col-span-2">
+          <Card className="group h-full">
+            <CardTopbar
+              icon={<TrendingDown className="h-4 w-4" />}
+              tone="honey"
+              title="Tendencia de no-show"
+              subtitle="Semanal, últimos 90 días"
+              action={<Badge tone="warn">3 meses</Badge>}
+            />
+            <div className="px-4 pb-5 sm:px-5">
+              <NoShowTrendChart data={noShowSeries} />
             </div>
-            <Badge tone="warn">3 meses</Badge>
-          </div>
-          <div className="px-4 sm:px-5 pb-4 sm:pb-5 pt-2">
-            <NoShowTrendChart data={noShowSeries} />
-          </div>
-        </Card>
+          </Card>
+        </Reveal>
 
-        <Card>
-          <div className="p-4 sm:p-5 pb-2">
-            <h3 className="text-base font-semibold tracking-tight">Top tratamientos</h3>
-            <p className="text-xs text-zinc-500 mt-0.5">Últimos 30 días</p>
-          </div>
-          <div className="px-4 sm:px-5 pb-4 sm:pb-5 pt-2">
-            <TopTreatmentsChart data={treatments} />
-          </div>
-        </Card>
+        <Reveal direction="right">
+          <Card className="group h-full">
+            <CardTopbar
+              icon={<Stethoscope className="h-4 w-4" />}
+              tone="mint"
+              title="Top tratamientos"
+              subtitle="Últimos 30 días"
+            />
+            <div className="px-4 pb-5 sm:px-5">
+              <TopTreatmentsChart data={treatments} />
+            </div>
+          </Card>
+        </Reveal>
       </div>
     </section>
-  );
-}
-
-type Tone = 'default' | 'success' | 'warn';
-
-function KpiCard({
-  label,
-  value,
-  hint,
-  icon,
-  tone = 'default',
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  icon: React.ReactNode;
-  tone?: Tone;
-}) {
-  const accent =
-    tone === 'success'
-      ? 'bg-emerald-50 text-emerald-700'
-      : tone === 'warn'
-        ? 'bg-amber-50 text-amber-700'
-        : 'bg-zinc-100 text-zinc-600';
-  return (
-    <Card className="p-4 sm:p-5">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-zinc-500">{label}</p>
-        <div className={`h-7 w-7 inline-flex items-center justify-center rounded-lg ${accent}`}>
-          {icon}
-        </div>
-      </div>
-      <div className="mt-3">
-        <span className="text-2xl sm:text-3xl font-semibold tracking-tight tabular-nums">
-          {value}
-        </span>
-      </div>
-      {hint && <p className="mt-1 text-xs text-zinc-500">{hint}</p>}
-    </Card>
   );
 }
 
@@ -183,16 +188,20 @@ function ChannelChip({
   icon,
   label,
   value,
+  className,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
+  className?: string;
 }) {
   return (
-    <span className="inline-flex items-center gap-2 text-sm">
-      <span className="text-zinc-400">{icon}</span>
-      <span className="text-zinc-500">{label}</span>
-      <span className="font-semibold tabular-nums">{value}</span>
+    <span
+      className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[13px] transition-transform duration-300 hover:scale-105 ${className}`}
+    >
+      <span className="opacity-70">{icon}</span>
+      <span className="font-medium opacity-80">{label}</span>
+      <span className="font-bold tabular-nums">{value}</span>
     </span>
   );
 }

@@ -32,7 +32,7 @@ export function HistoryTable({
 }) {
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-zinc-200/70 bg-white p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <div className="text-xs uppercase tracking-wide text-zinc-500">Citas adelantadas</div>
           <div className="text-2xl font-semibold text-zinc-900">{totals.count}</div>
@@ -54,15 +54,15 @@ export function HistoryTable({
       </div>
 
       {rows.length === 0 ? (
-        <p className="text-sm text-zinc-500 py-6 text-center">
+        <p className="py-10 text-center text-[13px] text-zinc-500">
           Todavía no hay citas adelantadas. El histórico se llena a medida que los pacientes aceptan
           ofertas.
         </p>
       ) : (
-        <div className="rounded-xl border border-zinc-200/70 overflow-hidden bg-white">
+        <div className="overflow-hidden rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)]">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-sm">
-              <thead className="bg-zinc-50 text-zinc-600 text-xs uppercase tracking-wide">
+              <thead className="border-b border-[--color-border] bg-[#fbfaff] text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400">
                 <tr>
                   <th className="text-left px-4 py-2.5">Paciente</th>
                   <th className="text-left px-4 py-2.5">Cita original → Cita nueva</th>
@@ -72,7 +72,7 @@ export function HistoryTable({
                   <th className="text-right px-4 py-2.5">Revenue</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100">
+              <tbody className="divide-y divide-[--color-border-subtle]">
                 {rows.map((r) => {
                   const oldT = new Date(r.oldAppointmentTime);
                   const newT = r.newAppointmentTime ? new Date(r.newAppointmentTime) : null;
@@ -87,7 +87,7 @@ export function HistoryTable({
                       timeZone: tz,
                     });
                   return (
-                    <tr key={r.id} className="hover:bg-zinc-50/60">
+                    <tr key={r.id} className="transition-colors duration-200 hover:bg-brand-50/40">
                       <td className="px-4 py-3 font-medium text-zinc-900">{r.patientName}</td>
                       <td className="px-4 py-3">
                         <div className="text-xs text-zinc-500">{fmt(oldT)}</div>

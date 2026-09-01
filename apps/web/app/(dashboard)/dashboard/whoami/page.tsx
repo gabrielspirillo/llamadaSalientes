@@ -2,6 +2,7 @@ import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
 import { getCurrentTenant } from '@/lib/tenant';
 import { auth } from '@clerk/nextjs/server';
+import { IdCard } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,13 +24,15 @@ export default async function WhoamiPage() {
     { k: 'Slug', v: t.slug },
     { k: 'Nombre', v: t.name },
     { k: 'Estado', v: t.status },
-    { k: 'Clerk Org ID', v: orgId },  // ya normalizado a string | null
+    { k: 'Clerk Org ID', v: orgId }, // ya normalizado a string | null
     { k: 'Clerk Org Slug', v: orgSlug ?? '—' },
   ];
 
   return (
     <>
       <PageHeader
+        eyebrow="Cuenta"
+        icon={<IdCard className="h-5 w-5" />}
         title="Info de cuenta"
         description="Identificadores técnicos de tu cuenta (para configurar la plataforma)."
       />
@@ -43,10 +46,13 @@ export default async function WhoamiPage() {
         )}
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-zinc-200/70 bg-white">
-        <dl className="divide-y divide-zinc-100">
+      <div className="overflow-hidden rounded-2xl border border-[--color-border] bg-white">
+        <dl className="divide-y divide-[--color-border-subtle]">
           {rows.map((r) => (
-            <div key={r.k} className="flex flex-col gap-1 px-5 py-3.5 sm:flex-row sm:items-center sm:gap-4">
+            <div
+              key={r.k}
+              className="flex flex-col gap-1 px-5 py-3.5 sm:flex-row sm:items-center sm:gap-4"
+            >
               <dt className="w-40 shrink-0 text-sm text-zinc-500">{r.k}</dt>
               <dd className="min-w-0">
                 <code className="break-all rounded bg-zinc-50 px-2 py-1 text-sm text-zinc-800 ring-1 ring-inset ring-zinc-200">

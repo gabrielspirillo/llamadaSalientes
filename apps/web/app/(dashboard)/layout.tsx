@@ -1,7 +1,7 @@
-import { DashboardSidebar } from '@/components/dashboard/sidebar';
 import { ImpersonationBanner } from '@/components/dashboard/impersonation-banner';
-import { WelcomeTour } from '@/components/dashboard/welcome-tour';
+import { DashboardSidebar } from '@/components/dashboard/sidebar';
 import { DashboardTopbar } from '@/components/dashboard/topbar';
+import { WelcomeTour } from '@/components/dashboard/welcome-tour';
 import { DEFAULT_ENABLED_MODULES, type EnabledModules } from '@/lib/modules';
 import { getCurrentTenantOrNull } from '@/lib/tenant';
 import { auth } from '@clerk/nextjs/server';
@@ -42,18 +42,19 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const isSuperAdmin = tenantCtx?.isSuperAdmin ?? false;
 
   return (
-    <div className="flex min-h-screen bg-white text-zinc-900">
+    <div className="aurora-canvas flex min-h-screen text-zinc-900">
       <DashboardSidebar enabledModules={enabledModules} isSuperAdmin={isSuperAdmin} />
-      <div className="flex-1 flex flex-col min-w-0">
-        {tenantCtx?.impersonating && (
-          <ImpersonationBanner clinicName={tenantCtx.tenant.name} />
-        )}
+      <div className="flex min-w-0 flex-1 flex-col">
+        {tenantCtx?.impersonating && <ImpersonationBanner clinicName={tenantCtx.tenant.name} />}
         <DashboardTopbar
           enabledModules={enabledModules}
           isSuperAdmin={isSuperAdmin}
           impersonatingClinic={tenantCtx?.impersonating ? tenantCtx.tenant.name : undefined}
         />
-        <main className="flex-1 px-4 sm:px-6 lg:px-10 py-5 sm:py-8">{children}</main>
+        {/* La key por ruta re-dispara la animación de entrada en cada navegación. */}
+        <main className="enter-page flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-9">
+          <div className="mx-auto w-full max-w-[1480px]">{children}</div>
+        </main>
       </div>
       <WelcomeTour autoStart={!isSuperAdmin && !tenantCtx?.impersonating} />
     </div>

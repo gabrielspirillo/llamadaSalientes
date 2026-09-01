@@ -54,7 +54,7 @@ export function TwilioConnectionForm({ initial }: Props) {
           onChange={(e) => setAccountSid(e.target.value)}
           required
           placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-          className="w-full rounded-lg border border-zinc-200 px-3 py-1.5 font-mono text-sm focus:border-zinc-400 focus:outline-none"
+          className="w-full rounded-lg border border-[--color-border] px-3 py-1.5 font-mono text-sm focus:border-zinc-400 focus:outline-none"
         />
       </div>
       <div>
@@ -67,7 +67,7 @@ export function TwilioConnectionForm({ initial }: Props) {
           onChange={(e) => setAuthToken(e.target.value)}
           required
           placeholder={initial ? 'Pega de nuevo para actualizar' : ''}
-          className="w-full rounded-lg border border-zinc-200 px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
+          className="w-full rounded-lg border border-[--color-border] px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
         />
       </div>
       <div>
@@ -80,7 +80,7 @@ export function TwilioConnectionForm({ initial }: Props) {
           onChange={(e) => setFromNumber(e.target.value)}
           required
           placeholder="+34123456789"
-          className="w-full rounded-lg border border-zinc-200 px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
+          className="w-full rounded-lg border border-[--color-border] px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
         />
         <p className="mt-1 text-[11px] text-zinc-500">
           El número WhatsApp sender aprobado en Twilio (sin prefijo
@@ -91,7 +91,7 @@ export function TwilioConnectionForm({ initial }: Props) {
       {feedback && (
         <div
           className={`rounded px-3 py-2 text-xs ${
-            feedback.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+            feedback.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
           }`}
         >
           {feedback.msg}
@@ -102,7 +102,7 @@ export function TwilioConnectionForm({ initial }: Props) {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+          className="rounded-full bg-[linear-gradient(120deg,#059669,#10b981)] px-5 py-2 text-sm font-semibold text-white shadow-[0_8px_24px_-10px_rgba(16,185,129,0.7)] transition-all duration-300 hover:-translate-y-0.5 active:scale-95 hover:opacity-95 disabled:opacity-50"
         >
           {pending ? 'Guardando…' : initial ? 'Actualizar conexión' : 'Conectar'}
         </button>
@@ -111,7 +111,7 @@ export function TwilioConnectionForm({ initial }: Props) {
             type="button"
             onClick={onDisconnect}
             disabled={pending}
-            className="rounded-lg border border-red-200 bg-white px-4 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+            className="rounded-lg border border-rose-200 bg-white px-4 py-1.5 text-sm font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-50"
           >
             Desconectar
           </button>

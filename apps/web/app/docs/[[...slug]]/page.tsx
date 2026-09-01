@@ -115,37 +115,65 @@ function renderMarkdown(md: string): string {
 }
 
 const DOCS_CSS = `
-.docs-page { max-width: 900px; margin: 0 auto; padding: 24px 20px 80px; color: #1f2328; font-size: 15px; line-height: 1.65; }
-.docs-nav { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 28px; padding-bottom: 14px; border-bottom: 1px solid #d1d9e0; }
-.docs-nav a { text-decoration: none; font-size: 13px; font-weight: 500; padding: 5px 12px; border-radius: 999px; border: 1px solid #d1d9e0; color: #1f2328; }
-.docs-nav a.active { background: #1f2328; color: #fff; border-color: #1f2328; }
-.docs-nav a.external { border-style: dashed; }
-.docs-body h1 { font-size: 1.9em; border-bottom: 1px solid #d1d9e0; padding-bottom: .3em; margin: .4em 0 .6em; }
-.docs-body h2 { font-size: 1.4em; border-bottom: 1px solid #d1d9e0; padding-bottom: .3em; margin-top: 1.6em; }
-.docs-body h3 { font-size: 1.15em; margin-top: 1.4em; }
-.docs-body a { color: #0969da; text-decoration: none; }
-.docs-body a:hover { text-decoration: underline; }
-.docs-body code { background: #f0f1f3; padding: .15em .4em; border-radius: 6px; font-size: .88em; }
-.docs-body pre { background: #f6f8fa; border: 1px solid #d1d9e0; border-radius: 8px; padding: 14px; overflow-x: auto; }
-.docs-body pre code { background: none; padding: 0; font-size: .85em; }
-.docs-body table { border-collapse: collapse; display: block; overflow-x: auto; margin: 1em 0; }
-.docs-body th, .docs-body td { border: 1px solid #d1d9e0; padding: 6px 12px; text-align: left; }
-.docs-body th { background: #f6f8fa; }
-.docs-body blockquote { border-left: 4px solid #d1d9e0; margin: 1em 0; padding: 0 1em; color: #59636e; }
-.docs-body .mermaid { display: flex; justify-content: center; margin: 1.4em 0; overflow-x: auto; }
-@media (prefers-color-scheme: dark) {
-  .docs-page { color: #e6edf3; }
-  .docs-nav { border-color: #30363d; }
-  .docs-nav a { border-color: #30363d; color: #e6edf3; }
-  .docs-nav a.active { background: #e6edf3; color: #0d1117; border-color: #e6edf3; }
-  .docs-body h1, .docs-body h2 { border-color: #30363d; }
-  .docs-body a { color: #4493f8; }
-  .docs-body code { background: #2a2f36; }
-  .docs-body pre { background: #161b22; border-color: #30363d; }
-  .docs-body th, .docs-body td { border-color: #30363d; }
-  .docs-body th { background: #161b22; }
-  .docs-body blockquote { border-color: #30363d; color: #9198a1; }
+/* Visor de documentación — mismo lenguaje visual que el panel (Aurora). */
+.docs-page {
+  max-width: 940px; margin: 0 auto; padding: 40px 20px 96px;
+  color: #171429; font-size: 15px; line-height: 1.7;
 }
+.docs-nav {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 32px;
+  padding: 6px; border-radius: 999px;
+  border: 1px solid #ebe8f6; background: rgba(255,255,255,.7);
+  backdrop-filter: saturate(180%) blur(20px);
+}
+.docs-nav a {
+  text-decoration: none; font-size: 13px; font-weight: 600;
+  padding: 7px 14px; border-radius: 999px; color: #6d6883;
+  transition: background-color .3s, color .3s;
+}
+.docs-nav a:hover { background: #f4f1ff; color: #5f2acc; }
+.docs-nav a.active {
+  background: linear-gradient(120deg,#7139e8,#8b5cf6); color: #fff;
+  box-shadow: 0 6px 18px -8px rgba(113,57,232,.8);
+}
+.docs-nav a.external { color: #a29dba; }
+.docs-body h1 {
+  font-size: 2em; font-weight: 800; letter-spacing: -.02em;
+  margin: .4em 0 .5em; padding-bottom: .35em; border-bottom: 1px solid #ebe8f6;
+}
+.docs-body h2 {
+  font-size: 1.4em; font-weight: 700; letter-spacing: -.015em;
+  margin-top: 1.8em; padding-bottom: .3em; border-bottom: 1px solid #f3f1f9;
+}
+.docs-body h3 { font-size: 1.14em; font-weight: 700; margin-top: 1.5em; }
+.docs-body a { color: #7139e8; text-decoration: none; font-weight: 500; }
+.docs-body a:hover { text-decoration: underline; }
+.docs-body code {
+  background: #f4f1ff; color: #5f2acc; padding: .16em .45em;
+  border-radius: 7px; font-size: .87em;
+}
+.docs-body pre {
+  background: #fbfaff; border: 1px solid #ebe8f6; border-radius: 16px;
+  padding: 16px; overflow-x: auto;
+  box-shadow: 0 1px 2px rgba(23,20,41,.04), 0 8px 24px -12px rgba(23,20,41,.12);
+}
+.docs-body pre code { background: none; color: inherit; padding: 0; font-size: .85em; }
+.docs-body table {
+  border-collapse: separate; border-spacing: 0; display: block;
+  overflow-x: auto; margin: 1.2em 0; border-radius: 16px;
+  border: 1px solid #ebe8f6;
+}
+.docs-body th, .docs-body td { border-bottom: 1px solid #f3f1f9; padding: 9px 14px; text-align: left; }
+.docs-body tr:last-child td { border-bottom: 0; }
+.docs-body th {
+  background: #fbfaff; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .1em; color: #a29dba;
+}
+.docs-body blockquote {
+  border-left: 3px solid #bfaeff; margin: 1.2em 0; padding: .2em 1em;
+  color: #6d6883; background: #fbfaff; border-radius: 0 12px 12px 0;
+}
+.docs-body .mermaid { display: flex; justify-content: center; margin: 1.6em 0; overflow-x: auto; }
 `;
 
 function DocsNav({
@@ -183,8 +211,8 @@ function DocsIndex({ available }: { available: string[] }) {
     <main className="docs-body">
       <h1>Documentación para Desarrolladores</h1>
       <p>
-        Documentación técnica de <strong>CliniQ / DentalVoice</strong> — SaaS multi-tenant de
-        agente de voz + WhatsApp con IA para clínicas.
+        Documentación técnica de <strong>CliniQ / DentalVoice</strong> — SaaS multi-tenant de agente
+        de voz + WhatsApp con IA para clínicas.
       </p>
       <ul>
         {known.map((doc) => (

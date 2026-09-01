@@ -31,7 +31,7 @@ export default async function OnboardingSetupPage() {
   if (ctx.tenant.status !== 'onboarding') redirect('/dashboard');
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="aurora-canvas min-h-screen">
       <OnboardingWizard tenant="" onboardingKey="" authenticated />
     </div>
   );

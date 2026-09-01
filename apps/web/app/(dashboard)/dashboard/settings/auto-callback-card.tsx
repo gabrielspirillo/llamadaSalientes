@@ -27,14 +27,14 @@ export function AutoCallbackCard({ intakeUrl, intakeKey, ghlWebhookUrl, location
     <Card>
       <div className="p-4 sm:p-6">
         <div className="flex items-center justify-between mb-1">
-          <h3 className="text-base font-semibold tracking-tight flex items-center gap-2">
+          <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900 flex items-center gap-2">
             <PhoneCall className="h-4 w-4 text-violet-600" /> Auto-callback
           </h3>
           <Badge tone="success">Activo</Badge>
         </div>
         <p className="text-sm text-zinc-500 mb-5">
-          Cada vez que un nuevo lead deja su teléfono, el agente lo llama automáticamente y
-          al instante. Conectá las dos fuentes:
+          Cada vez que un nuevo lead deja su teléfono, el agente lo llama automáticamente y al
+          instante. Conectá las dos fuentes:
         </p>
 
         {/* 1. Webhook GHL */}
@@ -51,8 +51,8 @@ export function AutoCallbackCard({ intakeUrl, intakeKey, ghlWebhookUrl, location
             onCopy={copy}
           />
           <p className="text-xs text-zinc-500 mt-3">
-            En GHL → <strong>Settings → Integrations → Webhooks</strong> → New Outbound Webhook
-            → pegá esta URL y elegí el evento <em>Contact Create</em>.
+            En GHL → <strong>Settings → Integrations → Webhooks</strong> → New Outbound Webhook →
+            pegá esta URL y elegí el evento <em>Contact Create</em>.
             {locationId && (
               <>
                 {' '}
@@ -89,7 +89,7 @@ export function AutoCallbackCard({ intakeUrl, intakeKey, ghlWebhookUrl, location
                 {showKey ? 'Ocultar' : 'Mostrar'}
               </button>
             </div>
-            <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2">
+            <div className="flex items-center gap-2 rounded-lg border border-[--color-border] bg-zinc-50 px-3 py-2">
               <code className="flex-1 truncate text-xs font-mono text-zinc-700">
                 {showKey ? intakeKey : '••••••••••••••••••••••••••••••••'}
               </code>
@@ -107,8 +107,8 @@ export function AutoCallbackCard({ intakeUrl, intakeKey, ghlWebhookUrl, location
               </button>
             </div>
             <p className="text-[11px] text-zinc-500 mt-1.5">
-              Esta key se deriva determinísticamente y no se guarda en plano. Para rotarla
-              hay que rotar la ENCRYPTION_KEY del proyecto.
+              Esta key se deriva determinísticamente y no se guarda en plano. Para rotarla hay que
+              rotar la ENCRYPTION_KEY del proyecto.
             </p>
           </div>
 
@@ -116,7 +116,7 @@ export function AutoCallbackCard({ intakeUrl, intakeKey, ghlWebhookUrl, location
             <summary className="text-xs font-medium text-violet-600 hover:text-violet-700 cursor-pointer inline-flex items-center gap-1">
               Ver ejemplo de uso (curl)
             </summary>
-            <pre className="mt-2 rounded-lg bg-zinc-900 text-zinc-100 text-[11px] p-3 overflow-x-auto leading-relaxed">{`curl -X POST '${intakeUrl}' \\
+            <pre className="mt-2 rounded-xl bg-[#171429] text-zinc-100 text-[11px] p-3 overflow-x-auto leading-relaxed">{`curl -X POST '${intakeUrl}' \\
   -H 'Authorization: Bearer ${intakeKey.slice(0, 12)}...' \\
   -H 'Content-Type: application/json' \\
   -d '{
@@ -195,7 +195,7 @@ function CopyableField({
   return (
     <div>
       <span className="text-xs font-medium text-zinc-600">{label}</span>
-      <div className="mt-1.5 flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2">
+      <div className="mt-1.5 flex items-center gap-2 rounded-lg border border-[--color-border] bg-zinc-50 px-3 py-2">
         <code className="flex-1 truncate text-xs font-mono text-zinc-700">{value}</code>
         <button
           type="button"
@@ -215,5 +215,5 @@ function CopyableField({
 }
 
 function Divider() {
-  return <div className="my-5 border-t border-zinc-100" />;
+  return <div className="my-5 border-t border-[--color-border-subtle]" />;
 }

@@ -163,28 +163,26 @@ export function TreatmentDialog({
               min="0"
               step="0.01"
               defaultValue={
-                treatment?.priceCents != null
-                  ? (treatment.priceCents / 100).toString()
-                  : ''
+                treatment?.priceCents != null ? (treatment.priceCents / 100).toString() : ''
               }
               placeholder="60"
               className="mt-1.5"
             />
             <p className="text-xs text-zinc-500 mt-1.5">
-              Se usa para calcular el revenue recuperado cuando el sistema llena un slot
-              cancelado con este tratamiento. Dejalo vacío si no querés contabilizarlo.
+              Se usa para calcular el revenue recuperado cuando el sistema llena un slot cancelado
+              con este tratamiento. Dejalo vacío si no querés contabilizarlo.
             </p>
           </div>
 
           {!isEdit && (
-            <div className="rounded-xl border border-zinc-200/70 bg-zinc-50/50 p-4 space-y-3">
+            <div className="rounded-xl border border-[--color-border] bg-[#fbfaff] p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-violet-600" />
                 <p className="text-sm font-medium">Horarios de atención (opcional)</p>
               </div>
               <p className="text-xs text-zinc-500">
-                Si lo definís acá, vamos a crear un calendario en GHL automáticamente con estos
-                días y horarios. Si no, podés conectar uno existente después.
+                Si lo definís acá, vamos a crear un calendario en GHL automáticamente con estos días
+                y horarios. Si no, podés conectar uno existente después.
               </p>
 
               <div>
@@ -200,7 +198,7 @@ export function TreatmentDialog({
                         className={`px-3 py-2 rounded-full text-xs font-medium transition-colors ${
                           active
                             ? 'bg-zinc-900 text-white'
-                            : 'bg-white border border-zinc-200 text-zinc-600 hover:border-zinc-300'
+                            : 'bg-white border border-[--color-border] text-zinc-600 hover:border-brand-200'
                         }`}
                       >
                         {d.label}
@@ -252,7 +250,7 @@ export function TreatmentDialog({
           </div>
 
           {error && (
-            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <p className="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
               {error}
             </p>
           )}

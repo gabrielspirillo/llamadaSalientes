@@ -63,7 +63,7 @@ export function InviteMember() {
             id="invite-role"
             value={role}
             onChange={(e) => setRole(e.target.value)}
-            className="flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3.5 text-sm focus-visible:border-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/15"
+            className="flex h-11 w-full rounded-[14px] border border-[--color-border] bg-white px-4 text-sm transition-[border-color,box-shadow] duration-300 hover:border-brand-200 focus-visible:border-brand-400 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/12 px-3.5 text-sm focus-visible:border-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/25"
           >
             <option value="org:member">Operador — puede operar, sin config crítica</option>
             <option value="org:admin">Admin — acceso completo</option>
@@ -75,7 +75,7 @@ export function InviteMember() {
             className={`rounded-xl border px-3.5 py-2.5 text-sm ${
               feedback.kind === 'ok'
                 ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                : 'border-red-200 bg-red-50 text-red-800'
+                : 'border-rose-200 bg-rose-50 text-rose-800'
             }`}
           >
             {feedback.msg}

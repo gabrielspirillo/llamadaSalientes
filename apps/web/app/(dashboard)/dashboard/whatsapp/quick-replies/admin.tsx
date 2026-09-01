@@ -91,13 +91,11 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
 
   return (
     <div className="space-y-4">
-      {error && (
-        <div className="rounded bg-red-50 px-3 py-2 text-xs text-red-700">{error}</div>
-      )}
+      {error && <div className="rounded bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</div>}
 
       <form
         onSubmit={handleCreate}
-        className="rounded-xl border border-zinc-200 bg-white p-4"
+        className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-4"
       >
         <p className="mb-3 text-sm font-semibold text-zinc-900">Nueva respuesta rápida</p>
         <div className="grid gap-2 sm:grid-cols-[200px_1fr_auto]">
@@ -106,7 +104,7 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
             value={shortcut}
             onChange={(e) => setShortcut(e.target.value.replace(/[^a-z0-9_-]/gi, '').slice(0, 32))}
             placeholder="atajo (ej: saludo)"
-            className="rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+            className="rounded-lg border border-[--color-border] px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
             required
           />
           <textarea
@@ -115,20 +113,20 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
             placeholder="Texto que se insertará al escribir /saludo"
             rows={2}
             maxLength={4096}
-            className="rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+            className="rounded-lg border border-[--color-border] px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
             required
           />
           <button
             type="submit"
             disabled={pending || !shortcut.trim() || !text.trim()}
-            className="self-start rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-zinc-300"
+            className="self-start rounded-full bg-[linear-gradient(120deg,#059669,#10b981)] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_24px_-10px_rgba(16,185,129,0.7)] transition-all duration-300 hover:-translate-y-0.5 active:scale-95 hover:opacity-95 disabled:cursor-not-allowed disabled:bg-zinc-300"
           >
             {pending ? 'Guardando…' : 'Crear'}
           </button>
         </div>
       </form>
 
-      <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white">
+      <div className="overflow-x-auto rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)]">
         <table className="w-full text-sm">
           <thead className="bg-zinc-50 text-left text-xs uppercase text-zinc-500">
             <tr>
@@ -138,7 +136,7 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
               <th className="px-4 py-2"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100">
+          <tbody className="divide-y divide-[--color-border-subtle]">
             {rows.length === 0 && (
               <tr>
                 <td colSpan={4} className="px-4 py-6 text-center text-sm text-zinc-500">
@@ -158,7 +156,7 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
                         onChange={(e) =>
                           setEditShortcut(e.target.value.replace(/[^a-z0-9_-]/gi, '').slice(0, 32))
                         }
-                        className="w-full rounded border border-zinc-200 px-2 py-1 text-xs"
+                        className="w-full rounded border border-[--color-border] px-2 py-1 text-xs"
                       />
                     ) : (
                       `/${r.shortcut}`
@@ -170,7 +168,7 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
                         value={editText}
                         onChange={(e) => setEditText(e.target.value)}
                         rows={2}
-                        className="w-full rounded border border-zinc-200 px-2 py-1 text-xs"
+                        className="w-full rounded border border-[--color-border] px-2 py-1 text-xs"
                       />
                     ) : (
                       <span className="line-clamp-2 text-zinc-700">{r.text}</span>
@@ -186,14 +184,14 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
                           type="button"
                           onClick={() => saveEdit(r.id)}
                           disabled={pending || !editShortcut.trim() || !editText.trim()}
-                          className="rounded-lg bg-emerald-600 px-2 py-1 text-xs text-white hover:bg-emerald-700 disabled:opacity-50"
+                          className="rounded-full bg-[linear-gradient(120deg,#059669,#10b981)] px-3 py-1 text-[11px] font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 active:scale-95 hover:opacity-95 disabled:opacity-50"
                         >
                           Guardar
                         </button>
                         <button
                           type="button"
                           onClick={cancelEdit}
-                          className="rounded-lg border border-zinc-200 px-2 py-1 text-xs"
+                          className="rounded-lg border border-[--color-border] px-2 py-1 text-xs"
                         >
                           Cancelar
                         </button>
@@ -203,7 +201,7 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
                         <button
                           type="button"
                           onClick={() => startEdit(r)}
-                          className="rounded-lg border border-zinc-200 px-2 py-1 text-xs hover:bg-zinc-50"
+                          className="rounded-lg border border-[--color-border] px-2 py-1 text-xs hover:bg-brand-50/50"
                         >
                           Editar
                         </button>
@@ -211,7 +209,7 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
                           type="button"
                           onClick={() => handleDelete(r.id)}
                           disabled={pending}
-                          className="rounded-lg border border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50 disabled:opacity-50"
+                          className="rounded-lg border border-rose-200 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50 disabled:opacity-50"
                         >
                           Borrar
                         </button>

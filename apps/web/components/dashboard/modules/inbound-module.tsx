@@ -1,8 +1,11 @@
 import { BackfillButton } from '@/components/dashboard/backfill-button';
 import { InsightsPanel } from '@/components/dashboard/insights-panel';
-import { Badge } from '@/components/ui/badge';
+import { Badge, StatusDot } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardTopbar } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/feedback';
+import { Reveal } from '@/components/ui/motion';
+import { Avatar, ProgressBar, StatTile } from '@/components/ui/stat';
 import {
   countCallsPendingIntent,
   formatDuration,
@@ -14,15 +17,14 @@ import {
 } from '@/lib/data/calls-list';
 import {
   ArrowRight,
-  ArrowUpRight,
   Bot,
   Calendar,
   CalendarClock,
   Clock,
   PhoneCall,
+  Sparkles,
   Stethoscope,
   TrendingUp,
-  User,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -35,186 +37,235 @@ export async function InboundModule({ tenantId }: { tenantId: string }) {
     countCallsPendingIntent(tenantId),
   ]);
 
-  const display = {
-    callsToday: stats.callsToday,
-    callsTodayDelta: `${stats.callsToday - stats.callsYesterday >= 0 ? '+' : ''}${stats.callsToday - stats.callsYesterday}`,
-    aht: formatDuration(stats.avgDurationSec),
-    conversionRate: stats.conversionRate,
-    containmentRate: stats.containmentRate,
-  };
+  const delta = stats.callsToday - stats.callsYesterday;
 
   return (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
-        <StatCard
-          label="Llamadas hoy"
-          value={String(display.callsToday)}
-          delta={display.callsTodayDelta}
-          icon={<PhoneCall className="h-4 w-4" />}
-        />
-        <StatCard
-          label="Tiempo promedio"
-          value={display.aht}
-          delta="—"
-          icon={<Clock className="h-4 w-4" />}
-        />
-        <StatCard
-          label="Conversión a cita"
-          value={`${display.conversionRate}%`}
-          delta="—"
-          icon={<Calendar className="h-4 w-4" />}
-        />
-        <StatCard
-          label="Resueltas por IA"
-          value={`${display.containmentRate}%`}
-          delta="—"
-          icon={<Bot className="h-4 w-4" />}
-        />
+      {/* --- KPIs ------------------------------------------------------------ */}
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:mb-8 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+        <Reveal delay={0}>
+          <StatTile
+            label="Llamadas hoy"
+            numeric={stats.callsToday}
+            delta={delta}
+            hint={`Ayer: ${stats.callsYesterday}`}
+            icon={<PhoneCall className="h-4 w-4" />}
+            tone="grape"
+          />
+        </Reveal>
+        <Reveal delay={70}>
+          <StatTile
+            label="Tiempo promedio"
+            value={formatDuration(stats.avgDurationSec)}
+            hint="Duración media por llamada"
+            icon={<Clock className="h-4 w-4" />}
+            tone="sky"
+          />
+        </Reveal>
+        <Reveal delay={140}>
+          <StatTile
+            label="Conversión a cita"
+            numeric={stats.conversionRate}
+            suffix="%"
+            hint="Llamadas que terminan agendando"
+            icon={<Calendar className="h-4 w-4" />}
+            tone="mint"
+            progress={stats.conversionRate}
+          />
+        </Reveal>
+        <Reveal delay={210}>
+          <StatTile
+            label="Resueltas por IA"
+            numeric={stats.containmentRate}
+            suffix="%"
+            hint="Sin intervención humana"
+            icon={<Bot className="h-4 w-4" />}
+            tone="blossom"
+            progress={stats.containmentRate}
+          />
+        </Reveal>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
-        <Card className="xl:col-span-2">
-          <div className="flex items-center justify-between p-4 sm:p-6 pb-3 sm:pb-4">
-            <div>
-              <h3 className="text-base font-semibold tracking-tight">Últimas llamadas</h3>
-              <p className="text-sm text-zinc-500 mt-0.5">Actualizado en tiempo real</p>
-            </div>
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/dashboard/calls">
-                Ver todas <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </Button>
-          </div>
-          <div className="border-t border-zinc-100">
-            {recentCalls.length === 0 ? (
-              <div className="px-6 py-16 text-center">
-                <p className="text-sm font-medium text-zinc-700">Aún no hay llamadas</p>
-                <p className="text-xs text-zinc-500 mt-1.5">
-                  Probá el agente desde el dashboard o llamá al número configurado.
-                </p>
-                <Button asChild size="sm" className="mt-4">
-                  <Link href="/dashboard/agent">Probar agente ahora</Link>
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-3">
+        {/* --- Últimas llamadas --------------------------------------------- */}
+        <Reveal direction="left" className="xl:col-span-2">
+          <Card className="group h-full overflow-hidden">
+            <CardTopbar
+              icon={<PhoneCall className="h-4 w-4" />}
+              tone="grape"
+              title="Últimas llamadas"
+              subtitle="Actualizado en tiempo real"
+              action={
+                <Button asChild variant="ghost" size="sm">
+                  <Link href="/dashboard/calls">
+                    Ver todas
+                    <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1" />
+                  </Link>
                 </Button>
-              </div>
-            ) : (
-              recentCalls.map((c) => (
-                <Link
-                  key={c.id}
-                  href={`/dashboard/calls/${c.id}`}
-                  className="flex items-center justify-between gap-3 sm:gap-4 px-4 sm:px-6 py-3.5 hover:bg-zinc-50/60 transition-colors border-b border-zinc-50 last:border-b-0"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div
-                      className={`h-2 w-2 rounded-full shrink-0 ${
-                        c.sentiment === 'positivo'
-                          ? 'bg-emerald-500'
-                          : c.sentiment === 'negativo'
-                            ? 'bg-red-500'
-                            : 'bg-zinc-400'
-                      }`}
-                    />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {c.fromNumber ?? 'Llamada anónima'}
-                      </p>
-                      <p className="text-xs text-zinc-500 truncate">
-                        {c.summary ?? `Sin resumen aún · ${formatRelativeTime(c.startedAt)}`}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                    <IntentBadge intent={c.intent ?? 'otro'} />
-                    <span className="hidden sm:inline text-xs text-zinc-400 tabular-nums w-16 text-right">
-                      {formatDuration(c.durationSeconds)}
-                    </span>
-                  </div>
-                </Link>
-              ))
-            )}
-          </div>
-        </Card>
-
-        <div className="space-y-4 sm:space-y-6">
-          <Card>
-            <div className="p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-base font-semibold tracking-tight inline-flex items-center gap-2">
-                  <CalendarClock className="h-4 w-4 text-violet-600" />
-                  Próximas citas
-                </h3>
-                <Badge tone="violet">{upcoming.length}</Badge>
-              </div>
-              {upcoming.length === 0 ? (
-                <p className="text-xs text-zinc-500">
-                  Cuando el agente agende una cita, aparece acá.
-                </p>
+              }
+            />
+            <div className="border-t border-[--color-border-subtle]">
+              {recentCalls.length === 0 ? (
+                <EmptyState
+                  icon={<PhoneCall className="h-5 w-5" />}
+                  title="Aún no hay llamadas"
+                  description="Probá el agente desde el panel o llamá al número configurado."
+                  action={
+                    <Button asChild size="sm">
+                      <Link href="/dashboard/agent">Probar agente ahora</Link>
+                    </Button>
+                  }
+                />
               ) : (
-                <ul className="space-y-3">
-                  {upcoming.map((u) => (
-                    <li key={u.callId} className="flex gap-3">
-                      <div className="h-8 w-8 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center shrink-0">
-                        <User className="h-3.5 w-3.5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {u.patientName ?? u.phone ?? 'Paciente'}
-                        </p>
-                        <p className="text-xs text-zinc-500 truncate">
-                          {u.treatmentName ?? 'Cita'} ·{' '}
-                          {u.startTime.toLocaleString('es-ES', {
-                            weekday: 'short',
-                            day: '2-digit',
-                            month: 'short',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </p>
-                      </div>
+                <ul className="stagger p-2" style={{ ['--stagger-step' as string]: '50ms' }}>
+                  {recentCalls.map((c, i) => (
+                    <li key={c.id} style={{ ['--i' as string]: i }}>
+                      <Link
+                        href={`/dashboard/calls/${c.id}`}
+                        className="flex items-center justify-between gap-3 rounded-2xl px-3 py-3 transition-all duration-300 hover:bg-brand-50/50 sm:gap-4"
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="relative">
+                            <Avatar name={c.fromNumber ?? 'Anónimo'} size={38} />
+                            <span
+                              className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-white ${
+                                c.sentiment === 'positivo'
+                                  ? 'bg-emerald-500'
+                                  : c.sentiment === 'negativo'
+                                    ? 'bg-rose-500'
+                                    : 'bg-zinc-300'
+                              }`}
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-[14px] font-semibold text-zinc-800">
+                              {c.fromNumber ?? 'Llamada anónima'}
+                            </p>
+                            <p className="truncate text-[12px] text-zinc-500">
+                              {c.summary ?? `Sin resumen aún · ${formatRelativeTime(c.startedAt)}`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+                          <IntentBadge intent={c.intent ?? 'otro'} />
+                          <span className="hidden w-14 text-right text-[12px] tabular-nums text-zinc-400 sm:inline">
+                            {formatDuration(c.durationSeconds)}
+                          </span>
+                        </div>
+                      </Link>
                     </li>
                   ))}
                 </ul>
               )}
             </div>
           </Card>
+        </Reveal>
 
-          <Card>
-            <div className="p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-base font-semibold tracking-tight">Estado del agente</h3>
-                <Badge tone={stats.callsToday > 0 ? 'success' : 'neutral'}>
-                  {stats.callsToday > 0 ? '● Activo' : 'Sin tráfico hoy'}
-                </Badge>
+        {/* --- Columna lateral ----------------------------------------------- */}
+        <div className="space-y-4 sm:space-y-6">
+          <Reveal direction="right">
+            <Card>
+              <CardTopbar
+                icon={<CalendarClock className="h-4 w-4" />}
+                tone="grape"
+                title="Próximas citas"
+                action={<Badge tone="brand">{upcoming.length}</Badge>}
+              />
+              <div className="px-5 pb-5 sm:px-6 sm:pb-6">
+                {upcoming.length === 0 ? (
+                  <p className="text-[12.5px] leading-relaxed text-zinc-500">
+                    Cuando el agente agende una cita, aparece acá.
+                  </p>
+                ) : (
+                  <ul
+                    className="stagger space-y-2.5"
+                    style={{ ['--stagger-step' as string]: '55ms' }}
+                  >
+                    {upcoming.map((u, i) => (
+                      <li key={u.callId} className="flex gap-3" style={{ ['--i' as string]: i }}>
+                        <Avatar name={u.patientName ?? u.phone ?? 'Paciente'} size={32} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[13.5px] font-semibold text-zinc-800">
+                            {u.patientName ?? u.phone ?? 'Paciente'}
+                          </p>
+                          <p className="truncate text-[11.5px] text-zinc-500">
+                            {u.treatmentName ?? 'Cita'} ·{' '}
+                            {u.startTime.toLocaleString('es-ES', {
+                              weekday: 'short',
+                              day: '2-digit',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-              <div className="space-y-3 text-sm">
+            </Card>
+          </Reveal>
+
+          <Reveal direction="right" delay={80}>
+            <Card>
+              <CardTopbar
+                icon={<Bot className="h-4 w-4" />}
+                tone="mint"
+                title="Estado del agente"
+                action={
+                  <Badge tone={stats.callsToday > 0 ? 'success' : 'neutral'}>
+                    {stats.callsToday > 0 ? (
+                      <>
+                        <StatusDot tone="success" /> Activo
+                      </>
+                    ) : (
+                      'Sin tráfico hoy'
+                    )}
+                  </Badge>
+                }
+              />
+              <div className="space-y-2.5 px-5 pb-5 text-[13px] sm:px-6 sm:pb-6">
                 <Row label="Llamadas hoy" value={String(stats.callsToday)} />
                 <Row label="Llamadas ayer" value={String(stats.callsYesterday)} />
                 <Row label="Containment" value={`${stats.containmentRate}%`} />
                 <Row label="AHT" value={formatDuration(stats.avgDurationSec)} />
-              </div>
-              <Button asChild variant="secondary" className="w-full mt-5" size="sm">
-                <Link href="/dashboard/agent">Ajustar agente</Link>
-              </Button>
-            </div>
-          </Card>
-
-          {motivos.length > 0 && (
-            <Card>
-              <div className="p-6">
-                <h3 className="text-base font-semibold tracking-tight mb-1">Por motivo</h3>
-                <p className="text-xs text-zinc-500 mb-4">Últimos 7 días</p>
-                <MotivoBars motivos={motivos} />
+                <ProgressBar value={stats.containmentRate} tone="mint" className="pt-1" />
+                <Button asChild variant="secondary" className="mt-4 w-full" size="sm">
+                  <Link href="/dashboard/agent">Ajustar agente</Link>
+                </Button>
               </div>
             </Card>
+          </Reveal>
+
+          {motivos.length > 0 && (
+            <Reveal direction="right" delay={140}>
+              <Card>
+                <CardTopbar
+                  icon={<TrendingUp className="h-4 w-4" />}
+                  tone="honey"
+                  title="Por motivo"
+                  subtitle="Últimos 7 días"
+                />
+                <div className="px-5 pb-5 sm:px-6 sm:pb-6">
+                  <MotivoBars motivos={motivos} />
+                </div>
+              </Card>
+            </Reveal>
           )}
 
           <BackfillButton pending={pendingIntent} />
 
           <InsightsPanel />
 
-          <Card>
-            <div className="p-4 sm:p-6">
-              <h3 className="text-base font-semibold tracking-tight mb-3">Accesos rápidos</h3>
-              <div className="space-y-2">
+          <Reveal direction="right" delay={200}>
+            <Card>
+              <CardTopbar
+                icon={<Sparkles className="h-4 w-4" />}
+                tone="blossom"
+                title="Accesos rápidos"
+              />
+              <div className="space-y-2 px-5 pb-5 sm:px-6 sm:pb-6">
                 <QuickAction
                   href="/dashboard/treatments"
                   icon={<Stethoscope className="h-4 w-4" />}
@@ -231,46 +282,11 @@ export async function InboundModule({ tenantId }: { tenantId: string }) {
                   label="Probar llamada"
                 />
               </div>
-            </div>
-          </Card>
+            </Card>
+          </Reveal>
         </div>
       </div>
     </>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  delta,
-  icon,
-}: {
-  label: string;
-  value: string;
-  delta: string;
-  icon: React.ReactNode;
-}) {
-  const positive = delta.startsWith('+');
-  return (
-    <Card className="p-4 sm:p-5">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-zinc-500">{label}</p>
-        <div className="h-7 w-7 inline-flex items-center justify-center rounded-lg bg-zinc-100 text-zinc-600">
-          {icon}
-        </div>
-      </div>
-      <div className="mt-3 flex items-baseline gap-2">
-        <span className="text-2xl sm:text-3xl font-semibold tracking-tight tabular-nums">{value}</span>
-        <span
-          className={`inline-flex items-center gap-0.5 text-xs font-medium ${
-            positive ? 'text-emerald-600' : 'text-zinc-500'
-          }`}
-        >
-          <ArrowUpRight className="h-3 w-3" />
-          {delta}
-        </span>
-      </div>
-    </Card>
   );
 }
 
@@ -278,7 +294,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-zinc-500">{label}</span>
-      <span className="font-medium tabular-nums">{value}</span>
+      <span className="font-bold tabular-nums text-zinc-800">{value}</span>
     </div>
   );
 }
@@ -295,11 +311,11 @@ function QuickAction({
   return (
     <Link
       href={href}
-      className="flex items-center gap-3 rounded-xl border border-zinc-200/70 px-3.5 py-2.5 text-sm hover:border-zinc-300 hover:bg-zinc-50/60 transition-all"
+      className="group/qa flex items-center gap-3 rounded-2xl border border-[--color-border] px-3.5 py-2.5 text-[13px] font-medium text-zinc-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:bg-brand-50/50 hover:text-brand-700"
     >
-      <span className="text-zinc-500">{icon}</span>
+      <span className="text-zinc-400 transition-colors group-hover/qa:text-brand-500">{icon}</span>
       <span>{label}</span>
-      <ArrowRight className="ml-auto h-3.5 w-3.5 text-zinc-400" />
+      <ArrowRight className="ml-auto h-3.5 w-3.5 text-zinc-300 transition-all duration-300 group-hover/qa:translate-x-1 group-hover/qa:text-brand-500" />
     </Link>
   );
 }
@@ -324,33 +340,39 @@ function IntentBadge({ intent }: { intent: string }) {
 function MotivoBars({ motivos }: { motivos: Array<{ motivo: string; count: number }> }) {
   const labels: Record<string, { label: string; color: string }> = {
     agendar: { label: 'Agendar', color: 'bg-emerald-500' },
-    reagendar: { label: 'Reagendar', color: 'bg-blue-500' },
+    reagendar: { label: 'Reagendar', color: 'bg-sky-500' },
     cancelar: { label: 'Cancelar', color: 'bg-amber-500' },
     consulta: { label: 'Consulta', color: 'bg-violet-500' },
     pregunta: { label: 'Consulta', color: 'bg-violet-500' },
-    queja: { label: 'Queja', color: 'bg-red-500' },
+    queja: { label: 'Queja', color: 'bg-rose-500' },
     otro: { label: 'Otro', color: 'bg-zinc-400' },
     sin_clasificar: { label: 'Sin clasificar', color: 'bg-zinc-300' },
   };
-  const total = Math.max(1, motivos.reduce((a, b) => a + b.count, 0));
+  const total = Math.max(
+    1,
+    motivos.reduce((a, b) => a + b.count, 0),
+  );
   return (
     <div className="space-y-3">
-      {motivos.map((m) => {
+      {motivos.map((m, i) => {
         const meta = labels[m.motivo] ?? { label: m.motivo, color: 'bg-zinc-400' };
         const pct = Math.round((m.count / total) * 100);
         return (
           <div key={m.motivo}>
-            <div className="flex items-center justify-between text-xs mb-1">
+            <div className="mb-1.5 flex items-center justify-between text-[12px]">
               <div className="flex items-center gap-2">
                 <span className={`h-2 w-2 rounded-full ${meta.color}`} />
-                <span className="font-medium text-zinc-700">{meta.label}</span>
+                <span className="font-semibold text-zinc-700">{meta.label}</span>
               </div>
-              <span className="text-zinc-500 tabular-nums">
+              <span className="tabular-nums text-zinc-500">
                 {m.count} <span className="text-zinc-400">· {pct}%</span>
               </span>
             </div>
-            <div className="h-1.5 rounded-full bg-zinc-100 overflow-hidden">
-              <div className={`h-full ${meta.color} rounded-full`} style={{ width: `${pct}%` }} />
+            <div className="h-2 overflow-hidden rounded-full bg-zinc-100">
+              <div
+                className={`bar-fill h-full rounded-full ${meta.color}`}
+                style={{ width: `${pct}%`, ['--bar-delay' as string]: `${120 + i * 90}ms` }}
+              />
             </div>
           </div>
         );

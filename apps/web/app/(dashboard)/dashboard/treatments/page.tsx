@@ -2,6 +2,9 @@ import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { EmptyState as UiEmptyState } from '@/components/ui/feedback';
+import { Reveal } from '@/components/ui/motion';
+import { HeadRow, TD, TH, THead, TR, Table, TableWrap } from '@/components/ui/table';
 import { listTreatmentsForTenant } from '@/lib/data/treatments';
 import { getCurrentTenant } from '@/lib/tenant';
 import { Plus, Stethoscope } from 'lucide-react';
@@ -15,8 +18,10 @@ export default async function TreatmentsPage() {
   return (
     <>
       <PageHeader
+        eyebrow="Catálogo"
+        icon={<Stethoscope className="h-5 w-5" />}
         title="Tratamientos"
-        description="Catálogo que el agente conoce y puede ofrecer."
+        description="Catálogo que el agente conoce y puede ofrecer a los pacientes."
         actions={
           <TreatmentDialog
             trigger={
@@ -31,104 +36,103 @@ export default async function TreatmentsPage() {
       {rows.length === 0 ? (
         <EmptyState />
       ) : (
-        <Card>
-          {/* Mobile: cards */}
-          <ul className="md:hidden divide-y divide-zinc-50">
-            {rows.map((t) => (
-              <li key={t.id} className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium truncate">{t.name}</p>
-                    {t.description && (
-                      <p className="text-xs text-zinc-500 mt-0.5 line-clamp-2">
-                        {t.description}
-                      </p>
-                    )}
-                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-600">
-                      <span className="tabular-nums">{t.durationMinutes} min</span>
-                      <span className="tabular-nums">{formatPrice(t.priceMin, t.priceMax)}</span>
-                      <Badge tone={t.active ? 'success' : 'neutral'}>
-                        {t.active ? 'Activo' : 'Inactivo'}
-                      </Badge>
+        <Reveal>
+          <Card className="overflow-hidden">
+            {/* Mobile: cards */}
+            <ul className="stagger divide-y divide-[--color-border-subtle] md:hidden">
+              {rows.map((t, i) => (
+                <li key={t.id} className="p-4" style={{ ['--i' as string]: Math.min(i, 12) }}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[14px] font-bold text-zinc-900">{t.name}</p>
+                      {t.description && (
+                        <p className="text-xs text-zinc-500 mt-0.5 line-clamp-2">{t.description}</p>
+                      )}
+                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-600">
+                        <span className="tabular-nums">{t.durationMinutes} min</span>
+                        <span className="tabular-nums">{formatPrice(t.priceMin, t.priceMax)}</span>
+                        <Badge tone={t.active ? 'success' : 'neutral'}>
+                          {t.active ? 'Activo' : 'Inactivo'}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <TreatmentDialog
+                        treatment={t}
+                        trigger={
+                          <Button variant="ghost" size="sm">
+                            Editar
+                          </Button>
+                        }
+                      />
+                      <DeleteTreatmentButton id={t.id} name={t.name} />
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <TreatmentDialog
-                      treatment={t}
-                      trigger={
-                        <Button variant="ghost" size="sm">
-                          Editar
-                        </Button>
-                      }
-                    />
-                    <DeleteTreatmentButton id={t.id} name={t.name} />
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
 
-          {/* Desktop: table */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-wider text-zinc-500 border-b border-zinc-100">
-                  <th className="px-5 py-3 font-medium">Nombre</th>
-                  <th className="px-5 py-3 font-medium">Duración</th>
-                  <th className="px-5 py-3 font-medium">Precio</th>
-                  <th className="px-5 py-3 font-medium">Estado</th>
-                  <th className="px-5 py-3 font-medium" />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((t) => (
-                  <tr
-                    key={t.id}
-                    className="border-b border-zinc-50 last:border-b-0 hover:bg-zinc-50/60"
-                  >
-                    <td className="px-5 py-3.5">
-                      <div className="font-medium">{t.name}</div>
-                      {t.description && (
-                        <div className="text-xs text-zinc-500 mt-0.5 line-clamp-1">
-                          {t.description}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5 text-zinc-600 tabular-nums">
-                      {t.durationMinutes} min
-                    </td>
-                    <td className="px-5 py-3.5 text-zinc-700 tabular-nums">
-                      {formatPrice(t.priceMin, t.priceMax)}
-                      {t.priceCents != null && (
-                        <div className="text-xs text-zinc-500 mt-0.5">
-                          {(t.priceCents / 100).toFixed(0)} € · revenue
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <Badge tone={t.active ? 'success' : 'neutral'}>
-                        {t.active ? 'Activo' : 'Inactivo'}
-                      </Badge>
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <TreatmentDialog
-                          treatment={t}
-                          trigger={
-                            <Button variant="ghost" size="sm">
-                              Editar
-                            </Button>
-                          }
-                        />
-                        <DeleteTreatmentButton id={t.id} name={t.name} />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+            {/* Desktop: table */}
+            <div className="hidden md:block">
+              <TableWrap>
+                <Table>
+                  <THead>
+                    <HeadRow>
+                      <TH>Nombre</TH>
+                      <TH>Duración</TH>
+                      <TH>Precio</TH>
+                      <TH>Estado</TH>
+                      <TH />
+                    </HeadRow>
+                  </THead>
+                  <tbody>
+                    {rows.map((t) => (
+                      <TR key={t.id}>
+                        <TD>
+                          <div className="text-[14px] font-bold text-zinc-900">{t.name}</div>
+                          {t.description && (
+                            <div className="mt-0.5 line-clamp-1 text-[12px] text-zinc-500">
+                              {t.description}
+                            </div>
+                          )}
+                        </TD>
+                        <TD className="tabular-nums text-zinc-600">{t.durationMinutes} min</TD>
+                        <TD className="tabular-nums">
+                          <span className="font-semibold text-zinc-800">
+                            {formatPrice(t.priceMin, t.priceMax)}
+                          </span>
+                          {t.priceCents != null && (
+                            <div className="mt-0.5 text-[11px] text-zinc-500">
+                              {(t.priceCents / 100).toFixed(0)} € · revenue
+                            </div>
+                          )}
+                        </TD>
+                        <TD>
+                          <Badge tone={t.active ? 'success' : 'neutral'}>
+                            {t.active ? 'Activo' : 'Inactivo'}
+                          </Badge>
+                        </TD>
+                        <TD className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <TreatmentDialog
+                              treatment={t}
+                              trigger={
+                                <Button variant="ghost" size="sm">
+                                  Editar
+                                </Button>
+                              }
+                            />
+                            <DeleteTreatmentButton id={t.id} name={t.name} />
+                          </div>
+                        </TD>
+                      </TR>
+                    ))}
+                  </tbody>
+                </Table>
+              </TableWrap>
+            </div>
+          </Card>
+        </Reveal>
       )}
     </>
   );
@@ -142,19 +146,19 @@ function formatPrice(min: string | null, max: string | null) {
 
 function EmptyState() {
   return (
-    <Card className="flex flex-col items-center justify-center text-center p-14">
-      <div className="h-12 w-12 rounded-2xl bg-zinc-100 inline-flex items-center justify-center mb-4">
-        <Stethoscope className="h-6 w-6 text-zinc-500" />
-      </div>
-      <h3 className="text-lg font-semibold tracking-tight">Sin tratamientos todavía</h3>
-      <p className="text-sm text-zinc-500 mt-1.5 max-w-sm">
-        Cargá tu primer tratamiento para que el agente lo pueda ofrecer y agendar.
-      </p>
-      <TreatmentDialog
-        trigger={
-          <Button className="mt-6">
-            <Plus className="h-4 w-4" /> Crear el primero
-          </Button>
+    <Card>
+      <UiEmptyState
+        icon={<Stethoscope className="h-5 w-5" />}
+        title="Sin tratamientos todavía"
+        description="Cargá tu primer tratamiento para que el agente lo pueda ofrecer y agendar."
+        action={
+          <TreatmentDialog
+            trigger={
+              <Button>
+                <Plus className="h-4 w-4" /> Crear el primero
+              </Button>
+            }
+          />
         }
       />
     </Card>

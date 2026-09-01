@@ -30,7 +30,7 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-zinc-200/70 bg-white p-5">
+    <div className="rounded-2xl border border-[--color-border] bg-white p-5">
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-zinc-900">{title}</h3>
         <button
@@ -41,7 +41,7 @@ function SectionCard({
           <Pencil className="h-3 w-3" /> Editar
         </button>
       </div>
-      <div className="divide-y divide-zinc-100">{children}</div>
+      <div className="divide-y divide-[--color-border-subtle]">{children}</div>
     </div>
   );
 }
@@ -125,7 +125,7 @@ export function ReviewStep({
       <label
         className={cn(
           'flex cursor-pointer items-start gap-3 rounded-2xl border p-4',
-          confirmError ? 'border-red-300 bg-red-50/40' : 'border-zinc-200/70 bg-white',
+          confirmError ? 'border-red-300 bg-rose-50/40' : 'border-[--color-border] bg-white',
         )}
       >
         <input
@@ -136,7 +136,7 @@ export function ReviewStep({
         />
         <span className="text-sm text-zinc-800">
           Confirmo que los datos son correctos.
-          {confirmError && <span className="mt-1 block text-xs text-red-600">{confirmError}</span>}
+          {confirmError && <span className="mt-1 block text-xs text-rose-600">{confirmError}</span>}
         </span>
       </label>
     </div>
@@ -301,9 +301,9 @@ export function SuccessScreen({
         )}
       </p>
 
-      <div className="mt-8 w-full rounded-2xl border border-zinc-200/70 bg-white p-5 text-left">
+      <div className="mt-8 w-full rounded-2xl border border-[--color-border] bg-white p-5 text-left">
         <h2 className="mb-3 text-sm font-semibold text-zinc-900">Resumen de lo que cargaste</h2>
-        <div className="divide-y divide-zinc-100">
+        <div className="divide-y divide-[--color-border-subtle]">
           <Row label="Clínica" value={payload.clinic.name} />
           <Row label="Dirección" value={payload.clinic.address} />
           <Row label="Teléfonos" value={payload.clinic.phones.join(' · ')} />

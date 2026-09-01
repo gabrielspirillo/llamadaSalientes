@@ -56,17 +56,17 @@ export function OffersTable({ rows, tz }: { rows: OfferRow[]; tz: string }) {
 
   if (rows.length === 0) {
     return (
-      <p className="text-sm text-zinc-500 py-6 text-center">
+      <p className="py-10 text-center text-[13px] text-zinc-500">
         No hay ofertas en curso. Cuando un slot se libere y haya match, aparecerá acá.
       </p>
     );
   }
 
   return (
-    <div className="rounded-xl border border-zinc-200/70 overflow-hidden bg-white">
+    <div className="overflow-hidden rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)]">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[560px] text-sm">
-          <thead className="bg-zinc-50 text-zinc-600 text-xs uppercase tracking-wide">
+          <thead className="border-b border-[--color-border] bg-[#fbfaff] text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400">
             <tr>
               <th className="text-left px-4 py-2.5">Paciente</th>
               <th className="text-left px-4 py-2.5">Cita vieja → Slot ofrecido</th>
@@ -77,7 +77,7 @@ export function OffersTable({ rows, tz }: { rows: OfferRow[]; tz: string }) {
               <th className="text-right px-4 py-2.5">Acciones</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100">
+          <tbody className="divide-y divide-[--color-border-subtle]">
             {rows.map((r) => {
               const oldT = new Date(r.oldAppointmentTime);
               const newT = new Date(r.newSlotTime);
@@ -95,7 +95,7 @@ export function OffersTable({ rows, tz }: { rows: OfferRow[]; tz: string }) {
                 });
               const isActive = r.status === 'PENDING' || r.status === 'SENT';
               return (
-                <tr key={r.id} className="hover:bg-zinc-50/60">
+                <tr key={r.id} className="transition-colors duration-200 hover:bg-brand-50/40">
                   <td className="px-4 py-3">
                     <div className="font-medium text-zinc-900">{r.patientName}</div>
                     {r.contactPhone ? (

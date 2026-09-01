@@ -46,7 +46,9 @@ export function PlaygroundPanel() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-zinc-900">Probador del agente de WhatsApp</h2>
+        <h2 className="text-[18px] font-bold tracking-tight text-zinc-900">
+          Probador del agente de WhatsApp
+        </h2>
         <p className="text-sm text-zinc-500">
           Chateá con el agente usando la configuración real de tu clínica (persona, tratamientos,
           FAQs con búsqueda semántica, guardrails). Las acciones que agendan/cancelan/registran se{' '}
@@ -63,7 +65,7 @@ export function PlaygroundPanel() {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="+34699111222"
-            className="mt-1 w-56 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm"
+            className="mt-1 w-56 rounded-lg border border-[--color-border] px-3 py-1.5 text-sm"
           />
         </label>
         <button
@@ -72,7 +74,7 @@ export function PlaygroundPanel() {
             setTurns([]);
             setError(null);
           }}
-          className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50"
+          className="rounded-full border border-[--color-border] bg-white px-4 py-2 text-[13px] font-semibold text-zinc-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:text-brand-700 active:scale-95"
         >
           Reiniciar conversación
         </button>
@@ -80,7 +82,7 @@ export function PlaygroundPanel() {
 
       <div
         ref={listRef}
-        className="h-[420px] overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-4"
+        className="h-[420px] overflow-y-auto rounded-xl border border-[--color-border] bg-[#fbfaff] p-4"
       >
         {turns.length === 0 ? (
           <p className="text-sm text-zinc-400">
@@ -95,7 +97,7 @@ export function PlaygroundPanel() {
                     className={`whitespace-pre-line rounded-2xl px-3 py-2 text-sm ${
                       t.role === 'user'
                         ? 'bg-emerald-600 text-white'
-                        : 'border border-zinc-200 bg-white text-zinc-800'
+                        : 'border border-[--color-border] bg-white text-zinc-800'
                     }`}
                   >
                     {t.content}
@@ -109,7 +111,7 @@ export function PlaygroundPanel() {
         )}
       </div>
 
-      {error && <div className="rounded bg-red-50 px-3 py-2 text-xs text-red-700">{error}</div>}
+      {error && <div className="rounded bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</div>}
 
       <div className="flex gap-2">
         <textarea
@@ -123,13 +125,13 @@ export function PlaygroundPanel() {
           }}
           rows={2}
           placeholder="Mensaje del paciente… (Ctrl/Cmd+Enter para enviar)"
-          className="flex-1 rounded-lg border border-zinc-200 px-3 py-2 text-sm"
+          className="flex-1 rounded-lg border border-[--color-border] px-3 py-2 text-sm"
         />
         <button
           type="button"
           onClick={send}
           disabled={pending || !input.trim()}
-          className="self-end rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+          className="self-end rounded-lg bg-[linear-gradient(120deg,#7139e8,#8b5cf6)] px-4 py-2 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-50"
         >
           {pending ? 'Enviando…' : 'Enviar'}
         </button>
@@ -151,12 +153,12 @@ function TraceDetails({ trace }: { trace: PlaygroundResult }) {
       </button>
       <span className="ml-2">{badges.join(' · ')}</span>
       {open && (
-        <div className="mt-1 space-y-1 rounded-lg border border-zinc-200 bg-white p-2 break-words">
+        <div className="mt-1 space-y-1 rounded-2xl border border-[--color-border] bg-white p-2 break-words">
           <div>
             modelo: {trace.model} · tokens: {trace.tokensIn}/{trace.tokensOut} · {trace.latencyMs}ms
           </div>
           {trace.intentReasoning && <div>guardrail/nota: {trace.intentReasoning}</div>}
-          {trace.errorText && <div className="text-red-600">error: {trace.errorText}</div>}
+          {trace.errorText && <div className="text-rose-600">error: {trace.errorText}</div>}
           {trace.toolsCalled.length > 0 && (
             <div>
               <div className="font-medium">tools:</div>

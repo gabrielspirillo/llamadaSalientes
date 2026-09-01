@@ -1,11 +1,11 @@
 'use client';
 
 import { CreateOrganization, OrganizationList } from '@clerk/nextjs';
-import { ArrowLeft, ArrowRight, Building2, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Building2, Sparkles, Users } from 'lucide-react';
 import { useState } from 'react';
 
 const clerkAppearance = {
-  elements: { card: 'shadow-none border border-zinc-200/70' },
+  elements: { card: 'shadow-none border border-[--color-border] rounded-[22px]' },
 };
 
 type Mode = 'choose' | 'owner' | 'worker';
@@ -21,7 +21,7 @@ export function RoleChooser() {
       <div className="w-full">
         <BackButton onClick={() => setMode('choose')} />
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+          <h1 className="text-[26px] font-extrabold tracking-tight text-zinc-900 sm:text-[32px]">
             Dá de alta tu clínica
           </h1>
           <p className="mt-2 text-zinc-500">
@@ -38,7 +38,9 @@ export function RoleChooser() {
       <div className="w-full">
         <BackButton onClick={() => setMode('choose')} />
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Unite a tu clínica</h1>
+          <h1 className="text-[26px] font-extrabold tracking-tight text-zinc-900 sm:text-[32px]">
+            Unite a tu clínica
+          </h1>
           <p className="mt-2 text-zinc-500">
             Si tu clínica te invitó, va a aparecer acá para unirte. Si no aparece, pedile al
             administrador que te invite por email a esta dirección.
@@ -57,16 +59,16 @@ export function RoleChooser() {
   return (
     <div className="w-full">
       <div className="mb-8 text-center">
-        <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-black">
-          <span className="text-lg font-semibold text-white">F</span>
+        <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#7139e8,#a855f7_60%,#ec4899)] shadow-[0_12px_28px_-12px_rgba(113,57,232,0.9)]">
+          <Sparkles className="h-5 w-5 text-white" />
         </div>
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+        <h1 className="text-[26px] font-extrabold tracking-tight text-zinc-900 sm:text-[32px]">
           ¿Cómo vas a usar Futura?
         </h1>
         <p className="mt-2 text-zinc-500">Elegí una opción para continuar.</p>
       </div>
 
-      <div className="grid gap-3">
+      <div className="stagger grid gap-3">
         <RoleCard
           icon={<Building2 className="h-5 w-5" />}
           title="Soy dueño/administrador"
@@ -99,16 +101,18 @@ function RoleCard({
     <button
       type="button"
       onClick={onClick}
-      className="group flex items-center gap-4 rounded-2xl border border-zinc-200/70 bg-white p-5 text-left transition-colors hover:border-zinc-300 hover:bg-zinc-50"
+      className="group flex items-center gap-4 rounded-[22px] border border-[--color-border] bg-white p-5 text-left shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-[var(--shadow-lifted)]"
     >
-      <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+      <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#f4f0ff,#fdf0f7)] text-violet-600 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">
         {icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block font-medium text-zinc-900">{title}</span>
-        <span className="block text-sm text-zinc-500">{description}</span>
+        <span className="block text-[15px] font-bold text-zinc-900">{title}</span>
+        <span className="mt-0.5 block text-[13px] leading-relaxed text-zinc-500">
+          {description}
+        </span>
       </span>
-      <ArrowRight className="h-4 w-4 shrink-0 text-zinc-400 transition-transform group-hover:translate-x-0.5" />
+      <ArrowRight className="h-4 w-4 shrink-0 text-zinc-300 transition-all duration-300 group-hover:translate-x-1 group-hover:text-brand-500" />
     </button>
   );
 }
@@ -118,9 +122,9 @@ function BackButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="mb-5 inline-flex items-center gap-1.5 text-sm font-medium text-zinc-500 transition-colors hover:text-zinc-900"
+      className="group mb-5 inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3.5 py-1.5 text-[13px] font-semibold text-zinc-500 ring-1 ring-[--color-border] transition-all duration-300 hover:text-brand-700 hover:ring-brand-200"
     >
-      <ArrowLeft className="h-4 w-4" />
+      <ArrowLeft className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-1" />
       Volver
     </button>
   );

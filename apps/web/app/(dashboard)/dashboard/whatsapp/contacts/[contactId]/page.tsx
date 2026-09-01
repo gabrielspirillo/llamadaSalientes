@@ -1,6 +1,6 @@
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import {
@@ -31,9 +31,7 @@ export default async function ContactDetailPage({ params }: Props) {
   const contactRows = await db
     .select()
     .from(whatsappContacts)
-    .where(
-      and(eq(whatsappContacts.id, contactId), eq(whatsappContacts.tenantId, tenant.id)),
-    )
+    .where(and(eq(whatsappContacts.id, contactId), eq(whatsappContacts.tenantId, tenant.id)))
     .limit(1);
   const contact = contactRows[0];
   if (!contact) notFound();
@@ -93,9 +91,7 @@ export default async function ContactDetailPage({ params }: Props) {
             summary: calls.summary,
           })
           .from(calls)
-          .where(
-            and(eq(calls.tenantId, tenant.id), eq(calls.ghlContactId, contact.ghlContactId)),
-          )
+          .where(and(eq(calls.tenantId, tenant.id), eq(calls.ghlContactId, contact.ghlContactId)))
           .orderBy(desc(calls.startedAt))
           .limit(50)
       : Promise.resolve([]),
@@ -172,7 +168,7 @@ export default async function ContactDetailPage({ params }: Props) {
             {conversations[0] && (
               <Link
                 href={`/dashboard/whatsapp/${conversations[0].id}`}
-                className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
+                className="rounded-full bg-[linear-gradient(120deg,#059669,#10b981)] px-4 py-2 text-sm font-semibold text-white shadow-[0_8px_24px_-10px_rgba(16,185,129,0.7)] transition-all duration-300 hover:-translate-y-0.5 active:scale-95 hover:opacity-95"
               >
                 Enviar mensaje
               </Link>
@@ -182,16 +178,14 @@ export default async function ContactDetailPage({ params }: Props) {
 
         {/* Hero card fija. No scrollea. */}
         <div className="shrink-0 px-6 pt-4">
-          <div className="flex items-center gap-4 rounded-2xl border border-zinc-200 bg-white p-5">
+          <div className="flex items-center gap-4 rounded-2xl border border-[--color-border] bg-white p-5">
             <Avatar avatarUrl={contact.avatarUrl} initials={initials} size={64} />
             <div className="min-w-0">
               <h1 className="truncate text-xl font-semibold text-zinc-900">{fullName}</h1>
               <p className="text-sm text-zinc-500">{contact.phoneE164}</p>
               <p className="mt-1 text-xs text-zinc-400">
                 Creado {formatRelative(contact.createdAt)} · Última actividad{' '}
-                {conversations[0]?.lastMsgAt
-                  ? formatRelative(conversations[0].lastMsgAt)
-                  : '—'}
+                {conversations[0]?.lastMsgAt ? formatRelative(conversations[0].lastMsgAt) : '—'}
               </p>
             </div>
           </div>
@@ -242,12 +236,12 @@ export default async function ContactDetailPage({ params }: Props) {
             startTime: a.startTime ? a.startTime.toISOString() : null,
             endTime: a.endTime ? a.endTime.toISOString() : null,
             status: a.status,
-            treatment: a.treatmentId ? treatmentMap.get(a.treatmentId) ?? null : null,
+            treatment: a.treatmentId ? (treatmentMap.get(a.treatmentId) ?? null) : null,
           }))}
           notes={noteRows.map((n) => ({
             id: n.id,
             body: n.body,
-            authorEmail: n.authorUserId ? noteAuthorMap.get(n.authorUserId) ?? null : null,
+            authorEmail: n.authorUserId ? (noteAuthorMap.get(n.authorUserId) ?? null) : null,
             createdAt: n.createdAt.toISOString(),
           }))}
         />
@@ -288,11 +282,7 @@ function Avatar({
   );
 }
 
-function computeInitials(
-  firstName: string | null,
-  lastName: string | null,
-  phone: string,
-): string {
+function computeInitials(firstName: string | null, lastName: string | null, phone: string): string {
   const f = (firstName ?? '').trim();
   const l = (lastName ?? '').trim();
   if (f || l) {

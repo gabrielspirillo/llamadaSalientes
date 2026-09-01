@@ -30,13 +30,15 @@ export function AgentPersonaForm({ initial }: Props) {
   return (
     <form onSubmit={onSubmit} className="space-y-3">
       <label className="block">
-        <span className="block text-xs font-medium text-zinc-700">Nombre del agente (opcional)</span>
+        <span className="block text-xs font-medium text-zinc-700">
+          Nombre del agente (opcional)
+        </span>
         <input
           value={agentName}
           onChange={(e) => setAgentName(e.target.value)}
           maxLength={60}
           placeholder="Ej: Lucía"
-          className="mt-1 w-full rounded-lg border border-zinc-200 px-3 py-1.5 text-sm"
+          className="mt-1 w-full rounded-lg border border-[--color-border] px-3 py-1.5 text-sm"
         />
       </label>
       <label className="block">
@@ -49,17 +51,17 @@ export function AgentPersonaForm({ initial }: Props) {
           maxLength={2000}
           rows={5}
           placeholder="Ej: Tono cálido y cercano. Mencioná la promo de blanqueamiento cuando encaje. Tratá de usted a mayores."
-          className="mt-1 w-full rounded-lg border border-zinc-200 px-3 py-1.5 text-sm"
+          className="mt-1 w-full rounded-lg border border-[--color-border] px-3 py-1.5 text-sm"
         />
         <span className="mt-1 block text-[11px] text-zinc-400">
-          Afina el tono y el foco del agente. No anula las reglas de seguridad,
-          los datos oficiales ni los protocolos de urgencia/handoff. ({persona.length}/2000)
+          Afina el tono y el foco del agente. No anula las reglas de seguridad, los datos oficiales
+          ni los protocolos de urgencia/handoff. ({persona.length}/2000)
         </span>
       </label>
       {feedback && (
         <div
           className={`rounded px-3 py-2 text-xs ${
-            feedback.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+            feedback.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
           }`}
         >
           {feedback.msg}
@@ -68,7 +70,7 @@ export function AgentPersonaForm({ initial }: Props) {
       <button
         type="submit"
         disabled={pending}
-        className="rounded-lg bg-zinc-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+        className="rounded-full bg-[linear-gradient(120deg,#7139e8,#8b5cf6)] px-5 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
       >
         {pending ? 'Guardando…' : 'Guardar personalización'}
       </button>

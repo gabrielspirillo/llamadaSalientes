@@ -81,7 +81,7 @@ export function StepClinic({ form, mutate, errors }: StepProps) {
                   type="button"
                   aria-label="Eliminar teléfono"
                   onClick={() => mutate((d) => d.clinic.phones.splice(i, 1))}
-                  className="shrink-0 rounded-full p-2.5 text-zinc-400 hover:bg-zinc-100 hover:text-red-600"
+                  className="shrink-0 rounded-full p-2.5 text-zinc-400 hover:bg-zinc-100 hover:text-rose-600"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -175,7 +175,7 @@ export function StepHours({ form, mutate, errors }: StepProps) {
         </Button>
       </div>
 
-      <div className="flex flex-col divide-y divide-zinc-100">
+      <div className="flex flex-col divide-y divide-[--color-border-subtle]">
         {DAYS.map((day) => {
           const row = form.hours[day];
           return (
@@ -224,7 +224,9 @@ export function StepHours({ form, mutate, errors }: StepProps) {
                 )}
               </div>
               {errors[`hours.${day}`] && (
-                <p className="text-xs text-red-600 pl-0 sm:pl-[8.5rem]">{errors[`hours.${day}`]}</p>
+                <p className="text-xs text-rose-600 pl-0 sm:pl-[8.5rem]">
+                  {errors[`hours.${day}`]}
+                </p>
               )}
             </div>
           );
@@ -249,7 +251,7 @@ export function StepTreatments({ form, mutate, errors }: StepProps) {
 
   return (
     <div className="flex flex-col gap-3">
-      {errors.treatments && <p className="text-xs text-red-600">{errors.treatments}</p>}
+      {errors.treatments && <p className="text-xs text-rose-600">{errors.treatments}</p>}
 
       {form.treatments.map((t, i) => {
         const isOpen = openIdx === i;
@@ -259,7 +261,7 @@ export function StepTreatments({ form, mutate, errors }: StepProps) {
             key={t.id}
             className={cn(
               'rounded-2xl border bg-white',
-              hasError ? 'border-red-200' : 'border-zinc-200/70',
+              hasError ? 'border-rose-200' : 'border-[--color-border]',
             )}
           >
             <div className="flex items-center gap-2 p-3.5">
@@ -286,7 +288,7 @@ export function StepTreatments({ form, mutate, errors }: StepProps) {
                     mutate((d) => d.treatments.splice(i, 1));
                     setOpenIdx(0);
                   }}
-                  className="rounded-full p-2 text-zinc-400 hover:bg-zinc-100 hover:text-red-600"
+                  className="rounded-full p-2 text-zinc-400 hover:bg-zinc-100 hover:text-rose-600"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -294,7 +296,7 @@ export function StepTreatments({ form, mutate, errors }: StepProps) {
             </div>
 
             {isOpen && (
-              <div className="flex flex-col gap-4 border-t border-zinc-100 p-4">
+              <div className="flex flex-col gap-4 border-t border-[--color-border-subtle] p-4">
                 <Field label="Nombre" required error={errors[`treatments.${i}.name`]}>
                   <Input
                     value={t.name}
@@ -394,7 +396,7 @@ export function StepFaqs({ form, mutate, errors }: StepProps) {
             key={f.id}
             className={cn(
               'flex flex-col gap-4 rounded-2xl border bg-white p-4',
-              hasError ? 'border-red-200' : 'border-zinc-200/70',
+              hasError ? 'border-rose-200' : 'border-[--color-border]',
             )}
           >
             <div className="flex items-center justify-between">
@@ -403,7 +405,7 @@ export function StepFaqs({ form, mutate, errors }: StepProps) {
                 type="button"
                 aria-label="Eliminar FAQ"
                 onClick={() => mutate((d) => d.faqs.splice(i, 1))}
-                className="rounded-full p-2 text-zinc-400 hover:bg-zinc-100 hover:text-red-600"
+                className="rounded-full p-2 text-zinc-400 hover:bg-zinc-100 hover:text-rose-600"
               >
                 <Trash2 className="h-4 w-4" />
               </button>

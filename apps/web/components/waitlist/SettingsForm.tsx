@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useState, useTransition } from 'react';
 
 import { Button } from '@/components/ui/button';
 
@@ -48,21 +48,30 @@ export function WaitlistSettingsForm({ initial }: { initial: Settings }) {
   }
 
   return (
-    <div className="rounded-xl border border-zinc-200/70 bg-white p-6 space-y-6">
+    <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-6 space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-zinc-900">Configuración general</h2>
+        <h2 className="text-[18px] font-bold tracking-tight text-zinc-900">
+          Configuración general
+        </h2>
         <p className="text-sm text-zinc-500 mt-1">
-          Estas opciones controlan cómo el sistema oferta los slots liberados a los pacientes en cola.
+          Estas opciones controlan cómo el sistema oferta los slots liberados a los pacientes en
+          cola.
         </p>
       </div>
 
-      <Row label="Módulo activo" hint="Si está apagado, no se crean entradas nuevas ni se envían ofertas.">
+      <Row
+        label="Módulo activo"
+        hint="Si está apagado, no se crean entradas nuevas ni se envían ofertas."
+      >
         <Toggle value={s.enabled} onChange={(v) => setS({ ...s, enabled: v })} />
       </Row>
 
-      <Row label="Canal de oferta" hint="Cómo se contacta al paciente cuando hay un slot disponible.">
+      <Row
+        label="Canal de oferta"
+        hint="Cómo se contacta al paciente cuando hay un slot disponible."
+      >
         <select
-          className="w-full sm:w-auto max-w-full rounded-md border border-zinc-200 px-3 py-1.5 text-sm bg-white"
+          className="w-full sm:w-auto max-w-full rounded-md border border-[--color-border] px-3 py-1.5 text-sm bg-white"
           value={s.channelMode}
           onChange={(e) => setS({ ...s, channelMode: e.target.value as Settings['channelMode'] })}
         >
@@ -72,20 +81,41 @@ export function WaitlistSettingsForm({ initial }: { initial: Settings }) {
         </select>
       </Row>
 
-      <Row label="TTL default (min)" hint="Cuánto esperamos respuesta antes de pasar al siguiente paciente.">
-        <NumInput value={s.ttlMinutesDefault} onChange={(v) => setS({ ...s, ttlMinutesDefault: v })} />
+      <Row
+        label="TTL default (min)"
+        hint="Cuánto esperamos respuesta antes de pasar al siguiente paciente."
+      >
+        <NumInput
+          value={s.ttlMinutesDefault}
+          onChange={(v) => setS({ ...s, ttlMinutesDefault: v })}
+        />
       </Row>
 
       <Row label="TTL si el slot está cerca (min)" hint="TTL reducido cuando el slot es próximo.">
-        <NumInput value={s.ttlMinutesNearSlot} onChange={(v) => setS({ ...s, ttlMinutesNearSlot: v })} />
+        <NumInput
+          value={s.ttlMinutesNearSlot}
+          onChange={(v) => setS({ ...s, ttlMinutesNearSlot: v })}
+        />
       </Row>
 
-      <Row label="Umbral 'slot cercano' (horas)" hint="Si faltan menos horas, se usa el TTL reducido.">
-        <NumInput value={s.nearSlotHoursThreshold} onChange={(v) => setS({ ...s, nearSlotHoursThreshold: v })} />
+      <Row
+        label="Umbral 'slot cercano' (horas)"
+        hint="Si faltan menos horas, se usa el TTL reducido."
+      >
+        <NumInput
+          value={s.nearSlotHoursThreshold}
+          onChange={(v) => setS({ ...s, nearSlotHoursThreshold: v })}
+        />
       </Row>
 
-      <Row label="No ofrecer si faltan menos de (horas)" hint="Si el slot está muy cerca, no perdemos tiempo ofreciéndolo.">
-        <NumInput value={s.minSkipHoursThreshold} onChange={(v) => setS({ ...s, minSkipHoursThreshold: v })} />
+      <Row
+        label="No ofrecer si faltan menos de (horas)"
+        hint="Si el slot está muy cerca, no perdemos tiempo ofreciéndolo."
+      >
+        <NumInput
+          value={s.minSkipHoursThreshold}
+          onChange={(v) => setS({ ...s, minSkipHoursThreshold: v })}
+        />
       </Row>
 
       <Row label="Ventana WhatsApp → Voz (min)" hint="Solo para canal WHATSAPP_THEN_VOICE.">
@@ -95,10 +125,12 @@ export function WaitlistSettingsForm({ initial }: { initial: Settings }) {
         />
       </Row>
 
-      <hr className="border-zinc-100" />
+      <hr className="border-[--color-border-subtle]" />
 
       <div>
-        <h2 className="text-lg font-semibold text-zinc-900">Reglas de elegibilidad</h2>
+        <h2 className="text-[18px] font-bold tracking-tight text-zinc-900">
+          Reglas de elegibilidad
+        </h2>
         <p className="text-sm text-zinc-500 mt-1">
           Qué citas entran a la cola automática y qué slots se les ofrecen.
         </p>
@@ -132,7 +164,10 @@ export function WaitlistSettingsForm({ initial }: { initial: Settings }) {
         <NumInput value={s.minAdvanceDays} onChange={(v) => setS({ ...s, minAdvanceDays: v })} />
       </Row>
 
-      <Row label="Exigir mismo dentista" hint="Solo ofrecer slots del mismo dentista que tenía la cita original.">
+      <Row
+        label="Exigir mismo dentista"
+        hint="Solo ofrecer slots del mismo dentista que tenía la cita original."
+      >
         <Toggle
           value={s.requireSameDentist}
           onChange={(v) => setS({ ...s, requireSameDentist: v })}
@@ -143,7 +178,10 @@ export function WaitlistSettingsForm({ initial }: { initial: Settings }) {
         label="Respetar ventana horaria del paciente"
         hint="Si el paciente solo puede en cierta franja horaria, no ofrecer fuera de esa franja."
       >
-        <Toggle value={s.respectTimeWindow} onChange={(v) => setS({ ...s, respectTimeWindow: v })} />
+        <Toggle
+          value={s.respectTimeWindow}
+          onChange={(v) => setS({ ...s, respectTimeWindow: v })}
+        />
       </Row>
 
       <div className="flex items-center justify-end gap-3 pt-2">
@@ -203,7 +241,7 @@ function NumInput({ value, onChange }: { value: number; onChange: (v: number) =>
   return (
     <input
       type="number"
-      className="w-28 rounded-md border border-zinc-200 px-3 py-1.5 text-sm bg-white text-right"
+      className="w-28 rounded-md border border-[--color-border] px-3 py-1.5 text-sm bg-white text-right"
       value={value}
       onChange={(e) => {
         const n = Number.parseInt(e.target.value, 10);
@@ -225,7 +263,7 @@ function NullableNumInput({
   return (
     <input
       type="number"
-      className="w-28 rounded-md border border-zinc-200 px-3 py-1.5 text-sm bg-white text-right"
+      className="w-28 rounded-md border border-[--color-border] px-3 py-1.5 text-sm bg-white text-right"
       value={value ?? ''}
       placeholder={placeholder}
       onChange={(e) => {

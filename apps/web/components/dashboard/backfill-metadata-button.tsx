@@ -46,7 +46,7 @@ export function BackfillMetadataButton({ pending }: { pending: number }) {
 
   return (
     <div className="flex items-center gap-2">
-      {error && <span className="text-xs text-red-600">{error}</span>}
+      {error && <span className="text-xs text-rose-600">{error}</span>}
       {result && !error && (
         <span className="text-xs text-emerald-700">
           ✓ {recovered} recuperadas

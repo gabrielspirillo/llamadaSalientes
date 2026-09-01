@@ -72,22 +72,25 @@ export function ContactDetailForm({ contact }: Props) {
   }
 
   return (
-    <div className="space-y-6 rounded-2xl border border-zinc-200 bg-white p-5">
+    <div className="space-y-6 rounded-2xl border border-[--color-border] bg-white p-5">
       <div>
         <h2 className="text-sm font-semibold text-zinc-900">Editar detalles del contacto</h2>
         {error && (
-          <p className="mt-2 rounded bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
+          <p className="mt-2 rounded bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</p>
         )}
         {saved && !pending && (
-          <p className="mt-2 rounded bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
-            Guardado.
-          </p>
+          <p className="mt-2 rounded bg-emerald-50 px-3 py-2 text-xs text-emerald-700">Guardado.</p>
         )}
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <FieldInput label="Nombre" value={firstName} onChange={setFirstName} placeholder="Nombre" />
-        <FieldInput label="Apellido" value={lastName} onChange={setLastName} placeholder="Apellido" />
+        <FieldInput
+          label="Apellido"
+          value={lastName}
+          onChange={setLastName}
+          placeholder="Apellido"
+        />
         <FieldInput
           label="Email"
           value={email}
@@ -102,7 +105,12 @@ export function ContactDetailForm({ contact }: Props) {
           placeholder=""
           readOnly
         />
-        <FieldInput label="Ciudad" value={city} onChange={setCity} placeholder="Introduzca el nombre de la ciudad" />
+        <FieldInput
+          label="Ciudad"
+          value={city}
+          onChange={setCity}
+          placeholder="Introduzca el nombre de la ciudad"
+        />
         <FieldInput label="País" value={country} onChange={setCountry} placeholder="País" />
         <FieldInput
           label="Dirección"
@@ -159,7 +167,7 @@ export function ContactDetailForm({ contact }: Props) {
           type="button"
           onClick={submit}
           disabled={pending}
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+          className="rounded-full bg-[linear-gradient(120deg,#059669,#10b981)] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_24px_-10px_rgba(16,185,129,0.7)] transition-all duration-300 hover:-translate-y-0.5 active:scale-95 hover:opacity-95 disabled:opacity-50"
         >
           {pending ? 'Guardando…' : 'Actualizar contacto'}
         </button>
@@ -192,7 +200,7 @@ function FieldInput({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         readOnly={readOnly}
-        className={`w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none ${
+        className={`w-full rounded-lg border border-[--color-border] px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none ${
           readOnly ? 'bg-zinc-50 text-zinc-500' : ''
         }`}
       />

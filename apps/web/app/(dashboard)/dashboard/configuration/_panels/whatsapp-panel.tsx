@@ -28,17 +28,20 @@ export async function WhatsappPanel() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-zinc-900">Integraciones de WhatsApp</h2>
+        <h2 className="text-[18px] font-bold tracking-tight text-zinc-900">
+          Integraciones de WhatsApp
+        </h2>
         <p className="text-sm text-zinc-500">
-          Conecta Meta Cloud API (oficial), Twilio (BSP oficial) o Evolution API (self-hosted, Baileys).
+          Conecta Meta Cloud API (oficial), Twilio (BSP oficial) o Evolution API (self-hosted,
+          Baileys).
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
-        <section className="rounded-xl border border-zinc-200 bg-white p-6">
+        <section className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-6">
           <div className="mb-4 flex items-start justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-zinc-900">Meta Cloud API</h3>
+              <h3 className="text-[18px] font-bold tracking-tight text-zinc-900">Meta Cloud API</h3>
               <p className="text-xs text-zinc-500">
                 Recomendado para producción. Requiere WABA aprobada.
               </p>
@@ -69,10 +72,10 @@ export async function WhatsappPanel() {
           />
         </section>
 
-        <section className="rounded-xl border border-zinc-200 bg-white p-6">
+        <section className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-6">
           <div className="mb-4 flex items-start justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-zinc-900">Evolution API</h3>
+              <h3 className="text-[18px] font-bold tracking-tight text-zinc-900">Evolution API</h3>
               <p className="text-xs text-zinc-500">
                 Self-hosted (Baileys). Útil para pilotos. Riesgo de baneo del número.
               </p>
@@ -82,9 +85,7 @@ export async function WhatsappPanel() {
 
           <div className="mb-4 rounded-lg bg-zinc-50 p-3 text-xs text-zinc-700">
             <div className="font-medium">Webhook URL</div>
-            <code className="block break-all text-[11px] text-zinc-600">
-              {evolutionWebhookUrl}
-            </code>
+            <code className="block break-all text-[11px] text-zinc-600">{evolutionWebhookUrl}</code>
             <div className="mt-2 font-medium">Servidor Evolution</div>
             <code className="block text-[11px] text-zinc-600">
               {process.env.EVOLUTION_API_URL
@@ -106,10 +107,10 @@ export async function WhatsappPanel() {
           />
         </section>
 
-        <section className="rounded-xl border border-zinc-200 bg-white p-6">
+        <section className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-6">
           <div className="mb-4 flex items-start justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-zinc-900">Twilio (BSP)</h3>
+              <h3 className="text-[18px] font-bold tracking-tight text-zinc-900">Twilio (BSP)</h3>
               <p className="text-xs text-zinc-500">
                 Business Solution Provider oficial. Sender propio aprobado.
               </p>
@@ -123,9 +124,8 @@ export async function WhatsappPanel() {
             <div className="mt-2 font-medium">Cómo configurarlo</div>
             <p className="text-[11px] text-zinc-600">
               En Twilio Console → Messaging → WhatsApp sender, pegá la URL en
-              <em> When a message comes in</em> con método HTTP <code>POST</code>.
-              Twilio firma cada request con tu Auth Token; lo verificamos en cada
-              callback.
+              <em> When a message comes in</em> con método HTTP <code>POST</code>. Twilio firma cada
+              request con tu Auth Token; lo verificamos en cada callback.
             </p>
           </div>
 
@@ -150,7 +150,7 @@ function StatusBadge({ status }: { status: string }) {
     CONNECTED: { label: 'Conectado', cls: 'bg-emerald-100 text-emerald-800' },
     PENDING: { label: 'Pendiente', cls: 'bg-amber-100 text-amber-800' },
     DISCONNECTED: { label: 'Desconectado', cls: 'bg-zinc-100 text-zinc-600' },
-    ERROR: { label: 'Error', cls: 'bg-red-100 text-red-700' },
+    ERROR: { label: 'Error', cls: 'bg-rose-100 text-rose-700' },
     NOT_CONFIGURED: { label: 'No configurado', cls: 'bg-zinc-100 text-zinc-500' },
   };
   const { label, cls } = map[status] ?? map.NOT_CONFIGURED!;

@@ -9,6 +9,7 @@ import {
   getCampaignTargets,
 } from '@/lib/data/outbound-campaigns';
 import { getCurrentTenant } from '@/lib/tenant';
+import { Megaphone } from 'lucide-react';
 import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
@@ -61,6 +62,8 @@ export default async function OutboundCampaignDetail({
   return (
     <div>
       <PageHeader
+        eyebrow="Campaña saliente"
+        icon={<Megaphone className="h-5 w-5" />}
         title={campaign.name}
         description={`${USE_CASE_LABEL[campaign.useCase as UseCase] ?? campaign.useCase} · ${summary.total} destinatarios`}
         actions={
@@ -86,18 +89,24 @@ export default async function OutboundCampaignDetail({
       <Card>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="text-zinc-500 border-b border-zinc-100">
+            <thead className="text-zinc-500 border-b border-[--color-border-subtle]">
               <tr>
                 <th className="text-left font-medium px-4 sm:px-5 py-3">Teléfono</th>
-                <th className="text-left font-medium px-4 sm:px-5 py-3 hidden sm:table-cell">Nombre</th>
+                <th className="text-left font-medium px-4 sm:px-5 py-3 hidden sm:table-cell">
+                  Nombre
+                </th>
                 <th className="text-left font-medium px-4 sm:px-5 py-3">Estado</th>
-                <th className="text-left font-medium px-4 sm:px-5 py-3 hidden md:table-cell">Razón</th>
-                <th className="text-right font-medium px-4 sm:px-5 py-3 hidden md:table-cell">Último intento</th>
+                <th className="text-left font-medium px-4 sm:px-5 py-3 hidden md:table-cell">
+                  Razón
+                </th>
+                <th className="text-right font-medium px-4 sm:px-5 py-3 hidden md:table-cell">
+                  Último intento
+                </th>
               </tr>
             </thead>
             <tbody>
               {targets.map((t) => (
-                <tr key={t.id} className="border-b border-zinc-50 last:border-0">
+                <tr key={t.id} className="border-b border-[--color-border-subtle] last:border-0">
                   <td className="px-4 sm:px-5 py-3 font-mono text-xs">{t.toNumber}</td>
                   <td className="px-4 sm:px-5 py-3 hidden sm:table-cell">{t.patientName ?? '—'}</td>
                   <td className="px-4 sm:px-5 py-3">{targetStatusBadge(t.status)}</td>
@@ -132,7 +141,7 @@ function Stat({
       : tone === 'warn'
         ? 'text-amber-600'
         : tone === 'danger'
-          ? 'text-red-600'
+          ? 'text-rose-600'
           : 'text-zinc-900';
   return (
     <Card className="p-4">

@@ -65,7 +65,9 @@ function DisconnectedState() {
   return (
     <Card>
       <div className="p-4 sm:p-6">
-        <h3 className="text-base font-semibold tracking-tight">Integración GoHighLevel</h3>
+        <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">
+          Integración GoHighLevel
+        </h3>
         <div className="mt-3 flex items-center gap-2 text-sm">
           <div className="h-2 w-2 rounded-full bg-zinc-300" />
           <span className="text-zinc-600">No conectada</span>
@@ -101,7 +103,7 @@ function DisconnectedState() {
                     value={pit}
                     onChange={(e) => setPit(e.target.value)}
                     placeholder="pit-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                    className="mt-1.5 w-full h-10 rounded-lg border border-zinc-200 px-3 text-sm font-mono"
+                    className="mt-1.5 w-full h-10 rounded-lg border border-[--color-border] px-3 text-sm font-mono"
                   />
                 </div>
                 <div>
@@ -113,7 +115,7 @@ function DisconnectedState() {
                     value={locationId}
                     onChange={(e) => setLocationId(e.target.value)}
                     placeholder="abc123XYZ..."
-                    className="mt-1.5 w-full h-10 rounded-lg border border-zinc-200 px-3 text-sm font-mono"
+                    className="mt-1.5 w-full h-10 rounded-lg border border-[--color-border] px-3 text-sm font-mono"
                   />
                   <p className="text-xs text-zinc-500 mt-1.5">
                     Lo encontrás en GHL → Settings → Business Profile, o en la URL después de
@@ -122,7 +124,7 @@ function DisconnectedState() {
                 </div>
               </div>
               {error && (
-                <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                <p className="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
                   {error}
                 </p>
               )}
@@ -177,17 +179,16 @@ function ConnectedState({
     <Card>
       <div className="p-4 sm:p-6">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-semibold tracking-tight">Integración GoHighLevel</h3>
+          <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">
+            Integración GoHighLevel
+          </h3>
           <Badge tone="success">
             <CheckCircle2 className="h-3 w-3" /> Conectada
           </Badge>
         </div>
         <div className="mt-4 space-y-2 text-sm">
           <Row label="Location ID" value={<code className="text-xs">{locationId}</code>} />
-          <Row
-            label="Método"
-            value={method === 'pit' ? 'Private Integration Token' : 'OAuth'}
-          />
+          <Row label="Método" value={method === 'pit' ? 'Private Integration Token' : 'OAuth'} />
           <Row
             label="Conectada"
             value={connectedAt.toLocaleDateString('es', { dateStyle: 'medium' })}
@@ -213,7 +214,7 @@ function ConnectedState({
               </DialogDescription>
             </DialogHeader>
             {error && (
-              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              <p className="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
                 {error}
               </p>
             )}

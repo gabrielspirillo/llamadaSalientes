@@ -13,6 +13,7 @@ import {
   whatsappConnections,
 } from '@/lib/db/schema';
 import { getCurrentTenant } from '@/lib/tenant';
+import { BellRing } from 'lucide-react';
 import { ChevronLeft } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -65,8 +66,10 @@ export default async function RemindersSettingsPage() {
       </Link>
 
       <PageHeader
+        eyebrow="Automatizaciones"
+        icon={<BellRing className="h-5 w-5" />}
         title="Configuración de recordatorios"
-        description="Define cuándo y por qué canal mandar cada recordatorio, con plantillas multi-canal."
+        description="Definí cuándo y por qué canal mandar cada recordatorio, con plantillas multi-canal."
       />
 
       <Card className="p-6">

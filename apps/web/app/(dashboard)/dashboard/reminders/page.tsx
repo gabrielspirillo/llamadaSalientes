@@ -13,7 +13,7 @@ import {
   treatments,
 } from '@/lib/db/schema';
 import { getCurrentTenant } from '@/lib/tenant';
-import { Settings2 } from 'lucide-react';
+import { BellRing, Settings2 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -83,6 +83,8 @@ export default async function RemindersPage() {
   return (
     <>
       <PageHeader
+        eyebrow="Automatizaciones"
+        icon={<BellRing className="h-5 w-5" />}
         title="Recordatorios"
         description="Pipeline de recordatorios de citas multi-canal (WhatsApp + voz)."
         actions={

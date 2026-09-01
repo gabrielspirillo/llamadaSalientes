@@ -1,6 +1,13 @@
-import Link from 'next/link';
 import { desc, eq, sql } from 'drizzle-orm';
+import { MessageCircle, Settings2 } from 'lucide-react';
+import Link from 'next/link';
 
+import { PageHeader } from '@/components/dashboard/page-header';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/feedback';
+import { Avatar } from '@/components/ui/stat';
 import { db } from '@/lib/db/client';
 import { whatsappContacts, whatsappConversations, whatsappMessages } from '@/lib/db/schema';
 import { getCurrentTenant } from '@/lib/tenant';
@@ -28,16 +35,24 @@ function statusBadge(conv: {
   status: 'ACTIVE' | 'HANDOFF' | 'CLOSED';
   aiEnabled: boolean;
   humanTakeoverUntil: Date | null;
-}): { label: string; cls: string } {
+}): { label: string; tone: 'neutral' | 'warn' | 'success' } {
   if (conv.status === 'CLOSED') {
-    return { label: 'Cerrada', cls: 'bg-zinc-100 text-zinc-600' };
+    return { label: 'Cerrada', tone: 'neutral' };
   }
   const takeoverActive =
     !!conv.humanTakeoverUntil && conv.humanTakeoverUntil.getTime() > Date.now();
   if (!conv.aiEnabled || takeoverActive) {
-    return { label: 'En manos del operador', cls: 'bg-amber-100 text-amber-800' };
+    return { label: 'Operador', tone: 'warn' };
   }
-  return { label: 'Activa', cls: 'bg-emerald-100 text-emerald-800' };
+  return { label: 'Agente IA', tone: 'success' };
+}
+
+function channelLabel(channel: string): string {
+  return channel === 'WHATSAPP_CLOUD'
+    ? 'Cloud API'
+    : channel === 'WHATSAPP_TWILIO'
+      ? 'Twilio'
+      : 'Evolution';
 }
 
 export default async function WhatsappConversationsPage() {
@@ -86,163 +101,120 @@ export default async function WhatsappConversationsPage() {
   );
   const previewMap = new Map(previews.map((p) => [p.id, p.last]));
 
+  const unreadTotal = rows.reduce((acc, r) => acc + (r.unreadCount ?? 0), 0);
+
   return (
-    <div className="flex min-h-[calc(100vh-7.5rem)] flex-col gap-4 sm:gap-6">
+    <div className="flex flex-col">
       {/* Refresca la lista periódicamente para reordenar y mostrar mensajes
           nuevos sin recargar a mano (la página es server-render). */}
       <AutoRefresh intervalMs={8000} />
+
+      <PageHeader
+        eyebrow="Bandeja de entrada"
+        icon={<MessageCircle className="h-5 w-5" />}
+        title="WhatsApp"
+        description={
+          rows.length > 0
+            ? `${rows.length} conversaciones · ${unreadTotal} sin leer`
+            : 'Conversaciones que atiende tu agente por WhatsApp.'
+        }
+        actions={
+          <Button asChild variant="secondary" size="sm">
+            <Link href="/dashboard/configuration?tab=whatsapp">
+              <Settings2 className="h-4 w-4" /> Configurar
+            </Link>
+          </Button>
+        }
+      />
+
       {rows.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/50 p-10 text-center">
-          <p className="text-sm text-zinc-600">
-            Aún no hay conversaciones. Configura una integración de WhatsApp para
-            empezar a recibir mensajes.
-          </p>
-          <Link
-            href="/dashboard/configuration?tab=whatsapp"
-            className="mt-4 inline-flex items-center rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-          >
-            Configurar WhatsApp
-          </Link>
-        </div>
+        <Card>
+          <EmptyState
+            icon={<MessageCircle className="h-5 w-5" />}
+            title="Aún no hay conversaciones"
+            description="Configurá una integración de WhatsApp para empezar a recibir mensajes."
+            action={
+              <Button asChild size="sm">
+                <Link href="/dashboard/configuration?tab=whatsapp">Configurar WhatsApp</Link>
+              </Button>
+            }
+          />
+        </Card>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white">
-          {/* Mobile: cards */}
-          <ul className="md:hidden divide-y divide-zinc-100">
-            {rows.map((r) => {
+        <Card className="overflow-hidden">
+          <ul className="stagger divide-y divide-[--color-border-subtle]">
+            {rows.map((r, i) => {
               const badge = statusBadge(r);
               const preview = previewMap.get(r.id);
+              const name = r.contactName ?? r.contactPhone;
+              const unread = r.unreadCount > 0;
               return (
-                <li key={r.id}>
+                <li key={r.id} style={{ ['--i' as string]: Math.min(i, 14) }}>
                   <Link
                     href={`/dashboard/whatsapp/${r.id}`}
-                    className="flex flex-col gap-1 p-4 hover:bg-zinc-50/60 transition-colors"
+                    className={`group flex items-start gap-3 p-4 transition-colors duration-200 hover:bg-brand-50/50 sm:px-5 ${
+                      unread ? 'bg-emerald-50/30' : ''
+                    }`}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <p
-                          className={`text-sm truncate ${
-                            r.unreadCount > 0
-                              ? 'font-semibold text-zinc-900'
-                              : 'font-medium text-zinc-900'
-                          }`}
-                        >
-                          {r.contactName ?? r.contactPhone}
-                        </p>
-                        {r.urgentFlag && (
-                          <span className="inline-flex items-center rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700 shrink-0">
-                            URGENTE
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {r.unreadCount > 0 && (
-                          <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-emerald-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                            {r.unreadCount > 99 ? '99+' : r.unreadCount}
-                          </span>
-                        )}
-                        <span className="text-[11px] text-zinc-400">
+                    <div className="relative shrink-0">
+                      <Avatar name={name} size={42} />
+                      {unread && (
+                        <span className="absolute -right-1 -top-1 inline-flex min-w-[18px] items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-bold text-white ring-2 ring-white">
+                          {r.unreadCount > 99 ? '99+' : r.unreadCount}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <p
+                            className={`truncate text-[14px] ${
+                              unread
+                                ? 'font-extrabold text-zinc-900'
+                                : 'font-semibold text-zinc-800'
+                            }`}
+                          >
+                            {name}
+                          </p>
+                          {r.urgentFlag && (
+                            <Badge tone="danger" size="sm" className="shrink-0 animate-pulse-soft">
+                              URGENTE
+                            </Badge>
+                          )}
+                        </div>
+                        <span className="shrink-0 text-[11px] text-zinc-400">
                           {relativeTime(r.lastMsgAt)}
                         </span>
                       </div>
-                    </div>
-                    <p className="text-xs text-zinc-500 line-clamp-2">
-                      {preview?.direction === 'OUTBOUND' && (
-                        <span className="text-zinc-400">Tú: </span>
-                      )}
-                      {preview?.contentText ?? '—'}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className={`inline-flex rounded px-2 py-0.5 text-[11px] font-medium ${badge.cls}`}>
-                        {badge.label}
-                      </span>
-                      <span className="text-[11px] text-zinc-400">
-                        {r.channel === 'WHATSAPP_CLOUD'
-                          ? 'Cloud API'
-                          : r.channel === 'WHATSAPP_TWILIO'
-                            ? 'Twilio'
-                            : 'Evolution'}
-                      </span>
+
+                      <p
+                        className={`mt-0.5 line-clamp-1 text-[12.5px] ${
+                          unread ? 'text-zinc-700' : 'text-zinc-500'
+                        }`}
+                      >
+                        {preview?.direction === 'OUTBOUND' && (
+                          <span className="text-zinc-400">Tú: </span>
+                        )}
+                        {preview?.contentText ?? '—'}
+                      </p>
+
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <Badge tone={badge.tone}>{badge.label}</Badge>
+                        <span className="rounded-lg bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-500">
+                          {channelLabel(r.channel)}
+                        </span>
+                        <span className="hidden text-[11px] tabular-nums text-zinc-400 sm:inline">
+                          {r.contactPhone}
+                        </span>
+                      </div>
                     </div>
                   </Link>
                 </li>
               );
             })}
           </ul>
-
-          {/* Tablet/Desktop: table */}
-          <div className="hidden md:block min-h-0 flex-1 overflow-auto">
-          <table className="w-full">
-            <thead className="sticky top-0 z-10 border-b border-zinc-200 bg-zinc-50/95 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 backdrop-blur">
-              <tr>
-                <th className="px-4 py-3">Contacto</th>
-                <th className="px-4 py-3">Último mensaje</th>
-                <th className="px-4 py-3 hidden lg:table-cell">Canal</th>
-                <th className="px-4 py-3">Estado</th>
-                <th className="px-4 py-3">Cuándo</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100 text-sm text-zinc-700">
-              {rows.map((r) => {
-                const badge = statusBadge(r);
-                const preview = previewMap.get(r.id);
-                return (
-                  <tr key={r.id} className="hover:bg-zinc-50/50">
-                    <td className="px-4 py-3">
-                      <Link href={`/dashboard/whatsapp/${r.id}`} className="block">
-                        <div
-                          className={`flex items-center gap-2 ${
-                            r.unreadCount > 0
-                              ? 'font-semibold text-zinc-900'
-                              : 'font-medium text-zinc-900'
-                          }`}
-                        >
-                          <span>{r.contactName ?? r.contactPhone}</span>
-                          {r.unreadCount > 0 && (
-                            <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-emerald-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                              {r.unreadCount > 99 ? '99+' : r.unreadCount}
-                            </span>
-                          )}
-                          {r.urgentFlag && (
-                            <span className="inline-flex items-center rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
-                              URGENTE
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-xs text-zinc-500">{r.contactPhone}</div>
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Link href={`/dashboard/whatsapp/${r.id}`} className="block">
-                        <span className="line-clamp-1 max-w-[40ch] text-zinc-600">
-                          {preview?.direction === 'OUTBOUND' && (
-                            <span className="text-zinc-400">Tú: </span>
-                          )}
-                          {preview?.contentText ?? '—'}
-                        </span>
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-zinc-500 hidden lg:table-cell">
-                      {r.channel === 'WHATSAPP_CLOUD'
-                        ? 'Cloud API'
-                        : r.channel === 'WHATSAPP_TWILIO'
-                          ? 'Twilio'
-                          : 'Evolution'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${badge.cls}`}>
-                        {badge.label}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-zinc-500">
-                      {relativeTime(r.lastMsgAt)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          </div>
-        </div>
+        </Card>
       )}
     </div>
   );

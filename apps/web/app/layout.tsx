@@ -25,17 +25,17 @@ export default function RootLayout({
     <ClerkProvider
       appearance={{
         variables: {
-          colorPrimary: '#0a0a0a',
+          colorPrimary: '#7139e8',
           colorBackground: '#ffffff',
-          colorText: '#0a0a0a',
-          colorTextSecondary: '#6b7280',
-          borderRadius: '12px',
+          colorText: '#171429',
+          colorTextSecondary: '#6d6883',
+          borderRadius: '14px',
           fontFamily:
             '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif',
         },
         elements: {
           formButtonPrimary: 'bg-black hover:bg-zinc-800',
-          card: 'shadow-none border border-zinc-200/70',
+          card: 'shadow-none border border-[--color-border]',
           // Oculta el badge "Secured by Clerk" y el toggle de "Development mode"
           // que aparecen en el plan free / con keys de test.
           footer: 'hidden',
@@ -46,6 +46,14 @@ export default function RootLayout({
       }}
     >
       <html lang="es">
+        <head>
+          {/* Marca que hay JS antes del primer pintado: las animaciones de
+              entrada solo ocultan contenido cuando pueden revelarlo después. */}
+          <script
+            // biome-ignore lint/security/noDangerouslySetInnerHtml: script inline mínimo y estático
+            dangerouslySetInnerHTML={{ __html: "document.documentElement.classList.add('js')" }}
+          />
+        </head>
         <body>{children}</body>
       </html>
     </ClerkProvider>

@@ -1,10 +1,11 @@
 'use client';
 
+import type { NoShowSeriesPoint, TopTreatment } from '@/lib/data/analytics/global';
 import {
+  Area,
+  AreaChart,
   CartesianGrid,
   Cell,
-  Line,
-  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -12,17 +13,27 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import type { NoShowSeriesPoint, TopTreatment } from '@/lib/data/analytics/global';
-import { axisProps, chartPalette, chartSequence, gridProps, tooltipStyle } from './chart-theme';
+import {
+  axisProps,
+  chartAnim,
+  chartPalette,
+  chartSequence,
+  gridProps,
+  tooltipStyle,
+} from './chart-theme';
+
+function ChartEmpty({ label }: { label: string }) {
+  return (
+    <div className="flex h-56 flex-col items-center justify-center gap-2 text-sm text-zinc-400">
+      <span className="inline-flex h-10 w-10 animate-float items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#f4f0ff,#fdf0f7)]" />
+      {label}
+    </div>
+  );
+}
 
 export function NoShowTrendChart({ data }: { data: NoShowSeriesPoint[] }) {
-  if (data.length === 0) {
-    return (
-      <div className="h-56 flex items-center justify-center text-sm text-zinc-400">
-        Sin datos aún
-      </div>
-    );
-  }
+  if (data.length === 0) return <ChartEmpty label="Sin datos aún" />;
+
   const chartData = data.map((p) => ({
     label: new Date(p.weekStart).toLocaleDateString('es-ES', {
       day: '2-digit',
@@ -33,66 +44,87 @@ export function NoShowTrendChart({ data }: { data: NoShowSeriesPoint[] }) {
 
   return (
     <ResponsiveContainer width="100%" height={224}>
-      <LineChart data={chartData} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+      <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+        <defs>
+          <linearGradient id="noShowFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={chartPalette.rose} stopOpacity={0.32} />
+            <stop offset="100%" stopColor={chartPalette.rose} stopOpacity={0} />
+          </linearGradient>
+        </defs>
         <CartesianGrid {...gridProps} />
         <XAxis dataKey="label" {...axisProps} />
-        <YAxis
-          {...axisProps}
-          width={36}
-          tickFormatter={(v) => `${v}%`}
-        />
-        <Tooltip
-          contentStyle={tooltipStyle}
-          formatter={(v) => [`${v}%`, 'No-show']}
-        />
-        <Line
+        <YAxis {...axisProps} width={36} tickFormatter={(v) => `${v}%`} />
+        <Tooltip contentStyle={tooltipStyle} formatter={(v) => [`${v}%`, 'No-show']} />
+        <Area
           type="monotone"
           dataKey="value"
           stroke={chartPalette.rose}
           strokeWidth={2.5}
-          dot={{ r: 3, fill: chartPalette.rose, strokeWidth: 0 }}
-          activeDot={{ r: 5, fill: chartPalette.rose, strokeWidth: 2, stroke: '#fff' }}
+          fill="url(#noShowFill)"
+          dot={{ r: 3, fill: '#fff', stroke: chartPalette.rose, strokeWidth: 2 }}
+          activeDot={{ r: 6, fill: chartPalette.rose, strokeWidth: 3, stroke: '#fff' }}
+          {...chartAnim}
         />
-      </LineChart>
+      </AreaChart>
     </ResponsiveContainer>
   );
 }
 
 export function TopTreatmentsChart({ data }: { data: TopTreatment[] }) {
-  if (data.length === 0) {
-    return (
-      <div className="h-56 flex items-center justify-center text-sm text-zinc-400">
-        Sin citas aún
-      </div>
-    );
-  }
+  if (data.length === 0) return <ChartEmpty label="Sin citas aún" />;
+
   const chartData = data.map((t) => ({ name: t.name, value: t.count }));
   const total = chartData.reduce((acc, d) => acc + d.value, 0);
 
   return (
-    <div className="relative">
-      <ResponsiveContainer width="100%" height={224}>
-        <PieChart>
-          <Tooltip contentStyle={tooltipStyle} wrapperStyle={{ zIndex: 50 }} />
-          <Pie
-            data={chartData}
-            dataKey="value"
-            nameKey="name"
-            innerRadius={62}
-            outerRadius={92}
-            paddingAngle={2}
-            stroke="none"
-          >
-            {chartData.map((_, i) => (
-              <Cell key={i} fill={chartSequence[i % chartSequence.length]} />
-            ))}
-          </Pie>
-        </PieChart>
-      </ResponsiveContainer>
-      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        <span className="text-2xl font-semibold tabular-nums">{total}</span>
-        <span className="text-[11px] text-zinc-500 uppercase tracking-wider">Citas</span>
+    <div>
+      <div className="relative">
+        <ResponsiveContainer width="100%" height={200}>
+          <PieChart>
+            <Tooltip contentStyle={tooltipStyle} wrapperStyle={{ zIndex: 50 }} />
+            <Pie
+              data={chartData}
+              dataKey="value"
+              nameKey="name"
+              innerRadius={58}
+              outerRadius={88}
+              paddingAngle={3}
+              cornerRadius={6}
+              stroke="none"
+              {...chartAnim}
+            >
+              {chartData.map((_, i) => (
+                <Cell key={i} fill={chartSequence[i % chartSequence.length]} />
+              ))}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-[26px] font-bold tabular-nums leading-none text-zinc-900">
+            {total}
+          </span>
+          <span className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+            Citas
+          </span>
+        </div>
       </div>
+
+      {/* Leyenda propia: más legible que la de recharts y con el mismo lenguaje */}
+      <ul className="mt-3 space-y-1.5">
+        {chartData.slice(0, 5).map((d, i) => (
+          <li key={d.name} className="flex items-center gap-2 text-[12px]">
+            <span
+              className="h-2.5 w-2.5 shrink-0 rounded-full"
+              style={{ background: chartSequence[i % chartSequence.length] }}
+            />
+            <span className="min-w-0 flex-1 truncate text-zinc-600">{d.name}</span>
+            <span className="font-bold tabular-nums text-zinc-800">{d.value}</span>
+            <span className="w-9 text-right text-zinc-400 tabular-nums">
+              {Math.round((d.value / total) * 100)}%
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

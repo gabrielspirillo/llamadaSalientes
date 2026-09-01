@@ -1,8 +1,10 @@
-import { PageHeader } from '@/components/dashboard/page-header';
 import { AgentTester } from '@/components/dashboard/agent-tester';
+import { PageHeader } from '@/components/dashboard/page-header';
 import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/feedback';
 import { getAgentConfig } from '@/lib/data/agent-config';
 import { getCurrentTenantOrNull } from '@/lib/tenant';
+import { Bot } from 'lucide-react';
 
 export default async function AgentPage() {
   const ctx = await getCurrentTenantOrNull();
@@ -12,18 +14,19 @@ export default async function AgentPage() {
   return (
     <>
       <PageHeader
+        eyebrow="Laboratorio"
+        icon={<Bot className="h-5 w-5" />}
         title="Probar agente"
-        description="Hablá con tu agente de voz directamente desde el navegador."
+        description="Hablá con tu agente de voz directamente desde el navegador, sin usar el teléfono."
       />
 
       {!hasAgent ? (
         <Card>
-          <div className="p-10 text-center max-w-lg mx-auto">
-            <h3 className="text-lg font-semibold tracking-tight">Agente no vinculado</h3>
-            <p className="text-sm text-zinc-500 mt-2">
-              Tu administrador necesita vincular el agente antes de poder probarlo.
-            </p>
-          </div>
+          <EmptyState
+            icon={<Bot className="h-5 w-5" />}
+            title="Agente no vinculado"
+            description="Tu administrador necesita vincular el agente antes de poder probarlo."
+          />
         </Card>
       ) : (
         <AgentTester />

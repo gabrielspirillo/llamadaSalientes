@@ -1,5 +1,6 @@
 import { PageHeader } from '@/components/dashboard/page-header';
 import { getCurrentTenant } from '@/lib/tenant';
+import { Settings, ShieldCheck } from 'lucide-react';
 import { AgentStatusPanel } from './_panels/agent-status-panel';
 import { IntegrationsPanel } from './_panels/integrations-panel';
 import { ModulesPanel } from './_panels/modules-panel';
@@ -26,6 +27,8 @@ export default async function ConfigurationPage({
     return (
       <>
         <PageHeader
+          eyebrow="Estado"
+          icon={<ShieldCheck className="h-5 w-5" />}
           title="Estado de tu agente"
           description="Cómo va la puesta a punto de tu agente de voz."
         />
@@ -41,6 +44,8 @@ export default async function ConfigurationPage({
   return (
     <>
       <PageHeader
+        eyebrow="Interno"
+        icon={<Settings className="h-5 w-5" />}
         title="Configuración"
         description="Conexiones técnicas: WhatsApp, telefonía y CRM. Equipo técnico únicamente."
       />

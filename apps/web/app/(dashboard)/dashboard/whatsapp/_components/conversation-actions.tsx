@@ -21,10 +21,10 @@ export function ConversationActions({ conversationId, status, urgentFlag }: Prop
         type="button"
         onClick={run(() => toggleUrgent({ conversationId }))}
         disabled={pending}
-        className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+        className={`rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition-all duration-300 hover:-translate-y-0.5 active:scale-95 ${
           urgentFlag
-            ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
-            : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
+            ? 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100'
+            : 'border-[--color-border] bg-white text-zinc-700 hover:border-brand-200 hover:text-brand-700'
         } disabled:opacity-50`}
       >
         {urgentFlag ? 'Quitar urgente' : 'Marcar urgente'}
@@ -35,7 +35,7 @@ export function ConversationActions({ conversationId, status, urgentFlag }: Prop
           type="button"
           onClick={run(() => takeoverConversation({ conversationId, hours: 2 }))}
           disabled={pending}
-          className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-600 disabled:opacity-50"
+          className="rounded-full bg-[linear-gradient(120deg,#d97706,#fbbf24)] px-3.5 py-1.5 text-[12px] font-semibold text-white shadow-[0_6px_18px_-8px_rgba(245,158,11,0.8)] transition-all duration-300 hover:-translate-y-0.5 active:scale-95 disabled:opacity-50"
         >
           Tomar conversación (2 h)
         </button>
@@ -46,7 +46,7 @@ export function ConversationActions({ conversationId, status, urgentFlag }: Prop
           type="button"
           onClick={run(() => closeConversation({ conversationId }))}
           disabled={pending}
-          className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+          className="rounded-full border border-rose-200 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-rose-700 transition-all duration-300 hover:-translate-y-0.5 hover:bg-rose-50 active:scale-95 disabled:opacity-50"
         >
           Cerrar
         </button>

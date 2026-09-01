@@ -10,8 +10,8 @@ import {
   ExternalLink,
   Loader2,
   Mail,
-  PhoneCall,
   Phone,
+  PhoneCall,
   User,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -184,14 +184,19 @@ export function ContactDetailDialog({
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-[800px] p-0 gap-0 overflow-hidden">
-        <DialogHeader className="px-4 sm:px-6 pt-5 pb-4 border-b border-zinc-100">
+        <DialogHeader className="px-4 sm:px-6 pt-5 pb-4 border-b border-[--color-border-subtle]">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <DialogTitle className="text-lg flex items-center gap-3 min-w-0">
               <User className="h-5 w-5 text-violet-600 shrink-0" />
               <span className="truncate">{fullName}</span>
             </DialogTitle>
             {contact?.phone && (
-              <Button size="sm" onClick={callNow} disabled={callingNow} className="self-start sm:self-auto">
+              <Button
+                size="sm"
+                onClick={callNow}
+                disabled={callingNow}
+                className="self-start sm:self-auto"
+              >
                 {callingNow ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
@@ -206,18 +211,16 @@ export function ContactDetailDialog({
               className={`mt-3 flex items-start gap-2 rounded-lg px-3 py-2 text-xs ${
                 callFeedback.ok
                   ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
-                  : 'bg-red-50 border border-red-200 text-red-800'
+                  : 'bg-rose-50 border border-rose-200 text-rose-800'
               }`}
             >
-              {callFeedback.ok ? (
-                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-              ) : null}
+              {callFeedback.ok ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0 mt-0.5" /> : null}
               <span>{callFeedback.msg}</span>
             </div>
           )}
         </DialogHeader>
 
-        <div className="flex items-center gap-1 px-4 sm:px-6 border-b border-zinc-100 overflow-x-auto">
+        <div className="flex items-center gap-1 px-4 sm:px-6 border-b border-[--color-border-subtle] overflow-x-auto">
           <TabButton active={tab === 'datos'} onClick={() => setTab('datos')}>
             <User className="h-3.5 w-3.5" /> Datos
           </TabButton>
@@ -247,7 +250,7 @@ export function ContactDetailDialog({
             </div>
           )}
           {error && (
-            <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-800">
+            <div className="rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-sm text-rose-800">
               {error}
             </div>
           )}
@@ -317,14 +320,16 @@ export function ContactDetailDialog({
                           key={c.id}
                           href={`/dashboard/calls/${c.id}`}
                           onClick={onClose}
-                          className="block rounded-lg border border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50 p-4 transition-colors"
+                          className="block rounded-lg border border-[--color-border] hover:border-brand-200 hover:bg-brand-50/50 p-4 transition-colors"
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 text-xs text-zinc-500 mb-1">
                                 <span>{fmtDateTime(c.startedAt)}</span>
                                 <span>·</span>
-                                <span className="tabular-nums">{fmtDuration(c.durationSeconds)}</span>
+                                <span className="tabular-nums">
+                                  {fmtDuration(c.durationSeconds)}
+                                </span>
                               </div>
                               <p className="text-sm text-zinc-800 line-clamp-2">
                                 {c.summary ?? 'Sin resumen aún'}
@@ -348,17 +353,21 @@ export function ContactDetailDialog({
                   ) : (
                     data.appointments
                       .slice()
-                      .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
+                      .sort(
+                        (a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime(),
+                      )
                       .map((a) => {
                         const isUpcoming = new Date(a.startTime).getTime() > Date.now();
                         return (
                           <div
                             key={a.id}
-                            className="rounded-lg border border-zinc-200 p-4 flex items-start gap-3"
+                            className="rounded-lg border border-[--color-border] p-4 flex items-start gap-3"
                           >
                             <div
                               className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${
-                                isUpcoming ? 'bg-emerald-100 text-emerald-700' : 'bg-zinc-100 text-zinc-600'
+                                isUpcoming
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : 'bg-zinc-100 text-zinc-600'
                               }`}
                             >
                               <Calendar className="h-4 w-4" />
@@ -370,10 +379,7 @@ export function ContactDetailDialog({
                                 {a.endTime ? ` – ${fmtDateTime(a.endTime).split(' ').pop()}` : ''}
                               </p>
                               {a.status && (
-                                <Badge
-                                  tone={isUpcoming ? 'success' : 'neutral'}
-                                  className="mt-2"
-                                >
+                                <Badge tone={isUpcoming ? 'success' : 'neutral'} className="mt-2">
                                   {a.status}
                                 </Badge>
                               )}

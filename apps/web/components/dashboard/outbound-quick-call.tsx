@@ -108,7 +108,7 @@ export function OutboundQuickCall() {
   return (
     <Card className="p-4 sm:p-6 mb-6">
       <div className="flex items-center justify-between mb-1">
-        <h3 className="text-base font-semibold tracking-tight flex items-center gap-2">
+        <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900 flex items-center gap-2">
           <Phone className="h-4 w-4 text-violet-600" /> Llamada rápida
         </h3>
       </div>
@@ -148,7 +148,7 @@ export function OutboundQuickCall() {
             id="qc-usecase"
             value={useCase}
             onChange={(e) => changeUseCase(e.target.value as UseCase)}
-            className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3.5 text-sm"
+            className="h-11 w-full rounded-[14px] border border-[--color-border] bg-white px-4 text-sm transition-[border-color,box-shadow] duration-300 hover:border-brand-200 focus-visible:border-brand-400 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/12 px-3.5 text-sm"
           >
             {USE_CASES.map((u) => (
               <option key={u.value} value={u.value}>
@@ -188,7 +188,7 @@ export function OutboundQuickCall() {
                 <button
                   type="button"
                   onClick={() => removeVar(v.id)}
-                  className="text-zinc-400 hover:text-red-600"
+                  className="text-zinc-400 hover:text-rose-600"
                   title="Quitar"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -207,7 +207,7 @@ export function OutboundQuickCall() {
             className={`rounded-lg border p-3 text-sm ${
               result.ok
                 ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                : 'border-red-200 bg-red-50 text-red-700'
+                : 'border-rose-200 bg-rose-50 text-rose-700'
             }`}
           >
             {result.message}

@@ -1,15 +1,31 @@
 import { AudioPlayer } from '@/components/dashboard/audio-player';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
+import { Card, CardTopbar } from '@/components/ui/card';
+import { Reveal } from '@/components/ui/motion';
+import { Avatar } from '@/components/ui/stat';
 import { formatDuration, getCall, getCallTranscript } from '@/lib/data/calls-list';
 import { getCurrentTenant } from '@/lib/tenant';
-import { ArrowLeft, Calendar, Clock, Phone, Sparkles, User, Volume2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  Calendar,
+  Clock,
+  ExternalLink,
+  FileText,
+  Info,
+  Phone,
+  Sparkles,
+  User,
+  Volume2,
+} from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 function intentBadge(intent: string | null) {
   if (!intent) return <Badge>—</Badge>;
-  const map: Record<string, { label: string; tone: 'success' | 'info' | 'warn' | 'violet' | 'neutral' | 'danger' }> = {
+  const map: Record<
+    string,
+    { label: string; tone: 'success' | 'info' | 'warn' | 'violet' | 'neutral' | 'danger' }
+  > = {
     agendar: { label: 'Agendar', tone: 'success' },
     reagendar: { label: 'Reagendar', tone: 'info' },
     cancelar: { label: 'Cancelar', tone: 'warn' },
@@ -49,39 +65,43 @@ export default async function CallDetailPage({
     : '—';
 
   const customData = (call.customData ?? {}) as { patient_name?: string };
-  const title =
-    customData.patient_name ?? call.fromNumber ?? call.toNumber ?? 'Llamada anónima';
+  const title = customData.patient_name ?? call.fromNumber ?? call.toNumber ?? 'Llamada anónima';
 
   return (
     <>
       <Link
         href="/dashboard/calls"
-        className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-900 mb-6 transition-colors"
+        className="group mb-6 inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3.5 py-1.5 text-[13px] font-semibold text-zinc-500 ring-1 ring-[--color-border] transition-all duration-300 hover:text-brand-700 hover:ring-brand-200"
       >
-        <ArrowLeft className="h-4 w-4" /> Volver a llamadas
+        <ArrowLeft className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-1" />
+        Volver a llamadas
       </Link>
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 sm:mb-8">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
-            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight truncate">{title}</h1>
-            {statusBadge(call.status, call.transferred ?? false)}
-            {intentBadge(call.intent)}
-          </div>
-          <div className="flex flex-wrap items-center gap-x-4 sm:gap-x-5 gap-y-1.5 text-sm text-zinc-500">
-            <span className="flex items-center gap-1.5">
-              <User className="h-3.5 w-3.5" /> {call.fromNumber ?? '—'}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Phone className="h-3.5 w-3.5" /> →{' '}
-              {call.toNumber ?? '—'}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Clock className="h-3.5 w-3.5" /> {formatDuration(call.durationSeconds)}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Calendar className="h-3.5 w-3.5" /> {startedDate}
-            </span>
+      <div className="mb-6 flex animate-fade-down flex-col justify-between gap-4 sm:mb-8 md:flex-row md:items-center">
+        <div className="flex min-w-0 items-center gap-4">
+          <Avatar name={title} size={54} className="hidden shrink-0 sm:inline-flex" />
+          <div className="min-w-0">
+            <div className="mb-2 flex flex-wrap items-center gap-2 sm:gap-3">
+              <h1 className="truncate text-[26px] font-extrabold tracking-tight text-zinc-900 sm:text-[32px]">
+                {title}
+              </h1>
+              {statusBadge(call.status, call.transferred ?? false)}
+              {intentBadge(call.intent)}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] text-zinc-500 sm:gap-x-5">
+              <span className="flex items-center gap-1.5">
+                <User className="h-3.5 w-3.5" /> {call.fromNumber ?? '—'}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Phone className="h-3.5 w-3.5" /> → {call.toNumber ?? '—'}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5" /> {formatDuration(call.durationSeconds)}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5" /> {startedDate}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -89,127 +109,146 @@ export default async function CallDetailPage({
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
         <div className="xl:col-span-2 space-y-4 sm:space-y-6">
           {/* Audio player */}
-          <Card>
-            <div className="p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-base font-semibold tracking-tight inline-flex items-center gap-2">
-                  <Volume2 className="h-4 w-4 text-zinc-400" />
-                  Grabación
-                </h3>
-                {call.recordingR2Key && <Badge tone="success">en R2</Badge>}
+          <Reveal>
+            <Card>
+              <CardTopbar
+                icon={<Volume2 className="h-4 w-4" />}
+                tone="grape"
+                title="Grabación"
+                subtitle="Audio completo de la llamada"
+                action={call.recordingR2Key ? <Badge tone="success">Almacenada</Badge> : undefined}
+              />
+              <div className="px-5 pb-5 sm:px-6 sm:pb-6">
+                <AudioPlayer callId={call.id} />
               </div>
-              <AudioPlayer callId={call.id} />
-            </div>
-          </Card>
+            </Card>
+          </Reveal>
 
           {/* Transcript */}
-          <Card>
-            <div className="flex items-center justify-between p-4 sm:p-6 pb-3 sm:pb-4">
-              <h3 className="text-base font-semibold tracking-tight">Transcripción</h3>
-              {transcript && <Badge>cifrada · AES-256</Badge>}
-            </div>
-            <div className="border-t border-zinc-100 px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5 max-h-[60vh] sm:max-h-[480px] overflow-y-auto">
-              {transcriptTurns.length === 0 ? (
-                <div className="text-center py-8 text-sm text-zinc-500">
-                  La transcripción aparecerá cuando termine el procesamiento.
-                </div>
-              ) : (
-                transcriptTurns.map((turn, i) => {
-                  const turnId = `tr-${i}`;
-                  return (
-                    <div key={turnId} className="flex gap-2 sm:gap-3">
-                      <div className="hidden sm:block text-xs text-zinc-400 tabular-nums pt-1.5 w-12 shrink-0">
-                        {turn.t}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium mb-1 text-zinc-500">
-                          {turn.speaker === 'agent' ? 'Agente' : 'Paciente'}
+          <Reveal delay={90}>
+            <Card>
+              <CardTopbar
+                icon={<FileText className="h-4 w-4" />}
+                tone="sky"
+                title="Transcripción"
+                subtitle="Turno a turno, agente y paciente"
+                action={transcript ? <Badge tone="info">cifrada · AES-256</Badge> : undefined}
+              />
+              <div className="border-t border-[--color-border-subtle] px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5 max-h-[60vh] sm:max-h-[480px] overflow-y-auto">
+                {transcriptTurns.length === 0 ? (
+                  <div className="text-center py-8 text-sm text-zinc-500">
+                    La transcripción aparecerá cuando termine el procesamiento.
+                  </div>
+                ) : (
+                  transcriptTurns.map((turn, i) => {
+                    const turnId = `tr-${i}`;
+                    return (
+                      <div key={turnId} className="flex gap-2 sm:gap-3">
+                        <div className="hidden sm:block text-xs text-zinc-400 tabular-nums pt-1.5 w-12 shrink-0">
+                          {turn.t}
                         </div>
-                        <p
-                          className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed break-words ${
-                            turn.speaker === 'agent'
-                              ? 'bg-zinc-100 text-zinc-800'
-                              : 'bg-blue-50 text-blue-900'
-                          }`}
-                        >
-                          {turn.text}
-                        </p>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium mb-1 text-zinc-500">
+                            {turn.speaker === 'agent' ? 'Agente' : 'Paciente'}
+                          </div>
+                          <p
+                            className={`break-words rounded-2xl px-4 py-2.5 text-[13.5px] leading-relaxed ${
+                              turn.speaker === 'agent'
+                                ? 'rounded-tl-md bg-[#f4f0ff] text-violet-900'
+                                : 'rounded-tl-md bg-[#e9f4fe] text-sky-900'
+                            }`}
+                          >
+                            {turn.text}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </Card>
+                    );
+                  })
+                )}
+              </div>
+            </Card>
+          </Reveal>
         </div>
 
         <div className="space-y-4 sm:space-y-6">
           {/* AI summary — siempre en español, traduce on-demand si vino en inglés */}
-          <Card>
-            <div className="p-4 sm:p-6">
-              <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="h-4 w-4 text-violet-600" />
-                <h3 className="text-base font-semibold tracking-tight">Resumen IA</h3>
-              </div>
-              {call.summary ? (
-                <p className="text-sm text-zinc-700 leading-relaxed">{await ensureSpanish(call.summary)}</p>
-              ) : (
-                <p className="text-sm text-zinc-500">
-                  El resumen se genera automáticamente cuando termine el procesamiento.
-                </p>
-              )}
-              <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-xs text-zinc-500">Sentimiento</p>
-                  <p className="font-medium capitalize mt-0.5">{call.sentiment ?? '—'}</p>
+          <Reveal direction="right">
+            <Card>
+              <CardTopbar
+                icon={<Sparkles className="h-4 w-4" />}
+                tone="blossom"
+                title="Resumen IA"
+                subtitle="Generado tras la llamada"
+              />
+              <div className="px-5 pb-5 sm:px-6 sm:pb-6">
+                {call.summary ? (
+                  <p className="text-[13.5px] leading-relaxed text-zinc-700">
+                    {await ensureSpanish(call.summary)}
+                  </p>
+                ) : (
+                  <p className="text-[13px] text-zinc-500">
+                    El resumen se genera automáticamente cuando termine el procesamiento.
+                  </p>
+                )}
+                <div className="mt-5 grid grid-cols-2 gap-2.5">
+                  <div className="rounded-2xl bg-[#f4f0ff] p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-violet-400">
+                      Sentimiento
+                    </p>
+                    <p className="mt-1 text-[14px] font-bold capitalize text-violet-800">
+                      {call.sentiment ?? '—'}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-[#fdf0f7] p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-pink-400">
+                      Motivo
+                    </p>
+                    <p className="mt-1 text-[14px] font-bold capitalize text-pink-800">
+                      {call.intent ?? '—'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-zinc-500">Motivo</p>
-                  <p className="font-medium capitalize mt-0.5">{call.intent ?? '—'}</p>
-                </div>
               </div>
-            </div>
-          </Card>
+            </Card>
+          </Reveal>
 
           {/* GHL contact link */}
           {call.ghlContactId && (
-            <Card>
-              <div className="p-4 sm:p-6">
-                <h3 className="text-base font-semibold tracking-tight mb-3 inline-flex items-center gap-2">
-                  Contacto en GHL
-                </h3>
-                <p className="text-xs text-zinc-500 mb-3">
-                  Abrí la ficha del paciente en GoHighLevel para ver historial completo.
-                </p>
-                <GhlContactLink contactId={call.ghlContactId} tenantId={tenant.id} />
-              </div>
-            </Card>
+            <Reveal direction="right" delay={80}>
+              <Card>
+                <CardTopbar
+                  icon={<User className="h-4 w-4" />}
+                  tone="mint"
+                  title="Contacto en GHL"
+                  subtitle="Historial completo del paciente"
+                />
+                <div className="px-5 pb-5 sm:px-6 sm:pb-6">
+                  <GhlContactLink contactId={call.ghlContactId} tenantId={tenant.id} />
+                </div>
+              </Card>
+            </Reveal>
           )}
 
           {/* Metadata */}
-          <Card>
-            <div className="p-4 sm:p-6">
-              <h3 className="text-base font-semibold tracking-tight mb-4">Metadata</h3>
-              <div className="space-y-2.5 text-sm">
-                <FieldRow label="Retell Call ID" value={call.retellCallId} mono />
-                <FieldRow label="GHL Contact" value={call.ghlContactId ?? '—'} mono />
-                <FieldRow
-                  label="Inicio"
-                  value={
-                    call.startedAt
-                      ? new Date(call.startedAt).toLocaleString('es-ES')
-                      : '—'
-                  }
-                />
-                <FieldRow
-                  label="Fin"
-                  value={
-                    call.endedAt ? new Date(call.endedAt).toLocaleString('es-ES') : '—'
-                  }
-                />
+          <Reveal direction="right" delay={150}>
+            <Card>
+              <CardTopbar icon={<Info className="h-4 w-4" />} tone="zinc" title="Metadata" />
+              <div className="px-5 pb-5 sm:px-6 sm:pb-6">
+                <div className="space-y-2.5 text-[13px]">
+                  <FieldRow label="Retell Call ID" value={call.retellCallId} mono />
+                  <FieldRow label="GHL Contact" value={call.ghlContactId ?? '—'} mono />
+                  <FieldRow
+                    label="Inicio"
+                    value={call.startedAt ? new Date(call.startedAt).toLocaleString('es-ES') : '—'}
+                  />
+                  <FieldRow
+                    label="Fin"
+                    value={call.endedAt ? new Date(call.endedAt).toLocaleString('es-ES') : '—'}
+                  />
+                </div>
               </div>
-            </div>
-          </Card>
+            </Card>
+          </Reveal>
         </div>
       </div>
     </>
@@ -228,7 +267,10 @@ async function ensureSpanish(text: string): Promise<string> {
   }
 }
 
-function GhlContactLink({ contactId, tenantId: _tenantId }: { contactId: string; tenantId: string }) {
+function GhlContactLink({
+  contactId,
+  tenantId: _tenantId,
+}: { contactId: string; tenantId: string }) {
   // GHL deep-link: /v2/location/{locationId}/contacts/detail/{contactId}
   // Como el locationId no está en client, usamos el contact short URL que GHL acepta.
   const url = `https://app.gohighlevel.com/contacts/detail/${contactId}`;
@@ -237,9 +279,10 @@ function GhlContactLink({ contactId, tenantId: _tenantId }: { contactId: string;
       href={url}
       target="_blank"
       rel="noreferrer"
-      className="inline-flex items-center gap-2 text-sm font-medium text-violet-600 hover:text-violet-700 transition-colors"
+      className="group inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-[13px] font-semibold text-emerald-700 transition-all duration-300 hover:-translate-y-0.5 hover:bg-emerald-100"
     >
-      Abrir ficha en GHL ↗
+      Abrir ficha en GHL
+      <ExternalLink className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
     </a>
   );
 }
@@ -248,15 +291,22 @@ function GhlContactLink({ contactId, tenantId: _tenantId }: { contactId: string;
  * Retell guarda transcript como texto plano (concatenación de turnos).
  * Si el formato es JSON estructurado, lo parseamos. Si es texto, lo mostramos como un solo turno.
  */
-function parseTranscript(raw: string | null): { speaker: 'agent' | 'user'; text: string; t: string }[] {
+function parseTranscript(
+  raw: string | null,
+): { speaker: 'agent' | 'user'; text: string; t: string }[] {
   if (!raw) return [];
 
   // JSON estructurado: [{ role: 'agent'|'user', content: '...' }, ...]
   try {
-    const parsed = JSON.parse(raw) as Array<{ role?: string; speaker?: string; content?: string; text?: string }>;
+    const parsed = JSON.parse(raw) as Array<{
+      role?: string;
+      speaker?: string;
+      content?: string;
+      text?: string;
+    }>;
     if (Array.isArray(parsed)) {
       return parsed.map((p, i) => ({
-        speaker: (p.role === 'agent' || p.speaker === 'agent') ? 'agent' : 'user',
+        speaker: p.role === 'agent' || p.speaker === 'agent' ? 'agent' : 'user',
         text: p.content ?? p.text ?? '',
         t: `${i.toString().padStart(2, '0')}`,
       }));

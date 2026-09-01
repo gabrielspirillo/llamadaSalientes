@@ -99,9 +99,7 @@ export function ContactSidebar({
   // para que coincida con la badge "Activa / En manos del operador".
   const [localTags, setLocalTags] = useState<Tag[]>(tagsOnConversation);
   const [aiOn, setAiOn] = useState(conversation.aiEnabled && !takeoverActive);
-  const [assignedUserId, setAssignedUserId] = useState<string | null>(
-    conversation.assignedUserId,
-  );
+  const [assignedUserId, setAssignedUserId] = useState<string | null>(conversation.assignedUserId);
 
   // Crear nueva etiqueta inline.
   const [newTagOpen, setNewTagOpen] = useState(false);
@@ -184,13 +182,15 @@ export function ContactSidebar({
   const assignedMember = members.find((m) => m.userId === assignedUserId);
 
   return (
-    <aside className="flex w-full lg:w-80 lg:shrink-0 flex-col gap-4 overflow-y-auto border-t lg:border-t-0 lg:border-l border-zinc-200 bg-zinc-50/50 p-4">
+    <aside className="flex w-full flex-col gap-4 overflow-y-auto border-t border-[--color-border-subtle] bg-[linear-gradient(180deg,#fbfaff,#f6f5fb)] p-4 lg:w-80 lg:shrink-0 lg:border-l lg:border-t-0">
       {error && (
-        <div className="rounded bg-red-50 px-3 py-2 text-xs text-red-700">{error}</div>
+        <div className="animate-fade-down rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
+          {error}
+        </div>
       )}
 
       {/* Contacto */}
-      <div className="rounded-xl border border-zinc-200 bg-white p-4">
+      <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-4">
         <div className="flex items-center gap-3">
           {contact.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -200,12 +200,12 @@ export function ContactSidebar({
               className="h-12 w-12 rounded-full object-cover"
             />
           ) : (
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-base font-semibold text-emerald-700">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[linear-gradient(135deg,#a7f3d0,#6ee7b7)] text-[15px] font-bold text-emerald-800 ring-2 ring-white">
               {(contact.name ?? contact.phoneE164).slice(0, 2).toUpperCase()}
             </div>
           )}
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-zinc-900">
+            <p className="truncate text-[15px] font-bold text-zinc-900">
               {contact.name ?? 'Sin nombre'}
             </p>
             <p className="text-xs text-zinc-500">{contact.phoneE164}</p>
@@ -213,7 +213,7 @@ export function ContactSidebar({
         </div>
         <Link
           href={`/dashboard/whatsapp/contacts/${contact.id}`}
-          className="mt-3 inline-flex w-full items-center justify-center rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+          className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-[--color-border] bg-white px-3 py-2 text-[12px] font-semibold text-zinc-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:text-brand-700"
         >
           Ver detalles del contacto
         </Link>
@@ -255,10 +255,10 @@ export function ContactSidebar({
 
       {/* Memoria del lead (cross-canal: WhatsApp + llamadas in/out) */}
       {leadMemory?.profileSummary ? (
-        <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-4">
+        <div className="rounded-[22px] border border-violet-200/70 bg-[linear-gradient(140deg,#f4f0ff,#ffffff)] p-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-zinc-900">Memoria del lead</p>
-            <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700">
+            <p className="text-[14px] font-bold text-zinc-900">Memoria del lead</p>
+            <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700">
               multicanal
             </span>
           </div>
@@ -266,7 +266,7 @@ export function ContactSidebar({
             {leadMemory.profileSummary}
           </p>
           {leadFactEntries(leadMemory.facts).length > 0 && (
-            <dl className="mt-2 space-y-0.5 border-t border-indigo-100 pt-2">
+            <dl className="mt-2 space-y-0.5 border-t border-violet-100 pt-2">
               {leadFactEntries(leadMemory.facts).map(([k, v]) => (
                 <div key={k} className="flex gap-1 text-[11px]">
                   <dt className="font-medium capitalize text-zinc-500">{k.replace(/_/g, ' ')}:</dt>
@@ -282,13 +282,11 @@ export function ContactSidebar({
       ) : null}
 
       {/* Citas */}
-      <div className="rounded-xl border border-zinc-200 bg-white p-4">
-        <p className="text-sm font-semibold text-zinc-900">Citas</p>
+      <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-4">
+        <p className="text-[14px] font-bold tracking-tight text-zinc-900">Citas</p>
         {appointments.length === 0 ? (
           <p className="mt-2 text-xs text-zinc-500">
-            {contact.ghlContactId
-              ? 'Sin citas registradas.'
-              : 'Aún no hay link con el CRM.'}
+            {contact.ghlContactId ? 'Sin citas registradas.' : 'Aún no hay link con el CRM.'}
           </p>
         ) : (
           <ul className="mt-2 space-y-2">
@@ -324,10 +322,10 @@ export function ContactSidebar({
       </div>
 
       {/* Agente IA */}
-      <div className="rounded-xl border border-zinc-200 bg-white p-4">
+      <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-zinc-900">Agente Virtual</p>
+            <p className="text-[14px] font-bold tracking-tight text-zinc-900">Agente Virtual</p>
             <p className="mt-0.5 text-xs text-zinc-500">
               {aiOn
                 ? 'El agente IA responde a todos los mensajes.'
@@ -355,13 +353,13 @@ export function ContactSidebar({
       </div>
 
       {/* Asignación */}
-      <div className="rounded-xl border border-zinc-200 bg-white p-4">
-        <p className="text-sm font-semibold text-zinc-900">Asignar a</p>
+      <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-4">
+        <p className="text-[14px] font-bold tracking-tight text-zinc-900">Asignar a</p>
         <select
           value={assignedUserId ?? ''}
           onChange={(e) => handleAssign(e.target.value || null)}
           disabled={pending}
-          className="mt-2 w-full rounded-lg border border-zinc-200 px-2 py-1.5 text-sm focus:border-zinc-400 focus:outline-none disabled:bg-zinc-50"
+          className="mt-2 w-full rounded-lg border border-[--color-border] px-2 py-1.5 text-sm focus:border-zinc-400 focus:outline-none disabled:bg-zinc-50"
         >
           <option value="">Sin asignar</option>
           {members.map((m) => (
@@ -378,9 +376,9 @@ export function ContactSidebar({
       </div>
 
       {/* Etiquetas */}
-      <div className="rounded-xl border border-zinc-200 bg-white p-4">
+      <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-4">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold text-zinc-900">Etiquetas</p>
+          <p className="text-[14px] font-bold tracking-tight text-zinc-900">Etiquetas</p>
           <button
             type="button"
             onClick={() => setNewTagOpen((v) => !v)}
@@ -398,19 +396,19 @@ export function ContactSidebar({
               onChange={(e) => setNewTagLabel(e.target.value)}
               placeholder="Nombre de la etiqueta"
               maxLength={40}
-              className="w-full rounded-lg border border-zinc-200 px-2 py-1.5 text-xs focus:border-zinc-400 focus:outline-none"
+              className="w-full rounded-lg border border-[--color-border] px-2 py-1.5 text-xs focus:border-zinc-400 focus:outline-none"
             />
             <div className="flex items-center gap-2">
               <input
                 type="color"
                 value={newTagColor}
                 onChange={(e) => setNewTagColor(e.target.value)}
-                className="h-7 w-10 cursor-pointer rounded border border-zinc-200"
+                className="h-7 w-10 cursor-pointer rounded border border-[--color-border]"
               />
               <button
                 type="submit"
                 disabled={pending || !newTagLabel.trim()}
-                className="ml-auto rounded-lg bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                className="ml-auto rounded-full bg-[linear-gradient(120deg,#059669,#10b981)] px-3.5 py-1.5 text-[12px] font-semibold transition-all duration-300 hover:-translate-y-0.5 active:scale-95 font-medium text-white hover:opacity-95 disabled:opacity-50"
               >
                 Crear y aplicar
               </button>
@@ -487,7 +485,7 @@ function apptStatusClass(status: string): string {
   const s = status.toLowerCase();
   if (s.includes('confirm')) return 'bg-emerald-100 text-emerald-700';
   if (s.includes('show') && !s.includes('no')) return 'bg-blue-100 text-blue-700';
-  if (s.includes('no')) return 'bg-red-100 text-red-700';
+  if (s.includes('no')) return 'bg-rose-100 text-rose-700';
   if (s.includes('cancel')) return 'bg-zinc-200 text-zinc-700';
   return 'bg-zinc-100 text-zinc-700';
 }

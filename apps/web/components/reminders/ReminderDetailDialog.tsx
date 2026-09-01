@@ -23,7 +23,10 @@ function getVars(snapshot: unknown): Vars {
   return (snapshot as { vars?: Vars }).vars ?? {};
 }
 
-const STATUS_LABEL: Record<string, { label: string; tone: 'neutral' | 'success' | 'warn' | 'danger' | 'info' }> = {
+const STATUS_LABEL: Record<
+  string,
+  { label: string; tone: 'neutral' | 'success' | 'warn' | 'danger' | 'info' }
+> = {
   SCHEDULED: { label: 'Programado', tone: 'info' },
   SENT: { label: 'Enviado', tone: 'neutral' },
   DELIVERED: { label: 'Entregado', tone: 'neutral' },
@@ -66,7 +69,10 @@ export function ReminderDetailDialog({
   onLocalPatch?: (reminderId: string, patch: Partial<Reminder>) => void;
 }) {
   const vars = getVars(reminder.payloadSnapshot);
-  const status = STATUS_LABEL[reminder.status] ?? { label: reminder.status, tone: 'neutral' as const };
+  const status = STATUS_LABEL[reminder.status] ?? {
+    label: reminder.status,
+    tone: 'neutral' as const,
+  };
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -124,9 +130,9 @@ export function ReminderDetailDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative z-10 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
-        <div className="flex items-start justify-between border-b border-zinc-100 p-5">
+        <div className="flex items-start justify-between border-b border-[--color-border-subtle] p-5">
           <div className="min-w-0">
-            <h2 className="text-lg font-semibold text-zinc-900 truncate">
+            <h2 className="text-[18px] font-bold tracking-tight text-zinc-900 truncate">
               {vars.contact?.fullName || vars.contact?.firstName || 'Paciente'}
             </h2>
             <p className="mt-0.5 text-sm text-zinc-500 truncate">
@@ -155,7 +161,12 @@ export function ReminderDetailDialog({
             <Row label="Tratamiento" value={vars.appointment?.treatment} />
             <Row label="Fecha" value={vars.appointment?.date} />
             <Row label="Hora" value={vars.appointment?.time} />
-            <Row label="Duración" value={vars.appointment?.durationMinutes ? `${vars.appointment.durationMinutes} min` : null} />
+            <Row
+              label="Duración"
+              value={
+                vars.appointment?.durationMinutes ? `${vars.appointment.durationMinutes} min` : null
+              }
+            />
             <Row label="ID GHL" value={reminder.ghlAppointmentId} mono />
           </Section>
 
@@ -175,7 +186,7 @@ export function ReminderDetailDialog({
             )}
             <Row
               label="Regla"
-              value={rule ? rule.label ?? offsetToHuman(rule.offsetMinutes) : '—'}
+              value={rule ? (rule.label ?? offsetToHuman(rule.offsetMinutes)) : '—'}
             />
             <Row label="Programado para" value={fmt(reminder.scheduledFor)} />
             <Row label="Enviado" value={fmt(reminder.sentAt)} />
@@ -184,13 +195,13 @@ export function ReminderDetailDialog({
         </div>
 
         {reminder.failureReason && (
-          <div className="border-t border-zinc-100 p-5">
+          <div className="border-t border-[--color-border-subtle] p-5">
             <p className="text-xs font-medium text-rose-600">⚠ Error</p>
             <p className="mt-1 text-sm text-rose-700">{reminder.failureReason}</p>
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-2 border-t border-zinc-100 p-5">
+        <div className="flex flex-wrap items-center gap-2 border-t border-[--color-border-subtle] p-5">
           <Button size="sm" onClick={() => mark('confirm')} disabled={busy}>
             Marcar como confirmado
           </Button>
@@ -230,7 +241,10 @@ function Row({
   return (
     <div className="flex justify-between gap-3 text-sm">
       <dt className="text-zinc-500">{label}</dt>
-      <dd className={`min-w-0 truncate ${mono ? 'font-mono text-[11px]' : ''} text-zinc-800`} title={value ?? ''}>
+      <dd
+        className={`min-w-0 truncate ${mono ? 'font-mono text-[11px]' : ''} text-zinc-800`}
+        title={value ?? ''}
+      >
         {value || '—'}
       </dd>
     </div>
