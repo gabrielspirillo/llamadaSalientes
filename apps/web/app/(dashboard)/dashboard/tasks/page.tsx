@@ -1,4 +1,7 @@
+import { PageHeader } from '@/components/dashboard/page-header';
 import { TasksWorkspace } from '@/components/tasks/TasksWorkspace';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/feedback';
 import { db } from '@/lib/db/client';
 import { tenantMemberships, users } from '@/lib/db/schema';
 import { normalizeRole } from '@/lib/tasks/auth';
@@ -15,6 +18,7 @@ import {
 import { seedSystemTemplates } from '@/lib/tasks/templates';
 import { getCurrentTenant } from '@/lib/tenant';
 import { and, eq } from 'drizzle-orm';
+import { ClipboardCheck, DatabaseZap } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,44 +33,80 @@ export const dynamic = 'force-dynamic';
 export default async function TasksPage() {
   const { tenant, userId: clerkUserId } = await getCurrentTenant();
 
-  await seedSystemTemplates(tenant.id);
-  await ensureAutomationRules(tenant.id);
-  // Si el worker todavía no pasó (clínica recién activada, o redeploy), las
-  // rutinas de hoy se materializan acá mismo. El dedupe evita duplicados.
-  await materializeRoutinesForTenant(tenant.id).catch((err) => {
-    console.warn('[tasks-page] materialize falló', (err as Error).message);
-  });
+  try {
+    await seedSystemTemplates(tenant.id);
+    await ensureAutomationRules(tenant.id);
+    // Si el worker todavía no pasó (clínica recién activada, o redeploy), las
+    // rutinas de hoy se materializan acá mismo. El dedupe evita duplicados.
+    await materializeRoutinesForTenant(tenant.id).catch((err) => {
+      console.warn('[tasks-page] materialize falló', (err as Error).message);
+    });
 
-  const currentUserId = await internalUserIdFor(clerkUserId);
+    const currentUserId = await internalUserIdFor(clerkUserId);
 
-  const [membershipRow] = currentUserId
-    ? await db
-        .select({ role: tenantMemberships.role })
-        .from(tenantMemberships)
-        .innerJoin(users, eq(users.id, tenantMemberships.userId))
-        .where(and(eq(tenantMemberships.tenantId, tenant.id), eq(users.clerkUserId, clerkUserId)))
-        .limit(1)
-    : [];
+    const [membershipRow] = currentUserId
+      ? await db
+          .select({ role: tenantMemberships.role })
+          .from(tenantMemberships)
+          .innerJoin(users, eq(users.id, tenantMemberships.userId))
+          .where(and(eq(tenantMemberships.tenantId, tenant.id), eq(users.clerkUserId, clerkUserId)))
+          .limit(1)
+      : [];
 
-  const role = normalizeRole(membershipRow?.role);
+    const role = normalizeRole(membershipRow?.role);
 
-  const [board, members, templates, rules] = await Promise.all([
-    loadBoardTasks(tenant.id),
-    loadTaskMembers(tenant.id, tenant.clerkOrganizationId),
-    loadTemplates(tenant.id),
-    loadAutomationRules(tenant.id),
-  ]);
-  const stats = await loadTaskStats(tenant.id, board);
+    const [board, members, templates, rules] = await Promise.all([
+      loadBoardTasks(tenant.id),
+      loadTaskMembers(tenant.id, tenant.clerkOrganizationId),
+      loadTemplates(tenant.id),
+      loadAutomationRules(tenant.id),
+    ]);
+    const stats = await loadTaskStats(tenant.id, board);
 
+    return (
+      <TasksWorkspace
+        initialTasks={board}
+        initialStats={stats}
+        members={members}
+        templates={templates}
+        rules={rules}
+        currentUserId={currentUserId}
+        role={role}
+      />
+    );
+  } catch (err) {
+    // El caso real: la migración 0018 todavía no se aplicó en esta base, así
+    // que las tablas no existen. Antes esto tiraba una excepción de servidor
+    // y el panel entero mostraba "Application error". Mejor decir qué pasa.
+    if (isMissingTablesError(err)) return <PendingMigration />;
+    throw err;
+  }
+}
+
+/** Postgres 42P01 = undefined_table. Es la firma de "falta la migración". */
+function isMissingTablesError(err: unknown): boolean {
+  const code = (err as { code?: string } | null)?.code;
+  if (code === '42P01') return true;
+  const message = (err as Error | null)?.message ?? '';
+  return /relation ".*" does not exist/i.test(message);
+}
+
+function PendingMigration() {
   return (
-    <TasksWorkspace
-      initialTasks={board}
-      initialStats={stats}
-      members={members}
-      templates={templates}
-      rules={rules}
-      currentUserId={currentUserId}
-      role={role}
-    />
+    <>
+      <PageHeader
+        eyebrow="Operativa diaria"
+        title="Tareas"
+        description="El tablero del equipo: lo que hay que hacer hoy con los pacientes y con la clínica."
+        icon={<ClipboardCheck className="h-5 w-5" />}
+      />
+      <Card>
+        <EmptyState
+          icon={<DatabaseZap className="h-6 w-6" />}
+          title="Falta preparar la base de datos"
+          description="Las tablas de Tareas todavía no existen en esta clínica. Se crean solas la próxima vez que arranque el worker: entrá a Dokploy, servicio cliniq-worker, y pulsá Deploy. En un par de minutos recargá esta página."
+        />
+      </Card>
+    </>
   );
 }
