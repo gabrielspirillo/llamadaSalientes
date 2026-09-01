@@ -118,10 +118,7 @@ export function ThreadPanel({
       <aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[440px] animate-slide-right flex-col border-l border-white/60 bg-white shadow-[0_40px_90px_-30px_rgba(23,20,41,0.5)]">
         <header className="flex shrink-0 items-center gap-3 border-b border-[--color-border-subtle] px-4 py-3.5">
           <span
-            className={cn(
-              'inline-flex h-9 w-9 items-center justify-center rounded-xl',
-              tone.chip,
-            )}
+            className={cn('inline-flex h-9 w-9 items-center justify-center rounded-xl', tone.chip)}
           >
             <MessageSquare className="h-4 w-4" />
           </span>

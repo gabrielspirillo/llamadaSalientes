@@ -180,6 +180,22 @@ describe('extractMentionTokens', () => {
     expect(extractMentionTokens('@sala2').tokens).toEqual(['sala2']);
   });
 
+  // Compromiso deliberado del parser: la arroba tiene que ABRIR palabra, y eso
+  // es lo que impide que `ana@clinica.com` dispare una mención. El precio es que
+  // en `@ana@bea` la segunda no se detecta. Se documenta para que un cambio del
+  // regex sea una decisión y no un accidente.
+  it('dos menciones pegadas sin separador: sólo cuenta la primera', () => {
+    expect(extractMentionTokens('@ana@bea')).toEqual({ tokens: ['ana'], everyone: false });
+    expect(extractMentionTokens('@ana@todos')).toEqual({ tokens: ['ana'], everyone: false });
+    // Con cualquier separador no alfanumérico sí salen las dos.
+    expect(extractMentionTokens('@ana/@bea').tokens).toEqual(['ana', 'bea']);
+  });
+
+  it('la sintaxis de negrita de markdown no estorba', () => {
+    expect(extractMentionTokens('**@ana**').tokens).toEqual(['ana']);
+    expect(extractMentionTokens('hola *@ana*').tokens).toEqual(['ana']);
+  });
+
   it('mención al arrancar una línea intermedia', () => {
     expect(extractMentionTokens('primera línea\n@ana segunda').tokens).toEqual(['ana']);
   });

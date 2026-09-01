@@ -376,9 +376,7 @@ export function MessagesWorkspace({
         }
       } catch (err) {
         const fail = (list: ImMessageDTO[]) =>
-          list.map((m) =>
-            m.clientNonce === nonce ? { ...m, pending: false, failed: true } : m,
-          );
+          list.map((m) => (m.clientNonce === nonce ? { ...m, pending: false, failed: true } : m));
         if (optimistic.parentId) setReplies((prev) => fail(prev));
         else upsertInThread(channelId, fail);
         setError((err as Error).message);
@@ -453,24 +451,21 @@ export function MessagesWorkspace({
 
   // ── Acciones sobre un mensaje ─────────────────────────────────────────────
 
-  const patchMessage = useCallback(
-    (messageId: string, patch: Partial<ImMessageDTO>) => {
-      setThreads((prev) => {
-        const next: Record<string, ThreadState> = {};
-        for (const [cid, st] of Object.entries(prev)) {
-          next[cid] = {
-            ...st,
-            messages: st.messages.map((m) => (m.id === messageId ? { ...m, ...patch } : m)),
-            pins: st.pins.map((m) => (m.id === messageId ? { ...m, ...patch } : m)),
-          };
-        }
-        return next;
-      });
-      setReplies((prev) => prev.map((m) => (m.id === messageId ? { ...m, ...patch } : m)));
-      setThreadParent((prev) => (prev && prev.id === messageId ? { ...prev, ...patch } : prev));
-    },
-    [],
-  );
+  const patchMessage = useCallback((messageId: string, patch: Partial<ImMessageDTO>) => {
+    setThreads((prev) => {
+      const next: Record<string, ThreadState> = {};
+      for (const [cid, st] of Object.entries(prev)) {
+        next[cid] = {
+          ...st,
+          messages: st.messages.map((m) => (m.id === messageId ? { ...m, ...patch } : m)),
+          pins: st.pins.map((m) => (m.id === messageId ? { ...m, ...patch } : m)),
+        };
+      }
+      return next;
+    });
+    setReplies((prev) => prev.map((m) => (m.id === messageId ? { ...m, ...patch } : m)));
+    setThreadParent((prev) => (prev && prev.id === messageId ? { ...prev, ...patch } : prev));
+  }, []);
 
   const toggleReaction = useCallback(
     (messageId: string, emoji: string) => {
@@ -638,14 +633,15 @@ export function MessagesWorkspace({
             [e.channelId]: {
               ...cur,
               messages: cur.messages.map((m) =>
-                m.id === e.message.parentId
-                  ? { ...m, replyCount: Math.max(m.replyCount, m.replyCount + 1) }
-                  : m,
+                m.id === e.message.parentId ? { ...m, replyCount: m.replyCount + 1 } : m,
               ),
             },
           };
         }
-        return { ...prev, [e.channelId]: { ...cur, messages: mergeMessage(cur.messages, e.message) } };
+        return {
+          ...prev,
+          [e.channelId]: { ...cur, messages: mergeMessage(cur.messages, e.message) },
+        };
       });
 
       if (isReply && threadParentRef.current?.id === e.message.parentId) {
@@ -877,7 +873,9 @@ export function MessagesWorkspace({
           contextOpen={contextOpen}
           onLoadMore={() => {
             if (activeId && thread.hasMore && !thread.loadingMore) {
-              void loadThread(activeId, thread.cursor);
+              // Si el servidor no devolvió cursor, paginamos por el mensaje más
+              // viejo que ya tenemos: nunca recargamos la misma primera página.
+              void loadThread(activeId, thread.cursor ?? thread.messages[0]?.createdAt ?? null);
             }
           }}
           onToggleReaction={toggleReaction}
@@ -900,17 +898,11 @@ export function MessagesWorkspace({
                 mentions={mentions}
                 currentUserId={currentUserId}
                 disabled={!canWrite}
-                placeholder={
-                  canWrite
-                    ? undefined
-                    : 'Tu rol solo permite leer este canal.'
-                }
+                placeholder={canWrite ? undefined : 'Tu rol solo permite leer este canal.'}
                 resetKey={activeChannel.id}
                 droppedFiles={droppedFiles}
                 onDroppedHandled={() => setDroppedFiles(null)}
-                onSend={(body, attachments) =>
-                  send(activeChannel.id, body, attachments, null)
-                }
+                onSend={(body, attachments) => send(activeChannel.id, body, attachments, null)}
                 onTyping={() => sendTyping(activeChannel.id)}
               />
             ) : null

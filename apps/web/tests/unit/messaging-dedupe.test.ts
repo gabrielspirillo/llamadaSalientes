@@ -494,7 +494,9 @@ describe('sendMessage — idempotencia por partida doble', () => {
 // ─── Claves de evento del bot ───────────────────────────────────────────────
 
 describe('bot — claves `evt:<evento>:<entidad>`', () => {
-  const sendMessage = vi.fn(async () => ({ id: 'msg-1', created: true }));
+  const sendMessage = vi.fn(
+    async (_input: Record<string, unknown>) => ({ id: 'msg-1', created: true }),
+  );
 
   async function loadBot(): Promise<typeof import('@/lib/messaging/bot')> {
     vi.resetModules();
@@ -594,7 +596,7 @@ describe('bot — claves `evt:<evento>:<entidad>`', () => {
       patientName: 'Marta',
       phone: null,
     });
-    const primera = sendMessage.mock.calls[0]![0] as { dedupeKey: string };
+    const primera = sendMessage.mock.calls[0]![0] as unknown as { dedupeKey: string };
 
     sendMessage.mockClear();
     dbState.insertReturns = [[{ id: 'canal-1' }]];
@@ -606,7 +608,7 @@ describe('bot — claves `evt:<evento>:<entidad>`', () => {
       patientName: 'Marta',
       phone: null,
     });
-    const segunda = sendMessage.mock.calls[0]![0] as { dedupeKey: string };
+    const segunda = sendMessage.mock.calls[0]![0] as unknown as { dedupeKey: string };
 
     expect(segunda.dedupeKey).toBe(primera.dedupeKey);
   });
@@ -631,7 +633,7 @@ describe('bot — claves `evt:<evento>:<entidad>`', () => {
       conversationId: 'conv-4',
       patientName: 'Marta',
       phone: null,
-      reason: 'pidió hablar con una persona',
+      lastLines: ['quiero hablar con una persona'],
     });
 
     const hoy = new Date().toISOString().slice(0, 10);

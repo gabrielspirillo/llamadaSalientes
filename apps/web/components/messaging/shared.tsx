@@ -624,10 +624,13 @@ export function RichText({
               key={key}
               className={cn(
                 'ml-4 space-y-1',
-                block.type === 'ul' ? 'list-disc marker:text-brand-300' : 'list-decimal marker:text-brand-400',
+                block.type === 'ul'
+                  ? 'list-disc marker:text-brand-300'
+                  : 'list-decimal marker:text-brand-400',
               )}
             >
               {block.lines.map((li, li2) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: el bloque se re-parsea entero en cada render; las líneas nunca se reordenan
                 <li key={`${key}-${li2}`} className="pl-0.5">
                   {parseInline(li, mentions, `${key}-${li2}`)}
                 </li>
@@ -643,6 +646,7 @@ export function RichText({
               className="border-l-2 border-brand-200 bg-brand-50/50 py-1 pl-3 text-zinc-600"
             >
               {block.lines.map((l, l2) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: mismo motivo: el markdown se re-parsea completo
                 <p key={`${key}-${l2}`}>{parseInline(l, mentions, `${key}-${l2}`)}</p>
               ))}
             </blockquote>
@@ -652,6 +656,7 @@ export function RichText({
         return (
           <p key={key} className="whitespace-pre-wrap break-words">
             {block.lines.map((l, l2) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: mismo motivo: el markdown se re-parsea completo
               <span key={`${key}-${l2}`}>
                 {l2 > 0 && <br />}
                 {parseInline(l, mentions, `${key}-${l2}`)}

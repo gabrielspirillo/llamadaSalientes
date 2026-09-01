@@ -123,6 +123,7 @@ export function Composer({
   const lastTypingRef = useRef(0);
 
   // Al cambiar de canal: borrador limpio y foco en la caja.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `resetKey` es el disparador del efecto, no un valor que se lea dentro
   useEffect(() => {
     setValue('');
     setAttachments([]);
@@ -132,6 +133,7 @@ export function Composer({
   }, [resetKey]);
 
   // Autosize: la caja crece con el texto hasta un tope, después scrollea.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: hay que recalcular la altura en cada cambio de `value`
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -196,7 +198,14 @@ export function Composer({
   // ── Popover ────────────────────────────────────────────────────────────────
 
   const options = useMemo(() => {
-    if (!menu) return [] as Array<{ id: string; label: string; hint: string; node: React.ReactNode; insert: string }>;
+    if (!menu)
+      return [] as Array<{
+        id: string;
+        label: string;
+        hint: string;
+        node: React.ReactNode;
+        insert: string;
+      }>;
     const q = menu.query.toLowerCase();
 
     if (menu.kind === '/') {
@@ -244,12 +253,8 @@ export function Composer({
         node: <PersonAvatar name={p.name} seed={p.userId} size={28} />,
       }));
 
-    return ('todos'.startsWith(q) ? [everyone, ...matches] : matches);
+    return 'todos'.startsWith(q) ? [everyone, ...matches] : matches;
   }, [menu, people, mentions, currentUserId]);
-
-  useEffect(() => {
-    setActiveIndex(0);
-  }, []);
 
   const detectMenu = (text: string, caret: number) => {
     const before = text.slice(0, caret);
@@ -342,7 +347,8 @@ export function Composer({
     }
   };
 
-  const canSend = (value.trim().length > 0 || attachments.length > 0) && !disabled && uploading === 0;
+  const canSend =
+    (value.trim().length > 0 || attachments.length > 0) && !disabled && uploading === 0;
 
   return (
     <div className={cn('relative', className)}>
@@ -411,9 +417,7 @@ export function Composer({
         </div>
       )}
 
-      {uploadError && (
-        <p className="mb-2 text-[11.5px] font-medium text-rose-600">{uploadError}</p>
-      )}
+      {uploadError && <p className="mb-2 text-[11.5px] font-medium text-rose-600">{uploadError}</p>}
 
       {/* Caja */}
       <div

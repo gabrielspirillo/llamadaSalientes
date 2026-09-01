@@ -283,9 +283,10 @@ function RailChannel({
   const tone = toneMeta(channel.tone);
   const unread = channel.unreadCount > 0;
   const isDm = channel.kind === 'DM';
-  const online = isDm && channel.counterpartUserId
-    ? (presence.get(channel.counterpartUserId)?.online ?? false)
-    : false;
+  const online =
+    isDm && channel.counterpartUserId
+      ? (presence.get(channel.counterpartUserId)?.online ?? false)
+      : false;
 
   return (
     <li style={{ ['--i' as string]: index }}>
@@ -331,7 +332,11 @@ function RailChannel({
             <span
               className={cn(
                 'min-w-0 flex-1 truncate text-[13px] leading-tight',
-                unread ? 'font-bold text-zinc-900' : active ? 'font-semibold text-zinc-900' : 'font-medium text-zinc-600',
+                unread
+                  ? 'font-bold text-zinc-900'
+                  : active
+                    ? 'font-semibold text-zinc-900'
+                    : 'font-medium text-zinc-600',
               )}
             >
               {channel.name}

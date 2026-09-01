@@ -149,9 +149,7 @@ export function ContextPanel({
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-5">
         {/* Ficha de la entidad — solo en canales de contexto */}
-        {channel.kind === 'CONTEXT' && (
-          <EntityCard channel={channel} payload={contextPayload} />
-        )}
+        {channel.kind === 'CONTEXT' && <EntityCard channel={channel} payload={contextPayload} />}
 
         {channel.topic && (
           <Section title="Tema">
@@ -263,7 +261,6 @@ export function ContextPanel({
                   >
                     <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-[9px] bg-brand-50 text-brand-600">
                       {isImageAttachment(att) ? (
-                        // biome-ignore lint/a11y/useAltText: el alt sale del nombre del archivo
                         <img
                           src={attachmentUrl(att)}
                           alt={att.name}
@@ -355,7 +352,8 @@ function EntityCard({
   channel: ImChannelDTO;
   payload: Record<string, unknown>;
 }) {
-  const name = str(payload, 'name', 'label', 'title', 'patientName') ?? channel.contextLabel ?? channel.name;
+  const name =
+    str(payload, 'name', 'label', 'title', 'patientName') ?? channel.contextLabel ?? channel.name;
   const subtitle = str(payload, 'subtitle', 'treatment', 'summary', 'reason');
   const phone = str(payload, 'phone', 'phoneE164', 'phoneNumber');
   const nextAppointment = str(payload, 'nextAppointmentAt', 'appointmentAt', 'startsAt');

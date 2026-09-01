@@ -42,8 +42,14 @@ function splitTitle(message: ImMessageDTO): { title: string; body: string } {
   const firstIdx = lines.findIndex((l) => l.trim() !== '');
   if (firstIdx === -1) return { title: 'Evento', body: '' };
 
-  const title = (lines[firstIdx] ?? '').replace(/^[#>\s]*/, '').replace(/\*\*/g, '').trim();
-  const body = lines.slice(firstIdx + 1).join('\n').trim();
+  const title = (lines[firstIdx] ?? '')
+    .replace(/^[#>\s]*/, '')
+    .replace(/\*\*/g, '')
+    .trim();
+  const body = lines
+    .slice(firstIdx + 1)
+    .join('\n')
+    .trim();
   return { title: title || 'Evento', body };
 }
 
@@ -116,9 +122,7 @@ export function EventCard({
             <p className="mt-1 text-[12px] font-medium text-zinc-500">{contextLabel}</p>
           )}
 
-          {body && (
-            <RichText text={body} mentions={mentions} className="mt-2 text-zinc-700" />
-          )}
+          {body && <RichText text={body} mentions={mentions} className="mt-2 text-zinc-700" />}
 
           {message.actions.length > 0 && (
             <div className="mt-3.5 flex flex-wrap items-center gap-2">

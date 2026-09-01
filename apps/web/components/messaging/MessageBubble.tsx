@@ -12,7 +12,7 @@ import {
 } from '@/components/messaging/shared';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
-import { REACTION_EMOJIS, type ImTone } from '@/lib/messaging/constants';
+import { type ImTone, REACTION_EMOJIS } from '@/lib/messaging/constants';
 import type { ImAction, ImAttachment, ImMessageDTO } from '@/lib/messaging/types';
 import {
   Bookmark,
@@ -92,6 +92,16 @@ export function MessageBubble(props: MessageBubbleProps) {
   const [draft, setDraft] = useState(message.body);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const rowRef = useRef<HTMLLIElement>(null);
+  const editRef = useRef<HTMLTextAreaElement>(null);
+
+  // Foco al entrar en modo edición (sin `autoFocus`, que rompe la a11y del SSR).
+  useEffect(() => {
+    if (!editing) return;
+    const el = editRef.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+  }, [editing]);
 
   useEffect(() => {
     if (!emojiOpen) return;
@@ -199,9 +209,7 @@ export function MessageBubble(props: MessageBubbleProps) {
             <time suppressHydrationWarning className="text-[10.5px] font-medium text-zinc-400">
               {formatClock(message.createdAt)}
             </time>
-            {message.editedAt && (
-              <span className="text-[10px] italic text-zinc-400">editado</span>
-            )}
+            {message.editedAt && <span className="text-[10px] italic text-zinc-400">editado</span>}
             {message.pinned && (
               <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-600">
                 <Pin className="h-2.5 w-2.5" /> fijado
@@ -215,8 +223,8 @@ export function MessageBubble(props: MessageBubbleProps) {
         ) : editing ? (
           <div className="animate-zoom-in">
             <textarea
+              ref={editRef}
               value={draft}
-              autoFocus
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Escape') {
@@ -267,9 +275,7 @@ export function MessageBubble(props: MessageBubbleProps) {
               </p>
             )}
             <RichText text={message.body} mentions={mentions} className="text-zinc-800" />
-            {message.attachments.length > 0 && (
-              <AttachmentGrid attachments={message.attachments} />
-            )}
+            {message.attachments.length > 0 && <AttachmentGrid attachments={message.attachments} />}
             {message.pending && (
               <span
                 aria-hidden
@@ -494,7 +500,6 @@ function AttachmentGrid({ attachments }: { attachments: ImAttachment[] }) {
               rel="noreferrer"
               className="hover-lift block overflow-hidden rounded-[14px] ring-1 ring-[--color-border]"
             >
-              {/* biome-ignore lint/a11y/useAltText: el alt sale del nombre del archivo */}
               <img
                 src={attachmentUrl(a)}
                 alt={a.name}

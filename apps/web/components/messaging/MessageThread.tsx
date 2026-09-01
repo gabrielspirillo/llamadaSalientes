@@ -2,11 +2,11 @@
 
 import { MessageBubble } from '@/components/messaging/MessageBubble';
 import {
+  type MentionIndex,
   TypingDots,
   channelIcon,
   dayKey,
   formatDayDivider,
-  type MentionIndex,
   toneMeta,
   typingLabel,
 } from '@/components/messaging/shared';
@@ -16,7 +16,13 @@ import { EmptyState, SkeletonRows } from '@/components/ui/feedback';
 import { AvatarStack } from '@/components/ui/stat';
 import { cn } from '@/lib/cn';
 import { EDIT_WINDOW_MS } from '@/lib/messaging/constants';
-import type { ImAction, ImChannelDTO, ImMessageDTO, ImPerson, ImPresence } from '@/lib/messaging/types';
+import type {
+  ImAction,
+  ImChannelDTO,
+  ImMessageDTO,
+  ImPerson,
+  ImPresence,
+} from '@/lib/messaging/types';
 import {
   ArrowDown,
   ChevronLeft,
@@ -26,7 +32,7 @@ import {
   Paperclip,
   Sparkles,
 } from 'lucide-react';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 /* ============================================================================
    Columna central: cabecera del canal, hilo con scroll infinito hacia arriba y
@@ -324,25 +330,25 @@ export function MessageThread({
                 const age = Date.now() - new Date(m.createdAt).getTime();
 
                 return (
-                  <div key={m.id}>
+                  <Fragment key={m.id}>
                     {newDay && (
-                      <div className="my-3 flex items-center gap-3 px-4">
+                      <li className="my-3 flex items-center gap-3 px-4">
                         <span className="h-px flex-1 bg-[--color-border]" />
                         <span className="rounded-full bg-white px-3 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-zinc-400 ring-1 ring-[--color-border]">
                           {formatDayDivider(m.createdAt)}
                         </span>
                         <span className="h-px flex-1 bg-[--color-border]" />
-                      </div>
+                      </li>
                     )}
 
                     {firstUnreadId === m.id && (
-                      <div className="my-2 flex items-center gap-3 px-4">
+                      <li className="my-2 flex items-center gap-3 px-4">
                         <span className="animate-grow-x h-px flex-1 origin-left bg-[linear-gradient(90deg,transparent,#f43f5e)]" />
                         <span className="animate-pop rounded-full bg-rose-500 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-[0_6px_18px_-8px_rgba(244,63,94,0.9)]">
                           Mensajes nuevos
                         </span>
                         <span className="animate-grow-x h-px flex-1 origin-right bg-[linear-gradient(90deg,#f43f5e,transparent)]" />
-                      </div>
+                      </li>
                     )}
 
                     <MessageBubble
@@ -370,7 +376,7 @@ export function MessageThread({
                       onRetry={onRetry}
                       onAction={onAction}
                     />
-                  </div>
+                  </Fragment>
                 );
               })}
             </ul>

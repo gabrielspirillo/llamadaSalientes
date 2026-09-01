@@ -140,6 +140,34 @@ describe('refcount de suscripciones', () => {
     expect(client().unsubscribeCalls).toEqual([]);
   });
 
+  // El refcount se lleva en un Set<Sink>, así que la MISMA referencia de función
+  // suscrita dos veces al mismo canal cuenta una sola vez. Hoy ningún llamador
+  // hace eso (el stream SSE pasa el mismo `forward` a dos canales DISTINTOS, que
+  // son Sets distintos), pero si alguien lo hiciera, la primera desuscripción se
+  // llevaría también a la segunda. Queda documentado.
+  it('la misma referencia de sink cuenta una sola vez en el mismo canal', async () => {
+    const sink = vi.fn();
+    const off1 = await hub.subscribe('im:user:1', sink);
+    await hub.subscribe('im:user:1', sink);
+
+    expect(hub.hubStats()).toEqual({ channels: 1, sinks: 1 });
+
+    off1();
+    expect(hub.hubStats()).toEqual({ channels: 0, sinks: 0 });
+  });
+
+  it('el mismo sink en canales distintos se cuenta por separado', async () => {
+    const sink = vi.fn();
+    const offUser = await hub.subscribe('im:user:1', sink);
+    await hub.subscribe('im:tenant:t1', sink);
+
+    offUser();
+
+    expect(hub.hubStats()).toEqual({ channels: 1, sinks: 1 });
+    client().emit('message', 'im:tenant:t1', 'presencia');
+    expect(sink).toHaveBeenCalledWith('presencia');
+  });
+
   it('volver a suscribirse a un canal ya liberado hace un SUBSCRIBE nuevo', async () => {
     const off = await hub.subscribe('im:user:1', () => undefined);
     off();
