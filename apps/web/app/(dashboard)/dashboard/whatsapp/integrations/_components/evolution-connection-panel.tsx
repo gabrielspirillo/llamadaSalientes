@@ -184,7 +184,7 @@ export function EvolutionConnectionPanel({ initial }: Props) {
             type="button"
             onClick={onCheckStatus}
             disabled={pending}
-            className="rounded-2xl border border-[--color-border] bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-brand-50/50 disabled:opacity-50"
+            className="rounded-full border border-[--color-border] bg-white px-4 py-2 text-[13px] font-semibold text-zinc-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:text-brand-700 active:scale-95 disabled:opacity-50"
           >
             Verificar estado
           </button>

@@ -290,7 +290,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
           <button
             type="button"
             onClick={discardAudio}
-            className="rounded-2xl border border-[--color-border] bg-white px-2 py-1 text-xs hover:bg-brand-50/50"
+            className="rounded-full border border-[--color-border] bg-white px-3 py-1.5 text-[12px] font-semibold text-zinc-700 transition-all duration-300 hover:border-brand-200 hover:text-brand-700 active:scale-95"
           >
             Descartar
           </button>
