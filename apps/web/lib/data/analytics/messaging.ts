@@ -143,7 +143,7 @@ async function queryReactionTime(tenantId: string, start: Date): Promise<Reactio
     ) s
   `);
 
-  const row = firstRow(rows);
+  const row = rows[0];
   return {
     medianSeconds: toSeconds(row?.p50),
     p90Seconds: toSeconds(row?.p90),
@@ -188,7 +188,7 @@ async function queryEvents(
       and e.created_at >= ${start.toISOString()}::timestamptz
   `);
 
-  const row = firstRow(rows);
+  const row = rows[0];
   return { total: row?.total ?? 0, ignored: row?.ignored ?? 0 };
 }
 
@@ -205,7 +205,7 @@ async function queryVolume(
       and deleted_at is null
       and created_at >= ${start.toISOString()}::timestamptz
   `);
-  const row = firstRow(rows);
+  const row = rows[0];
   return { total: row?.total ?? 0, human: row?.human ?? 0 };
 }
 
@@ -218,7 +218,7 @@ async function queryTasksFromMessages(tenantId: string, start: Date): Promise<nu
       and im_message_id is not null
       and created_at >= ${start.toISOString()}::timestamptz
   `);
-  return firstRow(rows)?.count ?? 0;
+  return rows[0]?.count ?? 0;
 }
 
 /**
@@ -252,7 +252,7 @@ async function queryMentionsByPerson(
     limit 25
   `);
 
-  return toArray(rows).map((r) => ({
+  return rows.map((r) => ({
     userId: r.userId,
     email: r.email,
     name: displayName(r.email),
@@ -278,12 +278,12 @@ async function queryByHour(tenantId: string, start: Date, timezone: string): Pro
     group by 1
   `);
 
-  const bins: HourBin[] = Array.from({ length: 24 }, (_, hour) => ({ hour, messages: 0 }));
-  for (const r of toArray(rows)) {
+  const counts = new Map<number, number>();
+  for (const r of rows) {
     const h = Number(r.hour);
-    if (Number.isInteger(h) && h >= 0 && h < 24) bins[h]!.messages = Number(r.messages) || 0;
+    if (Number.isInteger(h) && h >= 0 && h < 24) counts.set(h, Number(r.messages) || 0);
   }
-  return bins;
+  return Array.from({ length: 24 }, (_, hour) => ({ hour, messages: counts.get(hour) ?? 0 }));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -301,7 +301,7 @@ async function getTimezone(tenantId: string): Promise<string> {
     const rows = await db.execute<{ timezone: string | null }>(sql`
       select timezone from clinic_settings where tenant_id = ${tenantId}::uuid limit 1
     `);
-    return firstRow(rows)?.timezone || 'Europe/Madrid';
+    return rows[0]?.timezone || 'Europe/Madrid';
   } catch {
     return 'Europe/Madrid';
   }
@@ -329,14 +329,4 @@ function toIsoOrNull(value: unknown): string | null {
   if (value instanceof Date) return value.toISOString();
   if (typeof value === 'string' && value) return value;
   return null;
-}
-
-function toArray<T>(result: unknown): T[] {
-  if (Array.isArray(result)) return result as T[];
-  const rows = (result as { rows?: unknown })?.rows;
-  return Array.isArray(rows) ? (rows as T[]) : [];
-}
-
-function firstRow<T>(result: unknown): T | undefined {
-  return toArray<T>(result)[0];
 }

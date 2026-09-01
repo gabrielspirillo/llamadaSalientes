@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useMessaging } from '@/components/messaging/MessagingProvider';
-import { EmptyState } from '@/components/ui/feedback';
 import { StatusDot } from '@/components/ui/badge';
+import { EmptyState } from '@/components/ui/feedback';
 import { cn } from '@/lib/cn';
 import { Hash, MessageSquare, Search, User, X } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -20,10 +20,14 @@ type Row =
   | { type: 'person'; id: string; label: string; hint: string; online: boolean };
 
 function normalize(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+  return (
+    s
+      .toLowerCase()
+      .normalize('NFD')
+      // Rango de marcas diacríticas combinantes: es justo lo que hay que quitar.
+      // biome-ignore lint/suspicious/noMisleadingCharacterClass: rango intencional
+      .replace(/[\u0300-\u036f]/g, '')
+  );
 }
 
 export function QuickSwitcher() {
@@ -72,7 +76,9 @@ export function QuickSwitcher() {
 
     // Personas sin DM abierto todavía: entran como acción "abrir directo".
     const withDm = new Set(
-      channels.filter((c) => c.kind === 'DM' && c.counterpartUserId).map((c) => c.counterpartUserId),
+      channels
+        .filter((c) => c.kind === 'DM' && c.counterpartUserId)
+        .map((c) => c.counterpartUserId),
     );
     const personRows: Row[] = people
       .filter((p) => p.userId !== meId && !withDm.has(p.userId))
@@ -108,6 +114,8 @@ export function QuickSwitcher() {
   }
 
   return (
+    // El fondo cierra con el ratón; por teclado ya está Escape en el panel.
+    // biome-ignore lint/a11y/useKeyWithClickEvents: Escape cubre el teclado
     <div
       className="fixed inset-0 z-[80] flex animate-fade-in items-start justify-center bg-[#171429]/40 pt-[12vh] backdrop-blur-md"
       onClick={() => setOpen(false)}

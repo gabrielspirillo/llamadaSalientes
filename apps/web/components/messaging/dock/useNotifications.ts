@@ -119,15 +119,8 @@ export function useNotifications(opts: {
   /** users.id propio: lo que uno mismo escribe nunca suena. */
   myUserId: string | null;
 }): NotificationsApi {
-  const {
-    enabled,
-    subscribe,
-    mentionCount,
-    isDmChannel,
-    isMutedChannel,
-    channelName,
-    myUserId,
-  } = opts;
+  const { enabled, subscribe, mentionCount, isDmChannel, isMutedChannel, channelName, myUserId } =
+    opts;
 
   const [soundEnabled, setSoundEnabledState] = useState(true);
   const [toastsEnabled, setToastsEnabledState] = useState(true);

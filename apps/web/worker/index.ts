@@ -8,7 +8,7 @@
 // I/O bound (LLM + DB). Ajustable vía WORKER_CONCURRENCY_* env vars.
 
 import 'server-only';
-import { Worker, type Job } from 'bullmq';
+import { type Job, Worker } from 'bullmq';
 
 import { env } from '@/lib/env';
 import { scheduleMessagingCrons, scheduleTaskCrons } from '@/lib/queue/client';
@@ -19,10 +19,10 @@ import { processImDigestJob } from '@/worker/jobs/im-digest';
 import { processImMentionEscalateJob } from '@/worker/jobs/im-mention-escalate';
 import { processImRetentionSweepJob } from '@/worker/jobs/im-retention-sweep';
 import { processCallJob } from '@/worker/jobs/process-call';
-import { processTaskDailySweepJob } from '@/worker/jobs/task-daily-sweep';
-import { processTaskRoutinesTickJob } from '@/worker/jobs/task-routines-tick';
 import { processReminderFallbackCheckJob } from '@/worker/jobs/reminder-fallback-check';
 import { processReminderSendJob } from '@/worker/jobs/reminder-send';
+import { processTaskDailySweepJob } from '@/worker/jobs/task-daily-sweep';
+import { processTaskRoutinesTickJob } from '@/worker/jobs/task-routines-tick';
 import { processWaitlistOfferExpireJob } from '@/worker/jobs/waitlist-offer-expire';
 import { processWaitlistOfferSendJob } from '@/worker/jobs/waitlist-offer-send';
 import { processWhatsappJob } from '@/worker/jobs/whatsapp-process';

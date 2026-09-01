@@ -10,8 +10,10 @@ import {
   ExternalLink,
   Loader2,
   Mail,
+  MessageSquare,
   Phone,
   PhoneCall,
+  Send,
   User,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -99,7 +101,7 @@ export function ContactDetailDialog({
   const [data, setData] = useState<DetailData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<'datos' | 'llamadas' | 'citas'>('datos');
+  const [tab, setTab] = useState<'datos' | 'llamadas' | 'citas' | 'equipo'>('datos');
   const [callingNow, setCallingNow] = useState(false);
   const [callFeedback, setCallFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
 
@@ -239,6 +241,9 @@ export function ContactDetailDialog({
                 {upcomingCount}
               </span>
             )}
+          </TabButton>
+          <TabButton active={tab === 'equipo'} onClick={() => setTab('equipo')}>
+            <MessageSquare className="h-3.5 w-3.5" /> Equipo
           </TabButton>
         </div>
 
@@ -390,11 +395,166 @@ export function ContactDetailDialog({
                   )}
                 </div>
               )}
+
+              {tab === 'equipo' && (
+                <div className="space-y-3">
+                  <p className="text-xs text-zinc-500">
+                    Hilo interno sobre este paciente. No lo ve nadie fuera de la clínica y queda
+                    junto a la ficha para siempre.
+                  </p>
+                  <PatientTeamThread contactId={contactId} label={fullName} />
+                </div>
+              )}
             </>
           )}
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─── Hilo interno del paciente (módulo Mensajes) ─────────────────────────────
+// Autocontenido: abre (o crea) el canal `CONTEXT` de tipo PATIENT y monta un
+// hilo mínimo. Si el módulo todavía no está disponible, muestra el aviso y el
+// resto de la ficha sigue funcionando.
+
+type TeamMessage = {
+  id: string;
+  body: string;
+  senderName: string | null;
+  senderKind: string;
+  createdAt: string;
+};
+
+/** Carga la página del hilo. Fuera del componente: no depende de su estado. */
+async function fetchTeamThread(id: string): Promise<TeamMessage[]> {
+  const res = await fetch(`/api/messages/channels/${id}/messages`, { cache: 'no-store' });
+  const data = (await res.json().catch(() => ({}))) as {
+    messages?: TeamMessage[];
+    error?: string;
+  };
+  if (!res.ok) throw new Error(data.error ?? 'No se pudo cargar el hilo');
+  return data.messages ?? [];
+}
+
+function PatientTeamThread({ contactId, label }: { contactId: string; label: string }) {
+  const [channelId, setChannelId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<TeamMessage[]>([]);
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [threadError, setThreadError] = useState<string | null>(null);
+  const [draft, setDraft] = useState('');
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      setStatus('loading');
+      try {
+        const res = await fetch('/api/messages/channels/context', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            contextType: 'PATIENT',
+            contextId: contactId,
+            label: label.slice(0, 160),
+          }),
+        });
+        const data = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
+        if (!res.ok || !data.id) throw new Error(data.error ?? 'No se pudo abrir el hilo');
+        if (!alive) return;
+        setChannelId(data.id);
+        const list = await fetchTeamThread(data.id);
+        if (!alive) return;
+        setMessages(list);
+        setStatus('ready');
+      } catch (e) {
+        if (!alive) return;
+        setThreadError(e instanceof Error ? e.message : 'Error');
+        setStatus('error');
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [contactId, label]);
+
+  async function send() {
+    const body = draft.trim();
+    if (!body || !channelId) return;
+    setDraft('');
+    setSending(true);
+    try {
+      const res = await fetch(`/api/messages/channels/${channelId}/messages`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ body, clientNonce: `${Date.now()}-${Math.random()}` }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error ?? 'No se pudo enviar');
+      }
+      setMessages(await fetchTeamThread(channelId));
+      setThreadError(null);
+    } catch (e) {
+      setThreadError(e instanceof Error ? e.message : 'Error');
+    } finally {
+      setSending(false);
+    }
+  }
+
+  if (status === 'loading') {
+    return <div className="h-24 rounded-xl bg-zinc-100 animate-pulse" />;
+  }
+  if (status === 'error') {
+    return (
+      <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        {threadError ?? 'El chat interno no está disponible.'}
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-[--color-border] bg-white">
+      <ul className="max-h-72 space-y-3 overflow-y-auto px-3 py-3">
+        {messages.map((m) => (
+          <li key={m.id} className="text-sm">
+            <p className="text-[11px] font-medium text-zinc-400">
+              {m.senderKind === 'USER' ? (m.senderName ?? 'Alguien') : 'Cliniq'} ·{' '}
+              {fmtDateTime(m.createdAt)}
+            </p>
+            <p className="whitespace-pre-wrap leading-snug text-zinc-700">{m.body}</p>
+          </li>
+        ))}
+        {messages.length === 0 && (
+          <li className="text-xs text-zinc-400">
+            Todavía no hay notas del equipo sobre esta persona.
+          </li>
+        )}
+      </ul>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void send();
+        }}
+        className="flex items-center gap-2 border-t border-[--color-border-subtle] px-3 py-2"
+      >
+        <Input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="Nota interna para el equipo…"
+          className="flex-1"
+        />
+        <Button type="submit" size="sm" disabled={sending}>
+          {sending ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Send className="h-3.5 w-3.5" />
+          )}
+          Enviar
+        </Button>
+      </form>
+      {threadError && <p className="px-3 pb-2 text-[11px] text-rose-600">{threadError}</p>}
+    </div>
   );
 }
 

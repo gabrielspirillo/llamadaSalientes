@@ -118,7 +118,9 @@ const TO_TASK_ACTION: ImAction = {
 };
 
 function callAction(phone: string | null, label = 'Llamar'): ImAction[] {
-  return phone ? [{ id: 'call', label: `${label} ${phone}`, tone: 'soft', href: `tel:${phone}` }] : [];
+  return phone
+    ? [{ id: 'call', label: `${label} ${phone}`, tone: 'soft', href: `tel:${phone}` }]
+    : [];
 }
 
 function line(label: string, value: string | null | undefined): string | null {
@@ -147,9 +149,7 @@ export async function postMissedCall(args: {
   transferredUnanswered?: boolean;
 }): Promise<void> {
   const tz = await getTenantTimezone(args.tenantId).catch(() => 'Europe/Madrid');
-  const event: ImEvent = args.transferredUnanswered
-    ? 'call.transferred_unanswered'
-    : 'call.missed';
+  const event: ImEvent = args.transferredUnanswered ? 'call.transferred_unanswered' : 'call.missed';
   const title = args.transferredUnanswered
     ? `Traspaso sin atender — ${args.patientName}`
     : `Llamada perdida — ${args.patientName}`;
@@ -178,7 +178,12 @@ export async function postMissedCall(args: {
       },
     },
     actions: [
-      { id: 'open-call', label: 'Ver la llamada', tone: 'primary', href: `/dashboard/calls/${args.callId}` },
+      {
+        id: 'open-call',
+        label: 'Ver la llamada',
+        tone: 'primary',
+        href: `/dashboard/calls/${args.callId}`,
+      },
       ...callAction(args.phone, 'Devolver la llamada'),
       TO_TASK_ACTION,
     ],
@@ -224,7 +229,12 @@ export async function postSlotOpen(args: {
       },
     },
     actions: [
-      { id: 'open-waitlist', label: 'Ver la cola de espera', tone: 'primary', href: '/dashboard/waitlist' },
+      {
+        id: 'open-waitlist',
+        label: 'Ver la cola de espera',
+        tone: 'primary',
+        href: '/dashboard/waitlist',
+      },
       ...callAction(args.candidatePhone ?? null, 'Ofrecerlo yo a'),
       TO_TASK_ACTION,
     ],
@@ -264,7 +274,12 @@ export async function postWaitlistBookFailed(args: {
     },
     actions: [
       ...callAction(args.phone, 'Llamar a'),
-      { id: 'open-waitlist', label: 'Ver la cola de espera', tone: 'secondary', href: '/dashboard/waitlist' },
+      {
+        id: 'open-waitlist',
+        label: 'Ver la cola de espera',
+        tone: 'secondary',
+        href: '/dashboard/waitlist',
+      },
       TO_TASK_ACTION,
     ],
     dedupeKey: `evt:waitlist.book_failed:${args.entryId}`,
@@ -342,7 +357,12 @@ export async function postReminderNoResponse(args: {
     },
     actions: [
       ...callAction(args.phone, 'Llamar a'),
-      { id: 'open-reminders', label: 'Ver recordatorios', tone: 'secondary', href: '/dashboard/reminders' },
+      {
+        id: 'open-reminders',
+        label: 'Ver recordatorios',
+        tone: 'secondary',
+        href: '/dashboard/reminders',
+      },
       { id: 'free-slot', label: 'Liberar el hueco', tone: 'soft', href: '/dashboard/waitlist' },
       TO_TASK_ACTION,
     ],

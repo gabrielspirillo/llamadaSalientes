@@ -3,6 +3,7 @@ import {
   IntentBarList,
   IntentDonut,
 } from '@/components/dashboard/analytics-charts';
+import { MessagingAnalyticsPanel } from '@/components/dashboard/messaging-analytics';
 import { ModuleUnavailable } from '@/components/dashboard/modules/module-error';
 import { OutboundModule } from '@/components/dashboard/modules/outbound-module';
 import { WhatsappModule } from '@/components/dashboard/modules/whatsapp-module';
@@ -14,6 +15,7 @@ import { Reveal } from '@/components/ui/motion';
 import { StatTile } from '@/components/ui/stat';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { type AnalyticsRange, getAnalytics } from '@/lib/data/analytics';
+import { getMessagingAnalytics } from '@/lib/data/analytics/messaging';
 import { formatDuration } from '@/lib/data/calls-list';
 import { getCurrentTenant } from '@/lib/tenant';
 import {
@@ -25,6 +27,7 @@ import {
   PhoneCall,
   PhoneOutgoing,
   TrendingUp,
+  Users,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -35,7 +38,8 @@ export default async function AnalyticsPage({
 }) {
   const sp = await searchParams;
   const range: AnalyticsRange = sp.range === '7d' || sp.range === '30d' ? sp.range : 'today';
-  const tab = sp.tab === 'outbound' || sp.tab === 'whatsapp' ? sp.tab : 'inbound';
+  const tab =
+    sp.tab === 'outbound' || sp.tab === 'whatsapp' || sp.tab === 'team' ? sp.tab : 'inbound';
   const { tenant } = await getCurrentTenant();
 
   return (
@@ -43,7 +47,7 @@ export default async function AnalyticsPage({
       <PageHeader
         eyebrow="Rendimiento"
         title="Analytics"
-        description="Métricas reales por módulo: entrantes, salientes y WhatsApp."
+        description="Métricas reales por módulo: entrantes, salientes, WhatsApp y equipo."
         icon={<BarChart3 className="h-5 w-5" />}
       />
 
@@ -61,6 +65,10 @@ export default async function AnalyticsPage({
             <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
             WhatsApp
           </TabsTrigger>
+          <TabsTrigger value="team">
+            <Users className="h-3.5 w-3.5 mr-1.5" />
+            Equipo
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="outbound">
@@ -74,7 +82,62 @@ export default async function AnalyticsPage({
         <TabsContent value="whatsapp">
           <WhatsappModule tenantId={tenant.id} />
         </TabsContent>
+
+        <TabsContent value="team">
+          <TeamAnalytics tenantId={tenant.id} range={range} />
+        </TabsContent>
       </Tabs>
+    </>
+  );
+}
+
+/**
+ * Pestaña Equipo. La lectura va envuelta en try/catch a propósito: si la
+ * migración del módulo Mensajes todavía no corrió, las tablas `im_` no existen
+ * y la consulta explota. Eso no puede tirar Analytics entero — la pestaña
+ * muestra su estado vacío y las otras tres siguen funcionando.
+ */
+async function TeamAnalytics({
+  tenantId,
+  range,
+}: {
+  tenantId: string;
+  range: AnalyticsRange;
+}) {
+  const data = await (async () => {
+    try {
+      return await getMessagingAnalytics(tenantId, range);
+    } catch (e) {
+      console.warn('[analytics:team] métricas de mensajería no disponibles', {
+        err: e instanceof Error ? e.message : String(e),
+      });
+      return null;
+    }
+  })();
+
+  return (
+    <>
+      <div className="flex justify-end mb-4">
+        <div className="inline-flex items-center rounded-full border border-[--color-border] bg-white p-1 text-xs">
+          <RangePill
+            href="/dashboard/analytics?tab=team&range=today"
+            active={range === 'today'}
+            label="Hoy"
+          />
+          <RangePill
+            href="/dashboard/analytics?tab=team&range=7d"
+            active={range === '7d'}
+            label="7 días"
+          />
+          <RangePill
+            href="/dashboard/analytics?tab=team&range=30d"
+            active={range === '30d'}
+            label="30 días"
+          />
+        </div>
+      </div>
+
+      <MessagingAnalyticsPanel data={data} />
     </>
   );
 }

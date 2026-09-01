@@ -92,7 +92,7 @@ export async function sweepTenant(
       returning id
     `);
 
-    const count = rowCount(rows);
+    const count = rows.length;
     deleted += count;
     if (count < BATCH_SIZE) break;
   }
@@ -113,7 +113,7 @@ async function resolveRetentionMonths(tenantId: string): Promise<number> {
     from im_user_settings
     where tenant_id = ${tenantId}::uuid
   `);
-  const raw = firstRow(rows)?.months ?? null;
+  const raw = rows[0]?.months ?? null;
   const months = raw == null || !Number.isFinite(raw) ? DEFAULT_RETENTION_MONTHS : raw;
   return Math.min(MAX_RETENTION_MONTHS, Math.max(MIN_RETENTION_MONTHS, months));
 }
@@ -124,7 +124,7 @@ async function resolveRetentionMonths(tenantId: string): Promise<number> {
  */
 async function listAllTenantIds(): Promise<string[]> {
   const rows = await db.execute<{ id: string }>(sql`select id from tenants`);
-  return toArray(rows).map((r) => r.id);
+  return rows.map((r) => r.id);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -181,7 +181,7 @@ export async function exportMessagesForPatient(
     order by m.created_at asc
   `);
 
-  return toArray(rows).map((r) => ({
+  return rows.map((r) => ({
     ...r,
     createdAt: toIso(r.createdAt),
     editedAt: r.editedAt ? toIso(r.editedAt) : null,
@@ -190,25 +190,11 @@ export async function exportMessagesForPatient(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Helpers de resultado crudo
+// Helpers
 //
-// `db.execute` devuelve el RowList de postgres-js (un array con metadatos).
-// Estos tres helpers evitan repetir el casteo en cada consulta.
+// `db.execute` devuelve el RowList de postgres-js: un Array con metadatos, así
+// que se indexa y se recorre directo.
 // ─────────────────────────────────────────────────────────────────────────────
-
-function toArray<T>(result: unknown): T[] {
-  if (Array.isArray(result)) return result as T[];
-  const rows = (result as { rows?: unknown })?.rows;
-  return Array.isArray(rows) ? (rows as T[]) : [];
-}
-
-function firstRow<T>(result: unknown): T | undefined {
-  return toArray<T>(result)[0];
-}
-
-function rowCount(result: unknown): number {
-  return toArray(result).length;
-}
 
 function toIso(value: unknown): string {
   if (value instanceof Date) return value.toISOString();

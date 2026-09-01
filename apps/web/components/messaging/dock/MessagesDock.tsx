@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { useMessaging } from '@/components/messaging/MessagingProvider';
-import { MentionsInbox } from '@/components/messaging/dock/MentionsInbox';
 import { DockThread } from '@/components/messaging/dock/DockThread';
+import { MentionsInbox } from '@/components/messaging/dock/MentionsInbox';
 import { QuickSwitcher } from '@/components/messaging/dock/QuickSwitcher';
 import { StatusDot } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/feedback';
@@ -55,7 +55,6 @@ export function MessagesDock() {
 
   const [view, setView] = useState<DockView>('thread');
   const [pickerOpen, setPickerOpen] = useState(false);
-  const panelRef = useRef<HTMLDivElement>(null);
 
   // Canales por recencia; el activo es el guardado o el primero con pendientes.
   const ordered = useMemo(
@@ -118,9 +117,7 @@ export function MessagesDock() {
         <button
           type="button"
           onClick={() => setDockOpen(true)}
-          aria-label={
-            totalUnread > 0 ? `Mensajes, ${totalUnread} sin leer` : 'Mensajes del equipo'
-          }
+          aria-label={totalUnread > 0 ? `Mensajes, ${totalUnread} sin leer` : 'Mensajes del equipo'}
           className={cn(
             'press fixed bottom-5 right-4 z-[60] inline-flex h-14 w-14 animate-fade-up items-center justify-center rounded-full',
             'bg-[linear-gradient(135deg,#7139e8,#a855f7_60%,#ec4899)] text-white',
@@ -139,14 +136,12 @@ export function MessagesDock() {
 
       {/* --- Panel expandido ----------------------------------------------- */}
       {dockOpen && (
-        <div
-          ref={panelRef}
+        <section
           className={cn(
             'glass fixed bottom-5 right-4 z-[60] flex animate-fade-up flex-col overflow-hidden rounded-[22px] sm:right-6',
             'h-[560px] max-h-[calc(100vh-2.5rem)] w-[380px] max-w-[calc(100vw-2rem)]',
             'shadow-[0_40px_90px_-30px_rgba(23,20,41,0.55)]',
           )}
-          role="dialog"
           aria-label="Mensajes del equipo"
         >
           {/* Cabecera */}
@@ -300,7 +295,7 @@ export function MessagesDock() {
               }
             />
           )}
-        </div>
+        </section>
       )}
     </>
   );
@@ -356,9 +351,7 @@ function DockSettings({
 
   return (
     <div className="scrollbar-none min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
-      <p className="px-1 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">
-        Avisos
-      </p>
+      <p className="px-1 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">Avisos</p>
 
       <div className="flex items-center gap-3 rounded-2xl bg-white p-3 ring-1 ring-[--color-border]">
         <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-600">

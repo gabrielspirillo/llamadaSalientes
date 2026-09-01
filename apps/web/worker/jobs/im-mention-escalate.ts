@@ -3,8 +3,8 @@ import { and, eq } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import { imChannels, imMentions, imUserSettings, users } from '@/lib/db/schema';
-import type { StepRunner } from '@/lib/queue/step';
 import type { QueueJobs } from '@/lib/queue/queues';
+import type { StepRunner } from '@/lib/queue/step';
 
 /**
  * Escalado de una mención que nadie leyó.
@@ -89,11 +89,7 @@ export async function processImMentionEscalateJob(
   return { status: 'escalated', notified };
 }
 
-function describeChannel(
-  name: string | null,
-  slug: string | null,
-  kind: string | null,
-): string {
+function describeChannel(name: string | null, slug: string | null, kind: string | null): string {
   if (kind === 'DM') return 'un mensaje directo';
   if (slug) return `#${slug}`;
   if (name) return `«${name}»`;

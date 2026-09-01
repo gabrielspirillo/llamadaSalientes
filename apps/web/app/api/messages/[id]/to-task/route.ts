@@ -90,9 +90,7 @@ export async function POST(
 
     // El título por defecto sale del propio mensaje: la primera línea, cortada.
     const fallbackTitle =
-      str('title') ??
-      (message.body ?? '').trim().split('\n')[0]?.trim().slice(0, 200) ??
-      '';
+      str('title') ?? (message.body ?? '').trim().split('\n')[0]?.trim().slice(0, 200) ?? '';
     const title = parsed.data.title ?? (fallbackTitle || 'Tarea desde un mensaje');
 
     const dueAt = parsed.data.dueAt ? new Date(parsed.data.dueAt) : null;

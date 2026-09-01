@@ -2,6 +2,9 @@ import { ImpersonationBanner } from '@/components/dashboard/impersonation-banner
 import { DashboardSidebar } from '@/components/dashboard/sidebar';
 import { DashboardTopbar } from '@/components/dashboard/topbar';
 import { WelcomeTour } from '@/components/dashboard/welcome-tour';
+import { MessagingProvider } from '@/components/messaging/MessagingProvider';
+import { MessagesDock } from '@/components/messaging/dock/MessagesDock';
+import { unreadSummary } from '@/lib/messaging/queries';
 import { DEFAULT_ENABLED_MODULES, type EnabledModules } from '@/lib/modules';
 import { countActionableTasks, internalUserIdFor } from '@/lib/tasks/queries';
 import { getCurrentTenantOrNull } from '@/lib/tenant';
@@ -45,36 +48,57 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // Badge de Tareas: lo mío vencido o para hoy. Una query barata por render;
   // si falla (tenant recién creado, DB lenta) el sidebar se dibuja sin badge.
   let tasksBadge = 0;
+  let messagesBadge = 0;
   if (tenantCtx) {
+    let internalUserId: string | null = null;
     try {
-      const internalUserId = await internalUserIdFor(userId);
+      internalUserId = await internalUserIdFor(userId);
       tasksBadge = await countActionableTasks(tenantCtx.tenant.id, internalUserId);
     } catch {
       tasksBadge = 0;
     }
+
+    // Badge de Mensajes: no leídos míos. Si las tablas im_ todavía no existen
+    // (migración 0019 sin aplicar) el panel entero tiene que seguir dibujándose,
+    // así que el fallo se traga acá y el badge queda en 0.
+    if (internalUserId) {
+      try {
+        const summary = await unreadSummary(tenantCtx.tenant.id, internalUserId);
+        messagesBadge = summary.totalUnread;
+      } catch {
+        messagesBadge = 0;
+      }
+    }
   }
 
   return (
-    <div className="aurora-canvas flex min-h-screen text-zinc-900">
-      <DashboardSidebar
-        enabledModules={enabledModules}
-        isSuperAdmin={isSuperAdmin}
-        tasksBadge={tasksBadge}
-      />
-      <div className="flex min-w-0 flex-1 flex-col">
-        {tenantCtx?.impersonating && <ImpersonationBanner clinicName={tenantCtx.tenant.name} />}
-        <DashboardTopbar
+    // El provider envuelve todo el panel: es el dueño único del EventSource de
+    // Mensajes y lo consumen el sidebar (badge), la campana y el dock.
+    <MessagingProvider>
+      <div className="aurora-canvas flex min-h-screen text-zinc-900">
+        <DashboardSidebar
           enabledModules={enabledModules}
           isSuperAdmin={isSuperAdmin}
-          impersonatingClinic={tenantCtx?.impersonating ? tenantCtx.tenant.name : undefined}
           tasksBadge={tasksBadge}
+          messagesBadge={messagesBadge}
         />
-        {/* La key por ruta re-dispara la animación de entrada en cada navegación. */}
-        <main className="enter-page flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-9">
-          <div className="mx-auto w-full max-w-[1480px]">{children}</div>
-        </main>
+        <div className="flex min-w-0 flex-1 flex-col">
+          {tenantCtx?.impersonating && <ImpersonationBanner clinicName={tenantCtx.tenant.name} />}
+          <DashboardTopbar
+            enabledModules={enabledModules}
+            isSuperAdmin={isSuperAdmin}
+            impersonatingClinic={tenantCtx?.impersonating ? tenantCtx.tenant.name : undefined}
+            tasksBadge={tasksBadge}
+            messagesBadge={messagesBadge}
+          />
+          {/* La key por ruta re-dispara la animación de entrada en cada navegación. */}
+          <main className="enter-page flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-9">
+            <div className="mx-auto w-full max-w-[1480px]">{children}</div>
+          </main>
+        </div>
+        <WelcomeTour autoStart={!isSuperAdmin && !tenantCtx?.impersonating} />
+        <MessagesDock />
       </div>
-      <WelcomeTour autoStart={!isSuperAdmin && !tenantCtx?.impersonating} />
-    </div>
+    </MessagingProvider>
   );
 }

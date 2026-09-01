@@ -1,5 +1,5 @@
 import 'server-only';
-import { Queue, type JobsOptions } from 'bullmq';
+import { type JobsOptions, Queue } from 'bullmq';
 
 import { env } from '@/lib/env';
 import { getRedis } from '@/lib/queue/connection';

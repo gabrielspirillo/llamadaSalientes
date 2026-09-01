@@ -137,7 +137,7 @@ export async function enqueueOfferForCancelledSlot(
     tenantId,
     cancelledSlotId,
     slotStart: slot.startTime,
-    candidateGhlContactId: entry?.ghlContactId ?? null,
+    candidateEntryId: entry?.id ?? null,
     skippedReason: entry ? null : 'no_eligible_entry',
   }).catch(() => undefined);
 
@@ -188,20 +188,27 @@ async function publishSlotOpen(args: {
   tenantId: string;
   cancelledSlotId: string;
   slotStart: Date;
-  candidateGhlContactId: string | null;
+  candidateEntryId: string | null;
   skippedReason: string | null;
 }): Promise<void> {
   try {
     const { postSlotOpen } = await import('@/lib/messaging/bot');
     let candidateName: string | null = null;
     let candidatePhone: string | null = null;
-    if (args.candidateGhlContactId) {
-      const { resolvePatient } = await import('@/lib/tasks/hooks');
-      const patient = await resolvePatient(args.tenantId, {
-        ghlContactId: args.candidateGhlContactId,
-      });
-      candidateName = patient.name;
-      candidatePhone = patient.phone;
+    if (args.candidateEntryId) {
+      const [cand] = await db
+        .select({ ghlContactId: waitlistEntries.ghlContactId })
+        .from(waitlistEntries)
+        .where(eq(waitlistEntries.id, args.candidateEntryId))
+        .limit(1);
+      if (cand?.ghlContactId) {
+        const { resolvePatient } = await import('@/lib/tasks/hooks');
+        const patient = await resolvePatient(args.tenantId, {
+          ghlContactId: cand.ghlContactId,
+        });
+        candidateName = patient.name;
+        candidatePhone = patient.phone;
+      }
     }
     await postSlotOpen({
       tenantId: args.tenantId,

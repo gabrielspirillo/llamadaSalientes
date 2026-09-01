@@ -243,7 +243,9 @@ async function maybePostThresholdAlert(a: {
   const [row] = await db
     .select({ missed: sql<number>`count(*) filter (where ${missedCallPredicate})::int` })
     .from(calls)
-    .where(and(eq(calls.tenantId, a.tenantId), inWindow(callOccurredAt, baselineStart, a.dayStart)));
+    .where(
+      and(eq(calls.tenantId, a.tenantId), inWindow(callOccurredAt, baselineStart, a.dayStart)),
+    );
 
   const baselineTotal = row?.missed ?? 0;
   const average = baselineTotal / 7;

@@ -8,9 +8,9 @@ import { OrganizationSwitcher } from '@clerk/nextjs';
 import {
   BarChart3,
   BellRing,
-  ClipboardCheck,
   Bot,
   Building2,
+  ClipboardCheck,
   Contact,
   HelpCircle,
   Home,

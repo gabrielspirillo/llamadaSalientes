@@ -16,7 +16,6 @@ import {
   useNotifications,
 } from '@/components/messaging/dock/useNotifications';
 import { cn } from '@/lib/cn';
-import { AtSign, MessageSquare, X } from 'lucide-react';
 import type { ImRealtimeEvent, ImRealtimeEventKind } from '@/lib/messaging/events';
 import type {
   ImChannelDTO,
@@ -26,6 +25,7 @@ import type {
   ImPresence,
   ImRailDTO,
 } from '@/lib/messaging/types';
+import { AtSign, MessageSquare, X } from 'lucide-react';
 
 /* ============================================================================
    Contexto del módulo Mensajes.
@@ -159,9 +159,9 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
   const [degraded, setDegraded] = useState(false);
   const [dockOpen, setDockOpenState] = useState(false);
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
-  const [typing, setTyping] = useState<Record<string, { userId: string; name: string; until: number }[]>>(
-    {},
-  );
+  const [typing, setTyping] = useState<
+    Record<string, { userId: string; name: string; until: number }[]>
+  >({});
 
   const subscribersRef = useRef<Map<string, Set<ImEventHandler>>>(new Map());
   const esRef = useRef<EventSource | null>(null);
@@ -648,9 +648,9 @@ function NotificationToasts({
   if (toasts.length === 0) return null;
 
   return (
+    // Sin `role="status"`: cada toast lleva botones y el contenedor solo anuncia.
     <div
       className="pointer-events-none fixed bottom-24 right-4 z-[70] flex w-[320px] max-w-[calc(100vw-2rem)] flex-col gap-2 sm:right-6"
-      role="status"
       aria-live="polite"
     >
       {toasts.map((t) => (
@@ -681,7 +681,9 @@ function NotificationToasts({
             className="min-w-0 flex-1 text-left"
           >
             <p className="truncate text-[13px] font-semibold text-zinc-900">{t.title}</p>
-            {t.detail && <p className="mt-0.5 line-clamp-2 text-[12px] text-zinc-500">{t.detail}</p>}
+            {t.detail && (
+              <p className="mt-0.5 line-clamp-2 text-[12px] text-zinc-500">{t.detail}</p>
+            )}
             <p className="mt-1 text-[11px] font-semibold text-brand-600">Ir al hilo</p>
           </button>
           <button

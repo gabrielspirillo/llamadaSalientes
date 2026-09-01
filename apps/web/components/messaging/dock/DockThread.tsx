@@ -80,12 +80,12 @@ export function DockThread({ channelId }: { channelId: string }) {
   }, [load]);
 
   /* --- Marcar leído al abrir el canal ----------------------------------- */
+  // Solo al cambiar de canal o al terminar la carga: no en cada mensaje.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: acotado a propósito
   useEffect(() => {
     if (loading) return;
     const last = messages[messages.length - 1];
     void markRead(channelId, last?.id ?? null);
-    // Solo al cambiar de canal o terminar la carga: no en cada mensaje.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelId, loading]);
 
   /* --- Eventos en vivo --------------------------------------------------- */
@@ -97,7 +97,9 @@ export function DockThread({ channelId }: { channelId: string }) {
     });
     const offUpd = subscribe('message.updated', (event) => {
       if (event.kind !== 'message.updated' || event.channelId !== channelId) return;
-      setMessages((prev) => sortAndDedupe(prev.map((m) => (m.id === event.message.id ? event.message : m))));
+      setMessages((prev) =>
+        sortAndDedupe(prev.map((m) => (m.id === event.message.id ? event.message : m))),
+      );
     });
     const offDel = subscribe('message.deleted', (event) => {
       if (event.kind !== 'message.deleted' || event.channelId !== channelId) return;
@@ -111,6 +113,7 @@ export function DockThread({ channelId }: { channelId: string }) {
   }, [channelId, subscribe, markRead]);
 
   /* --- Autoscroll pegado al fondo --------------------------------------- */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: depende de la lista, no de las refs
   useLayoutEffect(() => {
     if (stickRef.current) bottomRef.current?.scrollIntoView({ block: 'end' });
   }, [messages]);
@@ -218,9 +221,7 @@ export function DockThread({ channelId }: { channelId: string }) {
                 )}
               >
                 <span className="w-6 shrink-0">
-                  {!grouped && !mine && (
-                    <Avatar name={m.senderName ?? 'Sistema'} size={24} />
-                  )}
+                  {!grouped && !mine && <Avatar name={m.senderName ?? 'Sistema'} size={24} />}
                 </span>
                 <div className={cn('min-w-0 max-w-[78%]', mine && 'text-right')}>
                   {!grouped && !mine && (

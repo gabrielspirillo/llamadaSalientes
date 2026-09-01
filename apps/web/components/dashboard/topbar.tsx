@@ -1,8 +1,8 @@
 'use client';
 
 import { DashboardSidebarMobile } from '@/components/dashboard/sidebar';
-import { MentionsInbox } from '@/components/messaging/dock/MentionsInbox';
 import { useMessaging } from '@/components/messaging/MessagingProvider';
+import { MentionsInbox } from '@/components/messaging/dock/MentionsInbox';
 import { StatusDot } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/feedback';
 import { cn } from '@/lib/cn';
@@ -256,7 +256,7 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
         kind: 'message' as const,
         id: h.messageId,
         title: h.snippet,
-        subtitle: `${h.channelName}${h.senderName ? ` \u00b7 ${h.senderName}` : ''}`,
+        subtitle: `${h.channelName}${h.senderName ? ` · ${h.senderName}` : ''}`,
         href: `/dashboard/messages?channel=${h.channelId}&message=${h.messageId}`,
         when: h.createdAt,
       }));
@@ -390,6 +390,10 @@ function NotificationsBell({
   const [items, setItems] = useState<Notification[]>([]);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
+  // Menciones del módulo Mensajes: el "leído" vive en el server
+  // (im_mentions.read_at), no en localStorage como el de llamadas.
+  const { mentions, ready: messagingReady } = useMessaging();
+  const [tab, setTab] = useState<'calls' | 'mentions'>('calls');
   const [lastSeenAt, setLastSeenAt] = useState<number>(() => {
     if (typeof window === 'undefined') return 0;
     const v = window.localStorage.getItem(NOTIF_LAST_SEEN_KEY);
@@ -431,7 +435,17 @@ function NotificationsBell({
   }, [open, onClose]);
 
   const visible = items.filter((i) => !dismissed.has(i.id));
-  const unreadCount = visible.filter((i) => new Date(i.createdAt).getTime() > lastSeenAt).length;
+  const callsUnread = visible.filter((i) => new Date(i.createdAt).getTime() > lastSeenAt).length;
+  const mentionsUnread = mentions.filter((m) => !m.readAt).length;
+  const unreadCount = callsUnread + mentionsUnread;
+
+  // Si hay menciones sin leer, se abre directo en esa pestaña: es lo que pide
+  // una respuesta de una persona, no de un agente.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: solo al abrir el panel
+  useEffect(() => {
+    if (!open) return;
+    setTab(mentionsUnread > 0 ? 'mentions' : 'calls');
+  }, [open]);
 
   function markAllRead() {
     const now = Date.now();
@@ -492,10 +506,12 @@ function NotificationsBell({
             <div className="relative">
               <h3 className="text-sm font-bold tracking-tight text-zinc-900">Notificaciones</h3>
               <p className="text-[11px] text-zinc-500">
-                {visible.length} {visible.length === 1 ? 'reciente' : 'recientes'}
+                {tab === 'calls'
+                  ? `${visible.length} ${visible.length === 1 ? 'reciente' : 'recientes'}`
+                  : `${mentions.length} ${mentions.length === 1 ? 'mención' : 'menciones'}`}
               </p>
             </div>
-            {visible.length > 0 && (
+            {tab === 'calls' && visible.length > 0 && (
               <button
                 type="button"
                 onClick={clearAll}
@@ -508,8 +524,29 @@ function NotificationsBell({
             )}
           </div>
 
+          {messagingReady && (
+            <div className="flex shrink-0 gap-1 border-b border-[--color-border-subtle] px-3 py-2">
+              <BellTab
+                active={tab === 'calls'}
+                onClick={() => setTab('calls')}
+                icon={<Phone className="h-3 w-3" />}
+                label="Llamadas"
+                badge={callsUnread}
+              />
+              <BellTab
+                active={tab === 'mentions'}
+                onClick={() => setTab('mentions')}
+                icon={<AtSign className="h-3 w-3" />}
+                label="Menciones"
+                badge={mentionsUnread}
+              />
+            </div>
+          )}
+
           <div className="min-h-0 flex-1 overflow-y-auto">
-            {loading && visible.length === 0 ? (
+            {messagingReady && tab === 'mentions' ? (
+              <MentionsInbox />
+            ) : loading && visible.length === 0 ? (
               <div className="px-6 py-10 text-center text-sm text-zinc-400">Cargando…</div>
             ) : visible.length === 0 ? (
               <EmptyState
@@ -566,17 +603,61 @@ function NotificationsBell({
 
           <div className="shrink-0 border-t border-[--color-border-subtle] bg-[#fbfaff]">
             <Link
-              href="/dashboard/calls"
+              href={
+                messagingReady && tab === 'mentions' ? '/dashboard/messages' : '/dashboard/calls'
+              }
               onClick={onClose}
               className="group flex items-center justify-center gap-1.5 py-3 text-xs font-semibold text-zinc-600 transition-colors hover:bg-brand-50 hover:text-brand-700"
             >
-              Ver todas las llamadas
+              {messagingReady && tab === 'mentions' ? 'Abrir Mensajes' : 'Ver todas las llamadas'}
               <ArrowRight className="h-3 w-3 transition-transform duration-300 group-hover:translate-x-1" />
             </Link>
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+/** Pestaña de la campana. Píldora en gradiente cuando está activa. */
+function BellTab({
+  active,
+  onClick,
+  icon,
+  label,
+  badge,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+  badge: number;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        'inline-flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-[11.5px] font-semibold transition-all duration-300',
+        active
+          ? 'bg-[linear-gradient(120deg,#7139e8,#a855f7)] text-white shadow-[0_8px_18px_-10px_rgba(113,57,232,0.85)]'
+          : 'text-zinc-500 hover:bg-brand-50 hover:text-brand-700',
+      )}
+    >
+      {icon}
+      {label}
+      {badge > 0 && (
+        <span
+          className={cn(
+            'inline-flex min-w-[16px] items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums',
+            active ? 'bg-white/25 text-white' : 'bg-rose-500 text-white',
+          )}
+        >
+          {badge > 9 ? '9+' : badge}
+        </span>
+      )}
+    </button>
   );
 }
 
