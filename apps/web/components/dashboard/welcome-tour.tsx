@@ -12,6 +12,7 @@ import {
   Contact,
   HelpCircle,
   MessageCircle,
+  MessageSquare,
   PhoneCall,
   ShieldCheck,
   Sparkles,
@@ -65,6 +66,14 @@ const STEPS: Step[] = [
     eyebrow: 'Teléfono',
     title: 'Llamadas',
     body: 'El asistente atiende las llamadas que entran y también llama a tus pacientes para recordarles la cita o recuperar las que se cancelaron.',
+  },
+  {
+    target: '[data-tour="/dashboard/messages"]',
+    icon: MessageSquare,
+    tint: 'bg-gradient-to-br from-[#37766a] to-[#6bc2a4]',
+    eyebrow: 'Tu equipo',
+    title: 'Mensajes',
+    body: 'El chat interno de la clínica. Aquí caen solas las llamadas perdidas, los huecos que se liberan y los avisos del asistente, y cualquier mensaje se convierte en tarea con un clic.',
   },
   {
     target: '[data-tour="/dashboard/whatsapp"]',

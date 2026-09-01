@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, isNull, ne, sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import {
@@ -10,6 +10,7 @@ import {
   imMessages,
   imPins,
   imSavedMessages,
+  imUserSettings,
   tenants,
   type ImAction,
   type ImAttachment,
@@ -394,6 +395,8 @@ export async function sendMessage(input: SendMessageInput): Promise<{
         body: previewOf(body, kind, attachments),
         senderName: dto.senderName,
       });
+
+      await scheduleMentionEscalations(input.tenantId, inserted.id, notifyIds);
     }
   } catch (err) {
     console.warn('[messaging] fan-out en tiempo real falló', {
@@ -403,6 +406,63 @@ export async function sendMessage(input: SendMessageInput): Promise<{
   }
 
   return { id: inserted.id, created: true };
+}
+
+/**
+ * Programa el aviso por otro canal para las menciones que sigan sin leerse
+ * pasado el margen que configuró cada persona.
+ *
+ * Apagado por defecto (`escalate_mentions_after_minutes` = 0), así que en la
+ * práctica no encola nada salvo que alguien lo active a propósito: mal
+ * calibrado, esto se vuelve spam y la gente silencia el módulo entero.
+ *
+ * Best-effort como todo el fan-out: si Redis está caído la mención igual quedó
+ * escrita y visible en el panel.
+ */
+async function scheduleMentionEscalations(
+  tenantId: string,
+  messageId: string,
+  userIds: string[],
+): Promise<void> {
+  if (userIds.length === 0) return;
+  try {
+    const prefs = await db
+      .select({
+        userId: imUserSettings.userId,
+        minutes: imUserSettings.escalateMentionsAfterMinutes,
+      })
+      .from(imUserSettings)
+      .where(
+        and(
+          eq(imUserSettings.tenantId, tenantId),
+          inArray(imUserSettings.userId, userIds),
+          gt(imUserSettings.escalateMentionsAfterMinutes, 0),
+        ),
+      );
+    if (prefs.length === 0) return;
+
+    const rows = await db
+      .select({ id: imMentions.id, userId: imMentions.userId })
+      .from(imMentions)
+      .where(and(eq(imMentions.messageId, messageId), inArray(imMentions.userId, userIds)));
+    const mentionByUser = new Map(rows.map((r) => [r.userId, r.id]));
+
+    const { sendQueueEvent } = await import('@/lib/queue/client');
+    for (const p of prefs) {
+      const mentionId = mentionByUser.get(p.userId);
+      if (!mentionId) continue;
+      await sendQueueEvent(
+        'im-mention-escalate',
+        { tenantId, mentionId },
+        { delayMs: p.minutes * 60_000 },
+      );
+    }
+  } catch (err) {
+    console.warn('[messaging] no se pudo programar el escalado de menciones', {
+      messageId,
+      err: (err as Error).message,
+    });
+  }
 }
 
 /** Recupera el id del mensaje que ganó la carrera de idempotencia. */
