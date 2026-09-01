@@ -554,7 +554,15 @@ export function MessagesWorkspace({
   const runAction = useCallback(
     async (action: ImAction, message: ImMessageDTO) => {
       if (!action.action) return;
-      const res = await fetch(action.action, {
+      // `action.action` es un NOMBRE de acción, no una ruta: el bot no puede
+      // conocer la URL del mensaje que todavía no existe cuando arma la
+      // tarjeta. Acá se resuelve contra el mensaje concreto.
+      const endpoint = resolveActionEndpoint(action.action, message);
+      if (!endpoint) {
+        console.warn('[mensajes] acción desconocida', action.action);
+        return;
+      }
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...(action.payload ?? {}), messageId: message.id }),
@@ -959,6 +967,25 @@ export function MessagesWorkspace({
       />
     </div>
   );
+}
+
+/**
+ * Traduce el nombre de una acción de tarjeta a su endpoint. Las rutas absolutas
+ * se dejan pasar tal cual para no cerrarle la puerta a una acción que sí venga
+ * con URL propia.
+ */
+function resolveActionEndpoint(action: string, message: ImMessageDTO): string | null {
+  if (action.startsWith('/')) return action;
+  switch (action) {
+    case 'message.to_task':
+      return `/api/messages/${message.id}/to-task`;
+    case 'message.pin':
+      return `/api/messages/${message.id}/pin`;
+    case 'message.save':
+      return `/api/messages/${message.id}/save`;
+    default:
+      return null;
+  }
 }
 
 /** Añade o quita mi reacción de una píldora, sin esperar al servidor. */

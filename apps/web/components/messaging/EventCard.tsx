@@ -195,7 +195,14 @@ function EventActionButton({
       if (onAction) {
         await onAction(action, message);
       } else {
-        const res = await fetch(action.action as string, {
+        // Sin `onAction` no hay quién resuelva el NOMBRE de la acción contra
+        // este mensaje, así que solo se puede ejecutar si ya es una ruta.
+        const target = action.action as string;
+        if (!target.startsWith('/')) {
+          console.warn('[mensajes] acción sin resolver (falta onAction)', target);
+          throw new Error('acción no disponible aquí');
+        }
+        const res = await fetch(target, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(action.payload ?? {}),

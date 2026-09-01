@@ -108,6 +108,37 @@ Convenciones comunes: todos los handlers usan `runtime='nodejs'` y `dynamic='for
 
 Errores propios: `422` cuando una tarea con `requires_evidence` se intenta cerrar sin nota de evidencia.
 
+### Mensajes — chat interno del equipo (roles: viewer/operator/admin)
+
+Pertenencia al canal verificada en cada endpoint. Un no-miembro recibe `404`, no `403`: un canal privado no debe revelar que existe.
+
+| Método | Ruta | Rol mín. | Descripción |
+|---|---|---|---|
+| GET | `/api/messages/stream` | viewer | **SSE multiplexado**: una conexión por usuario, no una por canal. Heartbeat 15 s y refresco de presencia cada 20 s |
+| GET | `/api/messages/rail` | viewer | Canales + no leídos + personas + presencia. Hidrata sidebar, dock y pantalla |
+| GET | `/api/messages/search?q=` | viewer | Búsqueda full-text en español, acotada a los canales del solicitante |
+| GET | `/api/messages/mentions` | viewer | Bandeja "para mí" |
+| POST | `/api/messages/mentions/{id}/resolve` | viewer | Marca la mención como atendida sin tener que responder |
+| POST | `/api/messages/channels` | operator | Crea canal (`PUBLIC` exige admin) |
+| POST | `/api/messages/channels/dm` | viewer | Abre o recupera el mensaje directo con alguien (idempotente) |
+| POST | `/api/messages/channels/context` | viewer | Abre o recupera el hilo de una entidad (paciente, tarea, llamada, conversación, hueco) |
+| GET / PATCH | `/api/messages/channels/{id}` | viewer / gestor | Detalle; nombre y archivado piden gestión, silenciar y fijar son preferencias propias |
+| POST | `/api/messages/channels/{id}/members` | gestor | Invitar y quitar |
+| GET | `/api/messages/channels/{id}/messages` | viewer | Página keyset (`?before=&limit=`); con `?parentId=` devuelve las respuestas de ese mensaje |
+| POST | `/api/messages/channels/{id}/messages` | viewer | Envía (`clientNonce` lo hace idempotente para el envío optimista) |
+| POST | `/api/messages/channels/{id}/read` | viewer | Marca leído y pone los contadores a cero |
+| POST | `/api/messages/channels/{id}/typing` | viewer | "Está escribiendo": `SETEX` de 6 s en Redis, no toca la base |
+| GET | `/api/messages/channels/{id}/pins` | viewer | Mensajes fijados |
+| PATCH / DELETE | `/api/messages/{id}` | autor / admin | Editar dentro de 15 min; borrado **blando** con lápida |
+| POST | `/api/messages/{id}/reactions` | viewer | Alterna un emoji |
+| POST | `/api/messages/{id}/pin` · `/save` | viewer | Fijar en el canal / guardar para mí |
+| POST | `/api/messages/{id}/to-task` | operator | **Convierte el mensaje en tarea** heredando paciente, llamada o conversación |
+| GET / POST | `/api/messages/attachments` | viewer | `GET ?key=` firma la URL **en cada lectura** y redirige; `POST` sube al bucket privado |
+
+Eventos que viajan por el SSE: `message.new`, `message.updated`, `message.deleted`, `reaction.changed`, `channel.updated`, `channel.member_joined`, `channel.member_left`, `typing.start`, `typing.stop`, `presence.changed`, `unread.changed`, `mention.new`.
+
+Los adjuntos nunca guardan una URL firmada dentro del mensaje: caducaría y morirían en silencio. Lo durable es la clave; la URL se acuña al leer.
+
 ### WhatsApp y otros
 
 | Método | Ruta | Descripción |
