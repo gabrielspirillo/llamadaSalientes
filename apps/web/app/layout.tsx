@@ -46,6 +46,14 @@ export default function RootLayout({
       }}
     >
       <html lang="es">
+        <head>
+          {/* Marca que hay JS antes del primer pintado: las animaciones de
+              entrada solo ocultan contenido cuando pueden revelarlo después. */}
+          <script
+            // biome-ignore lint/security/noDangerouslySetInnerHtml: script inline mínimo y estático
+            dangerouslySetInnerHTML={{ __html: "document.documentElement.classList.add('js')" }}
+          />
+        </head>
         <body>{children}</body>
       </html>
     </ClerkProvider>
