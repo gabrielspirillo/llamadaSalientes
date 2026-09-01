@@ -30,16 +30,28 @@ export function MarketingTopbar() {
         </Link>
 
         <nav className="hidden md:flex items-center gap-7 text-sm text-zinc-600">
-          <Link href="#producto" className="relative transition-colors hover:text-brand-700 after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:w-0 after:rounded-full after:bg-[linear-gradient(90deg,#7139e8,#ec4899)] after:transition-all after:duration-300 hover:after:w-full">
+          <Link
+            href="#producto"
+            className="relative transition-colors hover:text-brand-700 after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:w-0 after:rounded-full after:bg-[linear-gradient(90deg,#7139e8,#ec4899)] after:transition-all after:duration-300 hover:after:w-full"
+          >
             Producto
           </Link>
-          <Link href="#integraciones" className="relative transition-colors hover:text-brand-700 after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:w-0 after:rounded-full after:bg-[linear-gradient(90deg,#7139e8,#ec4899)] after:transition-all after:duration-300 hover:after:w-full">
+          <Link
+            href="#integraciones"
+            className="relative transition-colors hover:text-brand-700 after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:w-0 after:rounded-full after:bg-[linear-gradient(90deg,#7139e8,#ec4899)] after:transition-all after:duration-300 hover:after:w-full"
+          >
             Integraciones
           </Link>
-          <Link href="#precios" className="relative transition-colors hover:text-brand-700 after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:w-0 after:rounded-full after:bg-[linear-gradient(90deg,#7139e8,#ec4899)] after:transition-all after:duration-300 hover:after:w-full">
+          <Link
+            href="#precios"
+            className="relative transition-colors hover:text-brand-700 after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:w-0 after:rounded-full after:bg-[linear-gradient(90deg,#7139e8,#ec4899)] after:transition-all after:duration-300 hover:after:w-full"
+          >
             Precios
           </Link>
-          <Link href="/dashboard" className="relative transition-colors hover:text-brand-700 after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:w-0 after:rounded-full after:bg-[linear-gradient(90deg,#7139e8,#ec4899)] after:transition-all after:duration-300 hover:after:w-full">
+          <Link
+            href="/dashboard"
+            className="relative transition-colors hover:text-brand-700 after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:w-0 after:rounded-full after:bg-[linear-gradient(90deg,#7139e8,#ec4899)] after:transition-all after:duration-300 hover:after:w-full"
+          >
             Demo
           </Link>
         </nav>

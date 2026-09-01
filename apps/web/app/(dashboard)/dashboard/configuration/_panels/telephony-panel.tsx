@@ -10,8 +10,7 @@ export async function TelephonyPanel() {
 
   const hdrs = await headers();
   const host = hdrs.get('host') ?? 'localhost:3000';
-  const proto =
-    hdrs.get('x-forwarded-proto') ?? (host.includes('localhost') ? 'http' : 'https');
+  const proto = hdrs.get('x-forwarded-proto') ?? (host.includes('localhost') ? 'http' : 'https');
   const baseUrl = `${proto}://${host}`;
 
   return (
@@ -24,20 +23,16 @@ export async function TelephonyPanel() {
       </div>
       <TelephonySettings
         initial={{
-          provider: ((t?.provider as TelephonyProvider | undefined) ?? 'twilio'),
+          provider: (t?.provider as TelephonyProvider | undefined) ?? 'twilio',
           twilioConfigured: !!t?.twilioAccountSid,
           twilioAccountSid: t?.twilioAccountSid ?? null,
           zadarmaConfigured: !!t?.zadarmaUserKey,
           zadarmaUserKey: t?.zadarmaUserKey ?? null,
           zadarmaWebhookSecretSet: !!t?.zadarmaWebhookSecretEnc,
           callerIdE164: t?.callerIdE164 ?? null,
-          callerIdVerifiedAt: t?.callerIdVerifiedAt
-            ? t.callerIdVerifiedAt.toISOString()
-            : null,
+          callerIdVerifiedAt: t?.callerIdVerifiedAt ? t.callerIdVerifiedAt.toISOString() : null,
           inboundNumberE164: t?.inboundNumberE164 ?? null,
-          inboundConfiguredAt: t?.inboundConfiguredAt
-            ? t.inboundConfiguredAt.toISOString()
-            : null,
+          inboundConfiguredAt: t?.inboundConfiguredAt ? t.inboundConfiguredAt.toISOString() : null,
           inboundRoute: (t?.inboundRoute ?? 'agent') as 'agent' | 'forward',
           inboundForwardNumber: t?.inboundForwardNumber ?? null,
         }}

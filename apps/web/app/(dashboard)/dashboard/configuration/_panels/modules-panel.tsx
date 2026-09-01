@@ -3,8 +3,8 @@ import { tenants } from '@/lib/db/schema';
 import {
   type EnabledModules,
   FUTURA_TENANT_ID,
-  MODULE_KEYS,
   MODULE_DEFINITIONS,
+  MODULE_KEYS,
 } from '@/lib/modules';
 import { getCurrentTenant } from '@/lib/tenant';
 import { asc } from 'drizzle-orm';
@@ -34,8 +34,8 @@ export async function ModulesPanel() {
       <div>
         <h2 className="text-[18px] font-bold tracking-tight text-zinc-900">Módulos por tenant</h2>
         <p className="text-sm text-zinc-500">
-          Activar / desactivar módulos contratables. El bloqueo es visual: las APIs
-          y webhooks siguen procesando aunque el módulo esté apagado.
+          Activar / desactivar módulos contratables. El bloqueo es visual: las APIs y webhooks
+          siguen procesando aunque el módulo esté apagado.
         </p>
       </div>
 

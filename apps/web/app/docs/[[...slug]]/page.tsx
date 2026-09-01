@@ -211,8 +211,8 @@ function DocsIndex({ available }: { available: string[] }) {
     <main className="docs-body">
       <h1>Documentación para Desarrolladores</h1>
       <p>
-        Documentación técnica de <strong>CliniQ / DentalVoice</strong> — SaaS multi-tenant de
-        agente de voz + WhatsApp con IA para clínicas.
+        Documentación técnica de <strong>CliniQ / DentalVoice</strong> — SaaS multi-tenant de agente
+        de voz + WhatsApp con IA para clínicas.
       </p>
       <ul>
         {known.map((doc) => (

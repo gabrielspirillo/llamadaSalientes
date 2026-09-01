@@ -3,8 +3,8 @@
 import { DashboardSidebarMobile } from '@/components/dashboard/sidebar';
 import { StatusDot } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/feedback';
-import type { EnabledModules } from '@/lib/modules';
 import { cn } from '@/lib/cn';
+import type { EnabledModules } from '@/lib/modules';
 import { UserButton, useUser } from '@clerk/nextjs';
 import {
   ArrowRight,
@@ -268,7 +268,10 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
               <p className="mt-3">Buscando…</p>
             </div>
           ) : hits.length === 0 ? (
-            <EmptyState title={`Sin resultados para “${q}”`} description="Probá con otro término." />
+            <EmptyState
+              title={`Sin resultados para “${q}”`}
+              description="Probá con otro término."
+            />
           ) : (
             <ul className="stagger p-2" style={{ ['--stagger-step' as string]: '35ms' }}>
               {hits.map((h, i) => (
@@ -405,7 +408,9 @@ function NotificationsBell({
         }}
         className={cn(
           'relative inline-flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300 active:scale-95',
-          open ? 'bg-brand-50 text-brand-700' : 'text-zinc-600 hover:bg-brand-50 hover:text-brand-700',
+          open
+            ? 'bg-brand-50 text-brand-700'
+            : 'text-zinc-600 hover:bg-brand-50 hover:text-brand-700',
         )}
         aria-label="Notificaciones"
       >

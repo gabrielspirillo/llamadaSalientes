@@ -1,6 +1,6 @@
 import { PageHeader } from '@/components/dashboard/page-header';
-import { Settings, ShieldCheck } from 'lucide-react';
 import { getCurrentTenant } from '@/lib/tenant';
+import { Settings, ShieldCheck } from 'lucide-react';
 import { AgentStatusPanel } from './_panels/agent-status-panel';
 import { IntegrationsPanel } from './_panels/integrations-panel';
 import { ModulesPanel } from './_panels/modules-panel';

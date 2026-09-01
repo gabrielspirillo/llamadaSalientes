@@ -2,19 +2,16 @@ import { and, desc, eq } from 'drizzle-orm';
 import Link from 'next/link';
 
 import { PageHeader } from '@/components/dashboard/page-header';
-import { ListChecks } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { WaitlistSettingsForm } from '@/components/waitlist/SettingsForm';
 import { TemplatesEditor } from '@/components/waitlist/TemplatesEditor';
-import {
-  TreatmentsToggle,
-  type TreatmentToggleRow,
-} from '@/components/waitlist/TreatmentsToggle';
+import { type TreatmentToggleRow, TreatmentsToggle } from '@/components/waitlist/TreatmentsToggle';
 import { db } from '@/lib/db/client';
 import { treatments, waitlistMessageTemplates, whatsappConnections } from '@/lib/db/schema';
 import { driverScopeForWhatsAppMode } from '@/lib/reminders/template-resolver';
 import { getCurrentTenant } from '@/lib/tenant';
 import { getOrCreateWaitlistSettings } from '@/lib/waitlist/settings';
+import { ListChecks } from 'lucide-react';
 import { ArrowLeft } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -104,7 +101,9 @@ export default async function WaitlistSettingsPage() {
 
         <div className="space-y-3">
           <div>
-            <h2 className="text-[18px] font-bold tracking-tight text-zinc-900">Tratamientos elegibles</h2>
+            <h2 className="text-[18px] font-bold tracking-tight text-zinc-900">
+              Tratamientos elegibles
+            </h2>
             <p className="text-sm text-zinc-500">
               Activá los tratamientos para los que querés que el sistema gestione waitlist.
             </p>
@@ -127,11 +126,13 @@ export default async function WaitlistSettingsPage() {
             voicePromptOverride: t.voicePromptOverride,
             enabled: t.enabled,
           }))}
-          activeWhatsappScope={activeWhatsappScope as
-            | 'whatsapp_cloud'
-            | 'whatsapp_twilio'
-            | 'whatsapp_evolution'
-            | null}
+          activeWhatsappScope={
+            activeWhatsappScope as
+              | 'whatsapp_cloud'
+              | 'whatsapp_twilio'
+              | 'whatsapp_evolution'
+              | null
+          }
         />
       </div>
     </>

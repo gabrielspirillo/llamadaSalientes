@@ -43,7 +43,9 @@ export default function BillingPage() {
                   </span>
                 </div>
                 <h3 className="mt-4 text-[34px] font-extrabold leading-none tracking-tight">Pro</h3>
-                <p className="mt-2 text-[13px] text-white/60">299 € / mes · Renueva el 1 jun 2026</p>
+                <p className="mt-2 text-[13px] text-white/60">
+                  299 € / mes · Renueva el 1 jun 2026
+                </p>
 
                 <div className="mt-6 max-w-sm">
                   <div className="mb-2 flex items-center justify-between text-[13px]">
@@ -127,10 +129,10 @@ export default function BillingPage() {
                 <p className="mt-0.5 text-[12px] text-zinc-500">{i.date}</p>
               </div>
               <div className="flex shrink-0 items-center gap-2 sm:gap-4">
-                <span className="text-[13px] font-bold tabular-nums text-zinc-800">
-                  {i.amount}
-                </span>
-                <Badge tone="success" className="hidden sm:inline-flex">Pagada</Badge>
+                <span className="text-[13px] font-bold tabular-nums text-zinc-800">{i.amount}</span>
+                <Badge tone="success" className="hidden sm:inline-flex">
+                  Pagada
+                </Badge>
                 <Button variant="ghost" size="icon">
                   <Download className="h-4 w-4" />
                 </Button>

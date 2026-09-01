@@ -61,9 +61,7 @@ export function SkipList({ skipped }: { skipped: SkipRow[] }) {
               >
                 {reasonLabel}
               </span>
-              <span className="text-[11px] text-zinc-400 shrink-0">
-                {fmtAbsolute(s.createdAt)}
-              </span>
+              <span className="text-[11px] text-zinc-400 shrink-0">{fmtAbsolute(s.createdAt)}</span>
             </div>
             <p className="mt-2 text-sm font-medium text-zinc-800 truncate">
               {s.treatmentName ?? 'Cita sin tratamiento'}

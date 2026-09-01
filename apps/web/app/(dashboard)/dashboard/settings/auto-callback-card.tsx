@@ -33,8 +33,8 @@ export function AutoCallbackCard({ intakeUrl, intakeKey, ghlWebhookUrl, location
           <Badge tone="success">Activo</Badge>
         </div>
         <p className="text-sm text-zinc-500 mb-5">
-          Cada vez que un nuevo lead deja su teléfono, el agente lo llama automáticamente y
-          al instante. Conectá las dos fuentes:
+          Cada vez que un nuevo lead deja su teléfono, el agente lo llama automáticamente y al
+          instante. Conectá las dos fuentes:
         </p>
 
         {/* 1. Webhook GHL */}
@@ -51,8 +51,8 @@ export function AutoCallbackCard({ intakeUrl, intakeKey, ghlWebhookUrl, location
             onCopy={copy}
           />
           <p className="text-xs text-zinc-500 mt-3">
-            En GHL → <strong>Settings → Integrations → Webhooks</strong> → New Outbound Webhook
-            → pegá esta URL y elegí el evento <em>Contact Create</em>.
+            En GHL → <strong>Settings → Integrations → Webhooks</strong> → New Outbound Webhook →
+            pegá esta URL y elegí el evento <em>Contact Create</em>.
             {locationId && (
               <>
                 {' '}
@@ -107,8 +107,8 @@ export function AutoCallbackCard({ intakeUrl, intakeKey, ghlWebhookUrl, location
               </button>
             </div>
             <p className="text-[11px] text-zinc-500 mt-1.5">
-              Esta key se deriva determinísticamente y no se guarda en plano. Para rotarla
-              hay que rotar la ENCRYPTION_KEY del proyecto.
+              Esta key se deriva determinísticamente y no se guarda en plano. Para rotarla hay que
+              rotar la ENCRYPTION_KEY del proyecto.
             </p>
           </div>
 

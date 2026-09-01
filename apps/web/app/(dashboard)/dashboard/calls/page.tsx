@@ -7,7 +7,7 @@ import { EmptyState } from '@/components/ui/feedback';
 import { Input, Select } from '@/components/ui/input';
 import { Reveal } from '@/components/ui/motion';
 import { Avatar } from '@/components/ui/stat';
-import { HeadRow, TD, TH, TR, Table, TableWrap, THead } from '@/components/ui/table';
+import { HeadRow, TD, TH, THead, TR, Table, TableWrap } from '@/components/ui/table';
 import { countCallsMissingMetadata, formatDuration, listCalls } from '@/lib/data/calls-list';
 import { getCurrentTenant } from '@/lib/tenant';
 import { ArrowRight, Filter, Phone, PhoneCall, Search } from 'lucide-react';
@@ -146,7 +146,10 @@ export default async function CallsPage({
           ) : (
             <>
               {/* --- Móvil: tarjetas ---------------------------------------- */}
-              <ul className="stagger p-2 md:hidden" style={{ ['--stagger-step' as string]: '35ms' }}>
+              <ul
+                className="stagger p-2 md:hidden"
+                style={{ ['--stagger-step' as string]: '35ms' }}
+              >
                 {realCalls.map((c, i) => {
                   const phone = c.fromNumber ?? c.toNumber ?? null;
                   const customData = (c.customData ?? {}) as { patient_name?: string };

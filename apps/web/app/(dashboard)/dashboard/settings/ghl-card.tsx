@@ -65,7 +65,9 @@ function DisconnectedState() {
   return (
     <Card>
       <div className="p-4 sm:p-6">
-        <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">Integración GoHighLevel</h3>
+        <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">
+          Integración GoHighLevel
+        </h3>
         <div className="mt-3 flex items-center gap-2 text-sm">
           <div className="h-2 w-2 rounded-full bg-zinc-300" />
           <span className="text-zinc-600">No conectada</span>
@@ -177,17 +179,16 @@ function ConnectedState({
     <Card>
       <div className="p-4 sm:p-6">
         <div className="flex items-center justify-between">
-          <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">Integración GoHighLevel</h3>
+          <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">
+            Integración GoHighLevel
+          </h3>
           <Badge tone="success">
             <CheckCircle2 className="h-3 w-3" /> Conectada
           </Badge>
         </div>
         <div className="mt-4 space-y-2 text-sm">
           <Row label="Location ID" value={<code className="text-xs">{locationId}</code>} />
-          <Row
-            label="Método"
-            value={method === 'pit' ? 'Private Integration Token' : 'OAuth'}
-          />
+          <Row label="Método" value={method === 'pit' ? 'Private Integration Token' : 'OAuth'} />
           <Row
             label="Conectada"
             value={connectedAt.toLocaleDateString('es', { dateStyle: 'medium' })}

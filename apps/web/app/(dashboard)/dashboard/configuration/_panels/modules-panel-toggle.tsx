@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/cn';
 import type { ModuleKey } from '@/lib/modules';
-import { useTransition, useState } from 'react';
+import { useState, useTransition } from 'react';
 import { toggleModuleAction } from './modules-panel-actions';
 
 export function ModuleToggle({

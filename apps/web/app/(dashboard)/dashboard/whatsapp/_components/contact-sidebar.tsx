@@ -99,9 +99,7 @@ export function ContactSidebar({
   // para que coincida con la badge "Activa / En manos del operador".
   const [localTags, setLocalTags] = useState<Tag[]>(tagsOnConversation);
   const [aiOn, setAiOn] = useState(conversation.aiEnabled && !takeoverActive);
-  const [assignedUserId, setAssignedUserId] = useState<string | null>(
-    conversation.assignedUserId,
-  );
+  const [assignedUserId, setAssignedUserId] = useState<string | null>(conversation.assignedUserId);
 
   // Crear nueva etiqueta inline.
   const [newTagOpen, setNewTagOpen] = useState(false);
@@ -288,9 +286,7 @@ export function ContactSidebar({
         <p className="text-[14px] font-bold tracking-tight text-zinc-900">Citas</p>
         {appointments.length === 0 ? (
           <p className="mt-2 text-xs text-zinc-500">
-            {contact.ghlContactId
-              ? 'Sin citas registradas.'
-              : 'Aún no hay link con el CRM.'}
+            {contact.ghlContactId ? 'Sin citas registradas.' : 'Aún no hay link con el CRM.'}
           </p>
         ) : (
           <ul className="mt-2 space-y-2">

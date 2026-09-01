@@ -1,8 +1,8 @@
 'use client';
 
 import { cn } from '@/lib/cn';
-import Link from 'next/link';
 import { FlaskConical, MessageCircle, Phone, Plug, ToggleRight } from 'lucide-react';
+import Link from 'next/link';
 
 export type ConfigTab = 'whatsapp' | 'telephony' | 'integrations' | 'modules' | 'playground';
 

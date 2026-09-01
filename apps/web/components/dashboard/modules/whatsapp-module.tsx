@@ -7,7 +7,6 @@ import { Card, CardTopbar } from '@/components/ui/card';
 import { EmptyState as UiEmptyState } from '@/components/ui/feedback';
 import { Reveal } from '@/components/ui/motion';
 import { StatTile } from '@/components/ui/stat';
-import { ModuleUnavailable } from './module-error';
 import {
   getConversationStatusBreakdown,
   getMessagesByHour,
@@ -15,6 +14,7 @@ import {
 } from '@/lib/data/analytics/whatsapp';
 import { ArrowRight, Coins, MessageCircle, PieChart, UserCog, Users } from 'lucide-react';
 import Link from 'next/link';
+import { ModuleUnavailable } from './module-error';
 
 function formatMoney(cents: number, currency = 'EUR'): string {
   try {

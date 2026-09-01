@@ -1,10 +1,10 @@
-import { PageHeader } from '@/components/dashboard/page-header';
 import { AgentTester } from '@/components/dashboard/agent-tester';
+import { PageHeader } from '@/components/dashboard/page-header';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/feedback';
-import { Bot } from 'lucide-react';
 import { getAgentConfig } from '@/lib/data/agent-config';
 import { getCurrentTenantOrNull } from '@/lib/tenant';
+import { Bot } from 'lucide-react';
 
 export default async function AgentPage() {
   const ctx = await getCurrentTenantOrNull();

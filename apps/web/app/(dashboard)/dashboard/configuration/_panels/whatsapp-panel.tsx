@@ -28,9 +28,12 @@ export async function WhatsappPanel() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-[18px] font-bold tracking-tight text-zinc-900">Integraciones de WhatsApp</h2>
+        <h2 className="text-[18px] font-bold tracking-tight text-zinc-900">
+          Integraciones de WhatsApp
+        </h2>
         <p className="text-sm text-zinc-500">
-          Conecta Meta Cloud API (oficial), Twilio (BSP oficial) o Evolution API (self-hosted, Baileys).
+          Conecta Meta Cloud API (oficial), Twilio (BSP oficial) o Evolution API (self-hosted,
+          Baileys).
         </p>
       </div>
 
@@ -82,9 +85,7 @@ export async function WhatsappPanel() {
 
           <div className="mb-4 rounded-lg bg-zinc-50 p-3 text-xs text-zinc-700">
             <div className="font-medium">Webhook URL</div>
-            <code className="block break-all text-[11px] text-zinc-600">
-              {evolutionWebhookUrl}
-            </code>
+            <code className="block break-all text-[11px] text-zinc-600">{evolutionWebhookUrl}</code>
             <div className="mt-2 font-medium">Servidor Evolution</div>
             <code className="block text-[11px] text-zinc-600">
               {process.env.EVOLUTION_API_URL
@@ -123,9 +124,8 @@ export async function WhatsappPanel() {
             <div className="mt-2 font-medium">Cómo configurarlo</div>
             <p className="text-[11px] text-zinc-600">
               En Twilio Console → Messaging → WhatsApp sender, pegá la URL en
-              <em> When a message comes in</em> con método HTTP <code>POST</code>.
-              Twilio firma cada request con tu Auth Token; lo verificamos en cada
-              callback.
+              <em> When a message comes in</em> con método HTTP <code>POST</code>. Twilio firma cada
+              request con tu Auth Token; lo verificamos en cada callback.
             </p>
           </div>
 

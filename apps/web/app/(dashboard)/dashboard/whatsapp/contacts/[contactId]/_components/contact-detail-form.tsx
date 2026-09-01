@@ -79,15 +79,18 @@ export function ContactDetailForm({ contact }: Props) {
           <p className="mt-2 rounded bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</p>
         )}
         {saved && !pending && (
-          <p className="mt-2 rounded bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
-            Guardado.
-          </p>
+          <p className="mt-2 rounded bg-emerald-50 px-3 py-2 text-xs text-emerald-700">Guardado.</p>
         )}
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <FieldInput label="Nombre" value={firstName} onChange={setFirstName} placeholder="Nombre" />
-        <FieldInput label="Apellido" value={lastName} onChange={setLastName} placeholder="Apellido" />
+        <FieldInput
+          label="Apellido"
+          value={lastName}
+          onChange={setLastName}
+          placeholder="Apellido"
+        />
         <FieldInput
           label="Email"
           value={email}
@@ -102,7 +105,12 @@ export function ContactDetailForm({ contact }: Props) {
           placeholder=""
           readOnly
         />
-        <FieldInput label="Ciudad" value={city} onChange={setCity} placeholder="Introduzca el nombre de la ciudad" />
+        <FieldInput
+          label="Ciudad"
+          value={city}
+          onChange={setCity}
+          placeholder="Introduzca el nombre de la ciudad"
+        />
         <FieldInput label="País" value={country} onChange={setCountry} placeholder="País" />
         <FieldInput
           label="Dirección"

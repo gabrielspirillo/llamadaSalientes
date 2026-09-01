@@ -138,9 +138,7 @@ export default async function DashboardOverview({
                             </p>
                           </div>
                           {u.treatmentName && (
-                            <Tag className="hidden shrink-0 sm:inline-flex">
-                              {u.treatmentName}
-                            </Tag>
+                            <Tag className="hidden shrink-0 sm:inline-flex">{u.treatmentName}</Tag>
                           )}
                         </div>
                       </li>

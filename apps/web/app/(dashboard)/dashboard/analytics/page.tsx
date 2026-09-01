@@ -3,9 +3,9 @@ import {
   IntentBarList,
   IntentDonut,
 } from '@/components/dashboard/analytics-charts';
+import { ModuleUnavailable } from '@/components/dashboard/modules/module-error';
 import { OutboundModule } from '@/components/dashboard/modules/outbound-module';
 import { WhatsappModule } from '@/components/dashboard/modules/whatsapp-module';
-import { ModuleUnavailable } from '@/components/dashboard/modules/module-error';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardTopbar } from '@/components/ui/card';
@@ -207,27 +207,28 @@ async function InboundAnalytics({
                 }
               />
               <div className="px-4 pb-4 pt-2 sm:px-6 sm:pb-6">
-                <div className="overflow-x-auto"><div className="flex items-end gap-1 sm:gap-1.5 h-48 sm:h-56 min-w-[540px] sm:min-w-0">
-                  {data.byHour.map((h, i) => (
-                    <div
-                      key={h.hour}
-                      className="group/bar flex min-w-0 flex-1 flex-col items-center gap-1.5 sm:gap-2"
-                    >
+                <div className="overflow-x-auto">
+                  <div className="flex items-end gap-1 sm:gap-1.5 h-48 sm:h-56 min-w-[540px] sm:min-w-0">
+                    {data.byHour.map((h, i) => (
                       <div
-                        className="min-h-[3px] w-full origin-bottom rounded-t-lg bg-[linear-gradient(180deg,#a855f7,#7139e8)] transition-[filter,transform] duration-300 hover:brightness-110 group-hover/bar:scale-x-110"
-                        style={{
-                          height: `${(h.calls / maxByHour) * 100}%`,
-                          animation: 'grow-y 700ms cubic-bezier(0.22,1,0.36,1) both',
-                          animationDelay: `${i * 22}ms`,
-                        }}
-                        title={`${h.hour}:00 — ${h.calls} llamadas`}
-                      />
-                      <span className="text-[9px] tabular-nums text-zinc-400 sm:text-[10px]">
-                        {h.hour.toString().padStart(2, '0')}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                        key={h.hour}
+                        className="group/bar flex min-w-0 flex-1 flex-col items-center gap-1.5 sm:gap-2"
+                      >
+                        <div
+                          className="min-h-[3px] w-full origin-bottom rounded-t-lg bg-[linear-gradient(180deg,#a855f7,#7139e8)] transition-[filter,transform] duration-300 hover:brightness-110 group-hover/bar:scale-x-110"
+                          style={{
+                            height: `${(h.calls / maxByHour) * 100}%`,
+                            animation: 'grow-y 700ms cubic-bezier(0.22,1,0.36,1) both',
+                            animationDelay: `${i * 22}ms`,
+                          }}
+                          title={`${h.hour}:00 — ${h.calls} llamadas`}
+                        />
+                        <span className="text-[9px] tabular-nums text-zinc-400 sm:text-[10px]">
+                          {h.hour.toString().padStart(2, '0')}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </Card>

@@ -2,7 +2,6 @@ import { and, asc, desc, eq } from 'drizzle-orm';
 import Link from 'next/link';
 
 import { PageHeader } from '@/components/dashboard/page-header';
-import { BellRing } from 'lucide-react';
 import { RulesEditor } from '@/components/reminders/RulesEditor';
 import { Card } from '@/components/ui/card';
 import { db } from '@/lib/db/client';
@@ -14,6 +13,7 @@ import {
   whatsappConnections,
 } from '@/lib/db/schema';
 import { getCurrentTenant } from '@/lib/tenant';
+import { BellRing } from 'lucide-react';
 import { ChevronLeft } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';

@@ -35,7 +35,11 @@ export function ImpersonationBanner({ clinicName }: { clinicName: string }) {
         disabled={pending}
         className="relative inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 font-semibold backdrop-blur-sm transition-all duration-300 hover:bg-white/30 active:scale-95 disabled:opacity-60"
       >
-        {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogOut className="h-3.5 w-3.5" />}
+        {pending ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <LogOut className="h-3.5 w-3.5" />
+        )}
         Salir
       </button>
     </div>

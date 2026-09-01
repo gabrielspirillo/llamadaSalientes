@@ -23,7 +23,11 @@ export const Textarea = React.forwardRef<
   HTMLTextAreaElement,
   React.TextareaHTMLAttributes<HTMLTextAreaElement>
 >(({ className, ...props }, ref) => (
-  <textarea ref={ref} className={cn(fieldBase, 'min-h-[124px] p-4 leading-relaxed', className)} {...props} />
+  <textarea
+    ref={ref}
+    className={cn(fieldBase, 'min-h-[124px] p-4 leading-relaxed', className)}
+    {...props}
+  />
 ));
 Textarea.displayName = 'Textarea';
 
@@ -57,7 +61,11 @@ export const InputWithIcon = React.forwardRef<
     <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 transition-colors duration-300 peer-focus:text-brand-500">
       {icon}
     </span>
-    <input ref={ref} className={cn(fieldBase, 'peer h-11 pl-11 pr-4', trailing && 'pr-12', className)} {...props} />
+    <input
+      ref={ref}
+      className={cn(fieldBase, 'peer h-11 pl-11 pr-4', trailing && 'pr-12', className)}
+      {...props}
+    />
     {trailing && (
       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400">{trailing}</span>
     )}

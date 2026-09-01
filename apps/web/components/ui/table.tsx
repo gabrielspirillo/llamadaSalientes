@@ -55,9 +55,6 @@ export function TD({ className, ...props }: React.TdHTMLAttributes<HTMLTableCell
 /** Fila de cabecera lista para usar: `<THead><HeadRow>…</HeadRow></THead>`. */
 export function HeadRow({ className, ...props }: React.HTMLAttributes<HTMLTableRowElement>) {
   return (
-    <tr
-      className={cn('border-b border-[--color-border] bg-[#fbfaff]', className)}
-      {...props}
-    />
+    <tr className={cn('border-b border-[--color-border] bg-[#fbfaff]', className)} {...props} />
   );
 }

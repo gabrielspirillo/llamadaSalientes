@@ -23,7 +23,10 @@ function getVars(snapshot: unknown): Vars {
   return (snapshot as { vars?: Vars }).vars ?? {};
 }
 
-const STATUS_LABEL: Record<string, { label: string; tone: 'neutral' | 'success' | 'warn' | 'danger' | 'info' }> = {
+const STATUS_LABEL: Record<
+  string,
+  { label: string; tone: 'neutral' | 'success' | 'warn' | 'danger' | 'info' }
+> = {
   SCHEDULED: { label: 'Programado', tone: 'info' },
   SENT: { label: 'Enviado', tone: 'neutral' },
   DELIVERED: { label: 'Entregado', tone: 'neutral' },
@@ -66,7 +69,10 @@ export function ReminderDetailDialog({
   onLocalPatch?: (reminderId: string, patch: Partial<Reminder>) => void;
 }) {
   const vars = getVars(reminder.payloadSnapshot);
-  const status = STATUS_LABEL[reminder.status] ?? { label: reminder.status, tone: 'neutral' as const };
+  const status = STATUS_LABEL[reminder.status] ?? {
+    label: reminder.status,
+    tone: 'neutral' as const,
+  };
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -155,7 +161,12 @@ export function ReminderDetailDialog({
             <Row label="Tratamiento" value={vars.appointment?.treatment} />
             <Row label="Fecha" value={vars.appointment?.date} />
             <Row label="Hora" value={vars.appointment?.time} />
-            <Row label="Duración" value={vars.appointment?.durationMinutes ? `${vars.appointment.durationMinutes} min` : null} />
+            <Row
+              label="Duración"
+              value={
+                vars.appointment?.durationMinutes ? `${vars.appointment.durationMinutes} min` : null
+              }
+            />
             <Row label="ID GHL" value={reminder.ghlAppointmentId} mono />
           </Section>
 
@@ -175,7 +186,7 @@ export function ReminderDetailDialog({
             )}
             <Row
               label="Regla"
-              value={rule ? rule.label ?? offsetToHuman(rule.offsetMinutes) : '—'}
+              value={rule ? (rule.label ?? offsetToHuman(rule.offsetMinutes)) : '—'}
             />
             <Row label="Programado para" value={fmt(reminder.scheduledFor)} />
             <Row label="Enviado" value={fmt(reminder.sentAt)} />
@@ -230,7 +241,10 @@ function Row({
   return (
     <div className="flex justify-between gap-3 text-sm">
       <dt className="text-zinc-500">{label}</dt>
-      <dd className={`min-w-0 truncate ${mono ? 'font-mono text-[11px]' : ''} text-zinc-800`} title={value ?? ''}>
+      <dd
+        className={`min-w-0 truncate ${mono ? 'font-mono text-[11px]' : ''} text-zinc-800`}
+        title={value ?? ''}
+      >
         {value || '—'}
       </dd>
     </div>

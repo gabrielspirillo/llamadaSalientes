@@ -1,14 +1,10 @@
 import { PageHeader } from '@/components/dashboard/page-header';
-import { LayoutDashboard } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { db } from '@/lib/db/client';
 import { tenants } from '@/lib/db/schema';
-import {
-  type EnabledModules,
-  MODULE_DEFINITIONS,
-  MODULE_KEYS,
-} from '@/lib/modules';
+import { type EnabledModules, MODULE_DEFINITIONS, MODULE_KEYS } from '@/lib/modules';
 import { getCurrentTenant } from '@/lib/tenant';
+import { LayoutDashboard } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { ModuleToggle } from '../configuration/_panels/modules-panel-toggle';
 import { ActivateButton } from './activate-button';
@@ -52,7 +48,12 @@ function fmtDate(d: Date | string | null): string {
 }
 
 export default async function FuturaPanelPage() {
-  const { isSuperAdmin, realTenant, tenant: actingTenant, impersonating } = await getCurrentTenant();
+  const {
+    isSuperAdmin,
+    realTenant,
+    tenant: actingTenant,
+    impersonating,
+  } = await getCurrentTenant();
   if (!isSuperAdmin) {
     notFound();
   }

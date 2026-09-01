@@ -138,9 +138,7 @@ export function EvolutionConnectionPanel({ initial }: Props) {
           {pairingCode && (
             <div className="mt-2 text-xs text-zinc-600">
               ¿No podés escanear? Usá este código:{' '}
-              <code className="rounded bg-white px-2 py-0.5 font-mono text-sm">
-                {pairingCode}
-              </code>
+              <code className="rounded bg-white px-2 py-0.5 font-mono text-sm">{pairingCode}</code>
             </div>
           )}
           {status === 'PENDING' && (
@@ -260,7 +258,10 @@ function ChatwootBridgeForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-2 border-t border-[--color-border-subtle] p-3 text-xs">
+    <form
+      onSubmit={onSubmit}
+      className="space-y-2 border-t border-[--color-border-subtle] p-3 text-xs"
+    >
       <label className="block">
         <span className="block font-medium text-zinc-700">URL Chatwoot</span>
         <input

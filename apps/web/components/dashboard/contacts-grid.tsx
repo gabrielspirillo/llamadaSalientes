@@ -1,17 +1,11 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
+import { Tag } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/feedback';
 import { Input } from '@/components/ui/input';
-import { Tag } from '@/components/ui/badge';
-import {
-  Loader2,
-  Mail,
-  Phone,
-  Search,
-  Users,
-} from 'lucide-react';
+import { Loader2, Mail, Phone, Search, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ContactDetailDialog } from './contact-detail-dialog';
 

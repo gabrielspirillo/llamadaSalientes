@@ -185,7 +185,9 @@ export function Sparkline({
     const y = h - 3 - ((v - min) / span) * (h - 8);
     return [x, y] as const;
   });
-  const line = pts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
+  const line = pts
+    .map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(2)},${y.toFixed(2)}`)
+    .join(' ');
   const area = `${line} L${w},${h} L0,${h} Z`;
   const id = React.useId();
 
@@ -195,6 +197,7 @@ export function Sparkline({
       preserveAspectRatio="none"
       className={cn('h-9 w-full overflow-visible', className)}
       aria-hidden
+      role="presentation"
     >
       <defs>
         <linearGradient id={`sg-${id}`} x1="0" y1="0" x2="0" y2="1">
@@ -214,7 +217,13 @@ export function Sparkline({
         style={{ strokeDasharray: 400, ['--dash' as string]: 400 }}
         className="animate-draw"
       />
-      <circle cx={pts.at(-1)?.[0]} cy={pts.at(-1)?.[1]} r="2.5" fill={stroke} className="animate-pop" />
+      <circle
+        cx={pts.at(-1)?.[0]}
+        cy={pts.at(-1)?.[1]}
+        r="2.5"
+        fill={stroke}
+        className="animate-pop"
+      />
     </svg>
   );
 }
@@ -278,9 +287,9 @@ export function ProgressDots({
   };
   return (
     <div className={cn('flex items-center gap-1', className)}>
-      {Array.from({ length: total }, (_, i) => (
+      {Array.from({ length: total }, (_, i) => ({ id: `dot-${i}`, i })).map(({ id, i }) => (
         <span
-          key={i}
+          key={id}
           className={cn(
             'h-2 w-2 rounded-full transition-colors',
             i < filled ? dotColor[tone] : 'bg-zinc-200',
@@ -314,7 +323,7 @@ export function ProgressRing({
   const c = 2 * Math.PI * r;
   return (
     <div className={cn('relative inline-flex items-center justify-center', className)}>
-      <svg width={size} height={size} className="-rotate-90">
+      <svg width={size} height={size} className="-rotate-90" aria-hidden role="presentation">
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -376,7 +385,7 @@ export function Avatar({
 
   if (src) {
     return (
-      // biome-ignore lint/performance/noImgElement: avatares remotos de GHL/WhatsApp, sin dominios fijos
+      // eslint-disable-next-line @next/next/no-img-element -- avatares remotos de GHL/WhatsApp, sin dominios fijos
       <img
         src={src}
         alt={name}
@@ -418,15 +427,17 @@ export function AvatarStack({
   const rest = names.length - shown.length;
   return (
     <div className={cn('flex items-center', className)}>
-      {shown.map((n, i) => (
-        <span
-          key={`${n}-${i}`}
-          className="-ml-2 transition-transform duration-300 first:ml-0 hover:z-10 hover:-translate-y-1"
-          style={{ zIndex: shown.length - i }}
-        >
-          <Avatar name={n} size={size} />
-        </span>
-      ))}
+      {shown
+        .map((n, i) => ({ key: `avatar-${i}-${n}`, n, i }))
+        .map(({ key, n, i }) => (
+          <span
+            key={key}
+            className="-ml-2 transition-transform duration-300 first:ml-0 hover:z-10 hover:-translate-y-1"
+            style={{ zIndex: shown.length - i }}
+          >
+            <Avatar name={n} size={size} />
+          </span>
+        ))}
       {rest > 0 && (
         <span
           className="-ml-2 inline-flex items-center justify-center rounded-full bg-zinc-100 font-bold text-zinc-500 ring-2 ring-white"

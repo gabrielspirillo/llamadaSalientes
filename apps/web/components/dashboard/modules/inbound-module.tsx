@@ -177,7 +177,10 @@ export async function InboundModule({ tenantId }: { tenantId: string }) {
                     Cuando el agente agende una cita, aparece acá.
                   </p>
                 ) : (
-                  <ul className="stagger space-y-2.5" style={{ ['--stagger-step' as string]: '55ms' }}>
+                  <ul
+                    className="stagger space-y-2.5"
+                    style={{ ['--stagger-step' as string]: '55ms' }}
+                  >
                     {upcoming.map((u, i) => (
                       <li key={u.callId} className="flex gap-3" style={{ ['--i' as string]: i }}>
                         <Avatar name={u.patientName ?? u.phone ?? 'Paciente'} size={32} />
@@ -345,7 +348,10 @@ function MotivoBars({ motivos }: { motivos: Array<{ motivo: string; count: numbe
     otro: { label: 'Otro', color: 'bg-zinc-400' },
     sin_clasificar: { label: 'Sin clasificar', color: 'bg-zinc-300' },
   };
-  const total = Math.max(1, motivos.reduce((a, b) => a + b.count, 0));
+  const total = Math.max(
+    1,
+    motivos.reduce((a, b) => a + b.count, 0),
+  );
   return (
     <div className="space-y-3">
       {motivos.map((m, i) => {

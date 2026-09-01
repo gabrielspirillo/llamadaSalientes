@@ -134,7 +134,9 @@ export function IntentDonut({ data }: { data: Intent[] }) {
         <span className="text-[26px] font-bold leading-none tabular-nums text-zinc-900">
           {total}
         </span>
-        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400">Total</span>
+        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+          Total
+        </span>
       </div>
     </div>
   );

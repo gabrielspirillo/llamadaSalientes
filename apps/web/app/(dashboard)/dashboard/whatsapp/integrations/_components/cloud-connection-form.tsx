@@ -46,9 +46,7 @@ export function CloudConnectionForm({ initial }: Props) {
   return (
     <form onSubmit={onSubmit} className="space-y-3">
       <div>
-        <label className="mb-1 block text-xs font-medium text-zinc-700">
-          Phone Number ID
-        </label>
+        <label className="mb-1 block text-xs font-medium text-zinc-700">Phone Number ID</label>
         <input
           type="text"
           value={phoneNumberId}
@@ -76,7 +74,9 @@ export function CloudConnectionForm({ initial }: Props) {
           value={accessToken}
           onChange={(e) => setAccessToken(e.target.value)}
           required
-          placeholder={initial ? 'Dejar vacío para conservar el actual no es soportado — pega de nuevo' : ''}
+          placeholder={
+            initial ? 'Dejar vacío para conservar el actual no es soportado — pega de nuevo' : ''
+          }
           className="w-full rounded-lg border border-[--color-border] px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
         />
       </div>

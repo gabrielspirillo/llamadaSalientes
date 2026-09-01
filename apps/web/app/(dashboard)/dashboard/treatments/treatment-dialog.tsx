@@ -163,16 +163,14 @@ export function TreatmentDialog({
               min="0"
               step="0.01"
               defaultValue={
-                treatment?.priceCents != null
-                  ? (treatment.priceCents / 100).toString()
-                  : ''
+                treatment?.priceCents != null ? (treatment.priceCents / 100).toString() : ''
               }
               placeholder="60"
               className="mt-1.5"
             />
             <p className="text-xs text-zinc-500 mt-1.5">
-              Se usa para calcular el revenue recuperado cuando el sistema llena un slot
-              cancelado con este tratamiento. Dejalo vacío si no querés contabilizarlo.
+              Se usa para calcular el revenue recuperado cuando el sistema llena un slot cancelado
+              con este tratamiento. Dejalo vacío si no querés contabilizarlo.
             </p>
           </div>
 
@@ -183,8 +181,8 @@ export function TreatmentDialog({
                 <p className="text-sm font-medium">Horarios de atención (opcional)</p>
               </div>
               <p className="text-xs text-zinc-500">
-                Si lo definís acá, vamos a crear un calendario en GHL automáticamente con estos
-                días y horarios. Si no, podés conectar uno existente después.
+                Si lo definís acá, vamos a crear un calendario en GHL automáticamente con estos días
+                y horarios. Si no, podés conectar uno existente después.
               </p>
 
               <div>

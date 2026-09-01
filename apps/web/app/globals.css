@@ -340,8 +340,7 @@ body {
 .aurora-canvas {
   position: relative;
   isolation: isolate;
-  background:
-    radial-gradient(1100px 620px at 8% -8%, rgba(167, 139, 250, 0.22), transparent 62%),
+  background: radial-gradient(1100px 620px at 8% -8%, rgba(167, 139, 250, 0.22), transparent 62%),
     radial-gradient(900px 520px at 98% 4%, rgba(236, 72, 153, 0.14), transparent 60%),
     radial-gradient(1000px 700px at 60% 108%, rgba(14, 165, 233, 0.12), transparent 62%),
     var(--color-canvas);
@@ -413,10 +412,13 @@ body {
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.7), rgba(236, 72, 153, 0.45), rgba(14, 165, 233, 0.5));
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
+  background: linear-gradient(
+    135deg,
+    rgba(139, 92, 246, 0.7),
+    rgba(236, 72, 153, 0.45),
+    rgba(14, 165, 233, 0.5)
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
@@ -427,10 +429,8 @@ body {
    ========================================================================== */
 
 .hover-lift {
-  transition:
-    transform 380ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 380ms cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 250ms ease;
+  transition: transform 380ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 380ms
+    cubic-bezier(0.22, 1, 0.36, 1), border-color 250ms ease;
   will-change: transform;
 }
 .hover-lift:hover {
@@ -457,12 +457,7 @@ body {
   bottom: -50%;
   left: 0;
   width: 42%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.42),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.42), transparent);
   transform: translateX(-140%) skewX(-18deg);
   pointer-events: none;
 }
@@ -522,9 +517,8 @@ body {
 html.js [data-reveal] {
   opacity: 0;
   transform: translate3d(0, 20px, 0);
-  transition:
-    opacity 700ms cubic-bezier(0.22, 1, 0.36, 1),
-    transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 700ms cubic-bezier(0.22, 1, 0.36, 1), transform 700ms
+    cubic-bezier(0.22, 1, 0.36, 1);
   transition-delay: var(--reveal-delay, 0ms);
   will-change: opacity, transform;
 }

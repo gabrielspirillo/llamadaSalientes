@@ -1,15 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 
-type DriverScope =
-  | 'whatsapp_cloud'
-  | 'whatsapp_twilio'
-  | 'whatsapp_evolution'
-  | 'voice_retell';
+type DriverScope = 'whatsapp_cloud' | 'whatsapp_twilio' | 'whatsapp_evolution' | 'voice_retell';
 
 type TemplateRow = {
   id: string;
@@ -224,9 +220,12 @@ export function TemplatesEditor({
   return (
     <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-6 space-y-4">
       <div>
-        <h2 className="text-[18px] font-bold tracking-tight text-zinc-900">Plantillas de mensaje</h2>
+        <h2 className="text-[18px] font-bold tracking-tight text-zinc-900">
+          Plantillas de mensaje
+        </h2>
         <p className="text-sm text-zinc-500 mt-1">
-          Texto que se envía al paciente al ofrecerle el slot adelantado. Las variables se reemplazan en el envío real.
+          Texto que se envía al paciente al ofrecerle el slot adelantado. Las variables se
+          reemplazan en el envío real.
         </p>
       </div>
 
@@ -247,7 +246,7 @@ export function TemplatesEditor({
         ))}
       </div>
 
-      {(channel === 'VOICE' || activeScope === 'whatsapp_evolution') ? (
+      {channel === 'VOICE' || activeScope === 'whatsapp_evolution' ? (
         <div className="rounded-lg border border-[--color-border] bg-[#fbfaff] p-3 space-y-2">
           <div className="text-xs uppercase tracking-wide text-zinc-500">
             Variables disponibles · click para insertar en el cursor
@@ -275,11 +274,7 @@ export function TemplatesEditor({
 
       <div className="space-y-3">
         <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={(e) => setEnabled(e.target.checked)}
-          />
+          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
           <span>Plantilla activa</span>
         </label>
 
@@ -294,7 +289,8 @@ export function TemplatesEditor({
               placeholder="ej: waitlist_offer_es"
             />
             <span className="text-xs text-zinc-500">
-              Debe estar aprobada en Meta Business Manager. Las variables van en los parámetros de la plantilla, no acá.
+              Debe estar aprobada en Meta Business Manager. Las variables van en los parámetros de
+              la plantilla, no acá.
             </span>
           </label>
         ) : null}
@@ -386,7 +382,10 @@ export function TemplatesEditor({
           {preview.buttons.length > 0 ? (
             <div className="mt-3 flex flex-wrap gap-2">
               {preview.buttons.map((b) => (
-                <span key={b.id} className="rounded-full bg-white border border-[--color-border] px-3 py-1 text-xs">
+                <span
+                  key={b.id}
+                  className="rounded-full bg-white border border-[--color-border] px-3 py-1 text-xs"
+                >
                   {b.title}
                 </span>
               ))}

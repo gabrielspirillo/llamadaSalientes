@@ -5,7 +5,6 @@ import { Card, CardTopbar } from '@/components/ui/card';
 import { EmptyState as UiEmptyState } from '@/components/ui/feedback';
 import { Reveal } from '@/components/ui/motion';
 import { ProgressBar, StatTile } from '@/components/ui/stat';
-import { ModuleUnavailable } from './module-error';
 import {
   getCampaignPerformance,
   getOutboundDailyTrend,
@@ -13,6 +12,7 @@ import {
 } from '@/lib/data/analytics/outbound';
 import { ArrowRight, CheckCircle2, Coins, PhoneOutgoing, TrendingUp, Users } from 'lucide-react';
 import Link from 'next/link';
+import { ModuleUnavailable } from './module-error';
 
 function formatPercent(rate: number): string {
   return `${(rate * 100).toFixed(0)}%`;

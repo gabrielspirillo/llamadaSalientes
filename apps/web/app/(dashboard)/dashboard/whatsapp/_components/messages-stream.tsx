@@ -43,19 +43,11 @@ type Message = InitialMessage;
 function dedupeAndSort(messages: Message[]): Message[] {
   const byId = new Map<string, Message>();
   for (const m of messages) byId.set(m.id, m);
-  return Array.from(byId.values()).sort((a, b) =>
-    a.createdAt.localeCompare(b.createdAt),
-  );
+  return Array.from(byId.values()).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
-export function MessagesStream({
-  conversationId,
-  initialMessages,
-  senderUserEmails,
-}: Props) {
-  const [messages, setMessages] = useState<Message[]>(() =>
-    dedupeAndSort(initialMessages),
-  );
+export function MessagesStream({ conversationId, initialMessages, senderUserEmails }: Props) {
+  const [messages, setMessages] = useState<Message[]>(() => dedupeAndSort(initialMessages));
   const [isAgentTyping, setIsAgentTyping] = useState(false);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -160,7 +152,7 @@ function MessageBubble({
     : isOutbound
       ? 'ml-auto rounded-2xl rounded-br-md bg-[linear-gradient(135deg,#10b981,#34d399)] text-white shadow-[0_8px_20px_-12px_rgba(16,185,129,0.9)]'
       : 'mr-auto rounded-2xl rounded-bl-md bg-white border border-[--color-border] shadow-[var(--shadow-soft)]';
-  const authorEmail = m.senderUserId ? senderUserEmails[m.senderUserId] ?? null : null;
+  const authorEmail = m.senderUserId ? (senderUserEmails[m.senderUserId] ?? null) : null;
   const timestamp = useMemo(() => new Date(m.createdAt).toLocaleString(), [m.createdAt]);
 
   return (
@@ -206,9 +198,7 @@ function MessageBubble({
         }`}
       >
         <span>{timestamp}</span>
-        {isOutbound && m.deliveryStatus && (
-          <span className="uppercase">{m.deliveryStatus}</span>
-        )}
+        {isOutbound && m.deliveryStatus && <span className="uppercase">{m.deliveryStatus}</span>}
       </div>
     </li>
   );

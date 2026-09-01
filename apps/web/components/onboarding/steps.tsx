@@ -224,7 +224,9 @@ export function StepHours({ form, mutate, errors }: StepProps) {
                 )}
               </div>
               {errors[`hours.${day}`] && (
-                <p className="text-xs text-rose-600 pl-0 sm:pl-[8.5rem]">{errors[`hours.${day}`]}</p>
+                <p className="text-xs text-rose-600 pl-0 sm:pl-[8.5rem]">
+                  {errors[`hours.${day}`]}
+                </p>
               )}
             </div>
           );

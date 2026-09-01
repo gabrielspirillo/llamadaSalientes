@@ -18,12 +18,66 @@ interface QuickReply {
 }
 
 const EMOJIS = [
-  '😀','😁','😂','🤣','😊','😍','😘','😎','😉','🙂',
-  '🙃','😇','🥰','😋','😌','😏','😴','🤔','🤗','🤩',
-  '😢','😭','😡','😱','😳','😬','🤐','🤫','🙄','😴',
-  '👍','👎','👏','🙏','💪','👋','🤝','✌️','🤞','🤟',
-  '❤️','💔','💕','💖','💯','🔥','✨','⭐','🎉','🎊',
-  '✅','❌','⚠️','📌','📍','📞','📱','💬','📧','📅',
+  '😀',
+  '😁',
+  '😂',
+  '🤣',
+  '😊',
+  '😍',
+  '😘',
+  '😎',
+  '😉',
+  '🙂',
+  '🙃',
+  '😇',
+  '🥰',
+  '😋',
+  '😌',
+  '😏',
+  '😴',
+  '🤔',
+  '🤗',
+  '🤩',
+  '😢',
+  '😭',
+  '😡',
+  '😱',
+  '😳',
+  '😬',
+  '🤐',
+  '🤫',
+  '🙄',
+  '😴',
+  '👍',
+  '👎',
+  '👏',
+  '🙏',
+  '💪',
+  '👋',
+  '🤝',
+  '✌️',
+  '🤞',
+  '🤟',
+  '❤️',
+  '💔',
+  '💕',
+  '💖',
+  '💯',
+  '🔥',
+  '✨',
+  '⭐',
+  '🎉',
+  '🎊',
+  '✅',
+  '❌',
+  '⚠️',
+  '📌',
+  '📍',
+  '📞',
+  '📱',
+  '💬',
+  '📧',
+  '📅',
 ];
 
 function generateNonce(): string {
@@ -208,10 +262,13 @@ export function MessageComposer({ conversationId, disabled }: Props) {
     if (!audioBlob) return;
     setError(null);
     const mime = audioBlob.type;
-    const ext = mime.startsWith('audio/ogg') ? 'ogg'
-      : mime.startsWith('audio/mp4') ? 'm4a'
-      : mime.startsWith('audio/mpeg') ? 'mp3'
-      : 'webm';
+    const ext = mime.startsWith('audio/ogg')
+      ? 'ogg'
+      : mime.startsWith('audio/mp4')
+        ? 'm4a'
+        : mime.startsWith('audio/mpeg')
+          ? 'mp3'
+          : 'webm';
     const file = new File([audioBlob], `audio-${Date.now()}.${ext}`, { type: mime });
     onFileSelected(file);
     setAudioBlob(null);
@@ -331,7 +388,14 @@ export function MessageComposer({ conversationId, disabled }: Props) {
             className="rounded-full p-2 text-zinc-400 transition-all duration-300 hover:scale-110 hover:bg-brand-50 hover:text-brand-600 disabled:opacity-50"
             title="Emoji"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <circle cx="12" cy="12" r="10" />
               <path d="M8 14s1.5 2 4 2 4-2 4-2" />
               <line x1="9" y1="9" x2="9.01" y2="9" />
@@ -416,7 +480,9 @@ export function MessageComposer({ conversationId, disabled }: Props) {
               onClick={submitText}
               disabled={disabled || pending || !text.trim()}
               className={`rounded-lg px-4 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-zinc-300 ${
-                isNote ? 'bg-[linear-gradient(120deg,#d97706,#f59e0b)] hover:opacity-95' : 'bg-emerald-600 hover:opacity-95'
+                isNote
+                  ? 'bg-[linear-gradient(120deg,#d97706,#f59e0b)] hover:opacity-95'
+                  : 'bg-emerald-600 hover:opacity-95'
               }`}
             >
               {pending ? 'Enviando…' : isNote ? 'Guardar nota' : 'Enviar'}

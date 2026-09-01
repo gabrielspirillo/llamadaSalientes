@@ -179,12 +179,7 @@ export function RulesEditor(props: {
               de la derecha para programarlas en lote.
             </p>
           </div>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={runBackfill}
-            className="shrink-0"
-          >
+          <Button size="sm" variant="secondary" onClick={runBackfill} className="shrink-0">
             Backfill citas existentes
           </Button>
         </div>
@@ -217,8 +212,8 @@ export function RulesEditor(props: {
       <section>
         <h2 className="text-sm font-semibold text-zinc-700 mb-2">Overrides por tratamiento</h2>
         <p className="text-xs text-zinc-500 mb-2">
-          Si querés reglas distintas para un tratamiento específico, créalas acá. Cuando una cita
-          es de ese tratamiento, se usan estas reglas en lugar de las globales.
+          Si querés reglas distintas para un tratamiento específico, créalas acá. Cuando una cita es
+          de ese tratamiento, se usan estas reglas en lugar de las globales.
         </p>
         <TreatmentOverridesSection
           ruleSets={ruleSets}
@@ -329,7 +324,7 @@ function RuleRow(props: {
             const v = e.target.value as '' | 'WHATSAPP' | 'VOICE';
             props.onPatch({
               fallbackChannel: v === '' ? null : v,
-              fallbackWindowHours: v === '' ? null : props.rule.fallbackWindowHours ?? 1,
+              fallbackWindowHours: v === '' ? null : (props.rule.fallbackWindowHours ?? 1),
             });
           }}
           className="rounded-md border border-[--color-border] px-2 py-1.5 text-sm"
@@ -347,7 +342,10 @@ function RuleRow(props: {
               max={72}
               onBlur={(e) =>
                 props.onPatch({
-                  fallbackWindowHours: Math.max(1, Math.min(72, Number.parseInt(e.target.value, 10) || 1)),
+                  fallbackWindowHours: Math.max(
+                    1,
+                    Math.min(72, Number.parseInt(e.target.value, 10) || 1),
+                  ),
                 })
               }
               className="w-16 rounded-md border border-[--color-border] px-2 py-1.5 text-sm"
@@ -579,9 +577,7 @@ function TemplateEditor(props: {
       if (data.callId) {
         alert(`✓ Llamada de prueba iniciada a ${testPhone}.\nID Retell: ${data.callId}`);
       } else {
-        alert(
-          `✓ Mensaje de prueba enviado a ${testPhone}.\nRevisá tu WhatsApp en unos segundos.`,
-        );
+        alert(`✓ Mensaje de prueba enviado a ${testPhone}.\nRevisá tu WhatsApp en unos segundos.`);
       }
     } else {
       alert(`No se pudo enviar la prueba.\n\nMotivo: ${data.error ?? 'error desconocido'}`);

@@ -3,9 +3,9 @@ import Link from 'next/link';
 
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Button } from '@/components/ui/button';
-import { HistoryTable, type HistoryRow } from '@/components/waitlist/HistoryTable';
-import { OffersTable, type OfferRow } from '@/components/waitlist/OffersTable';
-import { QueueTable, type QueueRow } from '@/components/waitlist/QueueTable';
+import { type HistoryRow, HistoryTable } from '@/components/waitlist/HistoryTable';
+import { type OfferRow, OffersTable } from '@/components/waitlist/OffersTable';
+import { type QueueRow, QueueTable } from '@/components/waitlist/QueueTable';
 import { WaitlistTabs } from '@/components/waitlist/Tabs';
 import { db } from '@/lib/db/client';
 import {
@@ -97,10 +97,7 @@ export default async function WaitlistPage() {
       })
       .from(patientsCache)
       .where(
-        and(
-          eq(patientsCache.tenantId, tenant.id),
-          inArray(patientsCache.ghlContactId, contactIds),
-        ),
+        and(eq(patientsCache.tenantId, tenant.id), inArray(patientsCache.ghlContactId, contactIds)),
       );
     for (const p of pts) {
       contactMap.set(p.ghlContactId, {
@@ -117,7 +114,7 @@ export default async function WaitlistPage() {
       id: r.id,
       patientName: patientNameFrom(ct?.firstName ?? null, ct?.lastName ?? null),
       contactPhone: ct?.phone ?? null,
-      treatmentName: r.treatmentId ? txMap.get(r.treatmentId)?.name ?? null : null,
+      treatmentName: r.treatmentId ? (txMap.get(r.treatmentId)?.name ?? null) : null,
       originalStartTime: r.originalStartTime.toISOString(),
       createdAt: r.createdAt.toISOString(),
       status: r.status as QueueRow['status'],
@@ -156,9 +153,7 @@ export default async function WaitlistPage() {
     .limit(200);
 
   // Cargar contactos + tratamientos de las ofertas que no estuvieran ya en queue.
-  const offerContactIds = Array.from(
-    new Set(offerRowsRaw.map((r) => r.entryGhlContactId)),
-  );
+  const offerContactIds = Array.from(new Set(offerRowsRaw.map((r) => r.entryGhlContactId)));
   const offerTreatmentIds = Array.from(
     new Set(offerRowsRaw.map((r) => r.entryTreatmentId).filter((x): x is string => !!x)),
   );
@@ -209,7 +204,7 @@ export default async function WaitlistPage() {
       respondedAt: r.respondedAt?.toISOString() ?? null,
       oldAppointmentTime: r.entryOriginalStartTime.toISOString(),
       newSlotTime: r.slotStartTime.toISOString(),
-      treatmentName: r.entryTreatmentId ? txMap.get(r.entryTreatmentId)?.name ?? null : null,
+      treatmentName: r.entryTreatmentId ? (txMap.get(r.entryTreatmentId)?.name ?? null) : null,
       errorMessage: r.errorMessage,
     };
   });
@@ -247,9 +242,7 @@ export default async function WaitlistPage() {
     .orderBy(desc(waitlistOffers.respondedAt))
     .limit(200);
 
-  const historyContactIds = Array.from(
-    new Set(acceptedRowsRaw.map((r) => r.entryGhlContactId)),
-  );
+  const historyContactIds = Array.from(new Set(acceptedRowsRaw.map((r) => r.entryGhlContactId)));
   const histMissingContactIds = historyContactIds.filter((id) => !contactMap.has(id));
   if (histMissingContactIds.length > 0) {
     const pts = await db
@@ -302,14 +295,14 @@ export default async function WaitlistPage() {
   const historyRows: HistoryRow[] = acceptedRowsRaw.map((r) => {
     const ct = contactMap.get(r.entryGhlContactId);
     const newApptTime = r.newGhlAppointmentId
-      ? newApptMap.get(r.newGhlAppointmentId) ?? new Date(r.slotStartTime)
+      ? (newApptMap.get(r.newGhlAppointmentId) ?? new Date(r.slotStartTime))
       : new Date(r.slotStartTime);
     return {
       id: r.offerId,
       patientName: patientNameFrom(ct?.firstName ?? null, ct?.lastName ?? null),
       oldAppointmentTime: r.entryOriginalStartTime.toISOString(),
       newAppointmentTime: newApptTime.toISOString(),
-      treatmentName: r.entryTreatmentId ? txMap.get(r.entryTreatmentId)?.name ?? null : null,
+      treatmentName: r.entryTreatmentId ? (txMap.get(r.entryTreatmentId)?.name ?? null) : null,
       channel: r.channel as 'WHATSAPP' | 'VOICE',
       source: (r.source as HistoryRow['source']) ?? null,
       revenueCents: r.revenueCents ?? 0,

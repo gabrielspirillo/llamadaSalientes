@@ -111,7 +111,9 @@ function Atributos({
         <div className="flex items-center justify-between text-xs">
           <span className="font-semibold uppercase text-zinc-500">CRM_LINK</span>
           {ghlContactId ? (
-            <span className="font-mono text-[10px] text-zinc-600">{ghlContactId.slice(0, 12)}…</span>
+            <span className="font-mono text-[10px] text-zinc-600">
+              {ghlContactId.slice(0, 12)}…
+            </span>
           ) : (
             <span className="text-zinc-400">Sin enlace</span>
           )}
@@ -300,10 +302,7 @@ function Notas({ contactId, notes }: { contactId: string; notes: NoteItem[] }) {
             🔗
           </ToolbarButton>
           <div className="mx-1 h-4 w-px bg-zinc-300" />
-          <ToolbarButton
-            onClick={() => setBody((p) => (p ? `${p}\n- ` : '- '))}
-            title="Lista"
-          >
+          <ToolbarButton onClick={() => setBody((p) => (p ? `${p}\n- ` : '- '))} title="Lista">
             •
           </ToolbarButton>
           <ToolbarButton

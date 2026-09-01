@@ -10,8 +10,8 @@ import {
   ExternalLink,
   Loader2,
   Mail,
-  PhoneCall,
   Phone,
+  PhoneCall,
   User,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -191,7 +191,12 @@ export function ContactDetailDialog({
               <span className="truncate">{fullName}</span>
             </DialogTitle>
             {contact?.phone && (
-              <Button size="sm" onClick={callNow} disabled={callingNow} className="self-start sm:self-auto">
+              <Button
+                size="sm"
+                onClick={callNow}
+                disabled={callingNow}
+                className="self-start sm:self-auto"
+              >
                 {callingNow ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
@@ -209,9 +214,7 @@ export function ContactDetailDialog({
                   : 'bg-rose-50 border border-rose-200 text-rose-800'
               }`}
             >
-              {callFeedback.ok ? (
-                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-              ) : null}
+              {callFeedback.ok ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0 mt-0.5" /> : null}
               <span>{callFeedback.msg}</span>
             </div>
           )}
@@ -324,7 +327,9 @@ export function ContactDetailDialog({
                               <div className="flex items-center gap-2 text-xs text-zinc-500 mb-1">
                                 <span>{fmtDateTime(c.startedAt)}</span>
                                 <span>·</span>
-                                <span className="tabular-nums">{fmtDuration(c.durationSeconds)}</span>
+                                <span className="tabular-nums">
+                                  {fmtDuration(c.durationSeconds)}
+                                </span>
                               </div>
                               <p className="text-sm text-zinc-800 line-clamp-2">
                                 {c.summary ?? 'Sin resumen aún'}
@@ -348,7 +353,9 @@ export function ContactDetailDialog({
                   ) : (
                     data.appointments
                       .slice()
-                      .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
+                      .sort(
+                        (a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime(),
+                      )
                       .map((a) => {
                         const isUpcoming = new Date(a.startTime).getTime() > Date.now();
                         return (
@@ -358,7 +365,9 @@ export function ContactDetailDialog({
                           >
                             <div
                               className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${
-                                isUpcoming ? 'bg-emerald-100 text-emerald-700' : 'bg-zinc-100 text-zinc-600'
+                                isUpcoming
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : 'bg-zinc-100 text-zinc-600'
                               }`}
                             >
                               <Calendar className="h-4 w-4" />
@@ -370,10 +379,7 @@ export function ContactDetailDialog({
                                 {a.endTime ? ` – ${fmtDateTime(a.endTime).split(' ').pop()}` : ''}
                               </p>
                               {a.status && (
-                                <Badge
-                                  tone={isUpcoming ? 'success' : 'neutral'}
-                                  className="mt-2"
-                                >
+                                <Badge tone={isUpcoming ? 'success' : 'neutral'} className="mt-2">
                                   {a.status}
                                 </Badge>
                               )}

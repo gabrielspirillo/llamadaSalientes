@@ -231,7 +231,9 @@ export function AgentTester() {
       {/* Live transcript */}
       <Card className="lg:col-span-2">
         <div className="flex items-center justify-between p-4 sm:p-6 pb-3 sm:pb-4">
-          <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">Transcripción en vivo</h3>
+          <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">
+            Transcripción en vivo
+          </h3>
           {state === 'live' && (
             <Badge tone="success">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse mr-1" />

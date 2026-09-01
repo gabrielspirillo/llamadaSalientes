@@ -91,9 +91,7 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
 
   return (
     <div className="space-y-4">
-      {error && (
-        <div className="rounded bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</div>
-      )}
+      {error && <div className="rounded bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</div>}
 
       <form
         onSubmit={handleCreate}

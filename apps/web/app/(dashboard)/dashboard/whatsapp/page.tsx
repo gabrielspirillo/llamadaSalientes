@@ -1,6 +1,6 @@
-import Link from 'next/link';
 import { desc, eq, sql } from 'drizzle-orm';
 import { MessageCircle, Settings2 } from 'lucide-react';
+import Link from 'next/link';
 
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -170,7 +170,9 @@ export default async function WhatsappConversationsPage() {
                         <div className="flex min-w-0 items-center gap-2">
                           <p
                             className={`truncate text-[14px] ${
-                              unread ? 'font-extrabold text-zinc-900' : 'font-semibold text-zinc-800'
+                              unread
+                                ? 'font-extrabold text-zinc-900'
+                                : 'font-semibold text-zinc-800'
                             }`}
                           >
                             {name}

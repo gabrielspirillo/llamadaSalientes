@@ -1,5 +1,10 @@
 'use client';
 
+import type { OutboundDailyPoint } from '@/lib/data/analytics/outbound';
+import type {
+  ConversationStatusBreakdown,
+  MessagesByHourPoint,
+} from '@/lib/data/analytics/whatsapp';
 import {
   Bar,
   BarChart,
@@ -13,12 +18,14 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import type { OutboundDailyPoint } from '@/lib/data/analytics/outbound';
-import type {
-  ConversationStatusBreakdown,
-  MessagesByHourPoint,
-} from '@/lib/data/analytics/whatsapp';
-import { axisProps, chartAnim, chartPalette, gridProps, tooltipCursor, tooltipStyle } from './chart-theme';
+import {
+  axisProps,
+  chartAnim,
+  chartPalette,
+  gridProps,
+  tooltipCursor,
+  tooltipStyle,
+} from './chart-theme';
 
 const STATUS_COLORS = {
   Activas: chartPalette.emerald,
@@ -49,7 +56,11 @@ export function OutboundTrendChart({ data }: { data: OutboundDailyPoint[] }) {
 
   return (
     <ResponsiveContainer width="100%" height={224}>
-      <BarChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }} barCategoryGap="20%">
+      <BarChart
+        data={chartData}
+        margin={{ top: 8, right: 8, left: -16, bottom: 0 }}
+        barCategoryGap="20%"
+      >
         <CartesianGrid {...gridProps} />
         <XAxis dataKey="label" {...axisProps} />
         <YAxis {...axisProps} width={32} />
@@ -61,7 +72,13 @@ export function OutboundTrendChart({ data }: { data: OutboundDailyPoint[] }) {
         />
         <Bar dataKey="Completadas" stackId="a" fill={chartPalette.emerald} {...chartAnim} />
         <Bar dataKey="Sin contactar" stackId="a" fill="#ded9ee" {...chartAnim} />
-        <Bar dataKey="Fallidas" stackId="a" fill={chartPalette.rose} radius={[6, 6, 0, 0]} {...chartAnim} />
+        <Bar
+          dataKey="Fallidas"
+          stackId="a"
+          fill={chartPalette.rose}
+          radius={[6, 6, 0, 0]}
+          {...chartAnim}
+        />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -80,7 +97,11 @@ export function MessagesByHourChart({ data }: { data: MessagesByHourPoint[] }) {
 
   return (
     <ResponsiveContainer width="100%" height={224}>
-      <BarChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }} barCategoryGap="20%">
+      <BarChart
+        data={chartData}
+        margin={{ top: 8, right: 8, left: -16, bottom: 0 }}
+        barCategoryGap="20%"
+      >
         <CartesianGrid {...gridProps} />
         <XAxis dataKey="label" {...axisProps} interval={2} />
         <YAxis {...axisProps} width={32} />
@@ -91,7 +112,13 @@ export function MessagesByHourChart({ data }: { data: MessagesByHourPoint[] }) {
           wrapperStyle={{ fontSize: 12, paddingTop: 10, fontWeight: 500 }}
         />
         <Bar dataKey="Entrantes" stackId="m" fill={chartPalette.violet} {...chartAnim} />
-        <Bar dataKey="Salientes" stackId="m" fill={chartPalette.sky} radius={[6, 6, 0, 0]} {...chartAnim} />
+        <Bar
+          dataKey="Salientes"
+          stackId="m"
+          fill={chartPalette.sky}
+          radius={[6, 6, 0, 0]}
+          {...chartAnim}
+        />
       </BarChart>
     </ResponsiveContainer>
   );

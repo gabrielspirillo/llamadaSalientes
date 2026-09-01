@@ -59,11 +59,7 @@ export function TelephonySettings({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <CredentialsCard state={state} onChange={setState} />
         <CallerIdCard state={state} onChange={setState} isConfigured={isConfigured} />
-        <InboundCard
-          state={state}
-          onChange={setState}
-          isConfigured={isConfigured}
-        />
+        <InboundCard state={state} onChange={setState} isConfigured={isConfigured} />
         <HelpCard state={state} webhookUrls={webhookUrls} />
       </div>
     </div>
@@ -139,9 +135,7 @@ function ProviderTabs({
                     </span>
                   )}
                 </div>
-                <p
-                  className={`text-xs mt-1 ${active ? 'text-zinc-300' : 'text-zinc-500'}`}
-                >
+                <p className={`text-xs mt-1 ${active ? 'text-zinc-300' : 'text-zinc-500'}`}>
                   {p.sub}
                 </p>
               </button>
@@ -208,7 +202,9 @@ function TwilioCredentialsForm({
       <div className="p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-5 w-5 text-zinc-500" />
-          <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">Credenciales Twilio</h3>
+          <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">
+            Credenciales Twilio
+          </h3>
           {state.twilioConfigured && (
             <span className="ml-auto text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-200">
               Configurado
@@ -309,7 +305,9 @@ function ZadarmaCredentialsForm({
       <div className="p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-5 w-5 text-zinc-500" />
-          <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">Credenciales Zadarma</h3>
+          <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">
+            Credenciales Zadarma
+          </h3>
           {state.zadarmaConfigured && (
             <span className="ml-auto text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-200">
               Configurado
@@ -317,9 +315,9 @@ function ZadarmaCredentialsForm({
           )}
         </div>
         <p className="text-sm text-zinc-500">
-          Generá las claves en cabinet.zadarma.com → Settings → API. El Secret y el
-          Webhook Secret se cifran (AES-256-GCM) antes de guardarse. Validamos con un
-          ping a /v1/info/balance/ antes de persistir.
+          Generá las claves en cabinet.zadarma.com → Settings → API. El Secret y el Webhook Secret
+          se cifran (AES-256-GCM) antes de guardarse. Validamos con un ping a /v1/info/balance/
+          antes de persistir.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -355,7 +353,9 @@ function ZadarmaCredentialsForm({
               value={webhookSecret}
               onChange={(e) => setWebhookSecret(e.target.value)}
               placeholder={
-                state.zadarmaWebhookSecretSet ? '•••• (ya configurado)' : 'Sólo si lo configuraste en cabinet'
+                state.zadarmaWebhookSecretSet
+                  ? '•••• (ya configurado)'
+                  : 'Sólo si lo configuraste en cabinet'
               }
               className="mt-2 font-mono"
             />
@@ -366,11 +366,7 @@ function ZadarmaCredentialsForm({
         </div>
         <Banner msg={msg} />
         <div className="flex justify-end">
-          <Button
-            onClick={submit}
-            disabled={loading || !userKey || !secret}
-            size="sm"
-          >
+          <Button onClick={submit} disabled={loading || !userKey || !secret} size="sm">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Guardar y validar
           </Button>
@@ -443,8 +439,7 @@ function CallerIdCard({
       setValidationCode(j.validationCode);
       setMsg({
         kind: 'ok',
-        text:
-          'Twilio te va a llamar. Cuando escuches la voz, ingresá los 6 dígitos en el teclado del teléfono.',
+        text: 'Twilio te va a llamar. Cuando escuches la voz, ingresá los 6 dígitos en el teclado del teléfono.',
       });
       startPolling();
     } catch (err) {
@@ -485,7 +480,9 @@ function CallerIdCard({
   }
 
   async function unlink() {
-    if (!confirm('¿Quitar el Caller ID actual? Las próximas llamadas usarán el número del provider.')) {
+    if (
+      !confirm('¿Quitar el Caller ID actual? Las próximas llamadas usarán el número del provider.')
+    ) {
       return;
     }
     const res = await fetch('/api/telephony/caller-id', { method: 'DELETE' });
@@ -504,7 +501,9 @@ function CallerIdCard({
       <div className="p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-2">
           <PhoneOutgoing className="h-5 w-5 text-zinc-500" />
-          <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">Caller ID saliente</h3>
+          <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">
+            Caller ID saliente
+          </h3>
           {verified && <CheckCircle2 className="h-4 w-4 text-emerald-600 ml-auto" />}
         </div>
         <p className="text-sm text-zinc-500">
@@ -573,11 +572,7 @@ function CallerIdCard({
                 disabled={!isConfigured || !phone || verifying || polling}
               >
                 {verifying ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                {polling
-                  ? 'Esperando…'
-                  : isZadarma
-                  ? 'Confirmar número'
-                  : 'Verificar número'}
+                {polling ? 'Esperando…' : isZadarma ? 'Confirmar número' : 'Verificar número'}
               </Button>
             </div>
           </>
@@ -668,10 +663,10 @@ function InboundCard({
       <div className="p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-2">
           <PhoneIncoming className="h-5 w-5 text-zinc-500" />
-          <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">Número entrante</h3>
-          {state.inboundNumberE164 && (
-            <CheckCircle2 className="h-4 w-4 text-emerald-600 ml-auto" />
-          )}
+          <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">
+            Número entrante
+          </h3>
+          {state.inboundNumberE164 && <CheckCircle2 className="h-4 w-4 text-emerald-600 ml-auto" />}
         </div>
         <p className="text-sm text-zinc-500">
           {isZadarma
@@ -714,30 +709,30 @@ function InboundCard({
 
             {isZadarma && (
               <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900 space-y-2">
-                <div className="font-medium text-sm">
-                  💡 Modelos de inbound para Zadarma
+                <div className="font-medium text-sm">💡 Modelos de inbound para Zadarma</div>
+                <div>
+                  <span className="font-medium">Agente Retell (AI):</span> el número en Zadarma debe
+                  estar en la centralita —{' '}
+                  <span className="font-mono">
+                    cabinet.zadarma.com → Mis números → click el número → asegurate de que NO tenga
+                    desvío estático activado
+                  </span>
+                  . Nuestro webhook recibe NOTIFY_START y redirige a Retell.
                 </div>
                 <div>
-                  <span className="font-medium">Agente Retell (AI):</span> el número
-                  en Zadarma debe estar en la centralita —{' '}
-                  <span className="font-mono">cabinet.zadarma.com → Mis números → click el número → asegurate de que NO tenga desvío estático activado</span>.
-                  Nuestro webhook recibe NOTIFY_START y redirige a Retell.
-                </div>
-                <div>
-                  <span className="font-medium">Reenviar a humano:</span> dos vías
-                  equivalentes — elegí una sola:
+                  <span className="font-medium">Reenviar a humano:</span> dos vías equivalentes —
+                  elegí una sola:
                   <ul className="list-disc ml-4 mt-1 space-y-0.5">
                     <li>
-                      <span className="font-medium">Desde acá</span> (esta UI):
-                      cargás el número humano abajo y nuestra app redirige
-                      dinámicamente. Útil si vas a alternar entre AI y humano.
+                      <span className="font-medium">Desde acá</span> (esta UI): cargás el número
+                      humano abajo y nuestra app redirige dinámicamente. Útil si vas a alternar
+                      entre AI y humano.
                     </li>
                     <li>
-                      <span className="font-medium">Desde Zadarma cabinet</span>
-                      :{' '}
-                      <span className="font-mono">Mis números → Reenviar a teléfono</span>.
-                      Más simple, sobrevive caídas del server, pero para
-                      cambiar destino hay que volver al cabinet.
+                      <span className="font-medium">Desde Zadarma cabinet</span>:{' '}
+                      <span className="font-mono">Mis números → Reenviar a teléfono</span>. Más
+                      simple, sobrevive caídas del server, pero para cambiar destino hay que volver
+                      al cabinet.
                     </li>
                   </ul>
                 </div>
@@ -758,7 +753,8 @@ function InboundCard({
                     <span className="font-medium">Agente Retell</span>
                     <span className="text-zinc-500 block text-xs">
                       Atiende el agente AI; transfiere a humano si lo pide el paciente.
-                      {isZadarma && ' (Requiere webhook configurado en cabinet.zadarma.com → Configuración → Integraciones → Notificaciones de eventos.)'}
+                      {isZadarma &&
+                        ' (Requiere webhook configurado en cabinet.zadarma.com → Configuración → Integraciones → Notificaciones de eventos.)'}
                     </span>
                   </span>
                 </label>
@@ -796,11 +792,7 @@ function InboundCard({
               <Button
                 onClick={configure}
                 size="sm"
-                disabled={
-                  submitting ||
-                  !selected ||
-                  (route === 'forward' && !forwardNumber)
-                }
+                disabled={submitting || !selected || (route === 'forward' && !forwardNumber)}
               >
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 Configurar webhooks
@@ -856,15 +848,15 @@ function HelpCard({
                 personal verificado en el cabinet).
               </li>
               <li>
-                <span className="font-medium">Entrantes:</span> Zadarma envía un POST
-                NOTIFY_START a nuestro webhook; respondemos con `{'{ redirect: ... }'}` para
-                enrutar al agente Retell (SIP) o a un humano.
+                <span className="font-medium">Entrantes:</span> Zadarma envía un POST NOTIFY_START a
+                nuestro webhook; respondemos con `{'{ redirect: ... }'}` para enrutar al agente
+                Retell (SIP) o a un humano.
               </li>
               <li>
-                <span className="font-medium">Agente AI:</span> requiere un trunk SIP externo
-                en cabinet.zadarma.com → Settings → External SIP, apuntando a Retell. Setear{' '}
-                <code className="bg-zinc-100 px-1 rounded">ZADARMA_SIP_INTERNAL_FOR_AGENT</code>{' '}
-                en env para usar esa extensión como leg A del callback.
+                <span className="font-medium">Agente AI:</span> requiere un trunk SIP externo en
+                cabinet.zadarma.com → Settings → External SIP, apuntando a Retell. Setear{' '}
+                <code className="bg-zinc-100 px-1 rounded">ZADARMA_SIP_INTERNAL_FOR_AGENT</code> en
+                env para usar esa extensión como leg A del callback.
               </li>
             </>
           ) : (
@@ -876,20 +868,18 @@ function HelpCard({
               </li>
               <li>
                 <span className="font-medium">Entrantes:</span> la clínica configura "desvío de
-                llamadas" en su operador hacia el número Twilio elegido aquí; el webhook recibe
-                la llamada y la enruta al agente o a un humano.
+                llamadas" en su operador hacia el número Twilio elegido aquí; el webhook recibe la
+                llamada y la enruta al agente o a un humano.
               </li>
               <li>
-                <span className="font-medium">Number porting</span> (largo plazo): podés portar
-                el número de la clínica directo a Twilio para evitar el desvío.
+                <span className="font-medium">Number porting</span> (largo plazo): podés portar el
+                número de la clínica directo a Twilio para evitar el desvío.
               </li>
             </>
           )}
         </ul>
         <div className="pt-2 border-t border-[--color-border-subtle] space-y-2">
-          <div className="text-xs text-zinc-500">
-            Webhook URLs configuradas automáticamente:
-          </div>
+          <div className="text-xs text-zinc-500">Webhook URLs configuradas automáticamente:</div>
           {isZadarma ? (
             <CopyRow label="Notification URL" value={webhookUrls.zadarma.webhook} />
           ) : (

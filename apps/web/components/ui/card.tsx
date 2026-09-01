@@ -46,7 +46,11 @@ Card.displayName = 'Card';
 
 export const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('flex flex-col gap-1 p-5 pb-3 sm:p-6 sm:pb-4', className)} {...props} />
+    <div
+      ref={ref}
+      className={cn('flex flex-col gap-1 p-5 pb-3 sm:p-6 sm:pb-4', className)}
+      {...props}
+    />
   ),
 );
 CardHeader.displayName = 'CardHeader';
@@ -120,7 +124,9 @@ export function CardTopbar({
     zinc: 'bg-zinc-100 text-zinc-600',
   };
   return (
-    <div className={cn('flex items-start justify-between gap-3 p-5 pb-3 sm:p-6 sm:pb-4', className)}>
+    <div
+      className={cn('flex items-start justify-between gap-3 p-5 pb-3 sm:p-6 sm:pb-4', className)}
+    >
       <div className="flex min-w-0 items-center gap-3">
         {icon && (
           <span

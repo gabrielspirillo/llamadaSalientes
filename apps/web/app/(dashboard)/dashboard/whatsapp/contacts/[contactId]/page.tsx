@@ -1,6 +1,6 @@
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import {
@@ -31,9 +31,7 @@ export default async function ContactDetailPage({ params }: Props) {
   const contactRows = await db
     .select()
     .from(whatsappContacts)
-    .where(
-      and(eq(whatsappContacts.id, contactId), eq(whatsappContacts.tenantId, tenant.id)),
-    )
+    .where(and(eq(whatsappContacts.id, contactId), eq(whatsappContacts.tenantId, tenant.id)))
     .limit(1);
   const contact = contactRows[0];
   if (!contact) notFound();
@@ -93,9 +91,7 @@ export default async function ContactDetailPage({ params }: Props) {
             summary: calls.summary,
           })
           .from(calls)
-          .where(
-            and(eq(calls.tenantId, tenant.id), eq(calls.ghlContactId, contact.ghlContactId)),
-          )
+          .where(and(eq(calls.tenantId, tenant.id), eq(calls.ghlContactId, contact.ghlContactId)))
           .orderBy(desc(calls.startedAt))
           .limit(50)
       : Promise.resolve([]),
@@ -189,9 +185,7 @@ export default async function ContactDetailPage({ params }: Props) {
               <p className="text-sm text-zinc-500">{contact.phoneE164}</p>
               <p className="mt-1 text-xs text-zinc-400">
                 Creado {formatRelative(contact.createdAt)} · Última actividad{' '}
-                {conversations[0]?.lastMsgAt
-                  ? formatRelative(conversations[0].lastMsgAt)
-                  : '—'}
+                {conversations[0]?.lastMsgAt ? formatRelative(conversations[0].lastMsgAt) : '—'}
               </p>
             </div>
           </div>
@@ -242,12 +236,12 @@ export default async function ContactDetailPage({ params }: Props) {
             startTime: a.startTime ? a.startTime.toISOString() : null,
             endTime: a.endTime ? a.endTime.toISOString() : null,
             status: a.status,
-            treatment: a.treatmentId ? treatmentMap.get(a.treatmentId) ?? null : null,
+            treatment: a.treatmentId ? (treatmentMap.get(a.treatmentId) ?? null) : null,
           }))}
           notes={noteRows.map((n) => ({
             id: n.id,
             body: n.body,
-            authorEmail: n.authorUserId ? noteAuthorMap.get(n.authorUserId) ?? null : null,
+            authorEmail: n.authorUserId ? (noteAuthorMap.get(n.authorUserId) ?? null) : null,
             createdAt: n.createdAt.toISOString(),
           }))}
         />
@@ -288,11 +282,7 @@ function Avatar({
   );
 }
 
-function computeInitials(
-  firstName: string | null,
-  lastName: string | null,
-  phone: string,
-): string {
+function computeInitials(firstName: string | null, lastName: string | null, phone: string): string {
   const f = (firstName ?? '').trim();
   const l = (lastName ?? '').trim();
   if (f || l) {

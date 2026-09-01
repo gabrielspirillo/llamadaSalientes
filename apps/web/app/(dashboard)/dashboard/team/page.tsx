@@ -3,9 +3,9 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Callout, EmptyState } from '@/components/ui/feedback';
 import { Avatar } from '@/components/ui/stat';
-import { Info, MailPlus, Users } from 'lucide-react';
 import { getCurrentTenant } from '@/lib/tenant';
 import { clerkClient } from '@clerk/nextjs/server';
+import { Info, MailPlus, Users } from 'lucide-react';
 import { InviteMember } from './invite-member';
 
 const roleMap: Record<string, { label: string; tone: 'violet' | 'info' | 'neutral' }> = {
@@ -152,9 +152,7 @@ export default async function TeamPage() {
                   {initials(inv.emailAddress)}
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-[14px] font-bold text-zinc-900">
-                    {inv.emailAddress}
-                  </p>
+                  <p className="truncate text-[14px] font-bold text-zinc-900">{inv.emailAddress}</p>
                   <p className="truncate text-[12px] text-zinc-500">
                     Invitación enviada · {new Date(inv.createdAt).toLocaleDateString('es-ES')}
                   </p>

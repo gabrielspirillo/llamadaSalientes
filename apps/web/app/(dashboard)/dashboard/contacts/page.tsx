@@ -3,9 +3,9 @@ import { PageHeader } from '@/components/dashboard/page-header';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/feedback';
+import { getGhlIntegration } from '@/lib/data/ghl-integration';
 import { listContacts } from '@/lib/ghl/contacts';
 import { getCurrentTenant } from '@/lib/tenant';
-import { getGhlIntegration } from '@/lib/data/ghl-integration';
 import { Contact, PlugZap } from 'lucide-react';
 import Link from 'next/link';
 

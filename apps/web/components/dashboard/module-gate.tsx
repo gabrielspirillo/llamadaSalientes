@@ -1,13 +1,13 @@
 import 'server-only';
-import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { getCurrentTenant } from '@/lib/tenant';
+import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import {
   type EnabledModules,
   MODULE_DEFINITIONS,
   type ModuleKey,
   isModuleEnabled,
 } from '@/lib/modules';
+import { getCurrentTenant } from '@/lib/tenant';
 import { Lock } from 'lucide-react';
 import type { ReactNode } from 'react';
 

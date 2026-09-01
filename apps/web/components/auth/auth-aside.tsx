@@ -5,12 +5,18 @@ import type { ReactNode } from 'react';
 /** Marca de FUTURA arriba a la izquierda en las pantallas de acceso. */
 export function AuthBrand() {
   return (
-    <Link href="/" className="group mb-8 inline-flex items-center gap-2.5 self-start" aria-label="FUTURA">
+    <Link
+      href="/"
+      className="group mb-8 inline-flex items-center gap-2.5 self-start"
+      aria-label="FUTURA"
+    >
       <span className="inline-flex h-10 w-10 items-center justify-center rounded-[14px] bg-[linear-gradient(135deg,#7139e8,#a855f7_60%,#ec4899)] text-white shadow-[0_10px_26px_-10px_rgba(113,57,232,0.9)] transition-transform duration-500 group-hover:rotate-6">
         <Sparkles className="h-4.5 w-4.5" />
       </span>
       <span className="leading-none">
-        <span className="block text-[18px] font-extrabold tracking-tight text-zinc-900">FUTURA</span>
+        <span className="block text-[18px] font-extrabold tracking-tight text-zinc-900">
+          FUTURA
+        </span>
         <span className="mt-0.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
           Solutions
         </span>

@@ -199,6 +199,9 @@ export function AnimatedNumber({
 }
 
 /** Marca visualmente contenido que se está refrescando. */
-export function Pulsing({ children, active = true }: { children: React.ReactNode; active?: boolean }) {
+export function Pulsing({
+  children,
+  active = true,
+}: { children: React.ReactNode; active?: boolean }) {
   return <span className={active ? 'animate-pulse-soft' : undefined}>{children}</span>;
 }

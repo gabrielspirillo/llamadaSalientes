@@ -1,10 +1,10 @@
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Card, CardTopbar } from '@/components/ui/card';
 import { Reveal } from '@/components/ui/motion';
-import { Building2, Sparkles } from 'lucide-react';
 import { getClinicSettings } from '@/lib/data/clinic';
 import { getWhatsappAgentSettings } from '@/lib/data/whatsapp-agent-settings';
 import { getCurrentTenant } from '@/lib/tenant';
+import { Building2, Sparkles } from 'lucide-react';
 import { AgentPersonaForm } from '../whatsapp/integrations/_components/agent-persona-form';
 import { SettingsForm } from './settings-form';
 
@@ -58,13 +58,13 @@ export default async function SettingsPage() {
             subtitle="Nombre y tono con que el agente de WhatsApp atiende a tus pacientes. Es aditivo: no cambia las reglas de seguridad ni los datos oficiales."
           />
           <div className="px-5 pb-5 sm:px-6 sm:pb-6">
-        <AgentPersonaForm
-          initial={
-            agentSettings
-              ? { persona: agentSettings.persona, agentName: agentSettings.agentName }
-              : null
-          }
-        />
+            <AgentPersonaForm
+              initial={
+                agentSettings
+                  ? { persona: agentSettings.persona, agentName: agentSettings.agentName }
+                  : null
+              }
+            />
           </div>
         </Card>
       </Reveal>

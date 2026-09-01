@@ -1,7 +1,7 @@
 'use client';
 
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Loader2, Sparkles, Wand2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -44,8 +44,8 @@ export function BackfillButton({ pending }: { pending: number }) {
           <h3 className="text-sm font-semibold tracking-tight">Procesar llamadas pendientes</h3>
         </div>
         <p className="text-xs text-zinc-500 mb-4">
-          {pending} llamada{pending === 1 ? '' : 's'} con transcripción pero sin motivo. Pasalas
-          por Gemini para clasificar y resumir en español.
+          {pending} llamada{pending === 1 ? '' : 's'} con transcripción pero sin motivo. Pasalas por
+          Gemini para clasificar y resumir en español.
         </p>
         {error && (
           <p className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-md px-2 py-1.5 mb-3">

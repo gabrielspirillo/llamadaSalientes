@@ -3,13 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardTopbar } from '@/components/ui/card';
-import {
-  AlertTriangle,
-  Lightbulb,
-  Loader2,
-  Sparkles,
-  TrendingUp,
-} from 'lucide-react';
+import { AlertTriangle, Lightbulb, Loader2, Sparkles, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 
 type Insights = {
@@ -52,7 +46,6 @@ export function InsightsPanel() {
         action={<Badge tone="violet">Gemini</Badge>}
       />
       <div className="px-5 pb-5 sm:px-6 sm:pb-6">
-
         {!data && !loading && !error && (
           <Button size="sm" className="w-full" onClick={generate}>
             <Sparkles className="h-4 w-4" />
@@ -73,9 +66,7 @@ export function InsightsPanel() {
           </div>
         )}
 
-        {data && data.message && (
-          <p className="text-sm text-zinc-500 italic">{data.message}</p>
-        )}
+        {data && data.message && <p className="text-sm text-zinc-500 italic">{data.message}</p>}
 
         {data && !data.message && (
           <div className="space-y-5">

@@ -1,7 +1,7 @@
-import { DashboardSidebar } from '@/components/dashboard/sidebar';
 import { ImpersonationBanner } from '@/components/dashboard/impersonation-banner';
-import { WelcomeTour } from '@/components/dashboard/welcome-tour';
+import { DashboardSidebar } from '@/components/dashboard/sidebar';
 import { DashboardTopbar } from '@/components/dashboard/topbar';
+import { WelcomeTour } from '@/components/dashboard/welcome-tour';
 import { DEFAULT_ENABLED_MODULES, type EnabledModules } from '@/lib/modules';
 import { getCurrentTenantOrNull } from '@/lib/tenant';
 import { auth } from '@clerk/nextjs/server';

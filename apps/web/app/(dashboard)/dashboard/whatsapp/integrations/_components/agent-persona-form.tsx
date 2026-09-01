@@ -30,7 +30,9 @@ export function AgentPersonaForm({ initial }: Props) {
   return (
     <form onSubmit={onSubmit} className="space-y-3">
       <label className="block">
-        <span className="block text-xs font-medium text-zinc-700">Nombre del agente (opcional)</span>
+        <span className="block text-xs font-medium text-zinc-700">
+          Nombre del agente (opcional)
+        </span>
         <input
           value={agentName}
           onChange={(e) => setAgentName(e.target.value)}
@@ -52,8 +54,8 @@ export function AgentPersonaForm({ initial }: Props) {
           className="mt-1 w-full rounded-lg border border-[--color-border] px-3 py-1.5 text-sm"
         />
         <span className="mt-1 block text-[11px] text-zinc-400">
-          Afina el tono y el foco del agente. No anula las reglas de seguridad,
-          los datos oficiales ni los protocolos de urgencia/handoff. ({persona.length}/2000)
+          Afina el tono y el foco del agente. No anula las reglas de seguridad, los datos oficiales
+          ni los protocolos de urgencia/handoff. ({persona.length}/2000)
         </span>
       </label>
       {feedback && (

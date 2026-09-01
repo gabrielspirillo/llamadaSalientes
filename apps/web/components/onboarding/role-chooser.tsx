@@ -108,7 +108,9 @@ function RoleCard({
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-[15px] font-bold text-zinc-900">{title}</span>
-        <span className="mt-0.5 block text-[13px] leading-relaxed text-zinc-500">{description}</span>
+        <span className="mt-0.5 block text-[13px] leading-relaxed text-zinc-500">
+          {description}
+        </span>
       </span>
       <ArrowRight className="h-4 w-4 shrink-0 text-zinc-300 transition-all duration-300 group-hover:translate-x-1 group-hover:text-brand-500" />
     </button>

@@ -1,5 +1,6 @@
 'use client';
 
+import type { NoShowSeriesPoint, TopTreatment } from '@/lib/data/analytics/global';
 import {
   Area,
   AreaChart,
@@ -12,7 +13,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import type { NoShowSeriesPoint, TopTreatment } from '@/lib/data/analytics/global';
 import {
   axisProps,
   chartAnim,

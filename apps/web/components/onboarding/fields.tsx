@@ -30,7 +30,9 @@ export function Field({
       </Label>
       {children}
       {hint && !error && <p className="text-[11.5px] text-zinc-500">{hint}</p>}
-      {error && <p className="animate-fade-down text-[11.5px] font-medium text-rose-600">{error}</p>}
+      {error && (
+        <p className="animate-fade-down text-[11.5px] font-medium text-rose-600">{error}</p>
+      )}
     </div>
   );
 }

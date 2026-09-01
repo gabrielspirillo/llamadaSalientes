@@ -1,6 +1,5 @@
 import { OutboundDispatchButton } from '@/components/dashboard/outbound-dispatch-button';
 import { PageHeader } from '@/components/dashboard/page-header';
-import { Megaphone } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import {
@@ -10,6 +9,7 @@ import {
   getCampaignTargets,
 } from '@/lib/data/outbound-campaigns';
 import { getCurrentTenant } from '@/lib/tenant';
+import { Megaphone } from 'lucide-react';
 import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
@@ -92,10 +92,16 @@ export default async function OutboundCampaignDetail({
             <thead className="text-zinc-500 border-b border-[--color-border-subtle]">
               <tr>
                 <th className="text-left font-medium px-4 sm:px-5 py-3">Teléfono</th>
-                <th className="text-left font-medium px-4 sm:px-5 py-3 hidden sm:table-cell">Nombre</th>
+                <th className="text-left font-medium px-4 sm:px-5 py-3 hidden sm:table-cell">
+                  Nombre
+                </th>
                 <th className="text-left font-medium px-4 sm:px-5 py-3">Estado</th>
-                <th className="text-left font-medium px-4 sm:px-5 py-3 hidden md:table-cell">Razón</th>
-                <th className="text-right font-medium px-4 sm:px-5 py-3 hidden md:table-cell">Último intento</th>
+                <th className="text-left font-medium px-4 sm:px-5 py-3 hidden md:table-cell">
+                  Razón
+                </th>
+                <th className="text-right font-medium px-4 sm:px-5 py-3 hidden md:table-cell">
+                  Último intento
+                </th>
               </tr>
             </thead>
             <tbody>

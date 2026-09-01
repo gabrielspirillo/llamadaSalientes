@@ -1,7 +1,7 @@
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { ArrowLeft, Zap } from 'lucide-react';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
 
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/stat';
@@ -12,18 +12,18 @@ import {
   treatments,
   users,
   whatsappContacts,
-  whatsappConversations,
   whatsappConversationTags,
+  whatsappConversations,
   whatsappMessages,
   whatsappTags,
 } from '@/lib/db/schema';
-import { getCurrentTenant } from '@/lib/tenant';
 import { getLeadMemory } from '@/lib/memory/lead-memory';
+import { getCurrentTenant } from '@/lib/tenant';
 import { listTenantMembersSynced } from '@/lib/tenant-members';
 
-import { MessageComposer } from '../_components/message-composer';
-import { ConversationActions } from '../_components/conversation-actions';
 import { ContactSidebar } from '../_components/contact-sidebar';
+import { ConversationActions } from '../_components/conversation-actions';
+import { MessageComposer } from '../_components/message-composer';
 import { MessagesStream } from '../_components/messages-stream';
 
 export const dynamic = 'force-dynamic';
@@ -84,7 +84,9 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
         )
         .orderBy(asc(appointmentsCache.startTime))
         .limit(10)
-    : Promise.resolve([] as Array<{ appt: typeof appointmentsCache.$inferSelect; treatmentName: string | null }>);
+    : Promise.resolve(
+        [] as Array<{ appt: typeof appointmentsCache.$inferSelect; treatmentName: string | null }>,
+      );
 
   const [messages, allTags, convTagRows, membersRows, apptRows] = await Promise.all([
     db
@@ -189,10 +191,7 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
         />
 
         <div className="border-t border-[--color-border-subtle] bg-white p-3">
-          <MessageComposer
-            conversationId={row.conv.id}
-            disabled={row.conv.status === 'CLOSED'}
-          />
+          <MessageComposer conversationId={row.conv.id} disabled={row.conv.status === 'CLOSED'} />
         </div>
       </div>
 

@@ -46,7 +46,9 @@ export function PlaygroundPanel() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-[18px] font-bold tracking-tight text-zinc-900">Probador del agente de WhatsApp</h2>
+        <h2 className="text-[18px] font-bold tracking-tight text-zinc-900">
+          Probador del agente de WhatsApp
+        </h2>
         <p className="text-sm text-zinc-500">
           Chateá con el agente usando la configuración real de tu clínica (persona, tratamientos,
           FAQs con búsqueda semántica, guardrails). Las acciones que agendan/cancelan/registran se{' '}
