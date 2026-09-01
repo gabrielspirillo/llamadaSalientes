@@ -148,7 +148,7 @@ export function OutboundQuickCall() {
             id="qc-usecase"
             value={useCase}
             onChange={(e) => changeUseCase(e.target.value as UseCase)}
-            className="h-10 w-full rounded-xl border border-[--color-border] bg-white px-3.5 text-sm"
+            className="h-10 w-full rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] px-3.5 text-sm"
           >
             {USE_CASES.map((u) => (
               <option key={u.value} value={u.value}>

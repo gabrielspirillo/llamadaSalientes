@@ -48,7 +48,7 @@ export function WaitlistSettingsForm({ initial }: { initial: Settings }) {
   }
 
   return (
-    <div className="rounded-xl border border-[--color-border] bg-white p-6 space-y-6">
+    <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-6 space-y-6">
       <div>
         <h2 className="text-lg font-semibold text-zinc-900">Configuración general</h2>
         <p className="text-sm text-zinc-500 mt-1">

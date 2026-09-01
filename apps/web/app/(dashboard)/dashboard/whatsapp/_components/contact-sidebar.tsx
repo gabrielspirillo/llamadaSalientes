@@ -190,7 +190,7 @@ export function ContactSidebar({
       )}
 
       {/* Contacto */}
-      <div className="rounded-xl border border-[--color-border] bg-white p-4">
+      <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-4">
         <div className="flex items-center gap-3">
           {contact.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -213,7 +213,7 @@ export function ContactSidebar({
         </div>
         <Link
           href={`/dashboard/whatsapp/contacts/${contact.id}`}
-          className="mt-3 inline-flex w-full items-center justify-center rounded-lg border border-[--color-border] bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-brand-50/50"
+          className="mt-3 inline-flex w-full items-center justify-center rounded-2xl border border-[--color-border] bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-brand-50/50"
         >
           Ver detalles del contacto
         </Link>
@@ -282,7 +282,7 @@ export function ContactSidebar({
       ) : null}
 
       {/* Citas */}
-      <div className="rounded-xl border border-[--color-border] bg-white p-4">
+      <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-4">
         <p className="text-sm font-semibold text-zinc-900">Citas</p>
         {appointments.length === 0 ? (
           <p className="mt-2 text-xs text-zinc-500">
@@ -324,7 +324,7 @@ export function ContactSidebar({
       </div>
 
       {/* Agente IA */}
-      <div className="rounded-xl border border-[--color-border] bg-white p-4">
+      <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-zinc-900">Agente Virtual</p>
@@ -355,7 +355,7 @@ export function ContactSidebar({
       </div>
 
       {/* Asignación */}
-      <div className="rounded-xl border border-[--color-border] bg-white p-4">
+      <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-4">
         <p className="text-sm font-semibold text-zinc-900">Asignar a</p>
         <select
           value={assignedUserId ?? ''}
@@ -378,7 +378,7 @@ export function ContactSidebar({
       </div>
 
       {/* Etiquetas */}
-      <div className="rounded-xl border border-[--color-border] bg-white p-4">
+      <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-4">
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold text-zinc-900">Etiquetas</p>
           <button

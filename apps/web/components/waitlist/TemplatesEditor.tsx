@@ -222,7 +222,7 @@ export function TemplatesEditor({
   const showTestVoice = true; // siempre potencialmente; el endpoint valida
 
   return (
-    <div className="rounded-xl border border-[--color-border] bg-white p-6 space-y-4">
+    <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-6 space-y-4">
       <div>
         <h2 className="text-lg font-semibold text-zinc-900">Plantillas de mensaje</h2>
         <p className="text-sm text-zinc-500 mt-1">

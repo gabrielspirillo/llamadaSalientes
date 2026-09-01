@@ -32,7 +32,7 @@ export function HistoryTable({
 }) {
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-[--color-border] bg-white p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <div className="text-xs uppercase tracking-wide text-zinc-500">Citas adelantadas</div>
           <div className="text-2xl font-semibold text-zinc-900">{totals.count}</div>

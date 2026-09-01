@@ -701,7 +701,7 @@ function InboundCard({
               <select
                 value={selected}
                 onChange={(e) => setSelected(e.target.value)}
-                className="mt-2 flex h-10 w-full rounded-xl border border-[--color-border] bg-white px-3.5 text-sm"
+                className="mt-2 flex h-10 w-full rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] px-3.5 text-sm"
               >
                 <option value="">Seleccionar…</option>
                 {numbers.map((n) => (

@@ -225,7 +225,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
       : 'Escribe un mensaje. Usa "/" para respuestas rápidas.';
 
   return (
-    <div className="relative rounded-xl border border-[--color-border] bg-white">
+    <div className="relative rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)]">
       {error && (
         <div className="border-b border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700">
           {error}
@@ -260,7 +260,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
 
       {/* Slash command popup */}
       {slashOpen && slashResults.length > 0 && (
-        <div className="absolute bottom-full left-3 right-3 z-20 mb-1 max-h-60 overflow-y-auto rounded-lg border border-[--color-border] bg-white shadow-lg">
+        <div className="absolute bottom-full left-3 right-3 z-20 mb-1 max-h-60 overflow-y-auto rounded-2xl border border-[--color-border] bg-white shadow-lg">
           <p className="border-b border-[--color-border-subtle] px-3 py-1.5 text-[10px] uppercase tracking-wide text-zinc-500">
             Respuestas rápidas · ↑↓ para navegar, Enter para usar
           </p>
@@ -290,7 +290,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
           <button
             type="button"
             onClick={discardAudio}
-            className="rounded-lg border border-[--color-border] bg-white px-2 py-1 text-xs hover:bg-brand-50/50"
+            className="rounded-2xl border border-[--color-border] bg-white px-2 py-1 text-xs hover:bg-brand-50/50"
           >
             Descartar
           </button>
@@ -427,7 +427,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
 
       {/* Emoji popover */}
       {emojiOpen && (
-        <div className="absolute bottom-full left-3 z-20 mb-1 grid w-72 grid-cols-10 gap-1 rounded-lg border border-[--color-border] bg-white p-2 shadow-lg">
+        <div className="absolute bottom-full left-3 z-20 mb-1 grid w-72 grid-cols-10 gap-1 rounded-2xl border border-[--color-border] bg-white p-2 shadow-lg">
           {EMOJIS.map((e) => (
             <button
               key={e}

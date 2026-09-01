@@ -2,7 +2,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardTopbar } from '@/components/ui/card';
 import {
   AlertTriangle,
   Lightbulb,
@@ -44,17 +44,14 @@ export function InsightsPanel() {
 
   return (
     <Card>
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-1">
-          <h3 className="text-base font-semibold tracking-tight inline-flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-violet-600" />
-            Insights con IA
-          </h3>
-          <Badge tone="violet">Gemini</Badge>
-        </div>
-        <p className="text-sm text-zinc-500 mb-4">
-          Análisis de patrones, alertas y mejoras al prompt del agente.
-        </p>
+      <CardTopbar
+        icon={<Sparkles className="h-4 w-4" />}
+        tone="grape"
+        title="Insights con IA"
+        subtitle="Patrones, alertas y mejoras al prompt del agente"
+        action={<Badge tone="violet">Gemini</Badge>}
+      />
+      <div className="px-5 pb-5 sm:px-6 sm:pb-6">
 
         {!data && !loading && !error && (
           <Button size="sm" className="w-full" onClick={generate}>
@@ -144,9 +141,9 @@ function Section({
     <div>
       <div className="flex items-center gap-2 mb-2">
         {icon}
-        <p className="text-xs font-semibold text-zinc-700 uppercase tracking-wider">{title}</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500">{title}</p>
       </div>
-      <ul className="space-y-1.5 list-disc pl-5 marker:text-zinc-300">{children}</ul>
+      <ul className="list-disc space-y-1.5 pl-5 text-[13px] marker:text-brand-300">{children}</ul>
     </div>
   );
 }

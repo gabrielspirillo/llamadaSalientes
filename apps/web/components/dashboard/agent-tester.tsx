@@ -157,21 +157,21 @@ export function AgentTester() {
       <Card className="lg:col-span-1">
         <div className="p-4 sm:p-6 flex flex-col items-center text-center">
           <div
-            className={`relative h-20 w-20 rounded-full flex items-center justify-center transition-all ${
+            className={`relative flex h-24 w-24 items-center justify-center rounded-full transition-all duration-500 ${
               state === 'live'
-                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
+                ? 'bg-[linear-gradient(135deg,#059669,#34d399)] text-white shadow-[0_18px_40px_-14px_rgba(16,185,129,0.9)]'
                 : state === 'connecting'
-                  ? 'bg-amber-500 text-white animate-pulse'
-                  : 'bg-zinc-900 text-white'
+                  ? 'animate-pulse bg-[linear-gradient(135deg,#d97706,#fbbf24)] text-white'
+                  : 'bg-[linear-gradient(135deg,#7139e8,#a855f7_60%,#ec4899)] text-white shadow-[0_18px_40px_-14px_rgba(113,57,232,0.9)]'
             }`}
           >
             {state === 'live' && (
               <span className="absolute inset-0 rounded-full bg-emerald-400/40 animate-ping" />
             )}
-            <Phone className="h-8 w-8 relative z-10" />
+            <Phone className="relative z-10 h-8 w-8" />
           </div>
 
-          <h3 className="text-lg font-semibold tracking-tight mt-4">
+          <h3 className="mt-5 text-[19px] font-extrabold tracking-tight text-zinc-900">
             {state === 'idle' && 'Probar agente'}
             {state === 'connecting' && 'Conectando…'}
             {state === 'live' && 'En llamada'}
@@ -180,7 +180,9 @@ export function AgentTester() {
           </h3>
 
           {state === 'live' && (
-            <p className="text-sm text-zinc-500 mt-1 tabular-nums">{formatDuration(duration)}</p>
+            <p className="mt-1 text-[15px] font-bold tabular-nums text-emerald-600">
+              {formatDuration(duration)}
+            </p>
           )}
           {state === 'idle' && (
             <p className="text-sm text-zinc-500 mt-2 max-w-xs">
@@ -189,7 +191,7 @@ export function AgentTester() {
           )}
 
           {error && (
-            <div className="mt-4 w-full rounded-lg bg-red-50 border border-red-200 text-red-800 px-3 py-2 text-xs text-left">
+            <div className="mt-4 w-full animate-fade-up rounded-2xl border border-rose-100 bg-rose-50/80 px-3.5 py-2.5 text-left text-[12px] text-rose-700">
               {error}
             </div>
           )}
@@ -212,12 +214,7 @@ export function AgentTester() {
                   {muted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                   {muted ? 'Activar micrófono' : 'Silenciar micrófono'}
                 </Button>
-                <Button
-                  size="lg"
-                  variant="primary"
-                  className="w-full bg-red-600 hover:bg-red-700"
-                  onClick={stopCall}
-                >
+                <Button size="lg" variant="danger" className="w-full" onClick={stopCall}>
                   <PhoneOff className="h-4 w-4" />
                   Colgar
                 </Button>
@@ -245,7 +242,9 @@ export function AgentTester() {
         <div className="border-t border-[--color-border-subtle] px-4 sm:px-6 py-4 sm:py-5 space-y-4 min-h-[300px] sm:min-h-[400px] max-h-[60vh] sm:max-h-[500px] overflow-y-auto">
           {transcript.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-[360px] text-center text-sm text-zinc-400">
-              <Phone className="h-8 w-8 mb-3 text-zinc-300" />
+              <span className="mb-3 inline-flex h-12 w-12 animate-float items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#f4f0ff,#fdf0f7)] text-violet-400">
+                <Phone className="h-5 w-5" />
+              </span>
               {state === 'idle'
                 ? 'La transcripción aparecerá acá cuando inicies la llamada.'
                 : state === 'connecting'
@@ -256,10 +255,10 @@ export function AgentTester() {
             transcript.map((turn) => (
               <div key={turn.id} className="flex gap-3">
                 <div
-                  className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 ${
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
                     turn.speaker === 'agent'
-                      ? 'bg-zinc-900 text-white'
-                      : 'bg-blue-100 text-blue-700'
+                      ? 'bg-[linear-gradient(135deg,#7139e8,#a855f7)] text-white'
+                      : 'bg-sky-100 text-sky-700'
                   }`}
                 >
                   {turn.speaker === 'agent' ? (
@@ -273,10 +272,10 @@ export function AgentTester() {
                     {turn.speaker === 'agent' ? 'Agente' : 'Tú'}
                   </p>
                   <p
-                    className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                    className={`rounded-2xl px-4 py-2.5 text-[13.5px] leading-relaxed ${
                       turn.speaker === 'agent'
-                        ? 'bg-zinc-100 text-zinc-800'
-                        : 'bg-blue-50 text-blue-900'
+                        ? 'rounded-tl-md bg-[#f4f0ff] text-violet-900'
+                        : 'rounded-tl-md bg-[#e9f4fe] text-sky-900'
                     }`}
                   >
                     {turn.text}

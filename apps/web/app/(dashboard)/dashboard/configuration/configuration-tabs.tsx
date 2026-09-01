@@ -28,8 +28,8 @@ export function ConfigurationTabs({
 }) {
   const TABS = showModulesTab ? [...BASE_TABS, MODULES_TAB] : BASE_TABS;
   return (
-    <div className="mb-6 border-b border-[--color-border]">
-      <nav className="-mb-px flex flex-wrap gap-1">
+    <div className="mb-6">
+      <nav className="scrollbar-none inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-[--color-border] bg-white/70 p-1 backdrop-blur-xl">
         {TABS.map((t) => {
           const Icon = t.icon;
           const isActive = t.key === active;
@@ -38,10 +38,10 @@ export function ConfigurationTabs({
               key={t.key}
               href={`/dashboard/configuration?tab=${t.key}`}
               className={cn(
-                'inline-flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors',
+                'inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold transition-all duration-300',
                 isActive
-                  ? 'border-zinc-900 text-zinc-900'
-                  : 'border-transparent text-zinc-500 hover:border-brand-200 hover:text-zinc-800',
+                  ? 'bg-[linear-gradient(120deg,#7139e8,#8b5cf6)] text-white shadow-[0_6px_18px_-8px_rgba(113,57,232,0.8)]'
+                  : 'text-zinc-500 hover:bg-brand-50 hover:text-brand-700',
               )}
             >
               <Icon className="h-4 w-4" />

@@ -97,7 +97,7 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
 
       <form
         onSubmit={handleCreate}
-        className="rounded-xl border border-[--color-border] bg-white p-4"
+        className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-4"
       >
         <p className="mb-3 text-sm font-semibold text-zinc-900">Nueva respuesta rápida</p>
         <div className="grid gap-2 sm:grid-cols-[200px_1fr_auto]">
@@ -128,7 +128,7 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
         </div>
       </form>
 
-      <div className="overflow-x-auto rounded-xl border border-[--color-border] bg-white">
+      <div className="overflow-x-auto rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)]">
         <table className="w-full text-sm">
           <thead className="bg-zinc-50 text-left text-xs uppercase text-zinc-500">
             <tr>

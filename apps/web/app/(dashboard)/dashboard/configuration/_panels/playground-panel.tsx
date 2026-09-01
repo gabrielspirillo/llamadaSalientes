@@ -72,7 +72,7 @@ export function PlaygroundPanel() {
             setTurns([]);
             setError(null);
           }}
-          className="rounded-lg border border-[--color-border] bg-white px-3 py-1.5 text-sm text-zinc-700 hover:bg-brand-50/50"
+          className="rounded-2xl border border-[--color-border] bg-white px-3 py-1.5 text-sm text-zinc-700 hover:bg-brand-50/50"
         >
           Reiniciar conversación
         </button>
@@ -129,7 +129,7 @@ export function PlaygroundPanel() {
           type="button"
           onClick={send}
           disabled={pending || !input.trim()}
-          className="self-end rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+          className="self-end rounded-lg bg-[linear-gradient(120deg,#7139e8,#8b5cf6)] px-4 py-2 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-50"
         >
           {pending ? 'Enviando…' : 'Enviar'}
         </button>
@@ -151,7 +151,7 @@ function TraceDetails({ trace }: { trace: PlaygroundResult }) {
       </button>
       <span className="ml-2">{badges.join(' · ')}</span>
       {open && (
-        <div className="mt-1 space-y-1 rounded-lg border border-[--color-border] bg-white p-2 break-words">
+        <div className="mt-1 space-y-1 rounded-2xl border border-[--color-border] bg-white p-2 break-words">
           <div>
             modelo: {trace.model} · tokens: {trace.tokensIn}/{trace.tokensOut} · {trace.latencyMs}ms
           </div>
