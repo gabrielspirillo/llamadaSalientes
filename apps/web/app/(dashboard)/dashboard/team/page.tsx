@@ -1,6 +1,9 @@
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Callout, EmptyState } from '@/components/ui/feedback';
+import { Avatar } from '@/components/ui/stat';
+import { Info, MailPlus, Users } from 'lucide-react';
 import { getCurrentTenant } from '@/lib/tenant';
 import { clerkClient } from '@clerk/nextjs/server';
 import { InviteMember } from './invite-member';
@@ -30,9 +33,11 @@ export default async function TeamPage() {
   if (!orgId) {
     return (
       <Card>
-        <div className="p-10 text-center text-sm text-zinc-500">
-          Necesitás una organización activa para ver al equipo.
-        </div>
+        <EmptyState
+          icon={<Users className="h-5 w-5" />}
+          title="Sin organización activa"
+          description="Necesitás una organización activa para ver al equipo."
+        />
       </Card>
     );
   }
@@ -59,14 +64,22 @@ export default async function TeamPage() {
   if (!memberships || !invitations) {
     return (
       <>
-        <PageHeader title="Equipo" description="Personas con acceso al panel." />
+        <PageHeader
+          eyebrow="Accesos"
+          icon={<Users className="h-5 w-5" />}
+          title="Equipo"
+          description="Personas con acceso al panel."
+        />
         <Card>
-          <div className="p-10 text-center text-sm text-zinc-500">
-            No se pudo cargar el equipo de esta clínica.
-            {impersonating
-              ? ' La gestión del equipo se hace desde la cuenta de la clínica.'
-              : ''}
-          </div>
+          <EmptyState
+            icon={<Users className="h-5 w-5" />}
+            title="No se pudo cargar el equipo"
+            description={
+              impersonating
+                ? 'La gestión del equipo se hace desde la cuenta de la clínica.'
+                : 'Reintentá en unos segundos.'
+            }
+          />
         </Card>
       </>
     );
@@ -74,13 +87,18 @@ export default async function TeamPage() {
 
   return (
     <>
-      <PageHeader title="Equipo" description="Personas con acceso al panel." />
+      <PageHeader
+        eyebrow="Accesos"
+        icon={<Users className="h-5 w-5" />}
+        title="Equipo"
+        description="Personas con acceso al panel de tu clínica."
+      />
 
       {impersonating ? (
-        <div className="mb-5 rounded-2xl border border-violet-200/70 bg-violet-50/60 p-4 text-sm text-zinc-600">
+        <Callout tone="brand" icon={<Info className="h-4 w-4" />} className="mb-5">
           En modo Futura no podés invitar miembros de esta clínica. La gestión del equipo se hace
           desde la cuenta de la clínica.
-        </div>
+        </Callout>
       ) : (
         <div className="mb-5">
           <InviteMember />
@@ -90,9 +108,11 @@ export default async function TeamPage() {
       <Card>
         <div className="divide-y divide-[--color-border-subtle]">
           {memberships.data.length === 0 && invitations.data.length === 0 ? (
-            <div className="p-10 text-center text-sm text-zinc-500">
-              Aún no hay miembros. Usá “Invitar miembro” para sumar a tu equipo.
-            </div>
+            <EmptyState
+              icon={<MailPlus className="h-5 w-5" />}
+              title="Aún no hay miembros"
+              description="Usá “Invitar miembro” para sumar a tu equipo al panel."
+            />
           ) : null}
 
           {memberships.data.map((m) => {
@@ -104,23 +124,15 @@ export default async function TeamPage() {
             const role = roleMap[m.role] ?? { label: m.role, tone: 'neutral' as const };
 
             return (
-              <div key={m.id} className="flex items-center justify-between gap-3 p-4 sm:p-5">
-                <div className="flex items-center gap-3 min-w-0">
-                  {m.publicUserData?.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={m.publicUserData.imageUrl}
-                      alt={userName}
-                      className="h-9 w-9 rounded-full object-cover shrink-0"
-                    />
-                  ) : (
-                    <div className="h-9 w-9 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 text-white flex items-center justify-center text-sm font-semibold shrink-0">
-                      {initials(userName)}
-                    </div>
-                  )}
+              <div
+                key={m.id}
+                className="flex items-center justify-between gap-3 p-4 transition-colors duration-200 hover:bg-brand-50/40 sm:p-5"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <Avatar name={userName} src={m.publicUserData?.imageUrl} size={40} />
                   <div className="min-w-0">
-                    <p className="font-medium truncate">{userName}</p>
-                    <p className="text-xs text-zinc-500 truncate">{email}</p>
+                    <p className="truncate text-[14px] font-bold text-zinc-900">{userName}</p>
+                    <p className="truncate text-[12px] text-zinc-500">{email}</p>
                   </div>
                 </div>
                 <Badge tone={role.tone} className="shrink-0">
@@ -131,14 +143,19 @@ export default async function TeamPage() {
           })}
 
           {invitations.data.map((inv) => (
-            <div key={inv.id} className="flex items-center justify-between gap-3 p-4 sm:p-5">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="h-9 w-9 rounded-full bg-zinc-100 text-zinc-500 flex items-center justify-center text-sm font-semibold shrink-0">
+            <div
+              key={inv.id}
+              className="flex items-center justify-between gap-3 p-4 transition-colors duration-200 hover:bg-brand-50/40 sm:p-5"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-[13px] font-bold text-zinc-400 ring-2 ring-white">
                   {initials(inv.emailAddress)}
                 </div>
                 <div className="min-w-0">
-                  <p className="font-medium truncate">{inv.emailAddress}</p>
-                  <p className="text-xs text-zinc-500 truncate">
+                  <p className="truncate text-[14px] font-bold text-zinc-900">
+                    {inv.emailAddress}
+                  </p>
+                  <p className="truncate text-[12px] text-zinc-500">
                     Invitación enviada · {new Date(inv.createdAt).toLocaleDateString('es-ES')}
                   </p>
                 </div>
