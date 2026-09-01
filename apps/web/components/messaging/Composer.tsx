@@ -354,12 +354,12 @@ export function Composer({
     <div className={cn('relative', className)}>
       {/* Popover de comandos / menciones */}
       {menu && options.length > 0 && (
-        <div className="absolute bottom-full left-0 z-30 mb-2 w-full max-w-md animate-zoom-in overflow-hidden rounded-[18px] border border-[--color-border] bg-white/95 shadow-[var(--shadow-lifted)] backdrop-blur-xl">
+        <div className="absolute bottom-full left-0 right-0 z-30 mb-2 animate-zoom-in overflow-hidden rounded-[18px] border border-[--color-border] bg-white shadow-[var(--shadow-lifted)]">
           <div className="flex items-center gap-1.5 border-b border-[--color-border-subtle] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-400">
             {menu.kind === '/' ? <Zap className="h-3 w-3" /> : <AtSign className="h-3 w-3" />}
             {menu.kind === '/' ? 'Comandos' : 'Mencionar a'}
           </div>
-          <ul className="max-h-64 overflow-y-auto p-1.5">
+          <ul className="max-h-52 overflow-y-auto p-1.5">
             {options.map((opt, i) => (
               <li key={opt.id}>
                 <button
@@ -423,7 +423,10 @@ export function Composer({
       <div
         className={cn(
           'flex items-end gap-2 rounded-[20px] border border-[--color-border] bg-white p-2 shadow-[var(--shadow-soft)]',
-          'transition-[border-color,box-shadow] duration-300 focus-within:border-brand-300 focus-within:shadow-[0_0_0_4px_rgba(55,118,106,0.10)]',
+          // La caja se enfoca sola al entrar en un canal: un halo de color ahí
+          // hace que la pantalla parezca pulsada nada más abrirla. Queda una
+          // pista neutra, que quien navega con teclado necesita ver el foco.
+          'transition-[border-color] duration-300 focus-within:border-zinc-300',
           disabled && 'opacity-60',
         )}
       >
@@ -459,7 +462,7 @@ export function Composer({
           rows={1}
           placeholder={placeholder ?? `Escribí en ${channelName}…  (/ comandos · @ menciones)`}
           aria-label={`Mensaje para ${channelName}`}
-          className="scrollbar-none max-h-[200px] min-h-[36px] flex-1 resize-none bg-transparent px-1 py-2 text-[14px] leading-relaxed text-zinc-900 placeholder:text-zinc-400 focus-visible:outline-none"
+          className="scrollbar-none max-h-[200px] min-h-[36px] flex-1 resize-none border-0 bg-transparent px-1 py-2 text-[14px] leading-relaxed text-zinc-900 outline-none ring-0 placeholder:text-zinc-400 focus:outline-none focus:ring-0 focus-visible:outline-none"
         />
 
         <button
