@@ -344,7 +344,7 @@ export function MessagesWorkspace({
   );
 
   const postMessage = useCallback(
-    async (channelId: string, optimistic: ImMessageDTO) => {
+    async (channelId: string, optimistic: ImMessageDTO): Promise<string | null> => {
       const nonce = optimistic.clientNonce ?? null;
       try {
         const res = await fetch(`/api/messages/channels/${channelId}/messages`, {
@@ -383,19 +383,26 @@ export function MessagesWorkspace({
         } else {
           upsertInThread(channelId, confirm);
         }
+        return data.message?.id ?? data.id ?? null;
       } catch (err) {
         const fail = (list: ImMessageDTO[]) =>
           list.map((m) => (m.clientNonce === nonce ? { ...m, pending: false, failed: true } : m));
         if (optimistic.parentId) setReplies((prev) => fail(prev));
         else upsertInThread(channelId, fail);
         setError((err as Error).message);
+        return null;
       }
     },
     [upsertInThread],
   );
 
   const send = useCallback(
-    (channelId: string, body: string, attachments: ImAttachment[], parentId: string | null) => {
+    (
+      channelId: string,
+      body: string,
+      attachments: ImAttachment[],
+      parentId: string | null,
+    ): Promise<string | null> => {
       const me = rail.me;
       const nonce = newNonce();
       const optimistic: ImMessageDTO = {
@@ -432,9 +439,85 @@ export function MessagesWorkspace({
       } else {
         upsertInThread(channelId, (list) => sortMessages([...list, optimistic]));
       }
-      void postMessage(channelId, optimistic);
+      return postMessage(channelId, optimistic);
     },
     [rail.me, currentUserId, mentions, upsertInThread, postMessage],
+  );
+
+  /**
+   * Ejecuta un comando de la barra. Hasta ahora el popover de "/" era
+   * decoración: escribir `/tarea Llamar a María` mandaba un mensaje literal con
+   * ese texto y no creaba nada.
+   *
+   * Todos publican primero el mensaje —el equipo tiene que ver lo que pasó— y
+   * después encadenan la acción sobre ese mensaje, reutilizando los endpoints
+   * que ya existen en vez de abrir caminos nuevos.
+   */
+  const runCommand = useCallback(
+    async (channelId: string, command: string, arg: string) => {
+      const text = arg.trim();
+      if (!text) {
+        setError('Escribe algo después del comando.');
+        return;
+      }
+
+      try {
+        if (command === 'paciente') {
+          // Abre (o recupera) el hilo interno de ese paciente. No publica nada:
+          // lo que quiere quien lo escribe es ir allí.
+          const res = await fetch(`/api/search?q=${encodeURIComponent(text)}`, {
+            cache: 'no-store',
+          });
+          const data = (await res.json().catch(() => ({}))) as {
+            hits?: Array<{ kind: string; id: string; title: string }>;
+          };
+          const hit = (data.hits ?? []).find((h) => h.kind === 'contact');
+          if (!hit) {
+            setError(`No encuentro a ningún paciente que se llame "${text}".`);
+            return;
+          }
+          const ch = await fetch('/api/messages/channels/context', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contextType: 'PATIENT',
+              contextId: hit.id,
+              label: hit.title,
+            }),
+          });
+          const chData = (await ch.json().catch(() => ({}))) as { id?: string; error?: string };
+          if (!ch.ok || !chData.id) throw new Error(chData.error ?? 'No se pudo abrir el hilo');
+          await refreshRail();
+          openChannel(chData.id);
+          return;
+        }
+
+        const body = command === 'llamar' ? `Llamar a ${text}` : text;
+        const messageId = await send(channelId, body, [], null);
+        if (!messageId) return; // el envío ya avisó del fallo
+
+        if (command === 'tarea' || command === 'llamar') {
+          const res = await fetch(`/api/messages/${messageId}/to-task`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: body.slice(0, 300) }),
+          });
+          if (!res.ok) {
+            const d = (await res.json().catch(() => ({}))) as { error?: string };
+            throw new Error(d.error ?? 'El mensaje se envió pero no se pudo crear la tarea');
+          }
+        } else if (command === 'decision') {
+          // Una decisión se fija: es lo que hace que siga visible mañana.
+          const res = await fetch(`/api/messages/${messageId}/pin`, { method: 'POST' });
+          if (!res.ok) throw new Error('El mensaje se envió pero no se pudo fijar');
+          void loadPins(channelId);
+        }
+        void refreshRail();
+      } catch (err) {
+        setError((err as Error).message);
+      }
+    },
+    [send, refreshRail, openChannel, loadPins],
   );
 
   const retry = useCallback(
@@ -443,7 +526,7 @@ export function MessagesWorkspace({
       const clean = (list: ImMessageDTO[]) => list.filter((m) => m.id !== message.id);
       if (message.parentId) setReplies((prev) => clean(prev));
       else upsertInThread(channelId, clean);
-      send(channelId, message.body, message.attachments, message.parentId);
+      void send(channelId, message.body, message.attachments, message.parentId);
     },
     [send, upsertInThread],
   );
@@ -920,7 +1003,10 @@ export function MessagesWorkspace({
                 resetKey={activeChannel.id}
                 droppedFiles={droppedFiles}
                 onDroppedHandled={() => setDroppedFiles(null)}
-                onSend={(body, attachments) => send(activeChannel.id, body, attachments, null)}
+                onSend={(body, attachments) => {
+                  void send(activeChannel.id, body, attachments, null);
+                }}
+                onCommand={(command, arg) => void runCommand(activeChannel.id, command, arg)}
                 onTyping={() => sendTyping(activeChannel.id)}
               />
             ) : null

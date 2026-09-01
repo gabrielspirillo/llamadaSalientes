@@ -48,7 +48,7 @@ const COMMANDS: CommandDef[] = [
     key: 'llamar',
     token: '/llamar ',
     label: '/llamar',
-    hint: 'Pedir una llamada de vuelta a un paciente',
+    hint: 'Crear una tarea de llamada, con el paciente en el título',
     icon: Phone,
   },
   {
@@ -66,6 +66,19 @@ const COMMANDS: CommandDef[] = [
     icon: Sparkles,
   },
 ];
+
+/**
+ * ¿El texto empieza por un comando conocido? Devuelve la clave y el resto.
+ * Exige un espacio detrás para que "/tareas pendientes" no se coma el `/tarea`.
+ */
+export function matchCommand(body: string): { key: string; arg: string } | null {
+  const m = /^\/([a-záéíóúñ]+)(?:\s+([\s\S]*))?$/i.exec(body.trim());
+  if (!m) return null;
+  const key = (m[1] ?? '').toLowerCase();
+  const def = COMMANDS.find((c) => c.key === key);
+  if (!def) return null;
+  return { key: def.key, arg: (m[2] ?? '').trim() };
+}
 
 const TYPING_THROTTLE_MS = 3000;
 
@@ -91,6 +104,11 @@ export interface ComposerProps {
   droppedFiles?: File[] | null;
   onDroppedHandled?: () => void;
   onSend: (body: string, attachments: ImAttachment[]) => void;
+  /**
+   * Ejecuta un comando de la barra. Sin esto, escribir `/tarea algo` mandaba un
+   * mensaje literal con ese texto y no creaba nada: el popover era decoración.
+   */
+  onCommand?: (command: string, arg: string) => void;
   onTyping: () => void;
   compact?: boolean;
   className?: string;
@@ -107,6 +125,7 @@ export function Composer({
   droppedFiles,
   onDroppedHandled,
   onSend,
+  onCommand,
   onTyping,
   compact,
   className,
@@ -304,6 +323,21 @@ export function Composer({
   const submit = () => {
     const body = value.trim();
     if ((!body && attachments.length === 0) || disabled || uploading > 0) return;
+
+    // Un comando al principio de la línea se ejecuta en vez de enviarse. Solo
+    // si hay adonde despacharlo y no lleva adjuntos: un comando con un archivo
+    // colgando sería ambiguo, así que en ese caso va como mensaje normal.
+    const cmd = onCommand && attachments.length === 0 ? matchCommand(body) : null;
+    if (cmd) {
+      onCommand?.(cmd.key, cmd.arg);
+      setValue('');
+      setAttachments([]);
+      setMenu(null);
+      lastTypingRef.current = 0;
+      requestAnimationFrame(() => textareaRef.current?.focus());
+      return;
+    }
+
     onSend(body, attachments);
     setValue('');
     setAttachments([]);
