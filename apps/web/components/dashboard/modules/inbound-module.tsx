@@ -323,13 +323,13 @@ function QuickAction({
 function IntentBadge({ intent }: { intent: string }) {
   const map: Record<
     string,
-    { label: string; tone: 'success' | 'info' | 'violet' | 'warn' | 'danger' | 'neutral' }
+    { label: string; tone: 'success' | 'info' | 'accent' | 'warn' | 'danger' | 'neutral' }
   > = {
     agendar: { label: 'Agendar', tone: 'success' },
     reagendar: { label: 'Reagendar', tone: 'info' },
     cancelar: { label: 'Cancelar', tone: 'warn' },
-    consulta: { label: 'Consulta', tone: 'violet' },
-    pregunta: { label: 'Consulta', tone: 'violet' },
+    consulta: { label: 'Consulta', tone: 'accent' },
+    pregunta: { label: 'Consulta', tone: 'accent' },
     queja: { label: 'Queja', tone: 'danger' },
     otro: { label: 'Otro', tone: 'neutral' },
   };

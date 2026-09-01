@@ -66,7 +66,7 @@ export async function GlobalAnalyticsBar({
         title="Métricas globales"
         description="Todos los canales combinados: llamadas, WhatsApp, recordatorios y waitlist."
         action={
-          <Badge tone="violet" size="lg" className="hidden sm:inline-flex">
+          <Badge tone="accent" size="lg" className="hidden sm:inline-flex">
             <Sparkles className="h-3 w-3" />
             Cross-channel
           </Badge>

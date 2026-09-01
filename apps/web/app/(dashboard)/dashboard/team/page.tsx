@@ -8,9 +8,9 @@ import { clerkClient } from '@clerk/nextjs/server';
 import { Info, MailPlus, Users } from 'lucide-react';
 import { InviteMember } from './invite-member';
 
-const roleMap: Record<string, { label: string; tone: 'violet' | 'info' | 'neutral' }> = {
-  'org:admin': { label: 'Admin', tone: 'violet' },
-  admin: { label: 'Admin', tone: 'violet' },
+const roleMap: Record<string, { label: string; tone: 'accent' | 'info' | 'neutral' }> = {
+  'org:admin': { label: 'Admin', tone: 'accent' },
+  admin: { label: 'Admin', tone: 'accent' },
   'org:member': { label: 'Operador', tone: 'info' },
   basic_member: { label: 'Operador', tone: 'info' },
   member: { label: 'Operador', tone: 'info' },

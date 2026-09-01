@@ -16,10 +16,10 @@ type Status = 'onboarding' | 'pending' | 'trial' | 'active' | 'suspended' | stri
 
 const STATUS_META: Record<
   string,
-  { label: string; tone: 'neutral' | 'success' | 'warn' | 'danger' | 'info' | 'violet' }
+  { label: string; tone: 'neutral' | 'success' | 'warn' | 'danger' | 'info' | 'accent' }
 > = {
   onboarding: { label: 'En onboarding', tone: 'warn' },
-  pending: { label: 'Pendiente de activar', tone: 'violet' },
+  pending: { label: 'Pendiente de activar', tone: 'accent' },
   trial: { label: 'Trial', tone: 'info' },
   active: { label: 'Activa', tone: 'success' },
   suspended: { label: 'Suspendida', tone: 'danger' },
@@ -105,7 +105,7 @@ export default async function FuturaPanelPage() {
       <div className="stagger mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label="Clínicas" value={total} tone="neutral" />
         <StatCard label="Activas" value={activas} tone="success" />
-        <StatCard label="Pendientes de activar" value={pendientes} tone="violet" />
+        <StatCard label="Pendientes de activar" value={pendientes} tone="accent" />
       </div>
 
       {clinics.length === 0 ? (
@@ -142,7 +142,7 @@ export default async function FuturaPanelPage() {
                   {!isFutura && (
                     <div className="flex flex-wrap items-center justify-end gap-2">
                       {impersonating && c.id === actingTenant.id ? (
-                        <Badge tone="violet">Gestionando ahora</Badge>
+                        <Badge tone="accent">Gestionando ahora</Badge>
                       ) : (
                         <EnterButton tenantId={c.id} />
                       )}
@@ -183,10 +183,10 @@ function StatCard({
 }: {
   label: string;
   value: number;
-  tone: 'neutral' | 'success' | 'violet';
+  tone: 'neutral' | 'success' | 'accent';
 }) {
   const ring =
-    tone === 'success' ? 'from-emerald-50' : tone === 'violet' ? 'from-brand-50' : 'from-zinc-50';
+    tone === 'success' ? 'from-emerald-50' : tone === 'accent' ? 'from-brand-50' : 'from-zinc-50';
   return (
     <div
       className={`rounded-[22px] border border-[--color-border] bg-gradient-to-br ${ring} to-white p-5 shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-lifted)]`}

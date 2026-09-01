@@ -340,7 +340,7 @@ export function ContactDetailDialog({
                                 {c.summary ?? 'Sin resumen aún'}
                               </p>
                             </div>
-                            <Badge tone="violet">{motivo}</Badge>
+                            <Badge tone="accent">{motivo}</Badge>
                           </div>
                         </Link>
                       );

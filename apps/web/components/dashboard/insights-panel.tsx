@@ -43,7 +43,7 @@ export function InsightsPanel() {
         tone="grape"
         title="Insights con IA"
         subtitle="Patrones, alertas y mejoras al prompt del agente"
-        action={<Badge tone="violet">Gemini</Badge>}
+        action={<Badge tone="accent">Gemini</Badge>}
       />
       <div className="px-5 pb-5 sm:px-6 sm:pb-6">
         {!data && !loading && !error && (

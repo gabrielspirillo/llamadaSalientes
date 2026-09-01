@@ -14,7 +14,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        /* Acción principal: gradiente violeta con halo y barrido de luz */
+        /* Acción principal: gradiente verde con halo y barrido de luz */
         primary:
           'sheen text-white bg-[linear-gradient(120deg,#37766a_0%,#479183_45%,#5fa896_100%)] shadow-[0_8px_24px_-10px_rgba(55,118,106,0.75)] hover:shadow-[0_16px_34px_-12px_rgba(55,118,106,0.8)] hover:-translate-y-0.5',
         /* Secundaria: superficie blanca con borde suave */

@@ -15,13 +15,13 @@ import Link from 'next/link';
 
 const motivoMap: Record<
   string,
-  { label: string; tone: 'success' | 'info' | 'warn' | 'violet' | 'neutral' | 'danger' }
+  { label: string; tone: 'success' | 'info' | 'warn' | 'accent' | 'neutral' | 'danger' }
 > = {
   agendar: { label: 'Pedir cita', tone: 'success' },
   reagendar: { label: 'Cambiar cita', tone: 'info' },
   cancelar: { label: 'Anular cita', tone: 'warn' },
-  consulta: { label: 'Consulta', tone: 'violet' },
-  pregunta: { label: 'Consulta', tone: 'violet' }, // legacy
+  consulta: { label: 'Consulta', tone: 'accent' },
+  pregunta: { label: 'Consulta', tone: 'accent' }, // legacy
   queja: { label: 'Queja', tone: 'danger' },
   otro: { label: 'Otro', tone: 'neutral' },
 };

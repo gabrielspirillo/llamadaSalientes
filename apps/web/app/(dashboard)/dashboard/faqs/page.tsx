@@ -56,7 +56,7 @@ export default async function FaqsPage() {
               <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
                 <div className="flex-1 min-w-0 w-full">
                   <div className="flex flex-wrap items-center gap-2 mb-2">
-                    {f.category && <Badge tone="violet">{f.category}</Badge>}
+                    {f.category && <Badge tone="accent">{f.category}</Badge>}
                     <span className="text-[13px] font-medium text-zinc-400">
                       prioridad {f.priority ?? 0}
                     </span>

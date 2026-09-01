@@ -12,7 +12,7 @@ const badgeVariants = cva(
         warn: 'bg-amber-100/80 text-amber-700',
         danger: 'bg-rose-100/80 text-rose-700',
         info: 'bg-sky-100/80 text-sky-700',
-        violet: 'bg-brand-100/80 text-brand-700',
+        accent: 'bg-brand-100/80 text-brand-700',
         pink: 'bg-emerald-100/80 text-emerald-700',
         /* Gradiente de marca — para contadores destacados */
         brand:
@@ -88,7 +88,7 @@ export function StatusDot({
   pulse = true,
   className,
 }: {
-  tone?: 'success' | 'warn' | 'danger' | 'info' | 'neutral' | 'violet';
+  tone?: 'success' | 'warn' | 'danger' | 'info' | 'neutral' | 'accent';
   pulse?: boolean;
   className?: string;
 }) {
@@ -98,7 +98,7 @@ export function StatusDot({
     danger: 'bg-rose-500',
     info: 'bg-sky-500',
     neutral: 'bg-zinc-400',
-    violet: 'bg-brand-500',
+    accent: 'bg-brand-500',
   } as const;
   return (
     <span className={cn('relative inline-flex h-2 w-2 shrink-0', className)}>

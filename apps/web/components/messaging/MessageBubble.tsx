@@ -36,7 +36,7 @@ import { useEffect, useRef, useState } from 'react';
    avatar) y no "chat de mensajería": en un canal de trabajo lo que importa es
    escanear quién dijo qué, no la coreografía de burbujas a los lados.
 
-   Lo propio se tiñe de violeta muy suave para encontrarse de un vistazo.
+   Lo propio se tiñe de verde muy suave para encontrarse de un vistazo.
    ========================================================================== */
 
 export interface MessageBubbleProps {

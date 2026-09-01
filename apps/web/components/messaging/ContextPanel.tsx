@@ -390,7 +390,7 @@ function EntityCard({
             <p className="mt-0.5 truncate text-[14px] font-medium text-zinc-500">{phone}</p>
           )}
           {nextAppointment && (
-            <Badge tone="violet" size="sm" className="mt-1.5">
+            <Badge tone="accent" size="sm" className="mt-1.5">
               Próxima cita: {formatDateTime(nextAppointment)}
             </Badge>
           )}

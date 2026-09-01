@@ -187,7 +187,7 @@ export function ContactsGrid({ initial }: { initial: Contact[] }) {
                       </p>
                     </div>
                     {c.type && c.type !== 'lead' && (
-                      <Badge tone="violet" className="shrink-0">
+                      <Badge tone="accent" className="shrink-0">
                         {c.type}
                       </Badge>
                     )}
