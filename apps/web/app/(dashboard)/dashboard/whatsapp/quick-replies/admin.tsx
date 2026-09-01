@@ -121,7 +121,7 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
           <button
             type="submit"
             disabled={pending || !shortcut.trim() || !text.trim()}
-            className="self-start rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-zinc-300"
+            className="self-start rounded-full bg-[linear-gradient(120deg,#059669,#10b981)] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_24px_-10px_rgba(16,185,129,0.7)] transition-all duration-300 hover:-translate-y-0.5 active:scale-95 hover:opacity-95 disabled:cursor-not-allowed disabled:bg-zinc-300"
           >
             {pending ? 'Guardando…' : 'Crear'}
           </button>
@@ -186,7 +186,7 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
                           type="button"
                           onClick={() => saveEdit(r.id)}
                           disabled={pending || !editShortcut.trim() || !editText.trim()}
-                          className="rounded-lg bg-emerald-600 px-2 py-1 text-xs text-white hover:bg-emerald-700 disabled:opacity-50"
+                          className="rounded-full bg-[linear-gradient(120deg,#059669,#10b981)] px-3 py-1 text-[11px] font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 active:scale-95 hover:opacity-95 disabled:opacity-50"
                         >
                           Guardar
                         </button>

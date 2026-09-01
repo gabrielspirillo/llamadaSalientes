@@ -416,7 +416,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
               onClick={submitText}
               disabled={disabled || pending || !text.trim()}
               className={`rounded-lg px-4 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-zinc-300 ${
-                isNote ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'
+                isNote ? 'bg-[linear-gradient(120deg,#d97706,#f59e0b)] hover:opacity-95' : 'bg-emerald-600 hover:opacity-95'
               }`}
             >
               {pending ? 'Enviando…' : isNote ? 'Guardar nota' : 'Enviar'}

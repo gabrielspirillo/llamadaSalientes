@@ -116,7 +116,7 @@ export function AutoCallbackCard({ intakeUrl, intakeKey, ghlWebhookUrl, location
             <summary className="text-xs font-medium text-violet-600 hover:text-violet-700 cursor-pointer inline-flex items-center gap-1">
               Ver ejemplo de uso (curl)
             </summary>
-            <pre className="mt-2 rounded-lg bg-zinc-900 text-zinc-100 text-[11px] p-3 overflow-x-auto leading-relaxed">{`curl -X POST '${intakeUrl}' \\
+            <pre className="mt-2 rounded-xl bg-[#171429] text-zinc-100 text-[11px] p-3 overflow-x-auto leading-relaxed">{`curl -X POST '${intakeUrl}' \\
   -H 'Authorization: Bearer ${intakeKey.slice(0, 12)}...' \\
   -H 'Content-Type: application/json' \\
   -d '{

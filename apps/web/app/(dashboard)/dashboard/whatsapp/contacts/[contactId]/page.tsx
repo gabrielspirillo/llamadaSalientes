@@ -172,7 +172,7 @@ export default async function ContactDetailPage({ params }: Props) {
             {conversations[0] && (
               <Link
                 href={`/dashboard/whatsapp/${conversations[0].id}`}
-                className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
+                className="rounded-full bg-[linear-gradient(120deg,#059669,#10b981)] px-4 py-2 text-sm font-semibold text-white shadow-[0_8px_24px_-10px_rgba(16,185,129,0.7)] transition-all duration-300 hover:-translate-y-0.5 active:scale-95 hover:opacity-95"
               >
                 Enviar mensaje
               </Link>

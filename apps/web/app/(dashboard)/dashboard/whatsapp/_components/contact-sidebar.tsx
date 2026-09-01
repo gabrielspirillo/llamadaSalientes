@@ -412,7 +412,7 @@ export function ContactSidebar({
               <button
                 type="submit"
                 disabled={pending || !newTagLabel.trim()}
-                className="ml-auto rounded-lg bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                className="ml-auto rounded-full bg-[linear-gradient(120deg,#059669,#10b981)] px-3.5 py-1.5 text-[12px] font-semibold transition-all duration-300 hover:-translate-y-0.5 active:scale-95 font-medium text-white hover:opacity-95 disabled:opacity-50"
               >
                 Crear y aplicar
               </button>
