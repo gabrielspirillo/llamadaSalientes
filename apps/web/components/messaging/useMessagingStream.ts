@@ -1,5 +1,6 @@
 'use client';
 
+import { useMessaging } from '@/components/messaging/MessagingProvider';
 import type { ImRealtimeEvent, ImRealtimeEventKind } from '@/lib/messaging/events';
 import { useEffect, useRef, useState } from 'react';
 
@@ -40,6 +41,24 @@ export interface MessagingStreamState {
   connected: boolean;
 }
 
+/** Despacha un evento ya parseado a los callbacks tipados. */
+function dispatch(h: MessagingStreamHandlers, event: ImRealtimeEvent): void {
+  switch (event.kind) {
+    case 'message.new': h.onMessageNew?.(event); break;
+    case 'message.updated': h.onMessageUpdated?.(event); break;
+    case 'message.deleted': h.onMessageDeleted?.(event); break;
+    case 'reaction.changed': h.onReactionChanged?.(event); break;
+    case 'channel.updated': h.onChannelUpdated?.(event); break;
+    case 'channel.member_joined': h.onMemberJoined?.(event); break;
+    case 'channel.member_left': h.onMemberLeft?.(event); break;
+    case 'typing.start': h.onTypingStart?.(event); break;
+    case 'typing.stop': h.onTypingStop?.(event); break;
+    case 'presence.changed': h.onPresenceChanged?.(event); break;
+    case 'unread.changed': h.onUnreadChanged?.(event); break;
+    case 'mention.new': h.onMentionNew?.(event); break;
+  }
+}
+
 export function useMessagingStream(handlers: MessagingStreamHandlers): MessagingStreamState {
   // Los handlers cambian en cada render del workspace; el EventSource se monta
   // una sola vez y lee siempre la última versión desde el ref.
@@ -47,8 +66,40 @@ export function useMessagingStream(handlers: MessagingStreamHandlers): Messaging
   handlersRef.current = handlers;
 
   const [connected, setConnected] = useState(false);
+  const hasConnectedOnceRef = useRef(false);
+
+  // El provider del layout ya es dueño de LA conexión. Si está montado nos
+  // colgamos de la suya: abrir un segundo EventSource acá duplicaba la conexión
+  // SSE, la suscripción en el hub de Redis y el heartbeat de presencia de cada
+  // usuario que entrara a esta pantalla.
+  const messaging = useMessaging();
+  const delegated = messaging.mounted;
+  const subscribeToProvider = messaging.subscribe;
+  const providerConnected = messaging.connected;
 
   useEffect(() => {
+    if (!delegated) return;
+    return subscribeToProvider('*', (event) => dispatch(handlersRef.current, event));
+  }, [delegated, subscribeToProvider]);
+
+  // Reconexión en modo delegado: el provider resincroniza el rail por su
+  // cuenta, pero el hilo abierto de esta pantalla también se perdió eventos,
+  // así que hay que avisarle. Solo en la transición cortado → conectado.
+  const wasConnectedRef = useRef(false);
+  useEffect(() => {
+    if (!delegated) return;
+    setConnected(providerConnected);
+    if (providerConnected && !wasConnectedRef.current) {
+      // La primera conexión NO es una reconexión: la carga inicial ya la hizo
+      // el server component. Solo avisamos a partir de la segunda.
+      if (hasConnectedOnceRef.current) handlersRef.current.onReconnect?.();
+      hasConnectedOnceRef.current = true;
+    }
+    wasConnectedRef.current = providerConnected;
+  }, [delegated, providerConnected]);
+
+  useEffect(() => {
+    if (delegated) return;
     if (typeof window === 'undefined' || typeof EventSource === 'undefined') return;
 
     const es = new EventSource('/api/messages/stream');
@@ -100,7 +151,7 @@ export function useMessagingStream(handlers: MessagingStreamHandlers): Messaging
     return () => {
       es.close();
     };
-  }, []);
+  }, [delegated]);
 
   return { connected };
 }

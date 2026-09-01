@@ -174,6 +174,36 @@ Sección `/dashboard/tasks` (label "Tareas"). Es transversal: no se contrata, vi
 
 **Auto-provisión**: la primera visita a la página siembra el catálogo de rutinas dentales, las reglas de automatización y materializa lo del día. Idempotente.
 
+## Módulo Mensajes (core, sin gate de `enabled_modules`)
+
+Sección `/dashboard/messages` (label "Mensajes"). Chat interno del equipo. Transversal, como Tareas.
+
+**Migración**: `supabase/migrations/0019_internal_messaging.sql`. Tablas `im_channels`, `im_channel_members`, `im_messages`, `im_message_reactions`, `im_mentions`, `im_saved_messages`, `im_pins`, `im_user_settings` + columnas `tasks.im_channel_id/im_message_id`.
+
+**Tiempo real**: SSE multiplexado, **una conexión por usuario** (`/api/messages/stream`), no una por canal. Fan-out en la escritura a `im:user:<id>` por Redis pub/sub. El hub (`lib/realtime/hub.ts`) mantiene **un solo subscriber ioredis por proceso** con refcount y rehace las suscripciones en el evento `ready` — Redis las pierde al reconectar, y sin eso un redeploy deja todas las SSE mudas. `MessagingProvider` (montado en el layout) es el dueño único del `EventSource`; `useMessagingStream` delega en él cuando está montado.
+
+**Estado efímero en Redis, durable en Postgres**: typing (`SETEX` 6 s) y presencia (`SETEX` 45 s, refrescada por el propio SSE cada 20 s) no tocan la BD. Los contadores de no leídos están desnormalizados en `im_channel_members` porque el sidebar se renderiza en cada navegación.
+
+**Integraciones** (`lib/messaging/bot.ts` → `postSystemEvent`, best-effort e idempotente por `dedupeKey`, nunca lanza):
+
+| Origen | Evento |
+|---|---|
+| `worker/jobs/process-call.ts` | `call.missed`, `call.transferred_unanswered` |
+| `worker/jobs/whatsapp-process.ts` | `wa.handoff` |
+| `worker/jobs/reminder-fallback-check.ts` | `reminder.no_response` |
+| `worker/jobs/task-daily-sweep.ts` | `task.overdue_digest` |
+| `lib/waitlist/engine.ts` | `waitlist.slot_open`, `waitlist.book_failed` |
+| `app/api/webhooks/ghl/appointment/route.ts` | `appointment.cancelled`, `appointment.no_show` |
+| `lib/tasks/service.ts` | `task.assigned` + espejo de comentarios al hilo |
+
+**Crons**: `scheduleMessagingCrons()` en `lib/queue/client.ts`. `im-digest` cada 30 min (publica solo a las 08:00 de la timezone de cada clínica), `im-retention-sweep` diario 04:40 UTC. `im-mention-escalate` es delayed, apagado por defecto.
+
+**Adjuntos**: bucket privado `S3_BUCKET_INTERNAL`. La URL se firma **en cada lectura** (`GET /api/messages/attachments?key=`), nunca se guarda firmada en el mensaje: caducaría y los adjuntos morirían en silencio.
+
+**RGPD**: retención configurable (defecto 24 meses, gana el mínimo del tenant), `exportMessagesForPatient()` para el derecho de acceso, y las notificaciones de escritorio nunca llevan datos de paciente.
+
+**Degradación**: si la migración no está aplicada, el badge del sidebar cae a 0 y `/dashboard/messages` muestra el rail vacío. Nada fuera del módulo se rompe.
+
 ## Idioma
 
 Comentarios de código, commit messages y mensajes UI: **español**. (Existing code convention.) PR descriptions y CLAUDE.md pueden ir en español o inglés, lo que sea más claro.
@@ -204,4 +234,4 @@ Estos quedan como TODO para futuras sesiones:
 
 ---
 
-**Última actualización**: 2026-09-01 (módulo Tareas: tablero, rutinas y automatizaciones).
+**Última actualización**: 2026-09-01 (módulo Mensajes: chat interno en tiempo real integrado con Tareas, Waitlist, Contactos, Llamadas y Analytics).

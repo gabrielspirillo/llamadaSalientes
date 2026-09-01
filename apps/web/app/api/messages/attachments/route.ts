@@ -3,11 +3,44 @@ import { randomUUID } from 'node:crypto';
 import { type NextRequest, NextResponse } from 'next/server';
 
 import { badRequest, messagingErrorResponse } from '@/lib/messaging/api';
-import { requireMessagingRole } from '@/lib/messaging/auth';
+import { MessagingNotFoundError, requireMessagingRole } from '@/lib/messaging/auth';
 import { MAX_ATTACHMENT_BYTES } from '@/lib/messaging/constants';
 import { mediaSignedUrl, mediaUpload } from '@/lib/storage/media';
 
 export const runtime = 'nodejs';
+
+/**
+ * Lectura de un adjunto: firma la URL EN CADA LECTURA y redirige.
+ *
+ * Por qué no se guarda la URL firmada en el mensaje: caduca. Un adjunto de hace
+ * una semana tiene que seguir abriéndose, así que lo durable es la `key` y la
+ * URL se acuña al leer. Guardarla en el jsonb haría que los adjuntos murieran
+ * en silencio a las pocas horas — que es peor que fallar al subirlos.
+ *
+ * Aislamiento: la key lleva el tenant embebido, así que se exige que empiece por
+ * el prefijo del tenant del que pide. Sin eso, conocer una key de otra clínica
+ * bastaría para leer su adjunto.
+ */
+export async function GET(req: NextRequest): Promise<NextResponse> {
+  try {
+    const auth = await requireMessagingRole('viewer');
+    const key = req.nextUrl.searchParams.get('key') ?? '';
+    const prefix = `tenants/${auth.tenantId}/messaging/`;
+    if (!key.startsWith(prefix) || key.includes('..')) {
+      throw new MessagingNotFoundError('Adjunto');
+    }
+
+    const bucket = internalBucket();
+    const url = await mediaSignedUrl(key, {
+      ...(bucket ? { bucket } : {}),
+      expiresInSeconds: SIGNED_URL_TTL_SECONDS,
+    });
+    return NextResponse.redirect(url, 302);
+  } catch (err) {
+    return messagingErrorResponse(err);
+  }
+}
+
 export const dynamic = 'force-dynamic';
 
 /**

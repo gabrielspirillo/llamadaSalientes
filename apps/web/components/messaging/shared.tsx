@@ -390,8 +390,12 @@ export function isImageAttachment(a: ImAttachment): boolean {
  */
 export function attachmentUrl(a: ImAttachment): string {
   const key = a.key ?? '';
-  if (/^(https?:)?\/\//.test(key) || key.startsWith('/')) return key;
-  return `/${key}`;
+  if (!key) return '';
+  // Una key absoluta viene de un adjunto ya resuelto (o de un origen externo).
+  if (/^(https?:)?\/\//.test(key)) return key;
+  // El resto se sirve por la ruta que firma en la lectura: la URL firmada
+  // caduca, así que no puede vivir guardada en el mensaje.
+  return `/api/messages/attachments?key=${encodeURIComponent(key)}`;
 }
 
 export function formatBytes(bytes: number): string {

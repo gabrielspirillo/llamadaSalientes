@@ -96,6 +96,14 @@ export interface MessagingContextValue {
   refreshRail(): Promise<void>;
   refreshMentions(): Promise<void>;
   subscribe(kind: ImRealtimeEventKind | '*', handler: ImEventHandler): () => void;
+  /**
+   * true solo dentro del provider. Lo usa useMessagingStream para delegar en
+   * esta conexión en vez de abrir un segundo EventSource: el diseño es UNA
+   * conexión SSE por usuario, no una por superficie montada.
+   */
+  mounted: boolean;
+  /** true mientras el EventSource está vivo. Pasa a false en un corte. */
+  connected: boolean;
   typingIn(channelId: string): TypingPeer[];
   channelById(channelId: string): ImChannelDTO | null;
   isOnline(userId: string): boolean;
@@ -140,6 +148,8 @@ const DEFAULT_VALUE: MessagingContextValue = {
   refreshRail: async () => {},
   refreshMentions: async () => {},
   subscribe: () => () => {},
+  mounted: false,
+  connected: false,
   typingIn: () => [],
   channelById: () => null,
   isOnline: () => false,
@@ -156,6 +166,7 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
   const [rail, setRail] = useState<ImRailDTO | null>(null);
   const [mentions, setMentions] = useState<ImMentionDTO[]>([]);
   const [ready, setReady] = useState(false);
+  const [connected, setConnected] = useState(false);
   const [degraded, setDegraded] = useState(false);
   const [dockOpen, setDockOpenState] = useState(false);
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
@@ -380,12 +391,35 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
       return [kind, fn] as const;
     });
 
+    // Durante un corte no hay backlog: los eventos que ocurrieron mientras
+    // estuvimos caídos se perdieron. Por eso al recuperar la conexión hay que
+    // resincronizar contra el rail en vez de confiar en el stream.
+    let hadError = false;
+    const onOpen = () => {
+      setConnected(true);
+      if (hadError) {
+        hadError = false;
+        void refreshRail();
+        void refreshMentions();
+      }
+    };
+    const onError = () => {
+      // No cerramos: EventSource reintenta solo con el backoff del navegador.
+      hadError = true;
+      setConnected(false);
+    };
+    es.addEventListener('open', onOpen);
+    es.addEventListener('error', onError);
+
     return () => {
       for (const [kind, fn] of listeners) es.removeEventListener(kind, fn as EventListener);
+      es.removeEventListener('open', onOpen);
+      es.removeEventListener('error', onError);
       es.close();
       esRef.current = null;
+      setConnected(false);
     };
-  }, [ready, applyEvent]);
+  }, [ready, applyEvent, refreshRail, refreshMentions]);
 
   /* --- Purga del "está escribiendo" ------------------------------------- */
   useEffect(() => {
@@ -587,6 +621,8 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
       refreshRail,
       refreshMentions,
       subscribe,
+      mounted: true,
+      connected,
       typingIn,
       channelById,
       isOnline,

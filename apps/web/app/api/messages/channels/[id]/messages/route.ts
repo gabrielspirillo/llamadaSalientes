@@ -14,7 +14,7 @@ import {
   MAX_BODY_LENGTH,
   THREAD_PAGE_SIZE,
 } from '@/lib/messaging/constants';
-import { loadThread } from '@/lib/messaging/queries';
+import { loadReplies, loadThread } from '@/lib/messaging/queries';
 import { sendMessage } from '@/lib/messaging/service';
 
 export const runtime = 'nodejs';
@@ -25,6 +25,10 @@ const idSchema = z.string().uuid();
 const listSchema = z.object({
   before: z.string().datetime({ offset: true }).nullish(),
   limit: z.coerce.number().int().min(1).max(100).default(THREAD_PAGE_SIZE),
+  // Con `parentId` la ruta devuelve las respuestas de ESE mensaje, no la página
+  // del canal. Sin esta rama el panel de hilo recibía el canal entero y lo
+  // pintaba como si fueran respuestas.
+  parentId: z.string().uuid().nullish(),
 });
 
 /** Página keyset del hilo. `before` es el ISO del mensaje más viejo ya visto. */
@@ -42,8 +46,20 @@ export async function GET(
     const parsed = listSchema.safeParse({
       before: req.nextUrl.searchParams.get('before') ?? undefined,
       limit: req.nextUrl.searchParams.get('limit') ?? undefined,
+      parentId: req.nextUrl.searchParams.get('parentId') ?? undefined,
     });
     if (!parsed.success) return badRequest(parsed.error.issues);
+
+    // Respuestas de un mensaje. Se devuelven con la misma forma que una página
+    // del hilo para que el cliente no tenga que ramificar el parseo.
+    if (parsed.data.parentId) {
+      const replies = await loadReplies({
+        tenantId: auth.tenantId,
+        parentId: parsed.data.parentId,
+        userId: auth.userId,
+      });
+      return NextResponse.json({ messages: replies, nextCursor: null, hasMore: false });
+    }
 
     const page = await loadThread({
       tenantId: auth.tenantId,
