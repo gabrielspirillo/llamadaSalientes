@@ -113,6 +113,32 @@ Scripts de migración (`scripts/migrate/`) existen por si en el futuro se necesi
 
 Zadarma webhook se configura **manualmente en cabinet** (no expone API). Cabinet → Configuración → Integraciones → Notificaciones de eventos. URL: `https://app.futuradigital.es/api/zadarma/webhook`. Soporta el handshake `zd_echo`. El path está exentido del Clerk middleware (`/api/zadarma/(.*)` es ruta pública).
 
+## Sistema de diseño "Aurora" (UI)
+
+Todo el front comparte un único lenguaje visual. **No inventes estilos nuevos: usá las primitivas.**
+
+**Tokens** (`apps/web/app/globals.css`, bloque `@theme`): canvas pastel (`--color-canvas` #f6f5fb), superficies blancas, escala de marca violeta `brand-50…900`, acentos `grape/blossom/mint/sky/honey/coral`, radios (`22px` tarjeta, `14px` campo, pill), sombras difusas (`--shadow-soft/lifted/float/glow`) y ~20 keyframes (`fade-up`, `pop`, `sheen`, `drift`, `draw`, `shimmer`, `grow-x/y`, `wave`…) expuestos como utilidades `animate-*`.
+
+**Utilidades propias**: `.aurora-canvas` (fondo con auroras animadas), `.glass`, `.hover-lift`, `.press`, `.sheen`, `.spotlight`, `.text-gradient`, `.stagger` (+ `--i` inline), `.bar-fill`, `.skeleton`, `.equalizer`, `.gradient-ring`.
+
+**Primitivas** (`apps/web/components/ui/`):
+- `button.tsx` — variantes `primary` (gradiente + barrido), `secondary`, `soft`, `ghost`, `outline`, `danger`, `success`, `glass`, `link`; + `IconButton`.
+- `card.tsx` — `Card` con `tone` (`default`, `glass`, pasteles, `night`) e `interactive`; `CardTopbar` (icono en chip + título + acción) unifica las cabeceras.
+- `badge.tsx` — `Badge`, `Tag` (estilo `#etiqueta`, color estable por hash), `StatusDot`.
+- `input.tsx` — `Input`, `Textarea`, `Select`, `Label`, `InputWithIcon`, `Switch`.
+- `tabs.tsx` — pestañas con píldora en gradiente; `SegmentedNav` para tabs por URL.
+- `table.tsx` — `TableWrap/Table/THead/HeadRow/TH/TR/TD`.
+- `motion.tsx` — `Reveal`, `Stagger`, `Spotlight`, `AnimatedNumber` (IntersectionObserver, sin dependencias).
+- `stat.tsx` — `StatTile` (KPI animado), `Sparkline`, `ProgressBar/Dots/Ring`, `Avatar`, `AvatarStack`, `Equalizer`.
+- `feedback.tsx` — `EmptyState`, `Skeleton`, `SkeletonRows`, `Callout`, `SectionTitle`.
+
+**Reglas**:
+- Sin dependencias de animación (nada de framer-motion): CSS + IntersectionObserver.
+- `prefers-reduced-motion` desactiva todo el movimiento (ya está en globals.css).
+- Las reglas de `[data-reveal]` viven bajo `html.js`; la clase la pone un script inline del layout raíz para que sin JS el contenido igual se vea.
+- La app es **light-only** a propósito: no hay toggle de tema ni variantes `dark:`.
+- Toda página del panel usa `PageHeader` (con `eyebrow` + `icon`) y envuelve su contenido en `Card`/`CardTopbar`.
+
 ## Idioma
 
 Comentarios de código, commit messages y mensajes UI: **español**. (Existing code convention.) PR descriptions y CLAUDE.md pueden ir en español o inglés, lo que sea más claro.
