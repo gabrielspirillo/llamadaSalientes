@@ -23,6 +23,25 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // Cabeceras de seguridad base. Sin ellas el panel es enmarcable
+        // (clickjacking) y cualquier XSS tiene alcance total sobre la sesión.
+        // No se declara CSP script-src: el App Router inyecta scripts inline
+        // sin nonce y romperíamos la hidratación; frame-ancestors sí es
+        // seguro y es el que sustituye a X-Frame-Options en navegadores
+        // modernos.
+        source: '/(.*)',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Content-Security-Policy', value: "frame-ancestors 'none'" },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains',
+          },
+        ],
+      },
+      {
         // Habilitar mic/cámara para la app misma. Sin esto, algunos navegadores
         // (especialmente Chromium con Permissions-Policy default) bloquean
         // getUserMedia → Retell WebRTC no funciona desde el dashboard.

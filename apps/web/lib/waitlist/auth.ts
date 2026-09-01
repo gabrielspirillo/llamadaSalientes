@@ -3,6 +3,7 @@ import { and, eq } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import { tenantMemberships, users } from '@/lib/db/schema';
+import { normalizeRole } from '@/lib/tasks/auth';
 import { getCurrentTenant } from '@/lib/tenant';
 
 export type WaitlistRole = 'admin' | 'operator' | 'viewer';
@@ -23,7 +24,10 @@ export async function requireWaitlistRole(min: WaitlistRole): Promise<{
     .limit(1);
 
   if (!m) throw new WaitlistForbiddenError('viewer', min);
-  const role = (m.role as WaitlistRole | undefined) ?? 'viewer';
+  // Clerk guarda `member` / `org:admin`, no nuestros tres roles: sin
+  // normalizar, ORDER[role] es undefined y `undefined < 2` da false, con lo
+  // que el gate deja pasar a cualquiera. normalizeRole() cierra ese agujero.
+  const role = normalizeRole(m.role);
   if (ORDER[role] < ORDER[min]) throw new WaitlistForbiddenError(role, min);
   return { tenantId: tenant.id, userId: m.internalUserId, role };
 }

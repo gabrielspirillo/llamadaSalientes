@@ -4,6 +4,7 @@ import {
   saveTwilioCredentials,
   saveZadarmaCredentials,
 } from '@/lib/data/tenant-telephony';
+import { denyUnlessRole } from '@/lib/auth/api-guard';
 import { getCurrentTenant } from '@/lib/tenant';
 import { TwilioRestClient } from '@/lib/twilio/client';
 import { ZadarmaRestClient } from '@/lib/zadarma/client';
@@ -34,6 +35,8 @@ const bodySchema = z.discriminatedUnion('provider', [twilioBody, zadarmaBody]);
 export async function GET() {
   const { tenant } = await getCurrentTenant().catch(() => ({ tenant: null }));
   if (!tenant) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const denied = await denyUnlessRole('operator');
+  if (denied) return denied;
 
   const t = await getTenantTelephony(tenant.id);
   return NextResponse.json({
@@ -66,6 +69,8 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const { tenant } = await getCurrentTenant().catch(() => ({ tenant: null }));
   if (!tenant) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const denied = await denyUnlessRole('admin');
+  if (denied) return denied;
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {

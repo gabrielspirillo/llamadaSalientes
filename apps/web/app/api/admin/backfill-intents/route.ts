@@ -2,6 +2,7 @@ import { decrypt } from '@/lib/crypto';
 import { db } from '@/lib/db/client';
 import { calls } from '@/lib/db/schema';
 import { summarizeCallWithGemini } from '@/lib/gemini/client';
+import { denyUnlessRole } from '@/lib/auth/api-guard';
 import { getCurrentTenant } from '@/lib/tenant';
 import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -19,6 +20,8 @@ export const maxDuration = 300; // 5 min max
 export async function POST(_req: NextRequest) {
   let tenantId: string;
   try {
+    const denied = await denyUnlessRole('admin');
+    if (denied) return denied;
     const ctx = await getCurrentTenant();
     tenantId = ctx.tenant.id;
   } catch {

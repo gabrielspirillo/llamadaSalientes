@@ -14,6 +14,7 @@ import {
   onAppointmentNoShow,
 } from '@/lib/tasks/hooks';
 import { autoEnqueueOnNewAppointment, enqueueOfferForCancelledSlot } from '@/lib/waitlist/engine';
+import { ghlWebhookUrlFor, readWebhookToken, verifyWebhookToken } from '@/lib/webhooks/tenant-token';
 import { eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -26,10 +27,12 @@ export const dynamic = 'force-dynamic';
  *
  * Configurar en GHL:
  *   Settings → Integrations → Webhooks → New Outbound Webhook
- *     URL: https://<dominio>/api/webhooks/ghl/appointment?location=<locationId>
+ *     URL: https://<dominio>/api/webhooks/ghl/appointment?location=<locationId>&token=<token>
  *     Eventos: AppointmentCreate, AppointmentUpdate, AppointmentDelete
  *
- * Auth: matcheo por location → tenant. Sin firma en v1 (endurecer en prod).
+ * Auth: `?token=` derivado del tenant (ver lib/webhooks/tenant-token.ts). Sin
+ * él, cualquiera con el locationId puede borrar citas de la caché y disparar
+ * ofertas de lista de espera por WhatsApp a pacientes reales.
  */
 export async function POST(req: NextRequest) {
   const locationFromQuery = req.nextUrl.searchParams.get('location') ?? '';
@@ -61,6 +64,19 @@ export async function POST(req: NextRequest) {
       { error: `Ningún tenant tiene la location ${locationId} integrada` },
       { status: 404 },
     );
+  }
+
+
+  // Sin firma del proveedor, el `locationId` es el único "auth" y es público:
+  // aparece en URLs y formularios de GHL. Exigimos el token por tenant antes
+  // de tocar la BD o disparar cualquier efecto (llamadas, WhatsApp, agenda).
+  if (!verifyWebhookToken('ghl', integration.tenantId, readWebhookToken(req))) {
+    console.warn(
+      '[ghl-webhook] token inválido o ausente para location=%s. Configurá esta URL en GHL: %s',
+      locationId,
+      ghlWebhookUrlFor(integration.tenantId, 'appointment', locationId),
+    );
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
   await db

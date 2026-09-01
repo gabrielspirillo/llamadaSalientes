@@ -3,6 +3,7 @@ import { and, eq } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import { tenantMemberships, users } from '@/lib/db/schema';
+import { normalizeRole } from '@/lib/tasks/auth';
 import { getCurrentTenant } from '@/lib/tenant';
 
 export type ReminderRole = 'admin' | 'operator' | 'viewer';
@@ -40,7 +41,10 @@ export async function requireReminderRole(min: ReminderRole): Promise<{
     throw new ReminderForbiddenError('viewer', min);
   }
 
-  const role = (m.role as ReminderRole | undefined) ?? 'viewer';
+  // Ver nota en lib/waitlist/auth.ts: los roles crudos de Clerk (`member`,
+  // `org:admin`) no están en ORDER y la comparación con undefined siempre da
+  // false, dejando pasar el gate. Hay que normalizar antes de comparar.
+  const role = normalizeRole(m.role);
   if (ORDER[role] < ORDER[min]) {
     throw new ReminderForbiddenError(role, min);
   }

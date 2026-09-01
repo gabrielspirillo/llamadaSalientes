@@ -7,6 +7,7 @@ import { sendQueueEvent } from '@/lib/queue/client';
 import { tryHandleReminderInbound } from '@/lib/reminders/handle-button-reply';
 import { tryHandleWaitlistInbound } from '@/lib/waitlist/handle-button-reply';
 import { tryHandleWaitlistTextReply } from '@/lib/waitlist/handle-text-reply';
+import { readWebhookToken, verifyWebhookToken } from '@/lib/webhooks/tenant-token';
 import {
   evolutionMessagesUpsertSchema,
   normalizeEvolutionMessage,
@@ -66,6 +67,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       },
     );
     return NextResponse.json({ ok: true, ignored: 'unknown_instance' });
+  }
+
+  // Evolution no firma sus envíos y el nombre de instancia es `tenant-<slug>`,
+  // derivable del nombre público de la clínica. Sin este token cualquiera
+  // inyecta mensajes entrantes falsos: se persisten como si fueran del
+  // paciente, despiertan al agente y pueden confirmar o cancelar citas por la
+  // vía de recordatorios y lista de espera.
+  if (!verifyWebhookToken('evolution', conn.tenantId, readWebhookToken(req))) {
+    console.warn('[wa-evolution-webhook] token inválido o ausente', {
+      instance,
+      event: event.event,
+    });
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
   try {

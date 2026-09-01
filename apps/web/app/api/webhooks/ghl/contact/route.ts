@@ -1,6 +1,7 @@
 import { triggerCallback } from '@/lib/calls/trigger-callback';
 import { db } from '@/lib/db/client';
 import { ghlIntegrations, webhookLogs } from '@/lib/db/schema';
+import { ghlWebhookUrlFor, readWebhookToken, verifyWebhookToken } from '@/lib/webhooks/tenant-token';
 import { eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -15,8 +16,10 @@ export const dynamic = 'force-dynamic';
  *     URL: https://<tu-dominio>/api/webhooks/ghl/contact?location=<locationId>
  *     Eventos: ContactCreate (al menos)
  *
- * Auth: matcheamos por location → tenant_id. No requiere firma para v1.
- * (Para producción endurecer con header secreto compartido).
+ * Auth: `?token=` derivado del tenant (ver lib/webhooks/tenant-token.ts). GHL
+ * no firma sus webhooks, así que el token en la URL es la única credencial;
+ * sin él, cualquiera con el locationId dispararía llamadas salientes con el
+ * saldo de la clínica.
  *
  * Payload esperado (shape GHL):
  *   { type: "ContactCreate", locationId: "...", contact: { id, firstName, lastName, phone, email, ... } }
@@ -61,7 +64,19 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Log (no firmamos por ahora — para producción agregar HMAC compartido)
+
+  // Sin firma del proveedor, el `locationId` es el único "auth" y es público:
+  // aparece en URLs y formularios de GHL. Exigimos el token por tenant antes
+  // de tocar la BD o disparar cualquier efecto (llamadas, WhatsApp, agenda).
+  if (!verifyWebhookToken('ghl', integration.tenantId, readWebhookToken(req))) {
+    console.warn(
+      '[ghl-webhook] token inválido o ausente para location=%s. Configurá esta URL en GHL: %s',
+      locationId,
+      ghlWebhookUrlFor(integration.tenantId, 'contact', locationId),
+    );
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+
   await db
     .insert(webhookLogs)
     .values({

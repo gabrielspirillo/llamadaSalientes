@@ -1,6 +1,7 @@
 import { USE_CASES, createCampaignWithTargets, listCampaigns } from '@/lib/data/outbound-campaigns';
 import { db } from '@/lib/db/client';
 import { users } from '@/lib/db/schema';
+import { denyUnlessRole } from '@/lib/auth/api-guard';
 import { getCurrentTenant } from '@/lib/tenant';
 import { eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -53,6 +54,8 @@ export async function POST(req: NextRequest) {
   let tenantId: string;
   let userId: string;
   try {
+    const denied = await denyUnlessRole('admin');
+    if (denied) return denied;
     const { tenant, userId: clerkUserId } = await getCurrentTenant();
     tenantId = tenant.id;
     userId = clerkUserId;

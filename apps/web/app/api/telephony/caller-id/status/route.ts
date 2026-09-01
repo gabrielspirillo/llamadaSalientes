@@ -6,6 +6,7 @@ import {
   getZadarmaClientFor,
   upsertTenantTelephony,
 } from '@/lib/data/tenant-telephony';
+import { denyUnlessRole } from '@/lib/auth/api-guard';
 import { getCurrentTenant } from '@/lib/tenant';
 import { TwilioApiError } from '@/lib/twilio/client';
 import { ZadarmaApiError } from '@/lib/zadarma/client';
@@ -30,6 +31,8 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   const { tenant } = await getCurrentTenant().catch(() => ({ tenant: null }));
   if (!tenant) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const denied = await denyUnlessRole('operator');
+  if (denied) return denied;
 
   const telephony = await getTenantTelephony(tenant.id);
   if (!telephony?.callerIdE164) {

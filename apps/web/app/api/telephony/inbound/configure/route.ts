@@ -5,6 +5,7 @@ import {
   upsertTenantTelephony,
 } from '@/lib/data/tenant-telephony';
 import { env } from '@/lib/env';
+import { denyUnlessRole } from '@/lib/auth/api-guard';
 import { getCurrentTenant } from '@/lib/tenant';
 import { TwilioApiError } from '@/lib/twilio/client';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -42,6 +43,8 @@ const bodySchema = z.object({
 export async function POST(req: NextRequest) {
   const { tenant } = await getCurrentTenant().catch(() => ({ tenant: null }));
   if (!tenant) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const denied = await denyUnlessRole('admin');
+  if (denied) return denied;
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {

@@ -1,6 +1,7 @@
 'use server';
 
 import { env } from '@/lib/env';
+import { requireTaskRole } from '@/lib/tasks/auth';
 import { getCurrentTenant } from '@/lib/tenant';
 import { clerkClient } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
@@ -36,6 +37,15 @@ export async function inviteMemberAction(input: {
       ok: false,
       error: 'El equipo de una clínica se gestiona desde su propia cuenta, no en modo Futura.',
     };
+  }
+
+  // Una Server Action es un endpoint POST invocable directamente: esconder el
+  // formulario en la UI no impide que un `viewer` se autoinvite como
+  // org:admin y se quede con el control de la clínica.
+  try {
+    await requireTaskRole('admin');
+  } catch {
+    return { ok: false, error: 'Solo un administrador puede invitar miembros.' };
   }
 
   const parsed = schema.safeParse(input);

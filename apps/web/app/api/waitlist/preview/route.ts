@@ -91,7 +91,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const [tx] = await db
         .select({ durationMinutes: treatments.durationMinutes, name: treatments.name })
         .from(treatments)
-        .where(eq(treatments.id, parsed.data.treatmentId))
+        .where(and(eq(treatments.id, parsed.data.treatmentId), eq(treatments.tenantId, tenantId)))
         .limit(1);
       durationMinutes = tx?.durationMinutes ?? null;
       treatmentName = tx?.name ?? null;

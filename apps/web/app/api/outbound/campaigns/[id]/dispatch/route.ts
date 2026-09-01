@@ -1,5 +1,6 @@
 import { getCampaign } from '@/lib/data/outbound-campaigns';
 import { dispatchCampaign } from '@/lib/outbound/dispatch-batch';
+import { denyUnlessRole } from '@/lib/auth/api-guard';
 import { getCurrentTenant } from '@/lib/tenant';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -14,6 +15,11 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: strin
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  // Disparar una campaña es la operación más cara del producto (hasta 5000
+  // llamadas salientes facturadas): no la abre un viewer.
+  const denied = await denyUnlessRole('admin');
+  if (denied) return denied;
 
   const { id } = await ctx.params;
   const campaign = await getCampaign(tenantId, id);

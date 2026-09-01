@@ -12,6 +12,7 @@ import { db } from '@/lib/db/client';
 import { auditLogs, users, whatsappConnections } from '@/lib/db/schema';
 import { env } from '@/lib/env';
 import { getCurrentTenant } from '@/lib/tenant';
+import { webhookToken } from '@/lib/webhooks/tenant-token';
 import { auth } from '@clerk/nextjs/server';
 
 export type ActionResult<T> =
@@ -242,12 +243,14 @@ function evolutionInstanceName(slug: string): string {
   return `tenant-${slug}`;
 }
 
-function evolutionWebhookUrl(): string {
+function evolutionWebhookUrl(tenantId: string): string {
   const appUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
-  return `${appUrl}/api/webhooks/whatsapp/evolution`;
+  // El token identifica al tenant en un webhook que el proveedor no firma.
+  // Si se rota ENCRYPTION_KEY hay que volver a registrar el webhook.
+  return `${appUrl}/api/webhooks/whatsapp/evolution?token=${webhookToken('evolution', tenantId)}`;
 }
 
-function evolutionCreateBody(instanceName: string): string {
+function evolutionCreateBody(instanceName: string, tenantId: string): string {
   // v2 admite anidar la config del webhook en /instance/create. Lo hacemos
   // para que la creación + alta de webhook sea atómica. Si Evolution (alguna
   // versión) ignora el campo `webhook`, hacemos un /webhook/set best-effort.
@@ -261,7 +264,7 @@ function evolutionCreateBody(instanceName: string): string {
     readMessages: false,
     readStatus: false,
     webhook: {
-      url: evolutionWebhookUrl(),
+      url: evolutionWebhookUrl(tenantId),
       byEvents: false,
       base64: false,
       events: [...EVOLUTION_WEBHOOK_EVENTS],
@@ -273,11 +276,12 @@ async function createEvolutionInstanceRequest(
   baseUrl: string,
   adminApiKey: string,
   instanceName: string,
+  tenantId: string,
 ): Promise<Response> {
   return fetch(`${baseUrl}/instance/create`, {
     method: 'POST',
     headers: { apikey: adminApiKey, 'content-type': 'application/json' },
-    body: evolutionCreateBody(instanceName),
+    body: evolutionCreateBody(instanceName, tenantId),
   });
 }
 
@@ -285,6 +289,7 @@ async function setEvolutionWebhook(
   baseUrl: string,
   instanceName: string,
   apiKey: string,
+  tenantId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   // v2 flat body (camelCase). Ver
   // https://doc.evolution-api.com/v2/api-reference/webhook/set
@@ -294,7 +299,7 @@ async function setEvolutionWebhook(
       headers: { apikey: apiKey, 'content-type': 'application/json' },
       body: JSON.stringify({
         enabled: true,
-        url: evolutionWebhookUrl(),
+        url: evolutionWebhookUrl(tenantId),
         webhookByEvents: false,
         webhookBase64: false,
         events: [...EVOLUTION_WEBHOOK_EVENTS],
@@ -374,7 +379,12 @@ export async function connectEvolution(): Promise<
 
   let createRes: Response;
   try {
-    createRes = await createEvolutionInstanceRequest(cfg.baseUrl, cfg.adminApiKey, instanceName);
+    createRes = await createEvolutionInstanceRequest(
+      cfg.baseUrl,
+      cfg.adminApiKey,
+      instanceName,
+      tenant.id,
+    );
   } catch (probeErr) {
     return fail(`No pude alcanzar Evolution: ${(probeErr as Error).message}`);
   }
@@ -413,7 +423,7 @@ export async function connectEvolution(): Promise<
 
   // Reaseguramos el webhook con /webhook/set (algunas versiones ignoran el
   // campo nested al crear). El hash de la instancia ya autoriza este endpoint.
-  const whResult = await setEvolutionWebhook(cfg.baseUrl, instanceName, instanceHash);
+  const whResult = await setEvolutionWebhook(cfg.baseUrl, instanceName, instanceHash, tenant.id);
   if (!whResult.ok) {
     console.warn('[connectEvolution] /webhook/set falló:', whResult.error);
   }

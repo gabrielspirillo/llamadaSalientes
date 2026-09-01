@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -23,10 +23,16 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
     if (!parsed.success) {
       return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 });
     }
-    await db
+    // Sin el filtro por tenant, un admin de la clínica A escribía sobre un
+    // tratamiento de la clínica B con sólo conocer su UUID.
+    const updated = await db
       .update(treatments)
       .set({ waitlistEligible: parsed.data.waitlistEligible })
-      .where(eq(treatments.id, parsed.data.treatmentId));
+      .where(and(eq(treatments.id, parsed.data.treatmentId), eq(treatments.tenantId, tenantId)))
+      .returning({ id: treatments.id });
+    if (updated.length === 0) {
+      return NextResponse.json({ error: 'Tratamiento no encontrado' }, { status: 404 });
+    }
     return NextResponse.json({ ok: true });
   } catch (err) {
     if (err instanceof WaitlistForbiddenError) {

@@ -1,6 +1,7 @@
 import { db } from '@/lib/db/client';
 import { callEvents, calls } from '@/lib/db/schema';
 import { getRetellClient } from '@/lib/retell/client';
+import { denyUnlessRole } from '@/lib/auth/api-guard';
 import { getCurrentTenant } from '@/lib/tenant';
 import { and, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -47,6 +48,8 @@ type MetadataPatch = {
 export async function POST(_req: NextRequest) {
   let tenantId: string;
   try {
+    const denied = await denyUnlessRole('admin');
+    if (denied) return denied;
     const ctx = await getCurrentTenant();
     tenantId = ctx.tenant.id;
   } catch {
@@ -202,6 +205,8 @@ async function applyPatch(callId: string, patch: MetadataPatch) {
 export async function GET() {
   let tenantId: string;
   try {
+    const denied = await denyUnlessRole('admin');
+    if (denied) return denied;
     const ctx = await getCurrentTenant();
     tenantId = ctx.tenant.id;
   } catch {

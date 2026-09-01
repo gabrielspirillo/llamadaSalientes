@@ -1,5 +1,6 @@
 import { getCall } from '@/lib/data/calls-list';
 import { getRetellClient } from '@/lib/retell/client';
+import { denyUnlessRole } from '@/lib/auth/api-guard';
 import { getCurrentTenant } from '@/lib/tenant';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -13,6 +14,8 @@ export const dynamic = 'force-dynamic';
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   let tenantId: string;
   try {
+    const denied = await denyUnlessRole('admin');
+    if (denied) return denied;
     const ctx = await getCurrentTenant();
     tenantId = ctx.tenant.id;
   } catch {

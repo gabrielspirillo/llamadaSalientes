@@ -115,17 +115,17 @@ async function handleNotifyStart(params: Record<string, string>): Promise<NextRe
     return NextResponse.json({});
   }
 
-  // Verificación de firma cuando el tenant tiene secret configurado.
-  if (signature) {
-    const secret = await getZadarmaWebhookSecretFor(tenant.tenantId);
-    if (secret) {
-      // NOTIFY_START: signature = base64(md5(call_start + caller_id + called_did + secret))
-      const concat = `${callStart}${callerId}${calledDid}`;
-      const ok = verifyZadarmaWebhookSignature(concat, secret, signature);
-      if (!ok) {
-        console.warn('[zadarma-webhook] firma inválida para tenant=%s', tenant.tenantId);
-        return new NextResponse('invalid signature', { status: 403 });
-      }
+  // Verificación de firma. Antes esto estaba dentro de `if (signature)`, con
+  // lo que omitir el campo saltaba el control entero y permitía leer el
+  // routing de la clínica (número de desvío, agente Retell) y enumerar DIDs.
+  // Si el tenant tiene secret, la firma es obligatoria.
+  const zadarmaSecret = await getZadarmaWebhookSecretFor(tenant.tenantId);
+  if (zadarmaSecret) {
+    // NOTIFY_START: signature = base64(md5(call_start + caller_id + called_did + secret))
+    const concat = `${callStart}${callerId}${calledDid}`;
+    if (!signature || !verifyZadarmaWebhookSignature(concat, zadarmaSecret, signature)) {
+      console.warn('[zadarma-webhook] firma inválida o ausente para tenant=%s', tenant.tenantId);
+      return new NextResponse('invalid signature', { status: 403 });
     }
   }
 
