@@ -1,20 +1,26 @@
 'use client';
 
 import { DashboardSidebarMobile } from '@/components/dashboard/sidebar';
+import { useMessaging } from '@/components/messaging/MessagingProvider';
+import { MentionsInbox } from '@/components/messaging/dock/MentionsInbox';
 import { StatusDot } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/feedback';
 import { Avatar } from '@/components/ui/stat';
 import { cn } from '@/lib/cn';
+import type { ImSearchHit } from '@/lib/messaging/types';
 import type { EnabledModules } from '@/lib/modules';
 import { UserButton, useUser } from '@clerk/nextjs';
 import {
   ArrowRight,
+  AtSign,
   Bell,
   Calendar,
   Check,
   Contact,
+  Hash,
   Menu,
   MessageCircle,
+  MessageSquare,
   Phone,
   Search,
   X,
@@ -26,7 +32,16 @@ import { useEffect, useRef, useState } from 'react';
 type SearchHit =
   | { kind: 'call'; id: string; title: string; subtitle: string; href: string; when: string | null }
   | { kind: 'treatment'; id: string; title: string; subtitle: string; href: string; when: null }
-  | { kind: 'contact'; id: string; title: string; subtitle: string; href: string; when: null };
+  | { kind: 'contact'; id: string; title: string; subtitle: string; href: string; when: null }
+  | { kind: 'channel'; id: string; title: string; subtitle: string; href: string; when: null }
+  | {
+      kind: 'message';
+      id: string;
+      title: string;
+      subtitle: string;
+      href: string;
+      when: string | null;
+    };
 
 type Notification = {
   id: string;
@@ -61,11 +76,13 @@ export function DashboardTopbar({
   isSuperAdmin = false,
   impersonatingClinic,
   tasksBadge = 0,
+  messagesBadge = 0,
 }: {
   enabledModules: EnabledModules;
   isSuperAdmin?: boolean;
   impersonatingClinic?: string;
   tasksBadge?: number;
+  messagesBadge?: number;
 }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -137,7 +154,7 @@ export function DashboardTopbar({
             )}
           >
             <Search className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:text-brand-500" />
-            <span className="truncate">Buscar llamadas, pacientes, tratamientos…</span>
+            <span className="truncate">Buscar llamadas, pacientes, mensajes…</span>
             <kbd className="ml-auto shrink-0 rounded-lg bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-400">
               ⌘K
             </kbd>
@@ -185,6 +202,7 @@ export function DashboardTopbar({
         enabledModules={enabledModules}
         isSuperAdmin={isSuperAdmin}
         tasksBadge={tasksBadge}
+        messagesBadge={messagesBadge}
       />
       {searchOpen && <SearchPalette onClose={() => setSearchOpen(false)} />}
     </>
@@ -197,6 +215,7 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const { channels } = useMessaging();
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -210,20 +229,51 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
     const ac = new AbortController();
     const t = setTimeout(async () => {
       setLoading(true);
-      try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`, { signal: ac.signal });
-        if (res.ok) {
-          const data = (await res.json()) as { hits: SearchHit[] };
-          setHits(data.hits ?? []);
-        }
-      } catch {}
-      setLoading(false);
+
+      // Canales: se filtran en memoria, ya vienen en el rail.
+      const needle = q.trim().toLowerCase();
+      const channelHits: SearchHit[] = channels
+        .filter((c) => !c.archived && c.name.toLowerCase().includes(needle))
+        .slice(0, 4)
+        .map((c) => ({
+          kind: 'channel' as const,
+          id: c.id,
+          title: c.name,
+          subtitle: c.kind === 'DM' ? 'Mensaje directo' : (c.topic ?? 'Canal del equipo'),
+          href: `/dashboard/messages?channel=${c.id}`,
+          when: null,
+        }));
+
+      // Las dos búsquedas van en paralelo. Que Mensajes falle (migración sin
+      // aplicar, módulo caído) NO puede romper el buscador que ya existía.
+      const [general, messages] = await Promise.all([
+        fetch(`/api/search?q=${encodeURIComponent(q)}`, { signal: ac.signal })
+          .then((r) => (r.ok ? (r.json() as Promise<{ hits?: SearchHit[] }>) : null))
+          .catch(() => null),
+        fetch(`/api/messages/search?q=${encodeURIComponent(q)}&limit=6`, { signal: ac.signal })
+          .then((r) => (r.ok ? (r.json() as Promise<{ hits?: ImSearchHit[] }>) : null))
+          .catch(() => null),
+      ]);
+
+      const messageHits: SearchHit[] = (messages?.hits ?? []).map((h) => ({
+        kind: 'message' as const,
+        id: h.messageId,
+        title: h.snippet,
+        subtitle: `${h.channelName}${h.senderName ? ` · ${h.senderName}` : ''}`,
+        href: `/dashboard/messages?channel=${h.channelId}&message=${h.messageId}`,
+        when: h.createdAt,
+      }));
+
+      if (!ac.signal.aborted) {
+        setHits([...channelHits, ...messageHits, ...(general?.hits ?? [])]);
+        setLoading(false);
+      }
     }, 200);
     return () => {
       ac.abort();
       clearTimeout(t);
     };
-  }, [q]);
+  }, [q, channels]);
 
   function onPick(href: string) {
     onClose();
@@ -249,7 +299,7 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
             ref={inputRef}
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar por número, paciente, resumen, tratamiento…"
+            placeholder="Buscar por número, paciente, resumen, tratamiento, mensaje…"
             className="relative flex-1 bg-transparent text-[15px] outline-none placeholder:text-zinc-400"
           />
           <button
@@ -266,7 +316,7 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
             <EmptyState
               icon={<Search className="h-5 w-5" />}
               title="Empezá a escribir"
-              description="Mínimo 2 caracteres. Buscamos en llamadas, contactos y tratamientos."
+              description="Mínimo 2 caracteres. Buscamos en llamadas, contactos, tratamientos y mensajes del equipo."
             />
           ) : loading && hits.length === 0 ? (
             <div className="px-6 py-14 text-center text-sm text-zinc-400">
@@ -292,6 +342,10 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
                         <Phone className="h-4 w-4" />
                       ) : h.kind === 'contact' ? (
                         <Contact className="h-4 w-4" />
+                      ) : h.kind === 'channel' ? (
+                        <Hash className="h-4 w-4" />
+                      ) : h.kind === 'message' ? (
+                        <MessageSquare className="h-4 w-4" />
                       ) : (
                         <Calendar className="h-4 w-4" />
                       )}
@@ -390,6 +444,10 @@ function NotificationsBell({
   const [items, setItems] = useState<Notification[]>([]);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
+  // Menciones del módulo Mensajes: el "leído" vive en el server
+  // (im_mentions.read_at), no en localStorage como el de llamadas.
+  const { mentions, ready: messagingReady } = useMessaging();
+  const [tab, setTab] = useState<'calls' | 'mentions'>('calls');
   const [lastSeenAt, setLastSeenAt] = useState<number>(() => {
     if (typeof window === 'undefined') return 0;
     const v = window.localStorage.getItem(NOTIF_LAST_SEEN_KEY);
@@ -431,7 +489,17 @@ function NotificationsBell({
   }, [open, onClose]);
 
   const visible = items.filter((i) => !dismissed.has(i.id));
-  const unreadCount = visible.filter((i) => new Date(i.createdAt).getTime() > lastSeenAt).length;
+  const callsUnread = visible.filter((i) => new Date(i.createdAt).getTime() > lastSeenAt).length;
+  const mentionsUnread = mentions.filter((m) => !m.readAt).length;
+  const unreadCount = callsUnread + mentionsUnread;
+
+  // Si hay menciones sin leer, se abre directo en esa pestaña: es lo que pide
+  // una respuesta de una persona, no de un agente.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: solo al abrir el panel
+  useEffect(() => {
+    if (!open) return;
+    setTab(mentionsUnread > 0 ? 'mentions' : 'calls');
+  }, [open]);
 
   function markAllRead() {
     const now = Date.now();
@@ -492,10 +560,12 @@ function NotificationsBell({
             <div className="relative">
               <h3 className="text-sm font-bold tracking-tight text-zinc-900">Notificaciones</h3>
               <p className="text-[11px] text-zinc-500">
-                {visible.length} {visible.length === 1 ? 'reciente' : 'recientes'}
+                {tab === 'calls'
+                  ? `${visible.length} ${visible.length === 1 ? 'reciente' : 'recientes'}`
+                  : `${mentions.length} ${mentions.length === 1 ? 'mención' : 'menciones'}`}
               </p>
             </div>
-            {visible.length > 0 && (
+            {tab === 'calls' && visible.length > 0 && (
               <button
                 type="button"
                 onClick={clearAll}
@@ -508,8 +578,29 @@ function NotificationsBell({
             )}
           </div>
 
+          {messagingReady && (
+            <div className="flex shrink-0 gap-1 border-b border-[--color-border-subtle] px-3 py-2">
+              <BellTab
+                active={tab === 'calls'}
+                onClick={() => setTab('calls')}
+                icon={<Phone className="h-3 w-3" />}
+                label="Llamadas"
+                badge={callsUnread}
+              />
+              <BellTab
+                active={tab === 'mentions'}
+                onClick={() => setTab('mentions')}
+                icon={<AtSign className="h-3 w-3" />}
+                label="Menciones"
+                badge={mentionsUnread}
+              />
+            </div>
+          )}
+
           <div className="min-h-0 flex-1 overflow-y-auto">
-            {loading && visible.length === 0 ? (
+            {messagingReady && tab === 'mentions' ? (
+              <MentionsInbox />
+            ) : loading && visible.length === 0 ? (
               <div className="px-6 py-10 text-center text-sm text-zinc-400">Cargando…</div>
             ) : visible.length === 0 ? (
               <EmptyState
@@ -566,17 +657,61 @@ function NotificationsBell({
 
           <div className="shrink-0 border-t border-[--color-border-subtle] bg-[#fafdfb]">
             <Link
-              href="/dashboard/calls"
+              href={
+                messagingReady && tab === 'mentions' ? '/dashboard/messages' : '/dashboard/calls'
+              }
               onClick={onClose}
               className="group flex items-center justify-center gap-1.5 py-3 text-xs font-semibold text-zinc-600 transition-colors hover:bg-brand-50 hover:text-brand-700"
             >
-              Ver todas las llamadas
+              {messagingReady && tab === 'mentions' ? 'Abrir Mensajes' : 'Ver todas las llamadas'}
               <ArrowRight className="h-3 w-3 transition-transform duration-300 group-hover:translate-x-1" />
             </Link>
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+/** Pestaña de la campana. Píldora en gradiente cuando está activa. */
+function BellTab({
+  active,
+  onClick,
+  icon,
+  label,
+  badge,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+  badge: number;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        'inline-flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-[11.5px] font-semibold transition-all duration-300',
+        active
+          ? 'bg-[linear-gradient(120deg,#7139e8,#a855f7)] text-white shadow-[0_8px_18px_-10px_rgba(113,57,232,0.85)]'
+          : 'text-zinc-500 hover:bg-brand-50 hover:text-brand-700',
+      )}
+    >
+      {icon}
+      {label}
+      {badge > 0 && (
+        <span
+          className={cn(
+            'inline-flex min-w-[16px] items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums',
+            active ? 'bg-white/25 text-white' : 'bg-rose-500 text-white',
+          )}
+        >
+          {badge > 9 ? '9+' : badge}
+        </span>
+      )}
+    </button>
   );
 }
 

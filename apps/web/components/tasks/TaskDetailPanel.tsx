@@ -56,6 +56,7 @@ export function TaskDetailPanel({
   const [newItem, setNewItem] = useState('');
   const [comment, setComment] = useState('');
   const [evidence, setEvidence] = useState('');
+  const [threadOpen, setThreadOpen] = useState(false);
   const titleRef = useRef<HTMLTextAreaElement>(null);
 
   const load = useCallback(async () => {
@@ -535,6 +536,23 @@ export function TaskDetailPanel({
                 )}
               </ul>
             </section>
+
+            {/* ── Conversación del equipo (módulo Mensajes) ───────────────── */}
+            <section>
+              <SectionTitle>Conversación</SectionTitle>
+              {threadOpen ? (
+                <ContextThread contextType="TASK" contextId={task.id} label={task.title} />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setThreadOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:border-zinc-300"
+                >
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  Abrir el hilo del equipo
+                </button>
+              )}
+            </section>
           </div>
         )}
 
@@ -574,6 +592,154 @@ export function TaskDetailPanel({
           </footer>
         )}
       </aside>
+    </div>
+  );
+}
+
+// ─── Hilo del equipo sobre esta tarea ────────────────────────────────────────
+// Autocontenido a propósito: abre (o crea) el canal `CONTEXT` de la tarea y
+// monta un hilo mínimo. Si el módulo Mensajes no está disponible todavía,
+// muestra el error y el resto del panel sigue funcionando igual.
+
+type ThreadMessage = {
+  id: string;
+  body: string;
+  senderName: string | null;
+  senderKind: string;
+  createdAt: string;
+};
+
+function ContextThread({
+  contextType,
+  contextId,
+  label,
+}: {
+  contextType: 'TASK' | 'PATIENT';
+  contextId: string;
+  label: string;
+}) {
+  const [channelId, setChannelId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ThreadMessage[]>([]);
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [threadError, setThreadError] = useState<string | null>(null);
+  const [draft, setDraft] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const fetchThread = useCallback(async (id: string) => {
+    const res = await fetch(`/api/messages/channels/${id}/messages`, { cache: 'no-store' });
+    const data = (await res.json().catch(() => ({}))) as {
+      messages?: ThreadMessage[];
+      error?: string;
+    };
+    if (!res.ok) throw new Error(data.error ?? 'No se pudo cargar el hilo');
+    return data.messages ?? [];
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      setStatus('loading');
+      try {
+        const res = await fetch('/api/messages/channels/context', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ contextType, contextId, label: label.slice(0, 160) }),
+        });
+        const data = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
+        if (!res.ok || !data.id) throw new Error(data.error ?? 'No se pudo abrir el hilo');
+        if (!alive) return;
+        setChannelId(data.id);
+        const list = await fetchThread(data.id);
+        if (!alive) return;
+        setMessages(list);
+        setStatus('ready');
+      } catch (err) {
+        if (!alive) return;
+        setThreadError((err as Error).message);
+        setStatus('error');
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [contextType, contextId, label, fetchThread]);
+
+  const send = async () => {
+    const body = draft.trim();
+    if (!body || !channelId) return;
+    setDraft('');
+    setSending(true);
+    try {
+      const res = await fetch(`/api/messages/channels/${channelId}/messages`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ body, clientNonce: `${Date.now()}-${Math.random()}` }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error ?? 'No se pudo enviar');
+      }
+      setMessages(await fetchThread(channelId));
+      setThreadError(null);
+    } catch (err) {
+      setThreadError((err as Error).message);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (status === 'loading') {
+    return <div className="h-20 animate-pulse rounded-xl bg-zinc-100" />;
+  }
+  if (status === 'error') {
+    return (
+      <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        {threadError ?? 'El chat interno no está disponible.'}
+      </p>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-zinc-200 bg-white">
+      <ul className="max-h-64 space-y-3 overflow-y-auto px-3 py-3">
+        {messages.map((m) => (
+          <li key={m.id} className="text-sm">
+            <p className="text-[11px] font-medium text-zinc-400">
+              {m.senderKind === 'USER' ? (m.senderName ?? 'Alguien') : 'Cliniq'} ·{' '}
+              {new Date(m.createdAt).toLocaleString('es-ES', {
+                day: '2-digit',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </p>
+            <p className="whitespace-pre-wrap leading-snug text-zinc-700">{m.body}</p>
+          </li>
+        ))}
+        {messages.length === 0 && (
+          <li className="text-xs text-zinc-400">
+            Nadie escribió todavía. Lo que se hable acá queda con la tarea.
+          </li>
+        )}
+      </ul>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void send();
+        }}
+        className="flex items-center gap-2 border-t border-zinc-100 px-3 py-2"
+      >
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="Escribile al equipo…"
+          className="flex-1 rounded-full border border-zinc-200 px-3 py-1.5 text-sm placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none"
+        />
+        <Button type="submit" size="icon" variant="primary" disabled={sending} aria-label="Enviar">
+          {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+        </Button>
+      </form>
+      {threadError && <p className="px-3 pb-2 text-[11px] text-red-600">{threadError}</p>}
     </div>
   );
 }

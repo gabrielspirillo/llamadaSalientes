@@ -82,6 +82,9 @@ const envSchema = z.object({
   S3_ACCESS_KEY: z.string().optional(),
   S3_SECRET_KEY: z.string().optional(),
   S3_BUCKET_WHATSAPP: z.string().default('whatsapp-media'),
+  // Adjuntos de la mensajería interna. Bucket PRIVADO a propósito: un adjunto
+  // del equipo puede ser una radiografía, así que se sirve firmado.
+  S3_BUCKET_INTERNAL: z.string().default('internal-files'),
   S3_PUBLIC_BASE_URL: z.string().optional(),
   // Forzar path-style addressing (necesario para MinIO; R2 también lo acepta).
   S3_FORCE_PATH_STYLE: z
