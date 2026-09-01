@@ -327,7 +327,7 @@ function Notas({ contactId, notes }: { contactId: string; notes: NoteItem[] }) {
         />
         <div className="mt-2 flex items-center justify-between">
           {error ? (
-            <span className="text-xs text-red-700">{error}</span>
+            <span className="text-xs text-rose-700">{error}</span>
           ) : (
             <span className="text-[10px] text-zinc-400">Markdown soportado</span>
           )}
@@ -362,7 +362,7 @@ function Notas({ contactId, notes }: { contactId: string; notes: NoteItem[] }) {
                     type="button"
                     onClick={() => handleDelete(n.id)}
                     disabled={pending}
-                    className="text-amber-700 hover:text-red-700 disabled:text-amber-300"
+                    className="text-amber-700 hover:text-rose-700 disabled:text-amber-300"
                     aria-label="Eliminar nota"
                   >
                     ×
@@ -507,7 +507,7 @@ function Combinar({ contactId }: { contactId: string }) {
             Vas a mergear <strong>{selected.name ?? selected.phoneE164}</strong> en este contacto.
             Esta acción no se puede deshacer.
           </p>
-          {error && <p className="mt-1 text-xs text-red-700">{error}</p>}
+          {error && <p className="mt-1 text-xs text-rose-700">{error}</p>}
           <button
             type="button"
             onClick={handleMerge}
@@ -528,7 +528,7 @@ function appointmentStatusClass(status: string): string {
   const s = status.toLowerCase();
   if (s.includes('confirm')) return 'bg-emerald-100 text-emerald-700';
   if (s.includes('show') && !s.includes('no')) return 'bg-blue-100 text-blue-700';
-  if (s.includes('no')) return 'bg-red-100 text-red-700';
+  if (s.includes('no')) return 'bg-rose-100 text-rose-700';
   if (s.includes('cancel')) return 'bg-zinc-200 text-zinc-700';
   return 'bg-zinc-100 text-zinc-700';
 }

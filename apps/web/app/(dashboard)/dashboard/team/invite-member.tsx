@@ -75,7 +75,7 @@ export function InviteMember() {
             className={`rounded-xl border px-3.5 py-2.5 text-sm ${
               feedback.kind === 'ok'
                 ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                : 'border-red-200 bg-red-50 text-red-800'
+                : 'border-rose-200 bg-rose-50 text-rose-800'
             }`}
           >
             {feedback.msg}

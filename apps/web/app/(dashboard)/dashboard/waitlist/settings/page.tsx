@@ -2,6 +2,7 @@ import { and, desc, eq } from 'drizzle-orm';
 import Link from 'next/link';
 
 import { PageHeader } from '@/components/dashboard/page-header';
+import { ListChecks } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { WaitlistSettingsForm } from '@/components/waitlist/SettingsForm';
 import { TemplatesEditor } from '@/components/waitlist/TemplatesEditor';
@@ -70,6 +71,8 @@ export default async function WaitlistSettingsPage() {
   return (
     <>
       <PageHeader
+        eyebrow="Recuperación de huecos"
+        icon={<ListChecks className="h-5 w-5" />}
         title="Configuración de Waitlist"
         description="Ajustá el canal de oferta, TTL, umbrales de elegibilidad, tratamientos y plantillas."
         actions={
@@ -101,7 +104,7 @@ export default async function WaitlistSettingsPage() {
 
         <div className="space-y-3">
           <div>
-            <h2 className="text-lg font-semibold text-zinc-900">Tratamientos elegibles</h2>
+            <h2 className="text-[18px] font-bold tracking-tight text-zinc-900">Tratamientos elegibles</h2>
             <p className="text-sm text-zinc-500">
               Activá los tratamientos para los que querés que el sistema gestione waitlist.
             </p>

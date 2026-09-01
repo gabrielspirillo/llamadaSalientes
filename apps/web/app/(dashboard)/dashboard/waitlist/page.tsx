@@ -20,7 +20,7 @@ import {
 } from '@/lib/db/schema';
 import { getCurrentTenant } from '@/lib/tenant';
 import { getOrCreateWaitlistSettings } from '@/lib/waitlist/settings';
-import { Settings2 } from 'lucide-react';
+import { ListChecks, Settings2 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -327,6 +327,8 @@ export default async function WaitlistPage() {
   return (
     <>
       <PageHeader
+        eyebrow="Recuperación de huecos"
+        icon={<ListChecks className="h-5 w-5" />}
         title="Waitlist"
         description="Cola FIFO de pacientes con cita futura. Cuando un slot se libera, el sistema oferta el hueco al siguiente en cola."
         actions={

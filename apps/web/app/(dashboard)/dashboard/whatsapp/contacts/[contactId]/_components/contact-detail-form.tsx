@@ -76,7 +76,7 @@ export function ContactDetailForm({ contact }: Props) {
       <div>
         <h2 className="text-sm font-semibold text-zinc-900">Editar detalles del contacto</h2>
         {error && (
-          <p className="mt-2 rounded bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
+          <p className="mt-2 rounded bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</p>
         )}
         {saved && !pending && (
           <p className="mt-2 rounded bg-emerald-50 px-3 py-2 text-xs text-emerald-700">

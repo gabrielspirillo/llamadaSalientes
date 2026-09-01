@@ -208,7 +208,7 @@ function TwilioCredentialsForm({
       <div className="p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-5 w-5 text-zinc-500" />
-          <h3 className="text-base font-semibold tracking-tight">Credenciales Twilio</h3>
+          <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">Credenciales Twilio</h3>
           {state.twilioConfigured && (
             <span className="ml-auto text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-200">
               Configurado
@@ -309,7 +309,7 @@ function ZadarmaCredentialsForm({
       <div className="p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-5 w-5 text-zinc-500" />
-          <h3 className="text-base font-semibold tracking-tight">Credenciales Zadarma</h3>
+          <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">Credenciales Zadarma</h3>
           {state.zadarmaConfigured && (
             <span className="ml-auto text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-200">
               Configurado
@@ -504,7 +504,7 @@ function CallerIdCard({
       <div className="p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-2">
           <PhoneOutgoing className="h-5 w-5 text-zinc-500" />
-          <h3 className="text-base font-semibold tracking-tight">Caller ID saliente</h3>
+          <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">Caller ID saliente</h3>
           {verified && <CheckCircle2 className="h-4 w-4 text-emerald-600 ml-auto" />}
         </div>
         <p className="text-sm text-zinc-500">
@@ -526,7 +526,7 @@ function CallerIdCard({
             <button
               type="button"
               onClick={unlink}
-              className="mt-2 text-xs text-red-700 underline hover:text-red-800"
+              className="mt-2 text-xs text-rose-700 underline hover:text-rose-800"
             >
               Desvincular
             </button>
@@ -668,7 +668,7 @@ function InboundCard({
       <div className="p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-2">
           <PhoneIncoming className="h-5 w-5 text-zinc-500" />
-          <h3 className="text-base font-semibold tracking-tight">Número entrante</h3>
+          <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">Número entrante</h3>
           {state.inboundNumberE164 && (
             <CheckCircle2 className="h-4 w-4 text-emerald-600 ml-auto" />
           )}
@@ -846,7 +846,7 @@ function HelpCard({
   return (
     <Card>
       <div className="p-4 sm:p-6 space-y-3">
-        <h3 className="text-base font-semibold tracking-tight">Cómo funciona</h3>
+        <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">Cómo funciona</h3>
         <ul className="text-sm text-zinc-600 space-y-2 list-disc pl-5">
           {isZadarma ? (
             <>
@@ -943,7 +943,7 @@ function Banner({
       className={`text-sm rounded-xl border px-3.5 py-2.5 ${
         msg.kind === 'ok'
           ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-          : 'bg-red-50 border-red-200 text-red-800'
+          : 'bg-rose-50 border-rose-200 text-rose-800'
       }`}
     >
       {msg.text}

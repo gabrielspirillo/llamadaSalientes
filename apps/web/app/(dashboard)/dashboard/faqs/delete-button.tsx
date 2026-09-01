@@ -31,7 +31,7 @@ export function DeleteFaqButton({ id, question }: { id: string; question: string
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="text-red-600 hover:bg-red-50">
+        <Button variant="ghost" size="icon" className="text-rose-600 hover:bg-rose-50">
           <Trash2 className="h-4 w-4" />
         </Button>
       </DialogTrigger>
@@ -45,7 +45,7 @@ export function DeleteFaqButton({ id, question }: { id: string; question: string
           </DialogDescription>
         </DialogHeader>
         {error && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          <p className="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
             {error}
           </p>
         )}

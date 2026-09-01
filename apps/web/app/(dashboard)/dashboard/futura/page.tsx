@@ -1,4 +1,5 @@
 import { PageHeader } from '@/components/dashboard/page-header';
+import { LayoutDashboard } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { db } from '@/lib/db/client';
 import { tenants } from '@/lib/db/schema';
@@ -85,6 +86,8 @@ export default async function FuturaPanelPage() {
   return (
     <>
       <PageHeader
+        eyebrow="Interno"
+        icon={<LayoutDashboard className="h-5 w-5" />}
         title="Panel Futura"
         description="Gestioná las clínicas de la plataforma: activá altas nuevas y controlá sus módulos."
       />

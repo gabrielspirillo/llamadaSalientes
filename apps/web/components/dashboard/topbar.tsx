@@ -135,7 +135,7 @@ export function DashboardTopbar({
           >
             <Search className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:text-brand-500" />
             <span className="truncate">Buscar llamadas, pacientes, tratamientos…</span>
-            <kbd className="ml-auto shrink-0 rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-400">
+            <kbd className="ml-auto shrink-0 rounded-lg bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-400">
               ⌘K
             </kbd>
           </button>

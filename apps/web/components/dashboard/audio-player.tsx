@@ -155,11 +155,11 @@ export function AudioPlayer({ callId }: Props) {
       )}
 
       {loadState === 'error' && (
-        <div className="flex items-start gap-3 rounded-lg bg-red-50 border border-red-200 p-4">
-          <AlertCircle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+        <div className="flex items-start gap-3 rounded-lg bg-rose-50 border border-rose-200 p-4">
+          <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
           <div className="flex-1">
             <p className="text-sm font-medium text-red-900">No se pudo cargar el audio</p>
-            <p className="text-xs text-red-700 mt-0.5">{errorMsg}</p>
+            <p className="text-xs text-rose-700 mt-0.5">{errorMsg}</p>
             <Button size="sm" variant="secondary" className="mt-3" onClick={load}>
               <RotateCcw className="h-3.5 w-3.5" /> Reintentar
             </Button>

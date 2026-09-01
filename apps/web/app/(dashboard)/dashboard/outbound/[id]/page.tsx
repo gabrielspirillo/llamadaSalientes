@@ -1,5 +1,6 @@
 import { OutboundDispatchButton } from '@/components/dashboard/outbound-dispatch-button';
 import { PageHeader } from '@/components/dashboard/page-header';
+import { Megaphone } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import {
@@ -61,6 +62,8 @@ export default async function OutboundCampaignDetail({
   return (
     <div>
       <PageHeader
+        eyebrow="Campaña saliente"
+        icon={<Megaphone className="h-5 w-5" />}
         title={campaign.name}
         description={`${USE_CASE_LABEL[campaign.useCase as UseCase] ?? campaign.useCase} · ${summary.total} destinatarios`}
         actions={
@@ -132,7 +135,7 @@ function Stat({
       : tone === 'warn'
         ? 'text-amber-600'
         : tone === 'danger'
-          ? 'text-red-600'
+          ? 'text-rose-600'
           : 'text-zinc-900';
   return (
     <Card className="p-4">

@@ -28,7 +28,7 @@ export async function WhatsappPanel() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-zinc-900">Integraciones de WhatsApp</h2>
+        <h2 className="text-[18px] font-bold tracking-tight text-zinc-900">Integraciones de WhatsApp</h2>
         <p className="text-sm text-zinc-500">
           Conecta Meta Cloud API (oficial), Twilio (BSP oficial) o Evolution API (self-hosted, Baileys).
         </p>
@@ -38,7 +38,7 @@ export async function WhatsappPanel() {
         <section className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-6">
           <div className="mb-4 flex items-start justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-zinc-900">Meta Cloud API</h3>
+              <h3 className="text-[18px] font-bold tracking-tight text-zinc-900">Meta Cloud API</h3>
               <p className="text-xs text-zinc-500">
                 Recomendado para producción. Requiere WABA aprobada.
               </p>
@@ -72,7 +72,7 @@ export async function WhatsappPanel() {
         <section className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-6">
           <div className="mb-4 flex items-start justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-zinc-900">Evolution API</h3>
+              <h3 className="text-[18px] font-bold tracking-tight text-zinc-900">Evolution API</h3>
               <p className="text-xs text-zinc-500">
                 Self-hosted (Baileys). Útil para pilotos. Riesgo de baneo del número.
               </p>
@@ -109,7 +109,7 @@ export async function WhatsappPanel() {
         <section className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-6">
           <div className="mb-4 flex items-start justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-zinc-900">Twilio (BSP)</h3>
+              <h3 className="text-[18px] font-bold tracking-tight text-zinc-900">Twilio (BSP)</h3>
               <p className="text-xs text-zinc-500">
                 Business Solution Provider oficial. Sender propio aprobado.
               </p>
@@ -150,7 +150,7 @@ function StatusBadge({ status }: { status: string }) {
     CONNECTED: { label: 'Conectado', cls: 'bg-emerald-100 text-emerald-800' },
     PENDING: { label: 'Pendiente', cls: 'bg-amber-100 text-amber-800' },
     DISCONNECTED: { label: 'Desconectado', cls: 'bg-zinc-100 text-zinc-600' },
-    ERROR: { label: 'Error', cls: 'bg-red-100 text-red-700' },
+    ERROR: { label: 'Error', cls: 'bg-rose-100 text-rose-700' },
     NOT_CONFIGURED: { label: 'No configurado', cls: 'bg-zinc-100 text-zinc-500' },
   };
   const { label, cls } = map[status] ?? map.NOT_CONFIGURED!;

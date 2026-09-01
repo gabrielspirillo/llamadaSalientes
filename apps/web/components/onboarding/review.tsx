@@ -125,7 +125,7 @@ export function ReviewStep({
       <label
         className={cn(
           'flex cursor-pointer items-start gap-3 rounded-2xl border p-4',
-          confirmError ? 'border-red-300 bg-red-50/40' : 'border-[--color-border] bg-white',
+          confirmError ? 'border-red-300 bg-rose-50/40' : 'border-[--color-border] bg-white',
         )}
       >
         <input
@@ -136,7 +136,7 @@ export function ReviewStep({
         />
         <span className="text-sm text-zinc-800">
           Confirmo que los datos son correctos.
-          {confirmError && <span className="mt-1 block text-xs text-red-600">{confirmError}</span>}
+          {confirmError && <span className="mt-1 block text-xs text-rose-600">{confirmError}</span>}
         </span>
       </label>
     </div>

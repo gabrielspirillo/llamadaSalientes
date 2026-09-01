@@ -68,7 +68,7 @@ export function InsightsPanel() {
         )}
 
         {error && (
-          <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-800">
+          <div className="rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-xs text-rose-800">
             {error}
           </div>
         )}

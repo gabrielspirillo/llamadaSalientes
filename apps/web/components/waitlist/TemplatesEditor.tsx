@@ -224,7 +224,7 @@ export function TemplatesEditor({
   return (
     <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-6 space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-zinc-900">Plantillas de mensaje</h2>
+        <h2 className="text-[18px] font-bold tracking-tight text-zinc-900">Plantillas de mensaje</h2>
         <p className="text-sm text-zinc-500 mt-1">
           Texto que se envía al paciente al ofrecerle el slot adelantado. Las variables se reemplazan en el envío real.
         </p>

@@ -59,7 +59,7 @@ export function AgentPersonaForm({ initial }: Props) {
       {feedback && (
         <div
           className={`rounded px-3 py-2 text-xs ${
-            feedback.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+            feedback.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
           }`}
         >
           {feedback.msg}

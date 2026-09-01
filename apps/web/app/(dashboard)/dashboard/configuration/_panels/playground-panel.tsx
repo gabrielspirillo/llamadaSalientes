@@ -46,7 +46,7 @@ export function PlaygroundPanel() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-zinc-900">Probador del agente de WhatsApp</h2>
+        <h2 className="text-[18px] font-bold tracking-tight text-zinc-900">Probador del agente de WhatsApp</h2>
         <p className="text-sm text-zinc-500">
           Chateá con el agente usando la configuración real de tu clínica (persona, tratamientos,
           FAQs con búsqueda semántica, guardrails). Las acciones que agendan/cancelan/registran se{' '}
@@ -109,7 +109,7 @@ export function PlaygroundPanel() {
         )}
       </div>
 
-      {error && <div className="rounded bg-red-50 px-3 py-2 text-xs text-red-700">{error}</div>}
+      {error && <div className="rounded bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</div>}
 
       <div className="flex gap-2">
         <textarea
@@ -156,7 +156,7 @@ function TraceDetails({ trace }: { trace: PlaygroundResult }) {
             modelo: {trace.model} · tokens: {trace.tokensIn}/{trace.tokensOut} · {trace.latencyMs}ms
           </div>
           {trace.intentReasoning && <div>guardrail/nota: {trace.intentReasoning}</div>}
-          {trace.errorText && <div className="text-red-600">error: {trace.errorText}</div>}
+          {trace.errorText && <div className="text-rose-600">error: {trace.errorText}</div>}
           {trace.toolsCalled.length > 0 && (
             <div>
               <div className="font-medium">tools:</div>

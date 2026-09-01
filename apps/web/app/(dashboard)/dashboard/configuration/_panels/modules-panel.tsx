@@ -32,7 +32,7 @@ export async function ModulesPanel() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-zinc-900">Módulos por tenant</h2>
+        <h2 className="text-[18px] font-bold tracking-tight text-zinc-900">Módulos por tenant</h2>
         <p className="text-sm text-zinc-500">
           Activar / desactivar módulos contratables. El bloqueo es visual: las APIs
           y webhooks siguen procesando aunque el módulo esté apagado.

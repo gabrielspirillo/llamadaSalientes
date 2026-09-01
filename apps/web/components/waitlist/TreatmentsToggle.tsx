@@ -46,10 +46,10 @@ export function TreatmentsToggle({ rows }: { rows: TreatmentToggleRow[] }) {
   }
 
   return (
-    <div className="rounded-xl border border-[--color-border] overflow-hidden bg-white">
+    <div className="overflow-hidden rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)]">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[560px] text-sm">
-          <thead className="bg-zinc-50 text-zinc-600 text-xs uppercase tracking-wide">
+          <thead className="border-b border-[--color-border] bg-[#fbfaff] text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400">
             <tr>
               <th className="text-left px-4 py-2.5">Tratamiento</th>
               <th className="text-left px-4 py-2.5">Duración</th>
@@ -59,7 +59,7 @@ export function TreatmentsToggle({ rows }: { rows: TreatmentToggleRow[] }) {
           </thead>
           <tbody className="divide-y divide-[--color-border-subtle]">
             {rows.map((r) => (
-              <tr key={r.id} className="hover:bg-brand-50/50">
+              <tr key={r.id} className="transition-colors duration-200 hover:bg-brand-50/40">
                 <td className="px-4 py-3 font-medium text-zinc-900">{r.name}</td>
                 <td className="px-4 py-3 text-zinc-500">{r.durationMinutes} min</td>
                 <td className="px-4 py-3">

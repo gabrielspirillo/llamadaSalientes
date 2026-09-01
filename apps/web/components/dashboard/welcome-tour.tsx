@@ -309,7 +309,7 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
           />
           {/* Halo violeta que late */}
           <div
-            className={`pointer-events-none absolute rounded-xl ring-2 ring-violet-400/90 ${glide} ${
+            className={`pointer-events-none absolute rounded-2xl ring-2 ring-violet-400/90 ${glide} ${
               reduced ? '' : 'animate-[tour-pulse_2s_ease-out_infinite]'
             }`}
             style={{ top: hl.top, left: hl.left, width: hl.width, height: hl.height }}
@@ -317,7 +317,7 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
         </>
       ) : (
         // Sin objetivo: oscurecido completo con desenfoque.
-        <div className="absolute inset-0 bg-zinc-900/78 backdrop-blur-[2px]" />
+        <div className="absolute inset-0 bg-[#171429]/75 backdrop-blur-[3px]" />
       )}
 
       {/* Tarjeta */}
@@ -325,7 +325,7 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
         className={`absolute ${reduced ? '' : 'animate-[zoom-in_200ms_cubic-bezier(0.16,1,0.3,1)]'}`}
         style={cardPos}
       >
-        <div className="relative rounded-2xl border border-white/10 bg-white shadow-2xl">
+        <div className="relative overflow-hidden rounded-[26px] border border-white/60 bg-white shadow-[0_40px_90px_-30px_rgba(23,20,41,0.6)]">
           {/* Puntero hacia el ítem */}
           {beakTop !== null && (
             <span
@@ -338,7 +338,7 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
             type="button"
             onClick={close}
             aria-label="Cerrar tutorial"
-            className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
+            className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition-all duration-300 hover:rotate-90 hover:bg-zinc-100 hover:text-zinc-700"
           >
             <X className="h-4 w-4" />
           </button>
@@ -346,24 +346,24 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
           <div className="p-6">
             <div className="flex items-center gap-3">
               <span
-                className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-md ${s.tint} ${
+                className={`inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-[0_12px_28px_-12px_rgba(23,20,41,0.7)] ${s.tint} ${
                   reduced ? '' : 'animate-[float_3s_ease-in-out_infinite]'
                 }`}
               >
                 <Icon className="h-5 w-5" />
               </span>
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-violet-600">
+              <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand-500">
                 {s.eyebrow}
               </span>
             </div>
 
             <h2
               key={step}
-              className="mt-4 animate-[fade-in_250ms_ease-out] text-lg font-semibold tracking-tight text-zinc-900"
+              className="mt-4 animate-fade-up text-[19px] font-extrabold tracking-tight text-zinc-900"
             >
               {s.title}
             </h2>
-            <p className="mt-1.5 text-sm leading-relaxed text-zinc-600">{s.body}</p>
+            <p className="mt-1.5 text-[13.5px] leading-relaxed text-zinc-600">{s.body}</p>
 
             {/* Progreso */}
             <div className="mt-5 flex items-center gap-1.5">
@@ -373,8 +373,10 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
                   type="button"
                   aria-label={`Ir al paso ${i + 1}`}
                   onClick={() => setStep(i)}
-                  className={`h-1.5 rounded-full transition-all ${
-                    i === step ? 'w-5 bg-violet-600' : 'w-1.5 bg-zinc-200 hover:bg-zinc-300'
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    i === step
+                      ? 'w-6 bg-[linear-gradient(90deg,#7139e8,#ec4899)]'
+                      : 'w-1.5 bg-zinc-200 hover:bg-brand-200'
                   }`}
                 />
               ))}

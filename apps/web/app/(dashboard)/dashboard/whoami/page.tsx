@@ -1,4 +1,5 @@
 import { PageHeader } from '@/components/dashboard/page-header';
+import { IdCard } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { getCurrentTenant } from '@/lib/tenant';
 import { auth } from '@clerk/nextjs/server';
@@ -30,6 +31,8 @@ export default async function WhoamiPage() {
   return (
     <>
       <PageHeader
+        eyebrow="Cuenta"
+        icon={<IdCard className="h-5 w-5" />}
         title="Info de cuenta"
         description="Identificadores técnicos de tu cuenta (para configurar la plataforma)."
       />

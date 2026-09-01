@@ -199,7 +199,7 @@ export default async function WhatsappConversationsPage() {
 
                       <div className="mt-2 flex flex-wrap items-center gap-1.5">
                         <Badge tone={badge.tone}>{badge.label}</Badge>
-                        <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-500">
+                        <span className="rounded-lg bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-500">
                           {channelLabel(r.channel)}
                         </span>
                         <span className="hidden text-[11px] tabular-nums text-zinc-400 sm:inline">

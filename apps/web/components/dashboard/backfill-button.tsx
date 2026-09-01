@@ -48,7 +48,7 @@ export function BackfillButton({ pending }: { pending: number }) {
           por Gemini para clasificar y resumir en español.
         </p>
         {error && (
-          <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-md px-2 py-1.5 mb-3">
+          <p className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-md px-2 py-1.5 mb-3">
             {error}
           </p>
         )}

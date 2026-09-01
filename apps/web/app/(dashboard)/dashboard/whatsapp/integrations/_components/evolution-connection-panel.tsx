@@ -161,7 +161,7 @@ export function EvolutionConnectionPanel({ initial }: Props) {
       {feedback && (
         <div
           className={`rounded px-3 py-2 text-xs ${
-            feedback.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+            feedback.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
           }`}
         >
           {feedback.msg}
@@ -194,7 +194,7 @@ export function EvolutionConnectionPanel({ initial }: Props) {
             type="button"
             onClick={onDisconnect}
             disabled={pending}
-            className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+            className="rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-sm font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-50"
           >
             Desconectar
           </button>
@@ -309,7 +309,7 @@ function ChatwootBridgeForm() {
       {feedback && (
         <div
           className={`rounded px-2 py-1 ${
-            feedback.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+            feedback.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
           }`}
         >
           {feedback.msg}

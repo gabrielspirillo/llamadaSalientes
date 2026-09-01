@@ -92,7 +92,7 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
   return (
     <div className="space-y-4">
       {error && (
-        <div className="rounded bg-red-50 px-3 py-2 text-xs text-red-700">{error}</div>
+        <div className="rounded bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</div>
       )}
 
       <form
@@ -211,7 +211,7 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
                           type="button"
                           onClick={() => handleDelete(r.id)}
                           disabled={pending}
-                          className="rounded-lg border border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50 disabled:opacity-50"
+                          className="rounded-lg border border-rose-200 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50 disabled:opacity-50"
                         >
                           Borrar
                         </button>

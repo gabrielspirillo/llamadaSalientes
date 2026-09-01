@@ -126,7 +126,7 @@ export function ReminderDetailDialog({
       <div className="relative z-10 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
         <div className="flex items-start justify-between border-b border-[--color-border-subtle] p-5">
           <div className="min-w-0">
-            <h2 className="text-lg font-semibold text-zinc-900 truncate">
+            <h2 className="text-[18px] font-bold tracking-tight text-zinc-900 truncate">
               {vars.contact?.fullName || vars.contact?.firstName || 'Paciente'}
             </h2>
             <p className="mt-0.5 text-sm text-zinc-500 truncate">

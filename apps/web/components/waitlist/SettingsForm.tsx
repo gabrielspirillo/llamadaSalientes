@@ -50,7 +50,7 @@ export function WaitlistSettingsForm({ initial }: { initial: Settings }) {
   return (
     <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-6 space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-zinc-900">Configuración general</h2>
+        <h2 className="text-[18px] font-bold tracking-tight text-zinc-900">Configuración general</h2>
         <p className="text-sm text-zinc-500 mt-1">
           Estas opciones controlan cómo el sistema oferta los slots liberados a los pacientes en cola.
         </p>
@@ -98,7 +98,7 @@ export function WaitlistSettingsForm({ initial }: { initial: Settings }) {
       <hr className="border-[--color-border-subtle]" />
 
       <div>
-        <h2 className="text-lg font-semibold text-zinc-900">Reglas de elegibilidad</h2>
+        <h2 className="text-[18px] font-bold tracking-tight text-zinc-900">Reglas de elegibilidad</h2>
         <p className="text-sm text-zinc-500 mt-1">
           Qué citas entran a la cola automática y qué slots se les ofrecen.
         </p>

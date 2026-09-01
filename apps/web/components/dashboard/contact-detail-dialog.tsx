@@ -206,7 +206,7 @@ export function ContactDetailDialog({
               className={`mt-3 flex items-start gap-2 rounded-lg px-3 py-2 text-xs ${
                 callFeedback.ok
                   ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
-                  : 'bg-red-50 border border-red-200 text-red-800'
+                  : 'bg-rose-50 border border-rose-200 text-rose-800'
               }`}
             >
               {callFeedback.ok ? (
@@ -247,7 +247,7 @@ export function ContactDetailDialog({
             </div>
           )}
           {error && (
-            <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-800">
+            <div className="rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-sm text-rose-800">
               {error}
             </div>
           )}

@@ -120,7 +120,7 @@ export function SettingsForm({
           className={`mb-4 rounded-xl border px-4 py-3 text-sm ${
             feedback.kind === 'ok'
               ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-              : 'bg-red-50 border-red-200 text-red-800'
+              : 'bg-rose-50 border-rose-200 text-rose-800'
           }`}
         >
           {feedback.msg}
@@ -131,7 +131,7 @@ export function SettingsForm({
         <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           <Card>
             <div className="p-4 sm:p-6 space-y-5">
-              <h3 className="text-base font-semibold tracking-tight">Información general</h3>
+              <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">Información general</h3>
 
               <div>
                 <Label htmlFor="address">Dirección</Label>
@@ -237,7 +237,7 @@ export function SettingsForm({
 
           <Card>
             <div className="p-4 sm:p-6">
-              <h3 className="text-base font-semibold tracking-tight mb-4">Horarios de atención</h3>
+              <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900 mb-4">Horarios de atención</h3>
               <div className="space-y-2">
                 {DAYS.map((d) => {
                   const h = hours[d.key];
@@ -284,7 +284,7 @@ export function SettingsForm({
 
           <Card>
             <div className="p-4 sm:p-6">
-              <h3 className="text-base font-semibold tracking-tight">Texto de consentimiento</h3>
+              <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">Texto de consentimiento</h3>
               <p className="text-sm text-zinc-500 mt-1 mb-4">
                 Lo que el agente dice <span className="font-medium">verbatim</span> al inicio de
                 cada llamada (compliance de grabación).
@@ -305,7 +305,7 @@ export function SettingsForm({
 
           <Card>
             <div className="p-4 sm:p-6">
-              <h3 className="text-base font-semibold tracking-tight">Tips</h3>
+              <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900">Tips</h3>
               <ul className="mt-3 space-y-2 text-sm text-zinc-600">
                 <li>• La zona horaria afecta cómo el agente lee horarios al paciente.</li>
                 <li>

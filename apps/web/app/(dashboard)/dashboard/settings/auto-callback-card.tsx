@@ -27,7 +27,7 @@ export function AutoCallbackCard({ intakeUrl, intakeKey, ghlWebhookUrl, location
     <Card>
       <div className="p-4 sm:p-6">
         <div className="flex items-center justify-between mb-1">
-          <h3 className="text-base font-semibold tracking-tight flex items-center gap-2">
+          <h3 className="text-[15px] font-semibold tracking-tight text-zinc-900 flex items-center gap-2">
             <PhoneCall className="h-4 w-4 text-violet-600" /> Auto-callback
           </h3>
           <Badge tone="success">Activo</Badge>

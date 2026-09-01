@@ -227,7 +227,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
   return (
     <div className="relative rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)]">
       {error && (
-        <div className="border-b border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700">
+        <div className="animate-fade-down border-b border-rose-100 bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
           {error}
         </div>
       )}
@@ -261,7 +261,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
       {/* Slash command popup */}
       {slashOpen && slashResults.length > 0 && (
         <div className="absolute bottom-full left-3 right-3 z-20 mb-1 max-h-60 overflow-y-auto rounded-2xl border border-[--color-border] bg-white shadow-lg">
-          <p className="border-b border-[--color-border-subtle] px-3 py-1.5 text-[10px] uppercase tracking-wide text-zinc-500">
+          <p className="border-b border-[--color-border-subtle] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400">
             Respuestas rápidas · ↑↓ para navegar, Enter para usar
           </p>
           <ul>
@@ -285,7 +285,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
 
       {/* Audio preview */}
       {audioBlob && (
-        <div className="flex items-center gap-2 border-b border-[--color-border-subtle] bg-zinc-50 px-3 py-2">
+        <div className="flex items-center gap-2 border-b border-[--color-border-subtle] bg-[#fbfaff] px-3 py-2">
           <audio src={URL.createObjectURL(audioBlob)} controls className="h-8 flex-1" />
           <button
             type="button"
@@ -298,7 +298,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
             type="button"
             onClick={sendAudio}
             disabled={pending}
-            className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+            className="rounded-full bg-[linear-gradient(120deg,#059669,#10b981)] px-3.5 py-1.5 text-[12px] font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 active:scale-95 disabled:opacity-50"
           >
             {pending ? 'Enviando…' : 'Enviar audio'}
           </button>
@@ -328,7 +328,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
             type="button"
             onClick={() => setEmojiOpen((v) => !v)}
             disabled={disabled || pending}
-            className="rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-50"
+            className="rounded-full p-2 text-zinc-400 transition-all duration-300 hover:scale-110 hover:bg-brand-50 hover:text-brand-600 disabled:opacity-50"
             title="Emoji"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -377,7 +377,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
                   type="button"
                   onClick={startRecording}
                   disabled={disabled || pending}
-                  className="rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-50"
+                  className="rounded-full p-2 text-zinc-400 transition-all duration-300 hover:scale-110 hover:bg-brand-50 hover:text-brand-600 disabled:opacity-50"
                   title="Grabar audio"
                 >
                   <svg
@@ -398,9 +398,9 @@ export function MessageComposer({ conversationId, disabled }: Props) {
                 <button
                   type="button"
                   onClick={stopRecording}
-                  className="flex items-center gap-1 rounded-lg bg-red-50 px-2 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100"
+                  className="flex items-center gap-1 rounded-lg bg-rose-50 px-2 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100"
                 >
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-rose-500" />
                   Detener
                 </button>
               )}
@@ -436,7 +436,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
                 insertEmoji(e);
                 setEmojiOpen(false);
               }}
-              className="rounded p-1 text-lg hover:bg-zinc-100"
+              className="rounded-lg p-1 text-lg transition-transform duration-200 hover:scale-125 hover:bg-brand-50"
             >
               {e}
             </button>

@@ -2,6 +2,7 @@ import { and, asc, desc, eq } from 'drizzle-orm';
 import Link from 'next/link';
 
 import { PageHeader } from '@/components/dashboard/page-header';
+import { BellRing } from 'lucide-react';
 import { RulesEditor } from '@/components/reminders/RulesEditor';
 import { Card } from '@/components/ui/card';
 import { db } from '@/lib/db/client';
@@ -65,8 +66,10 @@ export default async function RemindersSettingsPage() {
       </Link>
 
       <PageHeader
+        eyebrow="Automatizaciones"
+        icon={<BellRing className="h-5 w-5" />}
         title="Configuración de recordatorios"
-        description="Define cuándo y por qué canal mandar cada recordatorio, con plantillas multi-canal."
+        description="Definí cuándo y por qué canal mandar cada recordatorio, con plantillas multi-canal."
       />
 
       <Card className="p-6">
