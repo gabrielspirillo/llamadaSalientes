@@ -37,6 +37,19 @@ Si encontrás código que importe `@supabase/supabase-js`, `inngest`, o el clien
 
 Auto-deploy está activado: cualquier push a `main` que toque archivos en los watchPaths configurados dispara redeploy automático (~3–5 min para web, ~2 min para worker).
 
+**Los dos servicios Git clonan por SSH, no por HTTPS.** Con `customGitUrl` en
+`https://github.com/...` los despliegues **manuales** fallaban en 0,3 s con
+`could not read Username for 'https://github.com'`. Los disparados por push sí
+funcionaban, y eso enmascaraba el problema: el worker se quedó sin desplegar
+desde el 1 de septiembre sin que nadie lo notara. Configuración correcta, ya
+aplicada en `cliniq-web` y `cliniq-worker`:
+
+- `customGitUrl` = `git@github.com:gabrielspirillo/llamadaSalientes.git`
+- `customGitSSHKeyId` = la clave llamada **`github`** en Dokploy → SSH Keys
+  (registrada como deploy key en el repo; la otra, `github2`, no se comprobó)
+
+Si vuelve a fallar el clonado, lo primero es mirar si alguien devolvió la URL a HTTPS.
+
 ## Env vars del stack
 
 Vars críticas y dónde se setean. Lista completa en `.env.example`.
@@ -81,7 +94,12 @@ ssh-keygen -t ed25519 -f ~/.ssh/dokploy_server -N "" -C "claude-code@codespace"
 
 Dokploy expone REST + tRPC en `https://vpsdokploy.futuradigital.es/api/...`. Auth con header `x-api-key: <token>` (NO `Authorization: Bearer`).
 
-Token API ya generado y guardado por el usuario. **No está en este repo** — pedirlo si se necesita usar la API.
+Token API ya generado y guardado por el usuario. **No está en este repo y no debe estarlo**: este repositorio es público, así que escribirlo aquí sería publicarlo. Pedirlo cuando haga falta.
+
+IDs de aplicación: `cliniq-web` = `haWRYSRoJ65pdbPLKzfnJ`, `cliniq-worker` = `d74nHjRGQsplPqFALx-RP`.
+Para diagnosticar despliegues sin entrar a la interfaz, `deployment.all?applicationId=…`
+devuelve el estado y la duración de cada intento — un fallo de 0,3 s es de
+clonado, uno de varios minutos es del build.
 
 Endpoints útiles:
 - `POST /api/project.create` — crear project
