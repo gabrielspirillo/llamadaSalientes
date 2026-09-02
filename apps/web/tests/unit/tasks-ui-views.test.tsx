@@ -122,9 +122,7 @@ describe('WeekView — reparto por día', () => {
   function dayCell(dayNumber: string): HTMLElement {
     const grid = document.querySelector('.grid') as HTMLElement;
     const cells = Array.from(grid.children) as HTMLElement[];
-    const cell = cells.find(
-      (c) => c.querySelector('span:last-of-type')?.textContent === dayNumber,
-    );
+    const cell = cells.find((c) => c.querySelector('span:last-of-type')?.textContent === dayNumber);
     if (!cell) throw new Error(`sin celda para el día ${dayNumber}`);
     return cell;
   }
@@ -231,9 +229,7 @@ describe('PatientsView — agrupación por paciente', () => {
 
   it('agrupa por paciente y deja fuera lo que no es de paciente ni lo cerrado', () => {
     renderPatients();
-    const headings = screen
-      .getAllByRole('heading', { level: 2 })
-      .map((h) => h.textContent?.trim());
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent?.trim());
     expect(headings).toEqual(['Juan Pérez', 'María Gómez']);
     expect(screen.queryByText('Cuadrar caja')).toBeNull();
     expect(screen.queryByText('Ya hecha')).toBeNull();

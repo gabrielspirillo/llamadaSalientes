@@ -1,17 +1,28 @@
-// Casos borde que documentan comportamiento defectuoso o dudoso.
-// Cada test afirma lo que el código HACE HOY, con el comentario de lo que
-// debería hacer. Si alguien arregla el bug, este test falla — que es la idea.
+// Guardas de regresión del módulo Tareas.
+//
+// Cada caso de aquí nació como un fallo encontrado en la verificación: el test
+// afirmaba lo que el código hacía mal, para que fallara en cuanto se arreglara.
+// Ya está arreglado, así que ahora afirman el comportamiento correcto. Si
+// alguno vuelve a ponerse rojo, el fallo ha vuelto.
 
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { ensureAutomationRules } from '@/lib/tasks/automation';
 import { onCallProcessed } from '@/lib/tasks/hooks';
 import { countActionableTasks, loadBoardTasks, loadTaskStats } from '@/lib/tasks/queries';
-import { archiveTask, createTask, reorderColumn, updateTask } from '@/lib/tasks/service';
+import {
+  TaskEvidenceRequiredError,
+  archiveTask,
+  createTask,
+  reorderColumn,
+  updateTask,
+} from '@/lib/tasks/service';
 import { type SeedIds, raw, seedTenant, taskRow, timeline } from './_qa-tasks-helpers';
 
 const RUN = Math.random().toString(36).slice(2, 8);
 const CLINICA = `+34900${String(Math.floor(Math.random() * 900000) + 100000)}`;
+// `phone_numbers.e164` es único a nivel global: cada tenant necesita el suyo.
+const CLINICA_IN = `+34901${String(Math.floor(Math.random() * 900000) + 100000)}`;
 const PACIENTE = `+34677${String(Math.floor(Math.random() * 900000) + 100000)}`;
 
 let H: SeedIds;
@@ -20,34 +31,71 @@ beforeAll(async () => {
   H = await seedTenant('hallazgos');
 });
 
-describe('Hallazgos — gate de evidencia', () => {
-  it('createTask permite nacer en DONE con requires_evidence y sin nota', async () => {
-    const r = await createTask({
-      tenantId: H.tenantId,
-      title: 'nace cerrada',
-      status: 'DONE',
-      requiresEvidence: true,
-    });
-    const row = await taskRow(r.id!);
-    expect(row.status).toBe('DONE'); // ← debería estar bloqueado o exigir nota
-    expect(row.evidence_note).toBeNull();
+describe('Gate de evidencia — las tres vías de escritura', () => {
+  it('createTask no deja nacer una tarea cerrada sin nota', async () => {
+    await expect(
+      createTask({
+        tenantId: H.tenantId,
+        title: 'nace cerrada',
+        status: 'DONE',
+        requiresEvidence: true,
+      }),
+    ).rejects.toBeInstanceOf(TaskEvidenceRequiredError);
   });
 
-  it('una tarea creada en DONE queda con completed_at NULL y no entra en las métricas', async () => {
-    const T = await seedTenant('completed-null');
-    const r = await createTask({ tenantId: T.tenantId, title: 'cerrada al nacer', status: 'DONE' });
+  it('createTask sí la deja nacer cerrada si trae la nota', async () => {
+    const r = await createTask({
+      tenantId: H.tenantId,
+      title: 'nace cerrada con nota',
+      status: 'DONE',
+      requiresEvidence: true,
+      evidenceNote: 'Ciclo 42, integrador correcto',
+    });
     const row = await taskRow(r.id!);
-    expect(row.completed_at).toBeNull(); // ← debería sellarse al crear
-    const board = await loadBoardTasks(T.tenantId);
-    const st = await loadTaskStats(T.tenantId, board, new Date());
-    expect(st.doneThisWeek).toBe(0); // se cerró, pero el KPI no la ve
-    expect(st.avgCloseHours).toBeNull();
+    expect(row.status).toBe('DONE');
+    expect(row.evidence_note).toBe('Ciclo 42, integrador correcto');
+  });
+
+  it('updateTask lee el flag de la fila, no del body: no se puede desactivar al cerrar', async () => {
+    const t = await createTask({
+      tenantId: H.tenantId,
+      title: 'candado',
+      requiresEvidence: true,
+    });
+    await expect(
+      updateTask({
+        tenantId: H.tenantId,
+        taskId: t.id!,
+        actorUserId: H.userA,
+        status: 'DONE',
+      }),
+    ).rejects.toBeInstanceOf(TaskEvidenceRequiredError);
+    expect((await taskRow(t.id!)).status).toBe('TODO');
   });
 });
 
-describe('Hallazgos — reorderColumn', () => {
-  it('resucita tareas archivadas: les cambia estado y posición', async () => {
-    const t = await createTask({ tenantId: H.tenantId, title: 'archivada-resucitada' });
+describe('createTask — sellado del cierre', () => {
+  it('una tarea creada en DONE entra en las métricas', async () => {
+    const T = await seedTenant('completed-sellado');
+    const r = await createTask({
+      tenantId: T.tenantId,
+      title: 'cerrada al nacer',
+      status: 'DONE',
+      createdByUserId: T.userA,
+    });
+    const row = await taskRow(r.id!);
+    expect(row.completed_at).not.toBeNull();
+    expect(row.completed_by_user_id).toBe(T.userA);
+
+    const board = await loadBoardTasks(T.tenantId);
+    const st = await loadTaskStats(T.tenantId, board, new Date());
+    expect(st.doneThisWeek).toBe(1);
+  });
+});
+
+describe('reorderColumn', () => {
+  it('ignora las tareas archivadas: un arrastre no las resucita', async () => {
+    const t = await createTask({ tenantId: H.tenantId, title: 'archivada' });
     await archiveTask({ tenantId: H.tenantId, taskId: t.id!, actorUserId: H.userA });
     await reorderColumn({
       tenantId: H.tenantId,
@@ -56,11 +104,11 @@ describe('Hallazgos — reorderColumn', () => {
       actorUserId: H.userA,
     });
     const row = await taskRow(t.id!);
-    expect(row.status).toBe('IN_PROGRESS'); // ← debería ignorar las archivadas
+    expect(row.status).toBe('TODO');
     expect(row.archived_at).not.toBeNull();
   });
 
-  it('reordenar dentro de DONE re-firma completed_by aunque la cerrara otra persona', async () => {
+  it('preserva quién cerró la tarea al reordenar la columna Hecho', async () => {
     const t = await createTask({ tenantId: H.tenantId, title: 'firma' });
     await updateTask({
       tenantId: H.tenantId,
@@ -69,19 +117,20 @@ describe('Hallazgos — reorderColumn', () => {
       status: 'DONE',
     });
     expect((await taskRow(t.id!)).completed_by_user_id).toBe(H.userB);
+
     await reorderColumn({
       tenantId: H.tenantId,
       status: 'DONE',
       orderedIds: [t.id!],
       actorUserId: H.userC,
     });
-    // completed_at se preserva (coalesce) pero la firma se pisa.
-    expect((await taskRow(t.id!)).completed_by_user_id).toBe(H.userC);
+    // Reordenar no es cerrar: la trazabilidad de cumplimiento se respeta.
+    expect((await taskRow(t.id!)).completed_by_user_id).toBe(H.userB);
   });
 });
 
-describe('Hallazgos — updateTask', () => {
-  it('renombrar con solo espacios de diferencia ensucia el timeline', async () => {
+describe('updateTask y archiveTask — historial limpio', () => {
+  it('reenviar el mismo título con espacios no cuenta como renombrado', async () => {
     const t = await createTask({ tenantId: H.tenantId, title: 'Mismo título' });
     await updateTask({
       tenantId: H.tenantId,
@@ -89,72 +138,76 @@ describe('Hallazgos — updateTask', () => {
       actorUserId: H.userA,
       title: '  Mismo título  ',
     });
-    const tl = await timeline(t.id!);
-    expect(tl).toContain('Renombrada a "Mismo título"'); // ← cambio inexistente
+    expect(await timeline(t.id!)).not.toContain('Renombrada a "Mismo título"');
     expect((await taskRow(t.id!)).title).toBe('Mismo título');
   });
 
-  it('archivar dos veces vuelve a sellar archived_at y duplica la entrada', async () => {
+  it('archivar es idempotente: no re-sella la fecha ni duplica el historial', async () => {
     const t = await createTask({ tenantId: H.tenantId, title: 'doble archivo' });
     await archiveTask({ tenantId: H.tenantId, taskId: t.id!, actorUserId: H.userA });
     const first = (await taskRow(t.id!)).archived_at as Date;
     await archiveTask({ tenantId: H.tenantId, taskId: t.id!, actorUserId: H.userA });
     const second = (await taskRow(t.id!)).archived_at as Date;
-    expect(second.getTime()).toBeGreaterThanOrEqual(first.getTime());
-    expect((await timeline(t.id!)).filter((b) => b === 'Tarea archivada').length).toBe(2);
+    expect(second.getTime()).toBe(first.getTime());
+    expect((await timeline(t.id!)).filter((b) => b === 'Tarea archivada').length).toBe(1);
   });
 });
 
-describe('Hallazgos — aislamiento multi-tenant en asignados', () => {
-  it('createTask acepta un users.id que no pertenece al tenant', async () => {
+describe('Asignados — solo miembros del propio tenant', () => {
+  it('createTask descarta un users.id de otra clínica', async () => {
     const otro = await seedTenant('ajeno');
     const r = await createTask({
       tenantId: H.tenantId,
       title: 'asignado ajeno',
-      assigneeUserIds: [otro.userA],
+      assigneeUserIds: [otro.userA, H.userB],
     });
     const rows = await raw<{ user_id: string }[]>`
       select user_id from task_assignees where task_id = ${r.id!}`;
-    // ← debería filtrar por tenant_memberships antes de insertar
-    expect(rows.map((x) => x.user_id)).toEqual([otro.userA]);
+    expect(rows.map((x) => x.user_id)).toEqual([H.userB]);
   });
 });
 
-describe('Hallazgos — BOARD_LIMIT truncando las métricas', () => {
-  it('con más de 400 tareas abiertas el tablero y los KPIs se quedan cortos', async () => {
+describe('KPIs con más tareas que el límite del tablero', () => {
+  it('las métricas cuentan en SQL, no sobre el tablero recortado', async () => {
     const T = await seedTenant('limite');
     const due = '2026-06-14T10:00:00Z';
-    const values = Array.from({ length: 405 }, (_, i) => i);
-    for (const i of values) {
+    for (let i = 0; i < 405; i += 1) {
       await raw`
         insert into tasks (tenant_id, title, status, due_at, board_position)
         values (${T.tenantId}, ${`carga-${i}`}, 'TODO', ${due}::timestamptz, ${1000 + i})`;
     }
+    const now = new Date('2026-06-15T12:00:00Z');
     const board = await loadBoardTasks(T.tenantId);
-    expect(board.length).toBe(400); // ← se pierden 5
-    const st = await loadTaskStats(T.tenantId, board, new Date('2026-06-15T12:00:00Z'));
-    expect(st.overdue).toBe(400); // deberían ser 405
-    // El contador del sidebar sí cuenta en SQL: no coincide con el tablero.
-    expect(await countActionableTasks(T.tenantId, null, new Date('2026-06-15T12:00:00Z'))).toBe(405);
+    expect(board.length).toBe(400); // el tablero sigue acotado, a propósito
+
+    const st = await loadTaskStats(T.tenantId, board, now, 'Europe/Madrid');
+    // Antes decía 400 porque derivaba del array cortado.
+    expect(st.overdue).toBe(405);
+    expect(await countActionableTasks(T.tenantId, null, now, 'Europe/Madrid')).toBe(405);
   });
 });
 
-describe('Hallazgos — timezone del servidor en los KPIs', () => {
-  it('"hoy" se calcula con la hora del servidor, no con la de la clínica', async () => {
-    const T = await seedTenant('tz-leak'); // clinic_settings.timezone = Europe/Madrid
-    // 2026-07-15T22:30Z = 2026-07-16 00:30 en Madrid → para la clínica es MAÑANA
+describe('KPIs en la zona horaria de la clínica', () => {
+  it('lo que en Madrid ya es mañana no cuenta como hoy', async () => {
+    const T = await seedTenant('tz'); // clinic_settings.timezone = Europe/Madrid
+    // 22:30Z del 15 de julio = 00:30 del 16 en Madrid → para la clínica, mañana.
     await raw`
       insert into tasks (tenant_id, title, status, due_at)
       values (${T.tenantId}, 'madrugada', 'TODO', '2026-07-15T22:30:00Z'::timestamptz)`;
     const board = await loadBoardTasks(T.tenantId);
-    const st = await loadTaskStats(T.tenantId, board, new Date('2026-07-15T12:00:00Z'));
-    expect(st.today).toBe(1); // ← con TZ=UTC en el proceso lo cuenta como hoy
-    expect(st.upcoming).toBe(0);
+    const st = await loadTaskStats(
+      T.tenantId,
+      board,
+      new Date('2026-07-15T12:00:00Z'),
+      'Europe/Madrid',
+    );
+    expect(st.today).toBe(0);
+    expect(st.upcoming).toBe(1);
   });
 });
 
-describe('Hallazgos — MISSED_CALL no distingue dirección', () => {
-  it('una llamada saliente corta genera "Devolver llamada"', async () => {
+describe('MISSED_CALL distingue la dirección de la llamada', () => {
+  it('una llamada saliente corta no genera "Devolver llamada"', async () => {
     const T = await seedTenant('outbound');
     await ensureAutomationRules(T.tenantId);
     await raw`
@@ -163,7 +216,7 @@ describe('Hallazgos — MISSED_CALL no distingue dirección', () => {
     await raw`
       insert into patients_cache (tenant_id, ghl_contact_id, first_name, last_name, phone)
       values (${T.tenantId}, 'ghl-out', 'Nora', 'Salas', ${PACIENTE})`;
-    // Saliente: la clínica llama al paciente y este no atiende (5 s).
+    // La clínica llama al paciente y este no atiende (5 s).
     await raw`
       insert into calls (tenant_id, retell_call_id, from_number, to_number, ghl_contact_id,
                          started_at, duration_seconds, status)
@@ -173,7 +226,27 @@ describe('Hallazgos — MISSED_CALL no distingue dirección', () => {
     const rows = await raw<{ title: string }[]>`
       select title from tasks
       where tenant_id = ${T.tenantId} and automation_trigger = 'MISSED_CALL'`;
-    // ← `calls` no guarda dirección: la heurística <20 s la trata como perdida
+    expect(rows).toEqual([]);
+  });
+
+  it('una llamada entrante corta sí la genera', async () => {
+    const T = await seedTenant('inbound');
+    await ensureAutomationRules(T.tenantId);
+    await raw`
+      insert into phone_numbers (tenant_id, e164, twilio_sid)
+      values (${T.tenantId}, ${CLINICA_IN}, ${`PNin${RUN}`})`;
+    await raw`
+      insert into patients_cache (tenant_id, ghl_contact_id, first_name, last_name, phone)
+      values (${T.tenantId}, 'ghl-in', 'Nora', 'Salas', ${PACIENTE})`;
+    await raw`
+      insert into calls (tenant_id, retell_call_id, from_number, to_number, ghl_contact_id,
+                         started_at, duration_seconds, status)
+      values (${T.tenantId}, ${`in-${RUN}`}, ${PACIENTE}, ${CLINICA_IN}, 'ghl-in',
+              now(), 5, 'ended')`;
+    await onCallProcessed({ tenantId: T.tenantId, retellCallId: `in-${RUN}` });
+    const rows = await raw<{ title: string }[]>`
+      select title from tasks
+      where tenant_id = ${T.tenantId} and automation_trigger = 'MISSED_CALL'`;
     expect(rows.map((r) => r.title)).toEqual(['Devolver llamada a Nora Salas']);
   });
 });

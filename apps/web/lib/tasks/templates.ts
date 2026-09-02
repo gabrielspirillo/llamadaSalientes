@@ -104,7 +104,9 @@ export const SYSTEM_TEMPLATES: SystemTemplate[] = [
     category: 'CLINICAL',
     priority: 'HIGH',
     recurrenceFreq: 'WEEKDAYS',
-    dueTime: '19:00',
+    // Después del cierre (20:00), que es cuando se lanza el ciclo. Antes
+    // vencía a las 19:00, es decir antes de que el ciclo existiera.
+    dueTime: '20:30',
     requiresEvidence: true,
     items: [
       'Anotar número de ciclo y contenido de la carga',
@@ -124,13 +126,16 @@ export const SYSTEM_TEMPLATES: SystemTemplate[] = [
     recurrenceFreq: 'WEEKLY',
     recurrenceWeekdays: [1],
     dueTime: '09:30',
+    // Dos días de margen: se coloca el lunes y el resultado se lee el martes.
+    // Con vencimiento el mismo día, la tarea nacía imposible de cerrar.
+    leadDays: 0,
     requiresEvidence: true,
     items: [
-      'Colocar el indicador biológico en la carga',
-      'Incubar según instrucciones del fabricante',
-      'Leer el resultado a las 24 h',
-      'Registrar en el libro de trazabilidad',
-      'Guardar la evidencia (foto o ticket)',
+      'Lunes: colocar el indicador biológico en la carga',
+      'Incubar según las instrucciones del fabricante',
+      'Martes: leer el resultado de la incubación',
+      'Registrar el resultado en el libro de trazabilidad',
+      'Guardar la evidencia (foto del indicador o ticket)',
     ],
   },
   {
@@ -304,6 +309,26 @@ export const SYSTEM_TEMPLATES: SystemTemplate[] = [
       'Registrar asistentes',
       'Guardar el material en la carpeta compartida',
       'Comprobar a las 4 semanas si cambió algo',
+    ],
+  },
+  {
+    key: 'residuos-sanitarios',
+    name: 'Retirada de residuos sanitarios y amalgama',
+    description:
+      'Los residuos del grupo III y los restos de amalgama solo puede retirarlos un gestor autorizado, y hay que conservar el documento de entrega.',
+    category: 'COMPLIANCE',
+    priority: 'HIGH',
+    recurrenceFreq: 'MONTHLY',
+    recurrenceMonthDay: 10,
+    dueTime: '12:00',
+    leadDays: 3,
+    requiresEvidence: true,
+    items: [
+      'Revisar el nivel de los contenedores de grupo III y del separador de amalgama',
+      'Avisar al gestor autorizado para la retirada',
+      'Comprobar el etiquetado y el cierre de los contenedores',
+      'Archivar el documento de entrega que deja el gestor',
+      'Anotar la retirada en el registro de residuos',
     ],
   },
   {

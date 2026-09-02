@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeAll } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 // Mock de server-only para que no rompa en el entorno de test
 vi.mock('server-only', () => ({}));
@@ -12,7 +12,11 @@ vi.mock('@/lib/data/ghl-integration', () => ({
 vi.mock('@/lib/ghl/client', () => ({
   ghlFetch: vi.fn(),
   GhlApiError: class GhlApiError extends Error {
-    constructor(public status: number, public path: string, public body: string) {
+    constructor(
+      public status: number,
+      public path: string,
+      public body: string,
+    ) {
       super(`GHL ${status}`);
       this.name = 'GhlApiError';
     }
@@ -36,9 +40,9 @@ vi.mock('@/lib/data/calls', () => ({
 }));
 
 import { getGhlIntegration } from '@/lib/data/ghl-integration';
-import { ghlFetch } from '@/lib/ghl/client';
 import { getFreeSlots, resolveCalendarId } from '@/lib/ghl/calendars';
-import { dispatchTool, checkAvailability, getPatientInfo } from '@/lib/retell/tools';
+import { ghlFetch } from '@/lib/ghl/client';
+import { checkAvailability, dispatchTool, getPatientInfo } from '@/lib/retell/tools';
 
 const mockGetGhlIntegration = vi.mocked(getGhlIntegration);
 const mockGhlFetch = vi.mocked(ghlFetch);
@@ -100,9 +104,12 @@ describe('checkAvailability', () => {
     });
 
     expect(result.result).toContain('Horarios disponibles');
-    expect(mockResolveCalendarId).toHaveBeenCalledWith('tenant-1', expect.objectContaining({
-      treatmentName: 'limpieza dental',
-    }));
+    expect(mockResolveCalendarId).toHaveBeenCalledWith(
+      'tenant-1',
+      expect.objectContaining({
+        treatmentName: 'limpieza dental',
+      }),
+    );
   });
 
   it('responde amigablemente cuando no hay slots', async () => {
@@ -162,7 +169,12 @@ describe('getPatientInfo', () => {
 
     // Nuevo endpoint: /contacts/search/duplicate → { contact: {...} | null }
     mockGhlFetch.mockResolvedValue({
-      contact: { id: 'contact-abc', firstName: 'María', lastName: 'García', email: 'maria@test.com' },
+      contact: {
+        id: 'contact-abc',
+        firstName: 'María',
+        lastName: 'García',
+        email: 'maria@test.com',
+      },
     });
 
     const result = await getPatientInfo('tenant-1', { phone: '+525512345678' });

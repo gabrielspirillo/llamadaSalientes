@@ -14,6 +14,9 @@ vi.mock('next/link', () => ({
 
 afterEach(cleanup);
 
+// Literal fuera del JSX: biome confunde la prop `role` con el atributo ARIA.
+const OPERATOR = 'operator' as const;
+
 let fetchMock: ReturnType<typeof mockFetch>;
 beforeEach(() => {
   fetchMock = mockFetch();
@@ -29,7 +32,7 @@ describe('Tablero sin tareas', () => {
         templates={[]}
         rules={[]}
         currentUserId={LUCIA.userId}
-        role="operator"
+        role={OPERATOR}
       />,
     );
     expect(screen.getByText('Sin pendientes aquí')).toBeTruthy();
@@ -47,14 +50,12 @@ describe('Tablero sin tareas', () => {
         templates={[]}
         rules={[]}
         currentUserId={LUCIA.userId}
-        role="operator"
+        role={OPERATOR}
       />,
     );
     fireEvent.click(screen.getByRole('button', { name: /Mi día/ }));
     expect(screen.getByText('Día limpio')).toBeTruthy();
-    expect(
-      screen.getByText(/activa las rutinas para que el tablero se llene solo/),
-    ).toBeTruthy();
+    expect(screen.getByText(/activa las rutinas para que el tablero se llene solo/)).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: /Pacientes/ }));
     expect(screen.getByText('Ningún paciente esperando')).toBeTruthy();
@@ -90,13 +91,7 @@ describe('Rutinas sin nada cargado', () => {
   it('sin plantillas ofrece instalar el catálogo y lo pide al servidor', async () => {
     fetchMock.on('/api/tasks/postop-treatments', { status: 200, json: { treatments: [] } });
     render(
-      <RoutinesView
-        templates={[]}
-        rules={[]}
-        members={MEMBERS}
-        isAdmin
-        onRefresh={vi.fn()}
-      />,
+      <RoutinesView templates={[]} rules={[]} members={MEMBERS} isAdmin onRefresh={vi.fn()} />,
     );
     expect(screen.getByText('Todavía no hay rutinas')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /Instalar catálogo/ }));
@@ -160,16 +155,12 @@ describe('Detalle sin equipo ni actividad', () => {
       json: { task: detail({ id: 'd1', title: 'Sola en el mundo' }) },
     });
     render(
-      <TaskDetailPanel
-        taskId="d1"
-        members={[]}
-        canEdit
-        onClose={vi.fn()}
-        onChanged={vi.fn()}
-      />,
+      <TaskDetailPanel taskId="d1" members={[]} canEdit onClose={vi.fn()} onChanged={vi.fn()} />,
     );
     expect(
-      await screen.findByText('Invita al equipo desde Clínica → Equipo para poder repartir tareas.'),
+      await screen.findByText(
+        'Invita al equipo desde Clínica → Equipo para poder repartir tareas.',
+      ),
     ).toBeTruthy();
     expect(screen.getByText('Todavía no ha pasado nada aquí.')).toBeTruthy();
   });

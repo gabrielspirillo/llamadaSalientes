@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest';
 import {
   classifyEvent,
   normalizeAppointment,
   parseDate,
 } from '@/lib/analytics/ghl-webhook-helpers';
+import { describe, expect, it } from 'vitest';
 
 describe('parseDate', () => {
   it('devuelve Date para ISO válido', () => {

@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
+import { loadArchivedTasks, loadBoardTasks, loadTaskDetail } from '@/lib/tasks/queries';
 import {
   TaskEvidenceRequiredError,
   addChecklistItem,
@@ -11,7 +12,6 @@ import {
   setChecklistItemDone,
   updateTask,
 } from '@/lib/tasks/service';
-import { loadArchivedTasks, loadBoardTasks, loadTaskDetail } from '@/lib/tasks/queries';
 import { type SeedIds, raw, seedTenant, taskRow, timeline } from './_qa-tasks-helpers';
 
 let S: SeedIds;
@@ -130,8 +130,10 @@ describe('2. Idempotencia por dedupeKey', () => {
     const second = await createTask({ tenantId: S.tenantId, title: 'dupe', dedupeKey: key });
     expect(first.created).toBe(true);
     expect(second).toEqual({ id: null, created: false });
-    const [{ n }] = await raw<{ n: number }[]>`
-      select count(*)::int as n from tasks where tenant_id = ${S.tenantId} and dedupe_key = ${key}`;
+    const { n } = (
+      await raw<{ n: number }[]>`
+      select count(*)::int as n from tasks where tenant_id = ${S.tenantId} and dedupe_key = ${key}`
+    )[0]!;
     expect(n).toBe(1);
   });
 

@@ -212,9 +212,9 @@ describe('TaskDetailPanel — checklist, comentarios y archivado', () => {
     const { onClose, onChanged } = await setup();
     fireEvent.click(screen.getByLabelText('Archivar tarea'));
     await waitFor(() =>
-      expect(
-        fetchMock.calls.some((c) => c.url === '/api/tasks/d1' && c.method === 'DELETE'),
-      ).toBe(true),
+      expect(fetchMock.calls.some((c) => c.url === '/api/tasks/d1' && c.method === 'DELETE')).toBe(
+        true,
+      ),
     );
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(onChanged).toHaveBeenCalled();
@@ -267,8 +267,9 @@ describe('TaskDetailPanel — rol viewer', () => {
 
     // responsables
     for (const m of MEMBERS) {
-      expect((screen.getByRole('button', { name: new RegExp(m.name) }) as HTMLButtonElement)
-        .disabled).toBe(true);
+      expect(
+        (screen.getByRole('button', { name: new RegExp(m.name) }) as HTMLButtonElement).disabled,
+      ).toBe(true);
     }
 
     // checklist: no se puede marcar, ni borrar, ni añadir

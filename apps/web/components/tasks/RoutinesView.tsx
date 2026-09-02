@@ -107,7 +107,7 @@ export function RoutinesView({
         <header className="mb-3 flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="flex items-center gap-2 text-base font-semibold text-zinc-900">
-              <Repeat className="h-4 w-4 text-zinc-400" />
+              <Repeat className="h-4 w-4 text-zinc-500" />
               Rutinas de la clínica
             </h2>
             <p className="mt-0.5 max-w-2xl text-xs text-zinc-500">
@@ -165,7 +165,7 @@ export function RoutinesView({
       <section>
         <header className="mb-3">
           <h2 className="flex items-center gap-2 text-base font-semibold text-zinc-900">
-            <Bot className="h-4 w-4 text-zinc-400" />
+            <Bot className="h-4 w-4 text-zinc-500" />
             Tareas que se crean solas
           </h2>
           <p className="mt-0.5 max-w-2xl text-xs text-zinc-500">
@@ -293,19 +293,19 @@ function TemplateCard({
           <ol className="space-y-1">
             {template.items.map((i, idx) => (
               <li key={i.id} className="flex gap-2 text-xs text-zinc-600">
-                <span className="tabular-nums text-zinc-400">{idx + 1}.</span>
+                <span className="tabular-nums text-zinc-500">{idx + 1}.</span>
                 {i.content}
               </li>
             ))}
             {template.items.length === 0 && (
-              <li className="text-xs text-zinc-400">Sin pasos definidos.</li>
+              <li className="text-xs text-zinc-500">Sin pasos definidos.</li>
             )}
           </ol>
 
           {isAdmin && (
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block">
-                <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
                   Hora
                 </span>
                 <input
@@ -321,7 +321,7 @@ function TemplateCard({
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
                   Responsable por defecto
                 </span>
                 <select
@@ -383,7 +383,7 @@ function RuleRow({
             >
               {PRIORITY_META[rule.priority as TaskPriority].label}
             </span>
-            <span className="text-[11px] text-zinc-400">
+            <span className="text-[11px] text-zinc-500">
               vence en {formatOffset(rule.dueOffsetMinutes)}
             </span>
           </div>
@@ -395,7 +395,7 @@ function RuleRow({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-3">
-          <span className="text-[11px] tabular-nums text-zinc-400">
+          <span className="text-[11px] tabular-nums text-zinc-500">
             {rule.generatedLast30d} en 30 días
           </span>
           <input
@@ -423,7 +423,7 @@ function RuleRow({
           {open && (
             <div className="mt-3 grid gap-3 border-t border-zinc-100 pt-3 sm:grid-cols-3">
               <label className="block sm:col-span-3">
-                <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
                   Título de la tarea
                 </span>
                 <input
@@ -436,12 +436,12 @@ function RuleRow({
                   }}
                   className="w-full rounded-lg border border-zinc-200 px-2.5 py-1.5 text-sm"
                 />
-                <span className="mt-1 block text-[10px] text-zinc-400">
+                <span className="mt-1 block text-[10px] text-zinc-500">
                   Variables: {'{{patientName}}'} {'{{phone}}'} {'{{date}}'} {'{{treatment}}'}
                 </span>
               </label>
               <label className="block">
-                <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
                   Plazo (minutos)
                 </span>
                 <input
@@ -460,7 +460,7 @@ function RuleRow({
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
                   Se asigna a
                 </span>
                 <select
@@ -479,7 +479,7 @@ function RuleRow({
               </label>
               {rule.trigger === 'PATIENT_INACTIVE' && (
                 <label className="block">
-                  <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                  <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
                     Meses sin venir
                   </span>
                   <input
@@ -564,7 +564,7 @@ function PostOpSection({ isAdmin }: { isAdmin: boolean }) {
     <section>
       <header className="mb-3">
         <h2 className="flex items-center gap-2 text-base font-semibold text-zinc-900">
-          <ShieldCheck className="h-4 w-4 text-zinc-400" />
+          <ShieldCheck className="h-4 w-4 text-zinc-500" />
           Tratamientos con llamada postoperatoria
         </h2>
         <p className="mt-0.5 max-w-2xl text-xs text-zinc-500">
@@ -578,7 +578,7 @@ function PostOpSection({ isAdmin }: { isAdmin: boolean }) {
       )}
 
       {loading ? (
-        <p className="text-xs text-zinc-400">Cargando tratamientos…</p>
+        <p className="text-xs text-zinc-500">Cargando tratamientos…</p>
       ) : items.length === 0 ? (
         <EmptyState
           title="Sin tratamientos cargados"

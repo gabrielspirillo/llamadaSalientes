@@ -52,8 +52,8 @@ describe('TwilioRestClient', () => {
     });
     expect(res.validation_code).toBe('654321');
 
-    const [url, init] = (fetchMock as unknown as { mock: { calls: [string, RequestInit][] } })
-      .mock.calls[0]!;
+    const [url, init] = (fetchMock as unknown as { mock: { calls: [string, RequestInit][] } }).mock
+      .calls[0]!;
     expect(url).toContain('/OutgoingCallerIds.json');
     expect(init.method).toBe('POST');
     expect(String(init.body)).toContain('PhoneNumber=%2B5491139530968');
@@ -108,8 +108,8 @@ describe('TwilioRestClient', () => {
       voiceMethod: 'POST',
     });
     expect(res.voice_url).toBe('https://x/voice');
-    const [, init] = (fetchMock as unknown as { mock: { calls: [string, RequestInit][] } })
-      .mock.calls[0]!;
+    const [, init] = (fetchMock as unknown as { mock: { calls: [string, RequestInit][] } }).mock
+      .calls[0]!;
     const body = String(init.body);
     expect(body).toContain('VoiceUrl=https%3A%2F%2Fx%2Fvoice');
     expect(body).toContain('VoiceMethod=POST');
@@ -122,8 +122,8 @@ describe('TwilioRestClient', () => {
       mockFetch({ status: 422, json: { code: 21210, message: 'Caller ID Not Verified' } }),
     );
     const c = new TwilioRestClient({ accountSid: SID, authToken: TOKEN });
-    await expect(
-      c.createVerifiedCallerId({ phoneNumber: '+0' }),
-    ).rejects.toBeInstanceOf(TwilioApiError);
+    await expect(c.createVerifiedCallerId({ phoneNumber: '+0' })).rejects.toBeInstanceOf(
+      TwilioApiError,
+    );
   });
 });

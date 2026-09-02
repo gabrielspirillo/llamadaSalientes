@@ -1,8 +1,14 @@
 import 'server-only';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
-import { taskAssignees, taskChecklistItems, taskComments, tasks } from '@/lib/db/schema';
+import {
+  taskAssignees,
+  taskChecklistItems,
+  taskComments,
+  tasks,
+  tenantMemberships,
+} from '@/lib/db/schema';
 import type {
   TaskAutomationTrigger,
   TaskCategory,
@@ -40,6 +46,8 @@ export interface CreateTaskInput {
   /** Clave de idempotencia por tenant. Si ya existe, no se crea nada. */
   dedupeKey?: string | null;
   requiresEvidence?: boolean;
+  /** Obligatoria si se crea ya cerrada y `requiresEvidence` está activo. */
+  evidenceNote?: string | null;
   labels?: string[];
   assigneeUserIds?: string[];
   checklist?: string[];
@@ -65,6 +73,15 @@ export async function createTask(
   input: CreateTaskInput,
 ): Promise<{ id: string | null; created: boolean }> {
   const status = input.status ?? 'TODO';
+  const requiresEvidence = input.requiresEvidence ?? false;
+
+  // El candado de evidencia también aplica al alta: si no, se podía crear la
+  // rutina de esterilización ya cerrada y sin registro, que es justo lo que
+  // el candado existe para impedir.
+  if (status === 'DONE' && requiresEvidence && !input.evidenceNote?.trim()) {
+    throw new TaskEvidenceRequiredError();
+  }
+
   const position = await nextBoardPosition(input.tenantId, status);
 
   const [row] = await db
@@ -83,9 +100,14 @@ export async function createTask(
       templateId: input.templateId ?? null,
       automationTrigger: input.automationTrigger ?? null,
       dedupeKey: input.dedupeKey ?? null,
-      requiresEvidence: input.requiresEvidence ?? false,
+      requiresEvidence,
+      evidenceNote: input.evidenceNote ?? null,
       labels: input.labels ?? [],
       createdByUserId: input.createdByUserId ?? null,
+      // Nacer en DONE sin sellar el cierre dejaba la tarea invisible para
+      // "cerradas esta semana" y para el tiempo medio de cierre.
+      completedAt: status === 'DONE' ? new Date() : null,
+      completedByUserId: status === 'DONE' ? (input.createdByUserId ?? null) : null,
       patientGhlContactId: input.patientGhlContactId ?? null,
       patientName: input.patientName ?? null,
       patientPhone: input.patientPhone ?? null,
@@ -103,11 +125,12 @@ export async function createTask(
     return { id: null, created: false };
   }
 
-  if (input.assigneeUserIds && input.assigneeUserIds.length > 0) {
+  const assignees = await membersOfTenant(input.tenantId, input.assigneeUserIds ?? []);
+  if (assignees.length > 0) {
     await db
       .insert(taskAssignees)
       .values(
-        input.assigneeUserIds.map((userId) => ({
+        assignees.map((userId) => ({
           taskId: row.id,
           userId,
           tenantId: input.tenantId,
@@ -143,6 +166,22 @@ function activityForSource(source: TaskSource): string {
   return 'Tarea creada';
 }
 
+/**
+ * Filtra una lista de asignados dejando solo los que son miembros de ESTE
+ * tenant. Sin esto se podía persistir el `users.id` de otra clínica: no
+ * filtra datos, pero ensucia la integridad y deja tareas con dueños fantasma.
+ */
+async function membersOfTenant(tenantId: string, userIds: string[]): Promise<string[]> {
+  if (userIds.length === 0) return [];
+  const rows = await db
+    .select({ userId: tenantMemberships.userId })
+    .from(tenantMemberships)
+    .where(
+      and(eq(tenantMemberships.tenantId, tenantId), inArray(tenantMemberships.userId, userIds)),
+    );
+  return rows.map((r) => r.userId);
+}
+
 /** Siguiente hueco al final de la columna. Los drags reescriben la columna entera. */
 export async function nextBoardPosition(tenantId: string, status: TaskStatus): Promise<number> {
   const [row] = await db
@@ -164,7 +203,6 @@ export interface UpdateTaskInput {
   dueAt?: Date | null;
   dueAllDay?: boolean;
   labels?: string[];
-  requiresEvidence?: boolean;
   evidenceNote?: string | null;
   assigneeUserIds?: string[];
 }
@@ -186,9 +224,12 @@ export async function updateTask(input: UpdateTaskInput): Promise<void> {
   const patch: Record<string, unknown> = { updatedAt: new Date() };
   const notes: string[] = [];
 
-  if (input.title?.trim() && input.title !== current.title) {
-    patch.title = input.title.trim().slice(0, 300);
-    notes.push(`Renombrada a "${patch.title as string}"`);
+  // Comparamos ya recortado: reenviar el mismo título con espacios de más no
+  // es un cambio y no tiene que ensuciar el historial.
+  const nextTitle = input.title?.trim().slice(0, 300);
+  if (nextTitle && nextTitle !== current.title) {
+    patch.title = nextTitle;
+    notes.push(`Renombrada a "${nextTitle}"`);
   }
   if (input.description !== undefined && input.description !== current.description) {
     patch.description = input.description;
@@ -202,7 +243,6 @@ export async function updateTask(input: UpdateTaskInput): Promise<void> {
     notes.push(`Prioridad → ${input.priority}`);
   }
   if (input.labels !== undefined) patch.labels = input.labels.slice(0, 12);
-  if (input.requiresEvidence !== undefined) patch.requiresEvidence = input.requiresEvidence;
   if (input.evidenceNote !== undefined) patch.evidenceNote = input.evidenceNote;
   if (input.dueAllDay !== undefined) patch.dueAllDay = input.dueAllDay;
   if (input.dueAt !== undefined) {
@@ -215,10 +255,11 @@ export async function updateTask(input: UpdateTaskInput): Promise<void> {
   }
 
   if (input.status !== undefined && input.status !== current.status) {
+    // `requiresEvidence` se lee SIEMPRE de la fila guardada. Tomarlo del body
+    // permitía cerrar cualquier tarea mandando `requiresEvidence: false` en el
+    // mismo PATCH, que vaciaba el candado por completo.
     const evidence = input.evidenceNote !== undefined ? input.evidenceNote : current.evidenceNote;
-    const needsEvidence =
-      input.requiresEvidence !== undefined ? input.requiresEvidence : current.requiresEvidence;
-    if (input.status === 'DONE' && needsEvidence && !evidence?.trim()) {
+    if (input.status === 'DONE' && current.requiresEvidence && !evidence?.trim()) {
       throw new TaskEvidenceRequiredError();
     }
     patch.status = input.status;
@@ -241,11 +282,12 @@ export async function updateTask(input: UpdateTaskInput): Promise<void> {
       .where(
         and(eq(taskAssignees.taskId, input.taskId), eq(taskAssignees.tenantId, input.tenantId)),
       );
-    if (input.assigneeUserIds.length > 0) {
+    const assignees = await membersOfTenant(input.tenantId, input.assigneeUserIds);
+    if (assignees.length > 0) {
       await db
         .insert(taskAssignees)
         .values(
-          input.assigneeUserIds.map((userId) => ({
+          assignees.map((userId) => ({
             taskId: input.taskId,
             userId,
             tenantId: input.tenantId,
@@ -254,9 +296,7 @@ export async function updateTask(input: UpdateTaskInput): Promise<void> {
         .onConflictDoNothing();
     }
     notes.push(
-      input.assigneeUserIds.length > 0
-        ? `Asignados actualizados (${input.assigneeUserIds.length})`
-        : 'Sin asignar',
+      assignees.length > 0 ? `Asignados actualizados (${assignees.length})` : 'Sin asignar',
     );
   }
 
@@ -295,7 +335,15 @@ export async function reorderColumn(args: {
       evidenceNote: tasks.evidenceNote,
     })
     .from(tasks)
-    .where(and(eq(tasks.tenantId, tenantId), inArray(tasks.id, orderedIds)));
+    .where(
+      and(
+        eq(tasks.tenantId, tenantId),
+        inArray(tasks.id, orderedIds),
+        // Una tarea archivada no está en ningún tablero: un drag no puede
+        // devolverla a la vida.
+        isNull(tasks.archivedAt),
+      ),
+    );
 
   // Arrastrar a "Hecho" no puede saltarse la evidencia: una rutina de
   // esterilización cerrada sin registro es exactamente lo que hay que evitar.
@@ -317,7 +365,10 @@ export async function reorderColumn(args: {
         boardPosition: position,
         // Al salir de "Hecho" la tarea vuelve a estar abierta.
         completedAt: status === 'DONE' ? sql`coalesce(${tasks.completedAt}, now())` : null,
-        completedByUserId: status === 'DONE' ? args.actorUserId : null,
+        // Preservamos quién la cerró de verdad: reordenar la columna "Hecho"
+        // no puede reescribir la trazabilidad de cumplimiento.
+        completedByUserId:
+          status === 'DONE' ? sql`coalesce(${tasks.completedByUserId}, ${args.actorUserId})` : null,
         updatedAt: new Date(),
       })
       .where(and(eq(tasks.id, id), eq(tasks.tenantId, tenantId)));
@@ -341,18 +392,44 @@ export async function archiveTask(args: {
   taskId: string;
   actorUserId: string | null;
 }): Promise<void> {
+  // `isNull(archivedAt)` hace la operación idempotente: archivar dos veces no
+  // vuelve a sellar la fecha ni duplica la entrada del historial.
   const res = await db
     .update(tasks)
     .set({ archivedAt: new Date(), updatedAt: new Date() })
-    .where(and(eq(tasks.id, args.taskId), eq(tasks.tenantId, args.tenantId)))
+    .where(
+      and(eq(tasks.id, args.taskId), eq(tasks.tenantId, args.tenantId), isNull(tasks.archivedAt)),
+    )
     .returning({ id: tasks.id });
-  if (res.length === 0) throw new TaskNotFoundError();
+  if (res.length === 0) {
+    // O no existe, o ya estaba archivada. Distinguimos para no mentir.
+    const [exists] = await db
+      .select({ id: tasks.id })
+      .from(tasks)
+      .where(and(eq(tasks.id, args.taskId), eq(tasks.tenantId, args.tenantId)))
+      .limit(1);
+    if (!exists) throw new TaskNotFoundError();
+    return;
+  }
   await logActivity({
     tenantId: args.tenantId,
     taskId: args.taskId,
     authorUserId: args.actorUserId,
     body: 'Tarea archivada',
   });
+}
+
+/**
+ * Corta en el servicio, no solo en la ruta HTTP: cualquier llamador nuevo
+ * hereda la comprobación en vez de tener que acordarse de hacerla.
+ */
+async function assertTaskBelongsToTenant(tenantId: string, taskId: string): Promise<void> {
+  const [row] = await db
+    .select({ id: tasks.id })
+    .from(tasks)
+    .where(and(eq(tasks.id, taskId), eq(tasks.tenantId, tenantId)))
+    .limit(1);
+  if (!row) throw new TaskNotFoundError();
 }
 
 // ─── Checklist ───────────────────────────────────────────────────────────────
@@ -362,6 +439,7 @@ export async function addChecklistItem(args: {
   taskId: string;
   content: string;
 }): Promise<string> {
+  await assertTaskBelongsToTenant(args.tenantId, args.taskId);
   const [maxRow] = await db
     .select({ max: sql<number | null>`max(${taskChecklistItems.order})` })
     .from(taskChecklistItems)
@@ -416,6 +494,7 @@ export async function addComment(args: {
   authorUserId: string | null;
   body: string;
 }): Promise<string> {
+  await assertTaskBelongsToTenant(args.tenantId, args.taskId);
   const [row] = await db
     .insert(taskComments)
     .values({

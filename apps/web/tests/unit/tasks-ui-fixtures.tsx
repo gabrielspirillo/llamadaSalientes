@@ -202,8 +202,7 @@ export function mockFetch(): FetchMock {
     } as unknown as Response;
   });
 
-  // @ts-expect-error — sobreescribimos el global para el test
-  globalThis.fetch = spy;
+  globalThis.fetch = spy as unknown as typeof fetch;
 
   return {
     calls,

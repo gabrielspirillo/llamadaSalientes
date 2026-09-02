@@ -126,8 +126,8 @@ export interface TaskStatsDTO {
   today: number;
   upcoming: number;
   doneThisWeek: number;
-  /** % de tareas vencidas en los últimos 7 días que se cerraron. */
-  complianceRate: number;
+  /** % de vencidas en 7 días que se cerraron. `null` = no hubo nada que vencer. */
+  complianceRate: number | null;
   /** Horas medias entre creación y cierre (últimos 30 días). */
   avgCloseHours: number | null;
   automated: number;

@@ -1,11 +1,17 @@
 import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import postgres from 'postgres';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 
-const MIG_DIR = process.env.MIGRATIONS_DIR as string;
-const ADMIN_URL = 'postgres://postgres@127.0.0.1:5441/postgres';
+// Por defecto, las migraciones del propio repo. `MIGRATIONS_DIR` permite
+// apuntar a una copia recortada para probar casos concretos.
+const MIG_DIR = process.env.MIGRATIONS_DIR ?? resolve(process.cwd(), '../../supabase/migrations');
+// Derivado de DATABASE_URL: hardcodear el puerto ataba las pruebas a la
+// instancia concreta con la que se escribieron.
+const BASE_URL = new URL(process.env.DATABASE_URL as string);
+const ADMIN_URL = new URL('/postgres', BASE_URL).toString();
+const dbUrl = (name: string): string => new URL(`/${name}`, BASE_URL).toString();
 const FILES = readdirSync(MIG_DIR)
   .filter((f) => f.endsWith('.sql'))
   .sort();
@@ -18,7 +24,7 @@ async function freshDb(name: string): Promise<string> {
   await admin.unsafe(`CREATE DATABASE ${name}`);
   await admin.end();
   created.push(name);
-  return `postgres://postgres@127.0.0.1:5441/${name}`;
+  return dbUrl(name);
 }
 
 /** Aplica migraciones "a mano", como estaba producción antes del runner. */
@@ -97,10 +103,9 @@ describe('10. Runner de migraciones', () => {
     expect(r.skipped).toContain('0018_tasks.sql');
     expect(r.skipped.length).toBe(FILES.length);
 
-    const [{ n }] = await query<{ n: string }>(
-      url,
-      'SELECT count(*)::int AS n FROM schema_migrations',
-    );
+    const { n } = (
+      await query<{ n: string }>(url, 'SELECT count(*)::int AS n FROM schema_migrations')
+    )[0]!;
     expect(Number(n)).toBe(FILES.length);
   });
 
@@ -117,25 +122,31 @@ describe('10. Runner de migraciones', () => {
     expect(tabla[0]!.ok).toBe(true);
   });
 
-  it('base parcial (solo 0000 a mano): el baseline la deja trabada para siempre', async () => {
+  it('base parcial (solo 0000 a mano): NO marca baseline y aplica la cadena', async () => {
     const url = await freshDb('qa_mig_partial');
     await applyByHand(url, '0000');
     const r = await runOn(url);
-    // El baseline se dispara con la sola existencia de `tenants`: marca
-    // 0000..0017 como aplicadas aunque 0001..0017 nunca corrieron.
-    expect(r.skipped.length).toBe(FILES.length - 1);
-    expect(r.applied).toEqual([]);
-    expect(r.failed?.file).toBe('0018_tasks.sql');
-    expect(r.failed?.error).toMatch(/whatsapp_conversations.*does not exist/);
 
-    // Y queda envenenada: 0014 nunca correrá porque figura como aplicada.
+    // El baseline exige la huella real del estado 0017, no la sola existencia
+    // de `tenants`. Con una base a medio migrar no se marca nada como hecho:
+    // se aplican de verdad las que faltan.
+    // 0000 ya estaba puesta a mano: falla con "already exists", se registra y
+    // la cadena sigue en vez de trabarse. El resto se aplica de verdad.
+    expect(r.skipped).toEqual(['0000_init.sql']);
+    expect(r.applied).toContain('0014_waitlist.sql');
+    expect(r.applied).toContain('0018_tasks.sql');
+    expect(r.failed).toBeNull();
+
+    // Y las intermedias corrieron: 0014 creó la waitlist.
     const tabla = await query<{ ok: boolean }>(
       url,
       "SELECT to_regclass('public.waitlist_entries') IS NOT NULL AS ok",
     );
-    expect(tabla[0]!.ok).toBe(false);
+    expect(tabla[0]!.ok).toBe(true);
+
+    // Segunda pasada: no queda nada pendiente.
     const r2 = await runOn(url);
     expect(r2.applied).toEqual([]);
-    expect(r2.failed?.file).toBe('0018_tasks.sql');
+    expect(r2.failed).toBeNull();
   });
 });

@@ -3,7 +3,7 @@
 import { KanbanBoard } from '@/components/tasks/KanbanBoard';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MEMBERS, task } from './tasks-ui-fixtures';
+import { LUCIA, MARTA, MEMBERS, task } from './tasks-ui-fixtures';
 
 afterEach(cleanup);
 
@@ -98,7 +98,7 @@ describe('TaskCard — contenido', () => {
           checklistTotal: 4,
           commentCount: 3,
           labels: ['revision'],
-          assigneeIds: [MEMBERS[0]!.userId, MEMBERS[1]!.userId],
+          assigneeIds: [LUCIA.userId, MARTA.userId],
           dueAt: '2026-09-02T12:30:00.000Z',
           dueAllDay: false,
           requiresEvidence: true,
@@ -114,7 +114,8 @@ describe('TaskCard — contenido', () => {
     expect(t).toContain('María Gómez');
     expect(t).toContain('+34600111222');
     expect(t).toContain('50%'); // progreso del checklist 2/4
-    expect(t).toContain('2/4');
+    // El contador "2/4" se quitó a propósito: repetía lo que ya dice la barra.
+    expect(t).not.toContain('2/4');
     expect(t).toContain('3'); // comentarios
     expect(within(card).getByLabelText('2 de 4 pasos hechos')).toBeTruthy();
     expect(within(card).getByLabelText('Requiere evidencia para cerrarse')).toBeTruthy();

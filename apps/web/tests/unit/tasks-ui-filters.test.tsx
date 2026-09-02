@@ -7,6 +7,9 @@ import { LUCIA, MARTA, MEMBERS, mockFetch, stats, task } from './tasks-ui-fixtur
 
 afterEach(cleanup);
 
+// Literal fuera del JSX: biome confunde la prop `role` con el atributo ARIA.
+const OPERATOR = 'operator' as const;
+
 beforeEach(() => {
   mockFetch();
 });
@@ -50,7 +53,7 @@ function renderWorkspace(tasks = TASKS) {
       templates={[]}
       rules={[]}
       currentUserId={LUCIA.userId}
-      role="operator"
+      role={OPERATOR}
     />,
   );
 }
@@ -181,11 +184,9 @@ describe('TasksWorkspace — filtros por chip', () => {
     expect(visibleTitles()).toHaveLength(3);
   });
 
-  it('OBSERVADO: "Limpiar" no borra el texto de búsqueda', () => {
-    // No es un fallo funcional —el buscador vive fuera del panel— pero conviene
-    // dejarlo escrito: tras "Limpiar" el tablero sigue filtrado por texto y el
-    // contador de filtros marca 0, así que nada en pantalla explica por qué
-    // faltan tareas.
+  it('"Limpiar" borra también el texto de búsqueda', () => {
+    // Antes el buscador sobrevivía al "Limpiar": el contador marcaba 0 filtros
+    // y el tablero seguía recortado, sin nada en pantalla que lo explicara.
     renderWorkspace();
     fireEvent.change(screen.getByPlaceholderText('Buscar tarea o paciente'), {
       target: { value: 'caja' },
@@ -195,7 +196,10 @@ describe('TasksWorkspace — filtros por chip', () => {
     fireEvent.click(screen.getByRole('button', { name: /Limpiar/ }));
 
     expect(filterCount()).toBe('');
-    expect(visibleTitles()).toEqual(['Cuadrar la caja']);
+    expect(visibleTitles().length).toBeGreaterThan(1);
+    expect((screen.getByPlaceholderText('Buscar tarea o paciente') as HTMLInputElement).value).toBe(
+      '',
+    );
   });
 });
 

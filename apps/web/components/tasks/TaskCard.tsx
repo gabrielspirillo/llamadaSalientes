@@ -10,7 +10,7 @@ import {
 import { cn } from '@/lib/cn';
 import { CATEGORY_META, SOURCE_META, dueTone } from '@/lib/tasks/constants';
 import type { TaskDTO, TaskMember } from '@/lib/tasks/types';
-import { Bot, CheckSquare, MessageSquare, Phone, Repeat, ShieldCheck, User } from 'lucide-react';
+import { Bot, Check, MessageSquare, Phone, Repeat, ShieldCheck, User } from 'lucide-react';
 
 /**
  * La card del tablero. Todo lo que una persona necesita para decidir si esta
@@ -24,8 +24,10 @@ export function TaskCard({
   onOpen,
   onDragStart,
   onDragEnd,
+  onComplete,
   dragging,
   draggable = true,
+  canEdit = true,
 }: {
   task: TaskDTO;
   members: TaskMember[];
@@ -33,8 +35,11 @@ export function TaskCard({
   onOpen: (id: string) => void;
   onDragStart?: (id: string) => void;
   onDragEnd?: () => void;
+  /** Cerrar o reabrir sin abrir el panel. En móvil es la única vía. */
+  onComplete?: (task: TaskDTO) => void;
   dragging?: boolean;
   draggable?: boolean;
+  canEdit?: boolean;
 }) {
   const meta = CATEGORY_META[task.category];
   const tone = dueTone(task.dueAt, now);
@@ -78,7 +83,7 @@ export function TaskCard({
             #{l}
           </span>
         ))}
-        <span className="ml-auto flex items-center gap-1 text-zinc-400">
+        <span className="ml-auto flex items-center gap-1 text-zinc-500">
           {task.source === 'AUTOMATION' && (
             <Bot className="h-3.5 w-3.5" aria-label={SOURCE_META.AUTOMATION.hint} />
           )}
@@ -91,14 +96,34 @@ export function TaskCard({
         </span>
       </div>
 
-      <h3
-        className={cn(
-          'mt-2 text-[13.5px] font-semibold leading-snug text-zinc-800',
-          isDone && 'line-through decoration-zinc-400',
+      <div className="mt-2 flex items-start gap-2">
+        {canEdit && onComplete && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onComplete(task);
+            }}
+            aria-label={isDone ? `Reabrir: ${task.title}` : `Marcar como hecha: ${task.title}`}
+            className={cn(
+              'mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors',
+              isDone
+                ? 'border-emerald-600 bg-emerald-600 text-white'
+                : 'border-zinc-400 bg-white/80 text-transparent hover:border-emerald-600 hover:text-emerald-600',
+            )}
+          >
+            <Check className="h-3 w-3" />
+          </button>
         )}
-      >
-        {task.title}
-      </h3>
+        <h3
+          className={cn(
+            'text-[13.5px] font-semibold leading-snug text-zinc-800',
+            isDone && 'line-through decoration-zinc-500',
+          )}
+        >
+          {task.title}
+        </h3>
+      </div>
 
       {task.description && (
         <p className="mt-1 line-clamp-2 text-[11.5px] leading-relaxed text-zinc-500">
@@ -108,10 +133,10 @@ export function TaskCard({
 
       {task.patientName && (
         <div className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-lg bg-white/70 px-2 py-1 text-[11px] font-medium text-zinc-600">
-          <User className="h-3 w-3 shrink-0 text-zinc-400" />
+          <User className="h-3 w-3 shrink-0 text-zinc-500" />
           <span className="truncate">{task.patientName}</span>
           {task.patientPhone && (
-            <span className="shrink-0 text-zinc-400">· {task.patientPhone}</span>
+            <span className="shrink-0 text-zinc-500">· {task.patientPhone}</span>
           )}
         </div>
       )}
@@ -124,13 +149,8 @@ export function TaskCard({
 
       <div className="mt-3 flex items-center justify-between gap-2">
         <AvatarStack ids={task.assigneeIds} members={members} />
-        <div className="flex items-center gap-2.5 text-[11px] text-zinc-500">
-          {task.checklistTotal > 0 && (
-            <span className="inline-flex items-center gap-1 tabular-nums">
-              <CheckSquare className="h-3 w-3" />
-              {task.checklistDone}/{task.checklistTotal}
-            </span>
-          )}
+        <div className="flex items-center gap-2.5 text-[11px] text-zinc-600">
+          {/* El contador "3/5" repetía lo que ya dice la barra de progreso. */}
           {task.commentCount > 0 && (
             <span className="inline-flex items-center gap-1 tabular-nums">
               <MessageSquare className="h-3 w-3" />

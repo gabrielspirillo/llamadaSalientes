@@ -39,13 +39,23 @@ export function StatsBar({
       />
       <Tile
         icon={<TrendingUp className="h-4 w-4" />}
-        label="Cumplimiento (7 días)"
-        value={`${stats.complianceRate}%`}
-        tone={stats.complianceRate >= 85 ? 'good' : stats.complianceRate >= 60 ? 'warn' : 'bad'}
+        label="Cerradas a tiempo (7 días)"
+        value={stats.complianceRate === null ? '—' : `${stats.complianceRate}%`}
+        tone={
+          stats.complianceRate === null
+            ? 'neutral'
+            : stats.complianceRate >= 85
+              ? 'good'
+              : stats.complianceRate >= 60
+                ? 'warn'
+                : 'bad'
+        }
         hint={
-          stats.avgCloseHours !== null
-            ? `Se cierran en ${stats.avgCloseHours} h de media`
-            : 'Aún no hay histórico'
+          stats.complianceRate === null
+            ? 'Esta semana no venció ninguna tarea'
+            : stats.avgCloseHours !== null
+              ? `Se cierran en ${stats.avgCloseHours} h de media`
+              : 'Aún no hay histórico'
         }
       />
       <Tile
@@ -58,7 +68,7 @@ export function StatsBar({
 
       {stats.perMember.length > 0 && (
         <div className="rounded-2xl border border-zinc-200/80 bg-white p-4 sm:col-span-2 xl:col-span-4">
-          <h3 className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+          <h3 className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
             <Repeat className="h-3.5 w-3.5" />
             Carga por persona
           </h3>
@@ -116,7 +126,7 @@ function Tile({
 
   return (
     <div className="rounded-2xl border border-zinc-200/80 bg-white p-4">
-      <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+      <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
         <span className={toneClass}>{icon}</span>
         {label}
       </div>

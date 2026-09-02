@@ -50,23 +50,27 @@ beforeAll(async () => {
 });
 
 describe('5a. seedSystemTemplates', () => {
-  it('siembra las 15 rutinas del catálogo y es idempotente', async () => {
-    expect(SYSTEM_TEMPLATES.length).toBe(15);
+  it('siembra las 16 rutinas del catálogo y es idempotente', async () => {
+    expect(SYSTEM_TEMPLATES.length).toBe(16);
     const n1 = await seedSystemTemplates(S.tenantId);
-    expect(n1).toBe(15);
+    expect(n1).toBe(16);
     const n2 = await seedSystemTemplates(S.tenantId);
     expect(n2).toBe(0);
 
-    const [{ n }] = await raw<{ n: number }[]>`
-      select count(*)::int as n from task_templates where tenant_id = ${S.tenantId}`;
-    expect(n).toBe(15);
+    const { n } = (
+      await raw<{ n: number }[]>`
+      select count(*)::int as n from task_templates where tenant_id = ${S.tenantId}`
+    )[0]!;
+    expect(n).toBe(16);
 
-    const [{ items }] = await raw<{ items: number }[]>`
-      select count(*)::int as items from task_template_items where tenant_id = ${S.tenantId}`;
+    const { items } = (
+      await raw<{ items: number }[]>`
+      select count(*)::int as items from task_template_items where tenant_id = ${S.tenantId}`
+    )[0]!;
     expect(items).toBe(SYSTEM_TEMPLATES.reduce((a, t) => a + t.items.length, 0));
 
     const tpls = await loadTemplates(S.tenantId);
-    expect(tpls.length).toBe(15);
+    expect(tpls.length).toBe(16);
     expect(tpls.every((t) => t.isSystem)).toBe(true);
     const apertura = tpls.find((t) => t.key === 'apertura');
     expect(apertura?.items.map((i) => i.order)).toEqual([0, 1, 2, 3, 4, 5, 6]);
@@ -211,14 +215,43 @@ describe('5b. materializeRoutinesForTenant — timezone, DST y frecuencias', () 
     expect(task!.source).toBe('ROUTINE');
     expect(task!.requires_evidence).toBe(true);
     expect(task!.labels).toEqual(['recepción']);
-    const [{ n: cl }] = await raw<{ n: number }[]>`
-      select count(*)::int as n from task_checklist_items where task_id = ${task!.id as string}`;
+    const { n: cl } = (
+      await raw<{ n: number }[]>`
+      select count(*)::int as n from task_checklist_items where task_id = ${task!.id as string}`
+    )[0]!;
     expect(cl).toBe(2);
-    const [{ n: asg }] = await raw<{ n: number }[]>`
-      select count(*)::int as n from task_assignees where task_id = ${task!.id as string}`;
+    const { n: asg } = (
+      await raw<{ n: number }[]>`
+      select count(*)::int as n from task_assignees where task_id = ${task!.id as string}`
+    )[0]!;
     expect(asg).toBe(1);
     const [act] = await raw<{ body: string }[]>`
       select body from task_comments where task_id = ${task!.id as string} and kind='activity'`;
     expect(act!.body).toBe('Generada por la rutina "Cierre QA"');
+  });
+});
+
+describe('5c. Auto-provisión: catálogo real materializado', () => {
+  it('un miércoles solo salen las rutinas que tocan ese día', async () => {
+    const T = await seedTenant('autoprov');
+    await seedSystemTemplates(T.tenantId);
+    // Ancla fija para que la recurrencia no dependa de la fecha real de hoy.
+    await raw`update task_templates set created_at = ${ANCHOR}::timestamptz,
+              last_materialized_on = '2026-09-01'::date where tenant_id = ${T.tenantId}`;
+
+    const res = await materializeRoutinesForTenant(T.tenantId, new Date('2026-09-02T12:00:00Z'));
+    expect(res.templates).toBe(16);
+    const titulos = await raw<{ title: string; due_at: Date }[]>`
+      select t.title, t.due_at from tasks t where t.tenant_id = ${T.tenantId} order by t.due_at`;
+    expect(titulos.map((t) => t.title)).toEqual([
+      'Apertura de clínica', // 08:30
+      'Reunión de arranque (huddle)', // 09:00
+      'Pedido de material y caducidades', // 16:00 (WEEKLY miércoles)
+      'Cierre de clínica', // 20:00 — es el cierre quien lanza el ciclo…
+      'Registro del ciclo de esterilización', // 20:30 — …y luego se registra
+    ]);
+    // Septiembre en Madrid = UTC+2
+    expect(titulos[0]!.due_at.toISOString()).toBe('2026-09-02T06:30:00.000Z');
+    expect(res.created).toBe(5);
   });
 });

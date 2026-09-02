@@ -77,7 +77,9 @@ export const updateTaskSchema = z.object({
   dueAt: dueAtSchema.optional(),
   dueAllDay: z.boolean().optional(),
   labels: z.array(z.string().trim().min(1).max(40)).max(12).optional(),
-  requiresEvidence: z.boolean().optional(),
+  // `requiresEvidence` NO se acepta acá a propósito: mandarlo en el mismo
+  // PATCH que cierra la tarea desactivaba el candado de evidencia. Es una
+  // propiedad de la rutina, no algo que se edite tarea a tarea.
   evidenceNote: z.string().max(2000).nullable().optional(),
   assigneeUserIds: z.array(z.string().uuid()).max(10).optional(),
 });

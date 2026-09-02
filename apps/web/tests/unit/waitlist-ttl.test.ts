@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { computeTtl, type TtlSettings } from '@/lib/waitlist/ttl';
+import { type TtlSettings, computeTtl } from '@/lib/waitlist/ttl';
 
 const settings: TtlSettings = {
   ttlMinutesDefault: 240,

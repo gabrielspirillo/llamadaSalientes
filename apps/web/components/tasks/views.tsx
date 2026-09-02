@@ -62,7 +62,7 @@ export function TaskRow({
           <span
             className={cn(
               'text-sm font-medium leading-snug text-zinc-800',
-              done && 'text-zinc-400 line-through',
+              done && 'text-zinc-500 line-through',
             )}
           >
             {task.title}
@@ -89,7 +89,7 @@ export function TaskRow({
           <a
             href={`tel:${task.patientPhone}`}
             aria-label={`Llamar a ${task.patientName ?? 'paciente'}`}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
           >
             <Phone className="h-3.5 w-3.5" />
           </a>
@@ -98,7 +98,7 @@ export function TaskRow({
           <Link
             href="/dashboard/whatsapp"
             aria-label="Abrir conversación de WhatsApp"
-            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
           >
             <MessageCircle className="h-3.5 w-3.5" />
           </Link>
@@ -230,8 +230,8 @@ export function MyDayView({
               >
                 {g.title}
               </h2>
-              <span className="text-xs tabular-nums text-zinc-400">{g.items.length}</span>
-              {g.hint && <span className="text-xs text-zinc-400">· {g.hint}</span>}
+              <span className="text-xs tabular-nums text-zinc-500">{g.items.length}</span>
+              {g.hint && <span className="text-xs text-zinc-500">· {g.hint}</span>}
             </div>
             <ul className="space-y-2">
               {g.items.map((t) => (
@@ -309,7 +309,13 @@ export function WeekView({
   });
 
   const undated = tasks.filter((t) => !t.dueAt && t.status !== 'DONE');
-  const maxLoad = Math.max(1, ...days.map((d) => d.items.length));
+  // Medimos y coloreamos con lo MISMO: las abiertas. Antes la barra crecía
+  // con las cerradas incluidas pero se pintaba en verde según las abiertas,
+  // así que un día resuelto se veía cargado.
+  const maxLoad = Math.max(
+    1,
+    ...days.map((d) => d.items.filter((t) => t.status !== 'DONE').length),
+  );
 
   return (
     <div className="space-y-4">
@@ -329,7 +335,7 @@ export function WeekView({
                 <span
                   className={cn(
                     'text-[11px] font-semibold uppercase tracking-wide',
-                    isToday ? 'text-zinc-900' : 'text-zinc-400',
+                    isToday ? 'text-zinc-900' : 'text-zinc-500',
                   )}
                 >
                   {d.date.toLocaleDateString('es-ES', { weekday: 'short' })}
@@ -344,7 +350,7 @@ export function WeekView({
                     'h-full rounded-full',
                     open.length === 0 ? 'bg-emerald-300' : 'bg-zinc-400',
                   )}
-                  style={{ width: `${Math.round((d.items.length / maxLoad) * 100)}%` }}
+                  style={{ width: `${Math.round((open.length / maxLoad) * 100)}%` }}
                 />
               </div>
               <ul className="mt-2 space-y-1">
@@ -364,7 +370,7 @@ export function WeekView({
                       <span
                         className={cn(
                           'line-clamp-2 text-[11.5px] leading-snug',
-                          t.status === 'DONE' ? 'text-zinc-400 line-through' : 'text-zinc-700',
+                          t.status === 'DONE' ? 'text-zinc-500 line-through' : 'text-zinc-700',
                         )}
                       >
                         {t.title}
@@ -373,7 +379,7 @@ export function WeekView({
                   </li>
                 ))}
                 {d.items.length > 6 && (
-                  <li className="px-1 text-[11px] text-zinc-400">+{d.items.length - 6} más</li>
+                  <li className="px-1 text-[11px] text-zinc-500">+{d.items.length - 6} más</li>
                 )}
                 {d.items.length === 0 && <li className="px-1 py-2 text-[11px] text-zinc-300">—</li>}
               </ul>
@@ -386,7 +392,7 @@ export function WeekView({
         <section>
           <h2 className="mb-2 text-sm font-semibold text-zinc-800">
             Sin fecha{' '}
-            <span className="font-normal text-zinc-400">
+            <span className="font-normal text-zinc-500">
               · no aparecen en ningún día hasta que les pongas una fecha
             </span>
           </h2>
@@ -480,7 +486,7 @@ export function PatientsView({
                 {g.phone}
               </a>
             )}
-            <span className="ml-auto text-[11px] tabular-nums text-zinc-400">
+            <span className="ml-auto text-[11px] tabular-nums text-zinc-500">
               {g.items.length} pendiente{g.items.length === 1 ? '' : 's'}
             </span>
           </header>

@@ -16,6 +16,14 @@ import { useMemo, useRef, useState } from 'react';
  * "Llamar a María mañana 10:30 #paciente !alta @lucia" y la vista previa
  * muestra exactamente qué se va a crear antes de apretar enter.
  */
+/** Minúsculas y sin tildes, para comparar nombres como los escribe la gente. */
+function fold(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
 export function QuickAdd({
   members,
   status,
@@ -40,14 +48,27 @@ export function QuickAdd({
     if (parsed.assigneeHints.length === 0) return [];
     return parsed.assigneeHints
       .map((hint) => {
-        const needle = hint.toLowerCase();
+        // Sin quitar tildes, escribir "@lucia" no encontraba a "Lucía" y la
+        // tarea se creaba sin responsable, en silencio.
+        const needle = fold(hint);
         return members.find(
-          (m) =>
-            m.name.toLowerCase().startsWith(needle) || m.email.toLowerCase().startsWith(needle),
+          (m) => fold(m.name).startsWith(needle) || fold(m.email).startsWith(needle),
         );
       })
       .filter((m): m is TaskMember => !!m);
   }, [parsed.assigneeHints, members]);
+
+  // Avisar cuando se escribió un @alguien que no existe, en vez de ignorarlo.
+  const unmatchedHints = useMemo(
+    () =>
+      parsed.assigneeHints.filter(
+        (hint) =>
+          !members.some(
+            (m) => fold(m.name).startsWith(fold(hint)) || fold(m.email).startsWith(fold(hint)),
+          ),
+      ),
+    [parsed.assigneeHints, members],
+  );
 
   const submit = async () => {
     const title = parsed.title.trim();
@@ -101,7 +122,7 @@ export function QuickAdd({
         }}
         className="flex items-center gap-2"
       >
-        <Plus className="h-4 w-4 shrink-0 text-zinc-400" />
+        <Plus className="h-4 w-4 shrink-0 text-zinc-500" />
         <input
           ref={inputRef}
           // biome-ignore lint/a11y/noAutofocus: el usuario abrió el alta rápida a propósito
@@ -112,9 +133,9 @@ export function QuickAdd({
             if (e.key === 'Escape') onCancel?.();
           }}
           placeholder="Llamar a María mañana 10:30 #paciente !alta @lucia"
-          className="min-w-0 flex-1 border-0 bg-transparent text-sm placeholder:text-zinc-400 focus:outline-none"
+          className="min-w-0 flex-1 border-0 bg-transparent text-sm placeholder:text-zinc-500 focus:outline-none"
         />
-        <span className="hidden shrink-0 text-[10px] text-zinc-400 sm:inline">
+        <span className="hidden shrink-0 text-[10px] text-zinc-500 sm:inline">
           en {STATUS_META[status].label}
         </span>
         <Button type="submit" size="sm" disabled={busy || !parsed.title.trim()}>
@@ -125,7 +146,7 @@ export function QuickAdd({
             type="button"
             onClick={onCancel}
             aria-label="Cancelar"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-100"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100"
           >
             <X className="h-4 w-4" />
           </button>
@@ -177,6 +198,13 @@ export function QuickAdd({
             </span>
           ))}
         </div>
+      )}
+
+      {unmatchedHints.length > 0 && (
+        <p className="mt-2 text-xs text-amber-700">
+          No encuentro a {unmatchedHints.map((h) => `@${h}`).join(', ')} en el equipo. La tarea se
+          creará sin esa persona asignada.
+        </p>
       )}
 
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}

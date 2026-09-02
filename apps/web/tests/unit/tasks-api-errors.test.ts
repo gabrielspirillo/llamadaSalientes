@@ -51,9 +51,7 @@ describe('taskErrorResponse', () => {
 
   it('500 genérico sin filtrar detalles internos al cliente', async () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const res = taskErrorResponse(
-      new Error('connect ECONNREFUSED 10.0.0.4:5432 password=hunter2'),
-    );
+    const res = taskErrorResponse(new Error('connect ECONNREFUSED 10.0.0.4:5432 password=hunter2'));
     expect(res.status).toBe(500);
     // Lo importante: el cuerpo NO lleva el mensaje del error.
     expect(await body(res)).toEqual({ error: 'Error interno' });

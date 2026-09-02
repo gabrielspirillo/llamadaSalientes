@@ -43,9 +43,11 @@ describe('ZadarmaRestClient', () => {
     const balance = await c.getBalance();
     expect(balance).toEqual({ balance: 5, currency: 'EUR' });
 
-    const [url, init] = (fetchMock as unknown as {
-      mock: { calls: [string, RequestInit][] };
-    }).mock.calls[0]!;
+    const [url, init] = (
+      fetchMock as unknown as {
+        mock: { calls: [string, RequestInit][] };
+      }
+    ).mock.calls[0]!;
     expect(url).toBe('https://api.zadarma.com/v1/info/balance/');
     expect(init.method).toBe('GET');
     const authHeader = (init.headers as Record<string, string>).Authorization;
@@ -59,9 +61,7 @@ describe('ZadarmaRestClient', () => {
         status: 200,
         json: {
           status: 'success',
-          info: [
-            { number: '34911112222', type: 'direct', country: 'ES', status: 'active' },
-          ],
+          info: [{ number: '34911112222', type: 'direct', country: 'ES', status: 'active' }],
         },
       }),
     );
@@ -96,9 +96,11 @@ describe('ZadarmaRestClient', () => {
     });
     expect(res.pbx_call_id).toBe('pbx_123');
 
-    const [url] = (fetchMock as unknown as {
-      mock: { calls: [string, RequestInit][] };
-    }).mock.calls[0]!;
+    const [url] = (
+      fetchMock as unknown as {
+        mock: { calls: [string, RequestInit][] };
+      }
+    ).mock.calls[0]!;
     expect(url).toContain('/v1/request/callback/?from=34911112222&to=5491139530968');
   });
 
@@ -109,9 +111,11 @@ describe('ZadarmaRestClient', () => {
     const c = new ZadarmaRestClient({ userKey: USER_KEY, secret: SECRET });
     await c.setNotificationUrl('https://example.com/zd/webhook');
 
-    const [url, init] = (fetchMock as unknown as {
-      mock: { calls: [string, RequestInit][] };
-    }).mock.calls[0]!;
+    const [url, init] = (
+      fetchMock as unknown as {
+        mock: { calls: [string, RequestInit][] };
+      }
+    ).mock.calls[0]!;
     expect(url).toBe('https://api.zadarma.com/v1/webhook/notification/');
     expect(init.method).toBe('POST');
     expect((init.headers as Record<string, string>)['content-type']).toBe(
@@ -126,9 +130,7 @@ describe('ZadarmaRestClient', () => {
       mockFetch({ status: 422, json: { status: 'error', message: 'Invalid number' } }),
     );
     const c = new ZadarmaRestClient({ userKey: USER_KEY, secret: SECRET });
-    await expect(c.createCallback({ from: 'x', to: 'y' })).rejects.toBeInstanceOf(
-      ZadarmaApiError,
-    );
+    await expect(c.createCallback({ from: 'x', to: 'y' })).rejects.toBeInstanceOf(ZadarmaApiError);
   });
 
   it('status=error con 200 también lanza ZadarmaApiError', async () => {
@@ -140,8 +142,6 @@ describe('ZadarmaRestClient', () => {
       }),
     );
     const c = new ZadarmaRestClient({ userKey: USER_KEY, secret: SECRET });
-    await expect(c.createCallback({ from: 'a', to: 'b' })).rejects.toBeInstanceOf(
-      ZadarmaApiError,
-    );
+    await expect(c.createCallback({ from: 'a', to: 'b' })).rejects.toBeInstanceOf(ZadarmaApiError);
   });
 });

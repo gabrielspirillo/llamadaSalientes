@@ -119,7 +119,9 @@ describe('QuickAdd — envío', () => {
     expect(btn.disabled).toBe(true);
     // solo metadatos, sin texto: sigue sin poder crearse
     type(input, '#paciente !alta');
-    expect((screen.getByRole('button', { name: 'Crear' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Crear' }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
     type(input, 'Algo que hacer');
     expect((screen.getByRole('button', { name: 'Crear' }) as HTMLButtonElement).disabled).toBe(
       false,

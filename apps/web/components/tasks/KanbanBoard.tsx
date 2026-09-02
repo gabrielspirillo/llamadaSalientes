@@ -22,6 +22,7 @@ export function KanbanBoard({
   onOpen,
   onReorder,
   onQuickAdd,
+  onComplete,
 }: {
   tasks: TaskDTO[];
   members: TaskMember[];
@@ -30,12 +31,17 @@ export function KanbanBoard({
   onOpen: (id: string) => void;
   onReorder: (status: TaskStatus, orderedIds: string[]) => void;
   onQuickAdd: (status: TaskStatus) => void;
+  onComplete?: (task: TaskDTO) => void;
 }) {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [target, setTarget] = useState<{ status: TaskStatus; index: number } | null>(null);
 
+  // Ordenar por `boardPosition` es lo que hace visible la actualización
+  // optimista: sin esto la card volvía a su sitio hasta que respondía el
+  // servidor y el arrastre dentro de una columna parecía no hacer nada.
   const byStatus = useCallback(
-    (status: TaskStatus) => tasks.filter((t) => t.status === status),
+    (status: TaskStatus) =>
+      tasks.filter((t) => t.status === status).sort((a, b) => a.boardPosition - b.boardPosition),
     [tasks],
   );
 
@@ -45,10 +51,24 @@ export function KanbanBoard({
     setTarget(null);
     if (!id || !canEdit) return;
 
-    const column = byStatus(status).filter((t) => t.id !== id);
-    const ids = column.map((t) => t.id);
-    ids.splice(Math.min(index, ids.length), 0, id);
-    onReorder(status, ids);
+    // `index` se calcula sobre la columna tal como se ve, es decir CON la card
+    // arrastrada todavía dentro. Al sacarla, todo lo que estaba por debajo
+    // sube una posición: si no descontamos ese hueco, cada movimiento hacia
+    // abajo cae un sitio más allá del que marca el indicador.
+    const ids = byStatus(status).map((t) => t.id);
+    const from = ids.indexOf(id);
+    let insertAt = Math.min(index, ids.length);
+    if (from !== -1 && from < insertAt) insertAt -= 1;
+
+    const next = ids.filter((x) => x !== id);
+    next.splice(Math.min(insertAt, next.length), 0, id);
+
+    // Soltar donde ya estaba no es un movimiento: no molestamos al servidor.
+    const current = byStatus(status).map((t) => t.id);
+    const unchanged = next.length === current.length && next.every((x, i) => x === current[i]);
+    if (unchanged) return;
+
+    onReorder(status, next);
   };
 
   return (
@@ -87,7 +107,7 @@ export function KanbanBoard({
                   type="button"
                   onClick={() => onQuickAdd(status)}
                   aria-label={`Nueva tarea en ${meta.label}`}
-                  className="ml-auto inline-flex h-6 w-6 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-white hover:text-zinc-700"
+                  className="ml-auto inline-flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-white hover:text-zinc-700"
                 >
                   <Plus className="h-3.5 w-3.5" />
                 </button>
@@ -116,6 +136,8 @@ export function KanbanBoard({
                     members={members}
                     now={now}
                     onOpen={onOpen}
+                    onComplete={onComplete}
+                    canEdit={canEdit}
                     draggable={canEdit}
                     dragging={draggingId === task.id}
                     onDragStart={setDraggingId}
@@ -130,7 +152,7 @@ export function KanbanBoard({
               {isTarget && target.index >= column.length && draggingId && <DropPlaceholder />}
 
               {column.length === 0 && !draggingId && (
-                <p className="px-1 py-6 text-center text-xs text-zinc-400">
+                <p className="px-1 py-6 text-center text-xs text-zinc-500">
                   {status === 'TODO' ? 'Sin pendientes aquí' : meta.hint}
                 </p>
               )}

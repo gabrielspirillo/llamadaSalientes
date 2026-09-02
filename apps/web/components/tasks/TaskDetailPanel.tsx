@@ -40,12 +40,15 @@ export function TaskDetailPanel({
   taskId,
   members,
   canEdit,
+  notice,
   onClose,
   onChanged,
 }: {
   taskId: string;
   members: TaskMember[];
   canEdit: boolean;
+  /** Aviso que llega desde fuera (p. ej. "falta la evidencia"). */
+  notice?: string | null;
   onClose: () => void;
   onChanged: () => void;
 }) {
@@ -225,17 +228,23 @@ export function TaskDetailPanel({
             {loading && <div className="h-6 w-48 animate-pulse rounded bg-zinc-100" />}
           </div>
           <div className="flex items-center gap-1">
-            {saving && <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />}
+            {saving && <Loader2 className="h-4 w-4 animate-spin text-zinc-500" />}
             <button
               type="button"
               onClick={onClose}
               aria-label="Cerrar"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
         </header>
+
+        {notice && !error && (
+          <p className="border-b border-amber-200 bg-amber-50 px-5 py-2.5 text-xs font-medium text-amber-900">
+            {notice}
+          </p>
+        )}
 
         {error && (
           <p className="border-b border-red-100 bg-red-50 px-5 py-2 text-xs text-red-700">
@@ -349,7 +358,7 @@ export function TaskDetailPanel({
                   const v = e.target.value;
                   if (v !== (task.description ?? '')) void patch({ description: v || null });
                 }}
-                className="w-full resize-y rounded-xl border border-zinc-200 px-3 py-2 text-sm leading-relaxed text-zinc-700 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none"
+                className="w-full resize-y rounded-xl border border-zinc-200 px-3 py-2 text-sm leading-relaxed text-zinc-700 placeholder:text-zinc-500 focus:border-zinc-400 focus:outline-none"
               />
             </section>
 
@@ -407,7 +416,7 @@ export function TaskDetailPanel({
               <SectionTitle>
                 Lista de comprobación
                 {task.checklistTotal > 0 && (
-                  <span className="ml-2 font-normal text-zinc-400 tabular-nums">
+                  <span className="ml-2 font-normal text-zinc-500 tabular-nums">
                     {task.checklistDone}/{task.checklistTotal}
                   </span>
                 )}
@@ -434,7 +443,7 @@ export function TaskDetailPanel({
                     <span
                       className={cn(
                         'flex-1 text-sm leading-snug',
-                        item.done ? 'text-zinc-400 line-through' : 'text-zinc-700',
+                        item.done ? 'text-zinc-500 line-through' : 'text-zinc-700',
                       )}
                     >
                       {item.content}
@@ -446,7 +455,7 @@ export function TaskDetailPanel({
                         aria-label="Quitar de la lista"
                         className="opacity-0 transition-opacity group-hover:opacity-100"
                       >
-                        <Trash2 className="h-3.5 w-3.5 text-zinc-400 hover:text-red-600" />
+                        <Trash2 className="h-3.5 w-3.5 text-zinc-500 hover:text-red-600" />
                       </button>
                     )}
                   </li>
@@ -463,12 +472,12 @@ export function TaskDetailPanel({
                   }}
                   className="mt-2 flex items-center gap-2"
                 >
-                  <Plus className="h-3.5 w-3.5 text-zinc-400" />
+                  <Plus className="h-3.5 w-3.5 text-zinc-500" />
                   <input
                     value={newItem}
                     onChange={(e) => setNewItem(e.target.value)}
                     placeholder="Añadir paso"
-                    className="flex-1 border-0 border-b border-transparent bg-transparent py-1 text-sm placeholder:text-zinc-400 focus:border-zinc-300 focus:outline-none"
+                    className="flex-1 border-0 border-b border-transparent bg-transparent py-1 text-sm placeholder:text-zinc-500 focus:border-zinc-300 focus:outline-none"
                   />
                 </form>
               )}
@@ -518,7 +527,7 @@ export function TaskDetailPanel({
                       >
                         {c.body}
                       </p>
-                      <p className="mt-0.5 text-[11px] text-zinc-400">
+                      <p className="mt-0.5 text-[11px] text-zinc-500">
                         {c.authorName ? `${c.authorName} · ` : ''}
                         {new Date(c.createdAt).toLocaleString('es-ES', {
                           day: '2-digit',
@@ -531,7 +540,7 @@ export function TaskDetailPanel({
                   </li>
                 ))}
                 {task.comments.length === 0 && (
-                  <li className="text-xs text-zinc-400">Todavía no ha pasado nada aquí.</li>
+                  <li className="text-xs text-zinc-500">Todavía no ha pasado nada aquí.</li>
                 )}
               </ul>
             </section>
@@ -551,7 +560,7 @@ export function TaskDetailPanel({
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 placeholder="Escribir un comentario…"
-                className="flex-1 rounded-full border border-zinc-200 px-3.5 py-2 text-sm placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none"
+                className="flex-1 rounded-full border border-zinc-200 px-3.5 py-2 text-sm placeholder:text-zinc-500 focus:border-zinc-400 focus:outline-none"
               />
               <Button type="submit" size="icon" variant="primary" aria-label="Comentar">
                 <Send className="h-4 w-4" />
@@ -561,7 +570,7 @@ export function TaskDetailPanel({
                 onClick={() => void archive()}
                 aria-label="Archivar tarea"
                 title="Archivar tarea"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700"
               >
                 <Archive className="h-4 w-4" />
               </button>
@@ -580,7 +589,7 @@ export function TaskDetailPanel({
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+    <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
       {children}
     </h3>
   );
@@ -591,7 +600,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   // biome no puede verificar la asociación. El <span> hace de título visual.
   return (
     <div className="block">
-      <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+      <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
         {label}
       </span>
       {children}

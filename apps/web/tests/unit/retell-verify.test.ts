@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { sign as retellSign } from 'retell-sdk';
 import { verifyRetellSignature } from '@/lib/retell/verify';
+import { sign as retellSign } from 'retell-sdk';
+import { describe, expect, it } from 'vitest';
 
 const API_KEY = 'key_test_fase_4_signing';
 

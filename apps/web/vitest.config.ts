@@ -16,11 +16,10 @@ export default defineConfig({
   test: {
     environment: 'happy-dom',
     globals: true,
-    include: [
-      'tests/unit/**/*.test.ts',
-      'tests/unit/**/*.test.tsx',
-      'tests/integration/**/*.test.ts',
-    ],
-    exclude: ['tests/e2e/**', 'node_modules/**', '.next/**'],
+    // `tests/integration/**` queda fuera del run por defecto: esas pruebas
+    // necesitan un Postgres vivo y sin él ni siquiera se pueden importar.
+    // Se corren aparte con `pnpm test:integration`.
+    include: ['tests/unit/**/*.test.ts', 'tests/unit/**/*.test.tsx'],
+    exclude: ['tests/e2e/**', 'tests/integration/**', 'node_modules/**', '.next/**'],
   },
 });

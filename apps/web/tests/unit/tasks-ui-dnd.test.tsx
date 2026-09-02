@@ -34,6 +34,7 @@ function setup(canEdit = true, tasks = BASE) {
       onOpen={vi.fn()}
       onReorder={onReorder}
       onQuickAdd={vi.fn()}
+      onComplete={vi.fn()}
     />,
   );
   return { onReorder };
@@ -153,7 +154,7 @@ describe('KanbanBoard — drag & drop', () => {
   // índice que calcula el dragOver está referido a la columna CON la card
   // todavía dentro, pero handleDrop la quita antes de insertar. Resultado: la
   // tarea cae una posición más abajo de donde el usuario vio el placeholder.
-  // KanbanBoard.tsx:45-52 (handleDrop) vs. KanbanBoard.tsx:104-116 (índice).
+  // KanbanBoard.tsx:42-52 (handleDrop) vs. KanbanBoard.tsx:100-116 (cálculo del índice).
   // Estos dos tests describen lo que el usuario espera; hoy FALLAN.
   // ───────────────────────────────────────────────────────────────────────────
 
@@ -171,7 +172,7 @@ describe('KanbanBoard — drag & drop', () => {
     expect(onReorder).toHaveBeenCalledWith('TODO', ['b', 'a', 'c']);
   });
 
-  it('soltar en el mismo sitio del que salió no cambia el orden', () => {
+  it('soltar en el mismo sitio del que salió no llama al servidor', () => {
     const { onReorder } = setup();
     const dt = fakeDataTransfer();
 
@@ -180,6 +181,7 @@ describe('KanbanBoard — drag & drop', () => {
     fireDragOver(slotOf('B'), { clientY: 105, rect: { top: 100, height: 40 } });
     fireEvent.drop(columnOf('Por hacer'), { dataTransfer: dt });
 
-    expect(onReorder).toHaveBeenCalledWith('TODO', ['a', 'b', 'c']);
+    // Un drag que deja todo igual no es un movimiento: ni PATCH ni parpadeo.
+    expect(onReorder).not.toHaveBeenCalled();
   });
 });

@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 
 import { badRequest, createTaskSchema, taskErrorResponse } from '@/lib/tasks/api';
 import { requireTaskRole } from '@/lib/tasks/auth';
+import { getTenantTimezone } from '@/lib/tasks/materialize';
 import { loadBoardTasks, loadTaskStats } from '@/lib/tasks/queries';
 import { createTask } from '@/lib/tasks/service';
 
@@ -13,7 +14,12 @@ export async function GET(): Promise<NextResponse> {
   try {
     const auth = await requireTaskRole('viewer');
     const board = await loadBoardTasks(auth.tenantId);
-    const stats = await loadTaskStats(auth.tenantId, board);
+    const stats = await loadTaskStats(
+      auth.tenantId,
+      board,
+      new Date(),
+      await getTenantTimezone(auth.tenantId),
+    );
     return NextResponse.json({ tasks: board, stats });
   } catch (err) {
     return taskErrorResponse(err);

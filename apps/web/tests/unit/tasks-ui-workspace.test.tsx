@@ -8,6 +8,7 @@ import {
   MEMBERS,
   detail,
   fakeDataTransfer,
+  fireDragOver,
   mockFetch,
   stats,
   task,
@@ -18,6 +19,9 @@ vi.mock('next/link', () => ({
 }));
 
 afterEach(cleanup);
+
+// Literal fuera del JSX: biome confunde la prop `role` con el atributo ARIA.
+const OPERATOR = 'operator' as const;
 
 let fetchMock: ReturnType<typeof mockFetch>;
 
@@ -38,7 +42,7 @@ function renderWorkspace(over: Partial<Parameters<typeof TasksWorkspace>[0]> = {
       templates={[]}
       rules={[]}
       currentUserId={LUCIA.userId}
-      role="operator"
+      role={OPERATOR}
       {...over}
     />,
   );
@@ -111,9 +115,13 @@ describe('TasksWorkspace — reorder optimista con rollback', () => {
 
   it('si el servidor acepta, la card se queda y se refresca el tablero', async () => {
     fetchMock.on('/api/tasks/reorder', { status: 200, json: { ok: true } });
-    fetchMock.on('/api/tasks', { status: 200, json: { tasks: [], stats: stats() } }, {
-      method: 'GET',
-    });
+    fetchMock.on(
+      '/api/tasks',
+      { status: 200, json: { tasks: [], stats: stats() } },
+      {
+        method: 'GET',
+      },
+    );
     renderWorkspace();
 
     const dt = fakeDataTransfer();
@@ -180,7 +188,9 @@ describe('TasksWorkspace — gate de evidencia en el cliente', () => {
   it('no llama a la API, avisa y abre el detalle', async () => {
     fetchMock.on(/\/api\/tasks\/ev$/, {
       status: 200,
-      json: { task: detail({ id: 'ev', title: 'Ciclo de esterilización', requiresEvidence: true }) },
+      json: {
+        task: detail({ id: 'ev', title: 'Ciclo de esterilización', requiresEvidence: true }),
+      },
     });
     renderWorkspace({
       initialTasks: [
@@ -195,9 +205,8 @@ describe('TasksWorkspace — gate de evidencia en el cliente', () => {
     fireEvent.click(screen.getByRole('button', { name: /Mi día/ }));
     fireEvent.click(screen.getByLabelText('Marcar como hecha'));
 
-    expect(
-      screen.getByText('Esta tarea exige una nota de evidencia antes de cerrarse.'),
-    ).toBeTruthy();
+    // El aviso viaja DENTRO del panel: antes se pintaba detrás y no se veía.
+    expect(screen.getByText(/hace falta dejar constancia/i)).toBeTruthy();
     // Ningún PATCH: solo el GET del panel de detalle que se acaba de abrir.
     expect(fetchMock.calls.filter((c) => c.method === 'PATCH')).toHaveLength(0);
     await waitFor(() =>
@@ -225,5 +234,52 @@ describe('TasksWorkspace — gate de evidencia en el cliente', () => {
 
     await waitFor(() => expect(fetchMock.callsTo('/api/tasks/ev').length).toBe(1));
     expect(fetchMock.callsTo('/api/tasks/ev')[0]?.method).toBe('PATCH');
+  });
+});
+
+describe('TasksWorkspace — HALLAZGO: el reorden dentro de la columna no se ve', () => {
+  // handleReorder recalcula `boardPosition` de forma optimista
+  // (TasksWorkspace.tsx:152-160) pero KanbanBoard pinta las tareas en el orden
+  // del array que recibe, sin ordenar por boardPosition
+  // (KanbanBoard.tsx:37-40). El servidor sí ordena por boardPosition
+  // (lib/tasks/queries.ts:90), así que la card no se mueve hasta que vuelve el
+  // refresco: durante el viaje de ida y vuelta parece que el arrastre no hizo
+  // nada. Este test describe lo que el usuario espera ver; hoy FALLA.
+  it('la card se queda donde se soltó mientras el servidor responde', async () => {
+    let settle!: (r: Response) => void;
+    const pending = new Promise<Response>((res) => {
+      settle = res;
+    });
+    fetchMock.spy.mockImplementation(async (input: unknown, init?: RequestInit) => {
+      const url = String(input);
+      fetchMock.calls.push({ url, method: (init?.method ?? 'GET').toUpperCase(), body: null });
+      if (url.includes('/api/tasks/reorder')) return pending;
+      return { ok: true, status: 200, json: async () => ({}) } as unknown as Response;
+    });
+
+    renderWorkspace({
+      initialTasks: [
+        task({ id: 'a', title: 'Primera', status: 'TODO', boardPosition: 1000 }),
+        task({ id: 'b', title: 'Segunda', status: 'TODO', boardPosition: 2000 }),
+        task({ id: 'c', title: 'Tercera', status: 'TODO', boardPosition: 3000 }),
+      ],
+    });
+
+    const dt = fakeDataTransfer();
+    fireEvent.dragStart(cardOf('Primera'), { dataTransfer: dt });
+    fireDragOver(cardOf('Tercera').parentElement as HTMLElement, {
+      clientY: 135,
+      rect: { top: 100, height: 40 },
+    });
+    fireEvent.drop(columnOf('Por hacer'), { dataTransfer: dt });
+
+    await waitFor(() => expect(fetchMock.callsTo('/api/tasks/reorder').length).toBe(1));
+
+    const titles = within(columnOf('Por hacer'))
+      .getAllByRole('article')
+      .map((a) => a.querySelector('h3')?.textContent);
+    expect(titles).toEqual(['Segunda', 'Tercera', 'Primera']);
+
+    settle({ ok: true, status: 200, json: async () => ({ ok: true }) } as unknown as Response);
   });
 });

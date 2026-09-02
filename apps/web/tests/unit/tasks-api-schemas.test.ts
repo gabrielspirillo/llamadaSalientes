@@ -39,9 +39,9 @@ describe('createTaskSchema', () => {
   it('corta el título en 300 y la descripción en 4000', () => {
     expect(createTaskSchema.safeParse({ title: 'a'.repeat(300) }).success).toBe(true);
     expect(createTaskSchema.safeParse({ title: 'a'.repeat(301) }).success).toBe(false);
-    expect(
-      createTaskSchema.safeParse({ title: 'ok', description: 'a'.repeat(4001) }).success,
-    ).toBe(false);
+    expect(createTaskSchema.safeParse({ title: 'ok', description: 'a'.repeat(4001) }).success).toBe(
+      false,
+    );
   });
 
   it('exige enums conocidos en category/priority/status', () => {
@@ -67,9 +67,9 @@ describe('createTaskSchema', () => {
     expect(createTaskSchema.safeParse({ title: 'ok', labels: Array(13).fill('x') }).success).toBe(
       false,
     );
-    expect(
-      createTaskSchema.safeParse({ title: 'ok', labels: ['a'.repeat(41)] }).success,
-    ).toBe(false);
+    expect(createTaskSchema.safeParse({ title: 'ok', labels: ['a'.repeat(41)] }).success).toBe(
+      false,
+    );
     expect(
       createTaskSchema.safeParse({ title: 'ok', assigneeUserIds: ['no-es-uuid'] }).success,
     ).toBe(false);
@@ -106,7 +106,11 @@ describe('createTaskSchema', () => {
   it('HALLAZGO: permite nacer en DONE con requiresEvidence y sin evidencia', () => {
     // createTask() no valida evidencia (solo updateTask y reorderColumn lo hacen),
     // así que este payload crea una tarea cerrada que jamás pasó por el control.
-    const r = createTaskSchema.safeParse({ title: 'Ciclo autoclave', status: 'DONE', requiresEvidence: true });
+    const r = createTaskSchema.safeParse({
+      title: 'Ciclo autoclave',
+      status: 'DONE',
+      requiresEvidence: true,
+    });
     expect(r.success).toBe(true);
   });
 });
@@ -235,7 +239,11 @@ describe('automationSchema', () => {
   it('HALLAZGO: params es un jsonb sin techo ni forma', () => {
     // z.record(z.unknown()) acepta cualquier objeto: no hay límite de tamaño ni
     // validación de las claves que el motor sí lee (p.ej. inactiveMonths).
-    const gordo = { basura: 'x'.repeat(200_000), inactiveMonths: 'doce', anidado: { a: { b: {} } } };
+    const gordo = {
+      basura: 'x'.repeat(200_000),
+      inactiveMonths: 'doce',
+      anidado: { a: { b: {} } },
+    };
     expect(automationSchema.safeParse({ params: gordo }).success).toBe(true);
   });
 

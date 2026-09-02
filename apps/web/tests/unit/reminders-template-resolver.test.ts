@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  type ReminderTemplateRow,
   defaultReminderButtons,
   driverScopeForWhatsAppMode,
   resolveTemplate,
-  type ReminderTemplateRow,
 } from '@/lib/reminders/template-resolver';
 
 function tpl(overrides: Partial<ReminderTemplateRow>): ReminderTemplateRow {

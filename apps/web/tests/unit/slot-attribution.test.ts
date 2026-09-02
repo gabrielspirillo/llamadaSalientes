@@ -5,18 +5,12 @@ vi.mock('server-only', () => ({}));
 // Evitar levantar el cliente de DB en el módulo bajo test.
 vi.mock('@/lib/db/client', () => ({ db: {} }));
 
-import {
-  pickBestAttribution,
-  type AttributionCandidate,
-} from '@/lib/analytics/slot-attribution';
+import { type AttributionCandidate, pickBestAttribution } from '@/lib/analytics/slot-attribution';
 
 const ts = (offsetMin: number) => new Date(Date.UTC(2025, 0, 1, 12, 0, 0) + offsetMin * 60_000);
 const reference = ts(0);
 
-function cand(
-  source: AttributionCandidate['source'],
-  offsetMin: number,
-): AttributionCandidate {
+function cand(source: AttributionCandidate['source'], offsetMin: number): AttributionCandidate {
   return { source, timestamp: ts(offsetMin) };
 }
 
@@ -34,10 +28,7 @@ describe('pickBestAttribution', () => {
   });
 
   it('mide distancia en valor absoluto (también hacia el futuro)', () => {
-    const winner = pickBestAttribution(
-      [cand('outbound', -30), cand('whatsapp', 5)],
-      reference,
-    );
+    const winner = pickBestAttribution([cand('outbound', -30), cand('whatsapp', 5)], reference);
     expect(winner?.source).toBe('whatsapp');
   });
 

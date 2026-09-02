@@ -275,12 +275,15 @@ export function sameLocalDay(a: Date, b: Date): boolean {
   );
 }
 
+// Tonos oscurecidos un paso: sobre los fondos pastel de las cards, amber-600
+// daba 3.0:1 y zinc-400 2.6:1, por debajo del mínimo legible de 4.5:1. Es
+// justo la información por la que existe el módulo.
 export const DUE_TONE_CLASS: Record<DueTone, string> = {
-  none: 'text-zinc-400',
-  future: 'text-zinc-500',
-  soon: 'text-amber-600',
-  today: 'text-amber-600',
-  overdue: 'text-red-600',
+  none: 'text-zinc-600',
+  future: 'text-zinc-600',
+  soon: 'text-amber-800',
+  today: 'text-amber-800',
+  overdue: 'text-red-700',
 };
 
 export function isTaskStatus(v: unknown): v is TaskStatus {

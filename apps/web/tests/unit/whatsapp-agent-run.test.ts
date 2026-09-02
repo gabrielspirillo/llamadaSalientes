@@ -178,7 +178,11 @@ describe('runWhatsappAgent', () => {
           {
             id: 'call-2',
             name: 'book_appointment',
-            args: { contact_id: 'ghl_juan', start_time: '2026-06-08T13:00:00', treatment_name: 'Urgencia' },
+            args: {
+              contact_id: 'ghl_juan',
+              start_time: '2026-06-08T13:00:00',
+              treatment_name: 'Urgencia',
+            },
           },
         ],
         tokensIn: 120,
@@ -208,7 +212,11 @@ describe('runWhatsappAgent', () => {
       })
       .mockResolvedValueOnce({
         name: 'book_appointment',
-        args: { contact_id: 'ghl_juan', start_time: '2026-06-08T13:00:00', treatment_name: 'Urgencia' },
+        args: {
+          contact_id: 'ghl_juan',
+          start_time: '2026-06-08T13:00:00',
+          treatment_name: 'Urgencia',
+        },
         ok: true,
         result: 'Cita agendada correctamente para 2026-06-08T13:00:00.',
         latencyMs: 120,
@@ -224,7 +232,9 @@ describe('runWhatsappAgent', () => {
     expect(out.urgent).toBe(true);
     expect(out.handoff).toBe(false);
     // La respuesta es la confirmación del agente, NO el texto plantillado viejo.
-    expect(out.responseText).toBe('Te he reservado una cita de urgencia hoy a las 13:00. Te esperamos.');
+    expect(out.responseText).toBe(
+      'Te he reservado una cita de urgencia hoy a las 13:00. Te esperamos.',
+    );
     expect(out.responseText).not.toBe(URGENT_RESPONSE_TEXT);
     // Agendó de verdad.
     expect(out.toolsCalled.map((t) => t.name)).toContain('book_appointment');

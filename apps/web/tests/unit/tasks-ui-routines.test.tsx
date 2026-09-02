@@ -66,9 +66,7 @@ describe('RoutinesView — rutinas recurrentes', () => {
     fireEvent.click(screen.getByRole('button', { name: /Generar ahora/ }));
     await waitFor(() => expect(fetchMock.callsTo('/api/tasks/run-routines').length).toBe(1));
     expect(fetchMock.callsTo('/api/tasks/run-routines')[0]?.method).toBe('POST');
-    expect(
-      await screen.findByText('Listo: ya se han creado las tareas que tocaban.'),
-    ).toBeTruthy();
+    expect(await screen.findByText('Listo: ya se han creado las tareas que tocaban.')).toBeTruthy();
   });
 
   it('un error del servidor se muestra y no se anuncia como éxito', async () => {

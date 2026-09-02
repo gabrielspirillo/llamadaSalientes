@@ -12,7 +12,6 @@ import {
   loadTaskStats,
   loadTemplates,
 } from '@/lib/tasks/queries';
-import { seedSystemTemplates } from '@/lib/tasks/templates';
 import {
   TaskNotFoundError,
   addChecklistItem,
@@ -24,6 +23,7 @@ import {
   setChecklistItemDone,
   updateTask,
 } from '@/lib/tasks/service';
+import { seedSystemTemplates } from '@/lib/tasks/templates';
 import { type SeedIds, raw, seedTenant, taskRow } from './_qa-tasks-helpers';
 
 const NOW = new Date('2026-06-15T12:00:00Z');
@@ -44,16 +44,82 @@ interface Fixture {
 }
 
 const FIXTURES: Fixture[] = [
-  { ref: 'T1', status: 'TODO', source: 'MANUAL', due: '2026-06-14T10:00:00Z', created: '2026-06-01T09:00:00Z', assignees: ['A'] },
-  { ref: 'T2', status: 'IN_PROGRESS', source: 'MANUAL', due: '2026-06-15T18:00:00Z', created: '2026-06-10T09:00:00Z', assignees: ['A'] },
-  { ref: 'T3', status: 'TODO', source: 'ROUTINE', due: '2026-06-20T10:00:00Z', created: '2026-06-11T09:00:00Z', assignees: ['B'] },
+  {
+    ref: 'T1',
+    status: 'TODO',
+    source: 'MANUAL',
+    due: '2026-06-14T10:00:00Z',
+    created: '2026-06-01T09:00:00Z',
+    assignees: ['A'],
+  },
+  {
+    ref: 'T2',
+    status: 'IN_PROGRESS',
+    source: 'MANUAL',
+    due: '2026-06-15T18:00:00Z',
+    created: '2026-06-10T09:00:00Z',
+    assignees: ['A'],
+  },
+  {
+    ref: 'T3',
+    status: 'TODO',
+    source: 'ROUTINE',
+    due: '2026-06-20T10:00:00Z',
+    created: '2026-06-11T09:00:00Z',
+    assignees: ['B'],
+  },
   { ref: 'T4', status: 'TODO', source: 'AUTOMATION', due: null, created: '2026-06-12T09:00:00Z' },
-  { ref: 'T5', status: 'DONE', source: 'MANUAL', due: '2026-06-11T10:00:00Z', created: '2026-06-10T10:00:00Z', completed: '2026-06-12T10:00:00Z', assignees: ['A'] },
-  { ref: 'T6', status: 'DONE', source: 'ROUTINE', due: '2026-06-09T09:00:00Z', created: '2026-06-08T10:00:00Z', completed: '2026-06-09T10:00:00Z', assignees: ['B'] },
-  { ref: 'T7', status: 'IN_REVIEW', source: 'AUTOMATION', due: '2026-06-13T10:00:00Z', created: '2026-06-05T09:00:00Z', assignees: ['A', 'B'] },
-  { ref: 'T8', status: 'DONE', source: 'MANUAL', due: '2026-06-13T12:00:00Z', created: '2026-06-13T10:00:00Z', completed: '2026-06-14T10:00:00Z', archived: '2026-06-14T11:00:00Z' },
-  { ref: 'T9', status: 'DONE', source: 'MANUAL', due: '2026-03-31T10:00:00Z', created: '2026-03-30T10:00:00Z', completed: '2026-04-01T10:00:00Z', archived: '2026-04-02T10:00:00Z' },
-  { ref: 'T10', status: 'TODO', source: 'MANUAL', due: '2026-06-15T08:00:00Z', created: '2026-06-14T09:00:00Z' },
+  {
+    ref: 'T5',
+    status: 'DONE',
+    source: 'MANUAL',
+    due: '2026-06-11T10:00:00Z',
+    created: '2026-06-10T10:00:00Z',
+    completed: '2026-06-12T10:00:00Z',
+    assignees: ['A'],
+  },
+  {
+    ref: 'T6',
+    status: 'DONE',
+    source: 'ROUTINE',
+    due: '2026-06-09T09:00:00Z',
+    created: '2026-06-08T10:00:00Z',
+    completed: '2026-06-09T10:00:00Z',
+    assignees: ['B'],
+  },
+  {
+    ref: 'T7',
+    status: 'IN_REVIEW',
+    source: 'AUTOMATION',
+    due: '2026-06-13T10:00:00Z',
+    created: '2026-06-05T09:00:00Z',
+    assignees: ['A', 'B'],
+  },
+  {
+    ref: 'T8',
+    status: 'DONE',
+    source: 'MANUAL',
+    due: '2026-06-13T12:00:00Z',
+    created: '2026-06-13T10:00:00Z',
+    completed: '2026-06-14T10:00:00Z',
+    archived: '2026-06-14T11:00:00Z',
+  },
+  {
+    ref: 'T9',
+    status: 'DONE',
+    source: 'MANUAL',
+    due: '2026-03-31T10:00:00Z',
+    created: '2026-03-30T10:00:00Z',
+    completed: '2026-04-01T10:00:00Z',
+    archived: '2026-04-02T10:00:00Z',
+  },
+  {
+    ref: 'T10',
+    status: 'TODO',
+    source: 'MANUAL',
+    due: '2026-06-15T08:00:00Z',
+    created: '2026-06-14T09:00:00Z',
+  },
 ];
 
 beforeAll(async () => {
@@ -163,7 +229,7 @@ describe('8. Queries y métricas', () => {
     await seedSystemTemplates(M.tenantId);
     await ensureAutomationRules(M.tenantId);
     const tpls = await loadTemplates(M.tenantId);
-    expect(tpls.length).toBe(15);
+    expect(tpls.length).toBe(16);
     expect(tpls.every((t) => t.stats.generated === 0)).toBe(true);
 
     const tplId = tpls.find((t) => t.key === 'apertura')!.id;
@@ -218,7 +284,7 @@ describe('9. Aislamiento multi-tenant', () => {
       upcoming: 0,
       doneThisWeek: 0,
       avgCloseHours: null,
-      complianceRate: 100,
+      complianceRate: null,
       manual: 0,
       routine: 0,
       automated: 0,

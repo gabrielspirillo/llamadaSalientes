@@ -56,8 +56,10 @@ describe('6a. ensureAutomationRules', () => {
   it('crea las 10 reglas del catálogo y es idempotente', async () => {
     expect(AUTOMATION_DEFAULTS.length).toBe(10);
     await ensureAutomationRules(A.tenantId); // segunda pasada
-    const [{ n }] = await raw<{ n: number }[]>`
-      select count(*)::int as n from task_automation_rules where tenant_id = ${A.tenantId}`;
+    const { n } = (
+      await raw<{ n: number }[]>`
+      select count(*)::int as n from task_automation_rules where tenant_id = ${A.tenantId}`
+    )[0]!;
     expect(n).toBe(10);
     const rules = await loadAutomationRules(A.tenantId);
     expect(rules.length).toBe(10);

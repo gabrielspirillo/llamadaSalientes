@@ -168,11 +168,11 @@ Sección `/dashboard/tasks` (label "Tareas"). Es transversal: no se contrata, vi
 
 **Timezone**: las rutinas se materializan en la timezone de `clinic_settings.timezone` (helpers puros en `lib/tasks/tz.ts`, recurrencia en `lib/tasks/recurrence.ts`). Ambos con tests unitarios.
 
-**Evidencia**: `tasks.requires_evidence` bloquea el pase a `DONE` sin `evidence_note`, tanto por PATCH como por drag & drop. Es lo que sostiene el registro de esterilización, el arqueo y las revisiones legales.
+**Evidencia**: `tasks.requires_evidence` bloquea el pase a `DONE` sin `evidence_note` en las **tres** vías de escritura: alta (`createTask`), edición (`updateTask`) y arrastre (`reorderColumn`). El flag se lee siempre de la fila guardada, nunca del body — mandarlo en el PATCH que cierra la tarea desactivaba el candado. Es lo que sostiene el registro de esterilización, el arqueo y las revisiones legales.
 
 **Roles**: `viewer` mira, `operator` crea/mueve/cierra, `admin` toca rutinas y automatizaciones (`lib/tasks/auth.ts`).
 
-**Auto-provisión**: la primera visita a la página siembra el catálogo de rutinas dentales, las reglas de automatización y materializa lo del día. Idempotente.
+**Auto-provisión**: la primera visita a la página siembra el catálogo de 16 rutinas dentales, las reglas de automatización y materializa lo del día. Idempotente.
 
 ## Idioma
 

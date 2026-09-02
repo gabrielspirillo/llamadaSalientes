@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, asc, desc, eq, gte, inArray, isNull, lt, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import {
@@ -22,9 +22,31 @@ import type {
   TaskStatsDTO,
   TaskTemplateDTO,
 } from '@/lib/tasks/types';
+import { addDaysToKey, localDateKey, parseDateKey, zonedToUtc } from '@/lib/tasks/tz';
 import { listTenantMembersSynced } from '@/lib/tenant-members';
 
 const BOARD_LIMIT = 400;
+
+/**
+ * Fin del día en la zona horaria de la CLÍNICA, no la del proceso.
+ *
+ * El worker corre en UTC: sin esto, "vence hoy" se cortaba a las 00:00 UTC,
+ * o sea a la una o dos de la madrugada en España. Justo el error que `tz.ts`
+ * evita en el resto del módulo.
+ */
+function endOfClinicDay(now: Date, timezone: string): Date {
+  const parts = parseDateKey(localDateKey(now, timezone));
+  if (!parts) {
+    const fallback = new Date(now);
+    fallback.setHours(23, 59, 59, 999);
+    return fallback;
+  }
+  // 00:00 del día siguiente menos un milisegundo.
+  const next = addDaysToKey(localDateKey(now, timezone), 1);
+  const p = parseDateKey(next);
+  if (!p) return now;
+  return new Date(zonedToUtc(p.year, p.month, p.day, 0, 0, timezone).getTime() - 1);
+}
 
 // ─── Miembros ────────────────────────────────────────────────────────────────
 
@@ -259,18 +281,30 @@ export async function loadTaskStats(
   tenantId: string,
   board: TaskDTO[],
   now: Date = new Date(),
+  timezone = 'Europe/Madrid',
 ): Promise<TaskStatsDTO> {
   const weekAgo = new Date(now.getTime() - 7 * 86_400_000);
   const monthAgo = new Date(now.getTime() - 30 * 86_400_000);
-  const endOfToday = new Date(now);
-  endOfToday.setHours(23, 59, 59, 999);
+  const endOfToday = endOfClinicDay(now, timezone);
 
-  const open = board.filter((t) => t.status !== 'DONE');
-  const overdue = open.filter((t) => t.dueAt && new Date(t.dueAt) < now);
-  const today = open.filter(
-    (t) => t.dueAt && new Date(t.dueAt) >= now && new Date(t.dueAt) <= endOfToday,
-  );
-  const upcoming = open.filter((t) => t.dueAt && new Date(t.dueAt) > endOfToday);
+  // Vencidas / hoy / próximas se cuentan en SQL sobre TODAS las tareas, no
+  // sobre el array del tablero: ese viene cortado en BOARD_LIMIT y hacía que
+  // los KPIs mintieran en silencio en cuanto la clínica pasaba de 400.
+  const [buckets] = await db
+    .select({
+      overdue: sql<number>`count(*) filter (where ${tasks.dueAt} < ${now.toISOString()}::timestamptz)::int`,
+      today: sql<number>`count(*) filter (where ${tasks.dueAt} >= ${now.toISOString()}::timestamptz and ${tasks.dueAt} <= ${endOfToday.toISOString()}::timestamptz)::int`,
+      upcoming: sql<number>`count(*) filter (where ${tasks.dueAt} > ${endOfToday.toISOString()}::timestamptz)::int`,
+    })
+    .from(tasks)
+    .where(
+      and(
+        eq(tasks.tenantId, tenantId),
+        isNull(tasks.archivedAt),
+        sql`${tasks.status} <> 'DONE'`,
+        isNotNull(tasks.dueAt),
+      ),
+    );
 
   const [closedRows] = await db
     .select({
@@ -321,11 +355,13 @@ export async function loadTaskStats(
   const doneCount = dueRows?.doneCount ?? 0;
 
   return {
-    overdue: overdue.length,
-    today: today.length,
-    upcoming: upcoming.length,
+    overdue: buckets?.overdue ?? 0,
+    today: buckets?.today ?? 0,
+    upcoming: buckets?.upcoming ?? 0,
     doneThisWeek: closedRows?.doneThisWeek ?? 0,
-    complianceRate: dueCount === 0 ? 100 : Math.round((doneCount / dueCount) * 100),
+    // Sin nada que vencer en la semana no hay cumplimiento que medir. Antes
+    // devolvíamos 100% y la clínica leía un dato inventado.
+    complianceRate: dueCount === 0 ? null : Math.round((doneCount / dueCount) * 100),
     avgCloseHours:
       closedRows?.avgHours === null || closedRows?.avgHours === undefined
         ? null
@@ -345,9 +381,9 @@ export async function countActionableTasks(
   tenantId: string,
   internalUserId: string | null,
   now: Date = new Date(),
+  timezone = 'Europe/Madrid',
 ): Promise<number> {
-  const endOfToday = new Date(now);
-  endOfToday.setHours(23, 59, 59, 999);
+  const endOfToday = endOfClinicDay(now, timezone);
 
   const conds = [
     eq(tasks.tenantId, tenantId),
