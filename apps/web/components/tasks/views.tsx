@@ -309,7 +309,13 @@ export function WeekView({
   });
 
   const undated = tasks.filter((t) => !t.dueAt && t.status !== 'DONE');
-  const maxLoad = Math.max(1, ...days.map((d) => d.items.length));
+  // Medimos y coloreamos con lo MISMO: las abiertas. Antes la barra crecía
+  // con las cerradas incluidas pero se pintaba en verde según las abiertas,
+  // así que un día resuelto se veía cargado.
+  const maxLoad = Math.max(
+    1,
+    ...days.map((d) => d.items.filter((t) => t.status !== 'DONE').length),
+  );
 
   return (
     <div className="space-y-4">
@@ -344,7 +350,7 @@ export function WeekView({
                     'h-full rounded-full',
                     open.length === 0 ? 'bg-emerald-300' : 'bg-zinc-400',
                   )}
-                  style={{ width: `${Math.round((d.items.length / maxLoad) * 100)}%` }}
+                  style={{ width: `${Math.round((open.length / maxLoad) * 100)}%` }}
                 />
               </div>
               <ul className="mt-2 space-y-1">

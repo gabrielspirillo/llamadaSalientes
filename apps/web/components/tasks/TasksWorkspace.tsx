@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/dashboard/page-header';
 import { KanbanBoard } from '@/components/tasks/KanbanBoard';
 import { QuickAdd } from '@/components/tasks/QuickAdd';
 import { RoutinesView } from '@/components/tasks/RoutinesView';
@@ -30,6 +31,7 @@ import type {
 } from '@/lib/tasks/types';
 import {
   CalendarDays,
+  ClipboardCheck,
   Columns3,
   Filter,
   Loader2,
@@ -56,8 +58,8 @@ export function TasksWorkspace({
   initialTasks,
   initialStats,
   members,
-  templates,
-  rules,
+  templates: initialTemplates,
+  rules: initialRules,
   currentUserId,
   role,
 }: {
@@ -71,8 +73,12 @@ export function TasksWorkspace({
 }) {
   const [tasks, setTasks] = useState<TaskDTO[]>(initialTasks);
   const [stats, setStats] = useState<TaskStatsDTO>(initialStats);
+  const [templates, setTemplates] = useState<TaskTemplateDTO[]>(initialTemplates);
+  const [rules, setRules] = useState<TaskAutomationRuleDTO[]>(initialRules);
   const [view, setView] = useState<ViewKey>('board');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  /** Aviso que se muestra dentro del panel al abrirlo (no detrás de él). */
+  const [panelNotice, setPanelNotice] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [assigneeFilter, setAssigneeFilter] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<TaskCategory | null>(null);
@@ -125,6 +131,27 @@ export function TasksWorkspace({
     };
   }, [refresh]);
 
+  /**
+   * Recarga rutinas y automatizaciones sin tirar la página entera.
+   * Antes hacía `window.location.reload()`, así que tocar tres ajustes eran
+   * tres recargas y tres vueltas al Tablero.
+   */
+  const refreshRoutines = useCallback(async () => {
+    try {
+      const [tplRes, ruleRes] = await Promise.all([
+        fetch('/api/tasks/templates', { cache: 'no-store' }),
+        fetch('/api/tasks/automations', { cache: 'no-store' }),
+      ]);
+      const tpl = (await tplRes.json()) as { templates?: TaskTemplateDTO[] };
+      const rl = (await ruleRes.json()) as { rules?: TaskAutomationRuleDTO[] };
+      if (tpl.templates) setTemplates(tpl.templates);
+      if (rl.rules) setRules(rl.rules);
+      void refresh();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }, [refresh]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return tasks.filter((t) => {
@@ -146,7 +173,8 @@ export function TasksWorkspace({
     (categoryFilter ? 1 : 0) +
     (priorityFilter ? 1 : 0) +
     (sourceFilter ? 1 : 0) +
-    (assigneeFilter ? 1 : 0);
+    (assigneeFilter ? 1 : 0) +
+    (query.trim() ? 1 : 0);
 
   /** Drag & drop: optimista, con vuelta atrás si el servidor rechaza. */
   const handleReorder = async (status: TaskStatus, orderedIds: string[]) => {
@@ -179,8 +207,13 @@ export function TasksWorkspace({
   const handleComplete = async (task: TaskDTO) => {
     const nextStatus: TaskStatus = task.status === 'DONE' ? 'TODO' : 'DONE';
     if (nextStatus === 'DONE' && task.requiresEvidence && !task.evidenceNote?.trim()) {
+      // El panel se abre a pantalla completa y tapaba el banner de error, así
+      // que el aviso viaja dentro del panel, junto al campo que hay que
+      // rellenar. Es el mensaje más importante del módulo.
+      setPanelNotice(
+        'Para cerrarla hace falta dejar constancia: escribe abajo qué se hizo (número de ciclo, importe cuadrado, resultado del control) y vuelve a marcarla.',
+      );
       setSelectedId(task.id);
-      setError('Esta tarea exige una nota de evidencia antes de cerrarse.');
       return;
     }
     const snapshot = tasks;
@@ -212,27 +245,30 @@ export function TasksWorkspace({
     }
   };
 
+  /** Abrir una tarea desde el tablero o las listas: sin aviso pendiente. */
+  const openTask = (id: string) => {
+    setPanelNotice(null);
+    setSelectedId(id);
+  };
+
   const today = new Date();
 
   return (
     <div className="space-y-5">
-      {/* ── Cabecera ─────────────────────────────────────────────────────── */}
-      <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-3xl font-semibold capitalize tracking-tight text-zinc-900">
-            {today.toLocaleDateString('es-ES', { month: 'long' })}
-          </h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            Hoy es{' '}
-            {today.toLocaleDateString('es-ES', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric',
-            })}
-          </p>
-        </div>
+      {/* El <h1> tiene que decir el nombre de la sección, como el resto del
+          panel. Antes decía el mes ("septiembre"), que no identificaba nada. */}
+      <PageHeader
+        eyebrow="Operativa diaria"
+        title="Tareas"
+        description={`Hoy es ${today.toLocaleDateString('es-ES', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+        })}`}
+        icon={<ClipboardCheck className="h-5 w-5" />}
+      />
 
+      <header className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative min-w-[200px] flex-1 xl:flex-none">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
@@ -316,6 +352,7 @@ export function TasksWorkspace({
                 setPriorityFilter(null);
                 setSourceFilter(null);
                 setAssigneeFilter(null);
+                setQuery('');
               }}
               className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-zinc-500 hover:text-zinc-900"
             >
@@ -380,9 +417,10 @@ export function TasksWorkspace({
           members={members}
           now={now}
           canEdit={canEdit}
-          onOpen={setSelectedId}
+          onOpen={openTask}
           onReorder={(status, ids) => void handleReorder(status, ids)}
           onQuickAdd={(status) => setQuickAddStatus(status)}
+          onComplete={(t) => void handleComplete(t)}
         />
       )}
 
@@ -395,7 +433,7 @@ export function TasksWorkspace({
           currentUserId={currentUserId}
           onlyMine={onlyMine}
           onToggleMine={setOnlyMine}
-          onOpen={setSelectedId}
+          onOpen={openTask}
           onComplete={(t) => void handleComplete(t)}
         />
       )}
@@ -406,7 +444,7 @@ export function TasksWorkspace({
           members={members}
           now={now}
           canEdit={canEdit}
-          onOpen={setSelectedId}
+          onOpen={openTask}
           onComplete={(t) => void handleComplete(t)}
         />
       )}
@@ -417,7 +455,7 @@ export function TasksWorkspace({
           members={members}
           now={now}
           canEdit={canEdit}
-          onOpen={setSelectedId}
+          onOpen={openTask}
           onComplete={(t) => void handleComplete(t)}
         />
       )}
@@ -428,7 +466,7 @@ export function TasksWorkspace({
           rules={rules}
           members={members}
           isAdmin={isAdmin}
-          onRefresh={() => window.location.reload()}
+          onRefresh={() => void refreshRoutines()}
         />
       )}
 
@@ -437,7 +475,11 @@ export function TasksWorkspace({
           taskId={selectedId}
           members={members}
           canEdit={canEdit}
-          onClose={() => setSelectedId(null)}
+          notice={panelNotice}
+          onClose={() => {
+            setSelectedId(null);
+            setPanelNotice(null);
+          }}
           onChanged={() => void refresh()}
         />
       )}

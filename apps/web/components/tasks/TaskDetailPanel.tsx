@@ -40,12 +40,15 @@ export function TaskDetailPanel({
   taskId,
   members,
   canEdit,
+  notice,
   onClose,
   onChanged,
 }: {
   taskId: string;
   members: TaskMember[];
   canEdit: boolean;
+  /** Aviso que llega desde fuera (p. ej. "falta la evidencia"). */
+  notice?: string | null;
   onClose: () => void;
   onChanged: () => void;
 }) {
@@ -237,6 +240,12 @@ export function TaskDetailPanel({
             </button>
           </div>
         </header>
+
+        {notice && !error && (
+          <p className="border-b border-amber-200 bg-amber-50 px-5 py-2.5 text-xs font-medium text-amber-900">
+            {notice}
+          </p>
+        )}
 
         {error && (
           <p className="border-b border-red-100 bg-red-50 px-5 py-2 text-xs text-red-700">

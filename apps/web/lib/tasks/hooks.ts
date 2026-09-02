@@ -134,6 +134,12 @@ export async function onCallProcessed(args: {
     const leadPhone =
       [call.fromNumber, call.toNumber].find((p) => p && !clinic.has(p)) ?? call.fromNumber ?? null;
 
+    // `calls` no guarda la dirección, así que la deducimos: si el número que
+    // origina la llamada es de la clínica, la llamada la hicimos nosotros.
+    // Sin esto, cada llamada saliente que caía en el buzón (menos de 20 s)
+    // generaba un "Devolver llamada" urgente — ruido puro en el tablero.
+    const isOutbound = Boolean(call.fromNumber && clinic.has(call.fromNumber));
+
     const patient = await resolvePatient(args.tenantId, {
       ghlContactId: call.ghlContactId,
       phone: leadPhone,
@@ -142,7 +148,7 @@ export async function onCallProcessed(args: {
 
     // ── Llamada cortada / sin resolver ────────────────────────────────────────
     const tooShort = (call.durationSeconds ?? 0) < 20;
-    if (call.status === 'error' || tooShort) {
+    if (!isOutbound && (call.status === 'error' || tooShort)) {
       await runTaskAutomation({
         tenantId: args.tenantId,
         trigger: 'MISSED_CALL',

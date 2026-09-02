@@ -39,13 +39,23 @@ export function StatsBar({
       />
       <Tile
         icon={<TrendingUp className="h-4 w-4" />}
-        label="Cumplimiento (7 días)"
-        value={`${stats.complianceRate}%`}
-        tone={stats.complianceRate >= 85 ? 'good' : stats.complianceRate >= 60 ? 'warn' : 'bad'}
+        label="Cerradas a tiempo (7 días)"
+        value={stats.complianceRate === null ? '—' : `${stats.complianceRate}%`}
+        tone={
+          stats.complianceRate === null
+            ? 'neutral'
+            : stats.complianceRate >= 85
+              ? 'good'
+              : stats.complianceRate >= 60
+                ? 'warn'
+                : 'bad'
+        }
         hint={
-          stats.avgCloseHours !== null
-            ? `Se cierran en ${stats.avgCloseHours} h de media`
-            : 'Aún no hay histórico'
+          stats.complianceRate === null
+            ? 'Esta semana no venció ninguna tarea'
+            : stats.avgCloseHours !== null
+              ? `Se cierran en ${stats.avgCloseHours} h de media`
+              : 'Aún no hay histórico'
         }
       />
       <Tile

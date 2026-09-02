@@ -104,8 +104,19 @@ export async function runPendingMigrations(): Promise<MigrationResult> {
     // mano: marcamos el baseline en vez de re-ejecutar (0000 volvería a
     // fallar con "already exists").
     if (done.size === 0) {
+      // Marcamos baseline solo si la base está DE VERDAD en el estado previo
+      // al runner: la primera tabla del schema y la última que introdujo 0017.
+      // Con solo comprobar `tenants`, una base a medio migrar quedaba marcada
+      // como si tuviera 0000-0017 y se trababa para siempre.
       const probe = (await sql.unsafe(
-        "SELECT to_regclass('public.tenants') IS NOT NULL AS ok",
+        `SELECT to_regclass('public.tenants') IS NOT NULL
+            AND to_regclass('public.whatsapp_conversations') IS NOT NULL
+            AND EXISTS (
+              SELECT 1 FROM information_schema.columns
+              WHERE table_schema = 'public'
+                AND table_name = 'whatsapp_conversations'
+                AND column_name = 'unread_count'
+            ) AS ok`,
       )) as unknown as { ok: boolean }[];
       if (probe[0]?.ok) {
         const baseline = files.filter((f) => f.slice(0, 4) <= BASELINE_THROUGH);

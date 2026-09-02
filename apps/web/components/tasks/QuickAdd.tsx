@@ -16,6 +16,14 @@ import { useMemo, useRef, useState } from 'react';
  * "Llamar a María mañana 10:30 #paciente !alta @lucia" y la vista previa
  * muestra exactamente qué se va a crear antes de apretar enter.
  */
+/** Minúsculas y sin tildes, para comparar nombres como los escribe la gente. */
+function fold(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
 export function QuickAdd({
   members,
   status,
@@ -40,14 +48,27 @@ export function QuickAdd({
     if (parsed.assigneeHints.length === 0) return [];
     return parsed.assigneeHints
       .map((hint) => {
-        const needle = hint.toLowerCase();
+        // Sin quitar tildes, escribir "@lucia" no encontraba a "Lucía" y la
+        // tarea se creaba sin responsable, en silencio.
+        const needle = fold(hint);
         return members.find(
-          (m) =>
-            m.name.toLowerCase().startsWith(needle) || m.email.toLowerCase().startsWith(needle),
+          (m) => fold(m.name).startsWith(needle) || fold(m.email).startsWith(needle),
         );
       })
       .filter((m): m is TaskMember => !!m);
   }, [parsed.assigneeHints, members]);
+
+  // Avisar cuando se escribió un @alguien que no existe, en vez de ignorarlo.
+  const unmatchedHints = useMemo(
+    () =>
+      parsed.assigneeHints.filter(
+        (hint) =>
+          !members.some(
+            (m) => fold(m.name).startsWith(fold(hint)) || fold(m.email).startsWith(fold(hint)),
+          ),
+      ),
+    [parsed.assigneeHints, members],
+  );
 
   const submit = async () => {
     const title = parsed.title.trim();
@@ -177,6 +198,13 @@ export function QuickAdd({
             </span>
           ))}
         </div>
+      )}
+
+      {unmatchedHints.length > 0 && (
+        <p className="mt-2 text-xs text-amber-800">
+          No encuentro a {unmatchedHints.map((h) => `@${h}`).join(', ')} en el equipo. La tarea se
+          creará sin esa persona asignada.
+        </p>
       )}
 
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}

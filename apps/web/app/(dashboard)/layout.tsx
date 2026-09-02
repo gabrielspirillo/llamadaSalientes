@@ -5,6 +5,7 @@ import { DashboardTopbar } from '@/components/dashboard/topbar';
 import { MessagingProvider } from '@/components/messaging/MessagingProvider';
 import { unreadSummary } from '@/lib/messaging/queries';
 import { DEFAULT_ENABLED_MODULES, type EnabledModules } from '@/lib/modules';
+import { getTenantTimezone } from '@/lib/tasks/materialize';
 import { countActionableTasks, internalUserIdFor } from '@/lib/tasks/queries';
 import { getCurrentTenantOrNull } from '@/lib/tenant';
 import { auth } from '@clerk/nextjs/server';

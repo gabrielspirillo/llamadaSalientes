@@ -32,7 +32,7 @@ export const AUTOMATION_DEFAULTS: AutomationRuleDefaults[] = [
     trigger: 'MISSED_CALL',
     titleTemplate: 'Devolver llamada a {{patientName}}',
     descriptionTemplate:
-      'Entró una llamada que el agente no pudo resolver. Teléfono: {{phone}}. Devolvela antes de que llame a otra clínica.',
+      'Entró una llamada que el agente no pudo resolver. Teléfono: {{phone}}. Devuélvela antes de que llame a otra clínica.',
     category: 'PATIENT',
     priority: 'URGENT',
     dueOffsetMinutes: 120,
@@ -116,7 +116,7 @@ export const AUTOMATION_DEFAULTS: AutomationRuleDefaults[] = [
     trigger: 'PATIENT_INACTIVE',
     titleTemplate: 'Reactivar a {{patientName}}',
     descriptionTemplate:
-      'Última visita: {{date}}. Ofrecé revisión e higiene. Reactivar cuesta una fracción de captar. Teléfono: {{phone}}.',
+      'Última visita: {{date}}. Ofrécele revisión e higiene. Teléfono: {{phone}}.',
     category: 'MARKETING',
     priority: 'MEDIUM',
     dueOffsetMinutes: 4320,
@@ -128,7 +128,7 @@ export const AUTOMATION_DEFAULTS: AutomationRuleDefaults[] = [
     trigger: 'WHATSAPP_HANDOFF',
     titleTemplate: 'Responder el WhatsApp de {{patientName}}',
     descriptionTemplate:
-      'La conversación quedó escalada a una persona. Entrá al inbox y cerrala. Teléfono: {{phone}}.',
+      'La conversación ha pasado a una persona. Entra en el buzón de WhatsApp y ciérrala. Teléfono: {{phone}}.',
     category: 'PATIENT',
     priority: 'URGENT',
     dueOffsetMinutes: 60,

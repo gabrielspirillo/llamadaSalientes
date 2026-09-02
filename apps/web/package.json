@@ -12,6 +12,7 @@
     "rag:backfill": "tsx --import ./worker/preload.ts lib/rag/backfill-run.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "db:generate": "drizzle-kit generate",

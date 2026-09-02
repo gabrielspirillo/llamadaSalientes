@@ -6,7 +6,7 @@ import { db } from '@/lib/db/client';
 import { tenantMemberships, users } from '@/lib/db/schema';
 import { normalizeRole } from '@/lib/tasks/auth';
 import { ensureAutomationRules } from '@/lib/tasks/automation';
-import { materializeRoutinesForTenant } from '@/lib/tasks/materialize';
+import { getTenantTimezone, materializeRoutinesForTenant } from '@/lib/tasks/materialize';
 import {
   internalUserIdFor,
   loadAutomationRules,
@@ -75,7 +75,12 @@ export default async function TasksPage() {
       loadTemplates(tenant.id),
       loadAutomationRules(tenant.id),
     ]);
-    const stats = await loadTaskStats(tenant.id, board);
+    const stats = await loadTaskStats(
+      tenant.id,
+      board,
+      new Date(),
+      await getTenantTimezone(tenant.id),
+    );
 
     return (
       <TasksWorkspace
@@ -117,8 +122,8 @@ function PendingMigration() {
       <Card>
         <EmptyState
           icon={<DatabaseZap className="h-6 w-6" />}
-          title="Falta preparar la base de datos"
-          description="Las tablas de Tareas todavía no existen en esta clínica. Se crean solas la próxima vez que arranque el worker: entrá a Dokploy, servicio cliniq-worker, y pulsá Deploy. En un par de minutos recargá esta página."
+          title="Estamos preparando esta sección"
+          description="Tareas todavía se está activando para tu clínica. Suele tardar unos minutos: vuelve a cargar la página en un rato. Si sigue igual mañana, avísanos y lo revisamos."
         />
       </Card>
     </>
