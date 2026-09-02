@@ -6,9 +6,13 @@ import { useMessaging } from '@/components/messaging/MessagingProvider';
 import { DockThread } from '@/components/messaging/dock/DockThread';
 import { MentionsInbox } from '@/components/messaging/dock/MentionsInbox';
 import { QuickSwitcher } from '@/components/messaging/dock/QuickSwitcher';
+import {
+  ESCALATE_OPTIONS,
+  useMessagingSettings,
+} from '@/components/messaging/dock/useMessagingSettings';
 import { StatusDot } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/feedback';
-import { Switch } from '@/components/ui/input';
+import { Input, Select, Switch } from '@/components/ui/input';
 import { cn } from '@/lib/cn';
 import {
   AtSign,
@@ -18,7 +22,9 @@ import {
   Hash,
   Maximize2,
   MessageSquare,
+  Moon,
   Settings2,
+  Smartphone,
   Volume2,
   X,
 } from 'lucide-react';
@@ -349,6 +355,9 @@ function DockSettings({
     requestDesktopPermission,
   } = notifications;
 
+  // Las de abajo viven en el servidor: el worker tiene que poder leerlas.
+  const { settings, loading, error, update } = useMessagingSettings(true);
+
   return (
     <div className="scrollbar-none min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
       <p className="px-1 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Avisos</p>
@@ -421,6 +430,87 @@ function DockSettings({
         El contador del título de la pestaña y el badge del menú están siempre activos: son los
         avisos que no interrumpen.
       </p>
+
+      <p className="px-1 pt-3 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+        Cuando no estás delante
+      </p>
+
+      <div className="rounded-2xl bg-white p-3 ring-1 ring-[--color-border]">
+        <div className="flex items-center gap-3">
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
+            <Smartphone className="h-4 w-4" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[14px] font-semibold text-zinc-800">
+              Si te mencionan y no lo ves
+            </span>
+            <span className="block text-[12px] text-zinc-500">
+              Te avisamos por WhatsApp. Solo el canal, nunca datos del paciente.
+            </span>
+          </span>
+        </div>
+        <div className="mt-2.5">
+          <Select
+            value={String(settings.escalateMentionsAfterMinutes)}
+            onChange={(e) => update({ escalateMentionsAfterMinutes: Number(e.target.value) })}
+            aria-label="Cuándo avisar por WhatsApp"
+            disabled={loading}
+            className="h-9 text-[13px]"
+          >
+            {ESCALATE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </div>
+
+      <div className="rounded-2xl bg-white p-3 ring-1 ring-[--color-border]">
+        <div className="flex items-center gap-3">
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-zinc-600">
+            <Moon className="h-4 w-4" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[14px] font-semibold text-zinc-800">No molestar</span>
+            <span className="block text-[12px] text-zinc-500">
+              Dentro de esta franja no suena ni se avisa por fuera.
+            </span>
+          </span>
+          <Switch
+            checked={Boolean(settings.dndFrom && settings.dndTo)}
+            onCheckedChange={(on) =>
+              update(on ? { dndFrom: '21:00', dndTo: '08:00' } : { dndFrom: null, dndTo: null })
+            }
+            label="No molestar"
+          />
+        </div>
+        {settings.dndFrom && settings.dndTo && (
+          <div className="mt-2.5 flex items-center gap-2">
+            <Input
+              type="time"
+              value={settings.dndFrom}
+              onChange={(e) => update({ dndFrom: e.target.value || null })}
+              aria-label="Silencio desde"
+              className="h-9 text-[13px]"
+            />
+            <span className="text-[12px] text-zinc-400">a</span>
+            <Input
+              type="time"
+              value={settings.dndTo}
+              onChange={(e) => update({ dndTo: e.target.value || null })}
+              aria-label="Silencio hasta"
+              className="h-9 text-[13px]"
+            />
+          </div>
+        )}
+      </div>
+
+      {error && (
+        <p className="px-1 text-[12px] text-rose-600">
+          No se pudieron guardar las preferencias: {error}
+        </p>
+      )}
     </div>
   );
 }

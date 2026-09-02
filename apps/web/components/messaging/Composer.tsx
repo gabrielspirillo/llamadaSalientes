@@ -48,7 +48,7 @@ const COMMANDS: CommandDef[] = [
     key: 'llamar',
     token: '/llamar ',
     label: '/llamar',
-    hint: 'Pedir una llamada de vuelta a un paciente',
+    hint: 'Crear una tarea de llamada, con el paciente en el título',
     icon: Phone,
   },
   {
@@ -66,6 +66,19 @@ const COMMANDS: CommandDef[] = [
     icon: Sparkles,
   },
 ];
+
+/**
+ * ¿El texto empieza por un comando conocido? Devuelve la clave y el resto.
+ * Exige un espacio detrás para que "/tareas pendientes" no se coma el `/tarea`.
+ */
+export function matchCommand(body: string): { key: string; arg: string } | null {
+  const m = /^\/([a-záéíóúñ]+)(?:\s+([\s\S]*))?$/i.exec(body.trim());
+  if (!m) return null;
+  const key = (m[1] ?? '').toLowerCase();
+  const def = COMMANDS.find((c) => c.key === key);
+  if (!def) return null;
+  return { key: def.key, arg: (m[2] ?? '').trim() };
+}
 
 const TYPING_THROTTLE_MS = 3000;
 
@@ -91,6 +104,11 @@ export interface ComposerProps {
   droppedFiles?: File[] | null;
   onDroppedHandled?: () => void;
   onSend: (body: string, attachments: ImAttachment[]) => void;
+  /**
+   * Ejecuta un comando de la barra. Sin esto, escribir `/tarea algo` mandaba un
+   * mensaje literal con ese texto y no creaba nada: el popover era decoración.
+   */
+  onCommand?: (command: string, arg: string) => void;
   onTyping: () => void;
   compact?: boolean;
   className?: string;
@@ -107,6 +125,7 @@ export function Composer({
   droppedFiles,
   onDroppedHandled,
   onSend,
+  onCommand,
   onTyping,
   compact,
   className,
@@ -304,6 +323,21 @@ export function Composer({
   const submit = () => {
     const body = value.trim();
     if ((!body && attachments.length === 0) || disabled || uploading > 0) return;
+
+    // Un comando al principio de la línea se ejecuta en vez de enviarse. Solo
+    // si hay adonde despacharlo y no lleva adjuntos: un comando con un archivo
+    // colgando sería ambiguo, así que en ese caso va como mensaje normal.
+    const cmd = onCommand && attachments.length === 0 ? matchCommand(body) : null;
+    if (cmd) {
+      onCommand?.(cmd.key, cmd.arg);
+      setValue('');
+      setAttachments([]);
+      setMenu(null);
+      lastTypingRef.current = 0;
+      requestAnimationFrame(() => textareaRef.current?.focus());
+      return;
+    }
+
     onSend(body, attachments);
     setValue('');
     setAttachments([]);
@@ -354,12 +388,12 @@ export function Composer({
     <div className={cn('relative', className)}>
       {/* Popover de comandos / menciones */}
       {menu && options.length > 0 && (
-        <div className="absolute bottom-full left-0 z-30 mb-2 w-full max-w-md animate-zoom-in overflow-hidden rounded-[18px] border border-[--color-border] bg-white/95 shadow-[var(--shadow-lifted)] backdrop-blur-xl">
+        <div className="absolute bottom-full left-0 right-0 z-30 mb-2 animate-zoom-in overflow-hidden rounded-[18px] border border-[--color-border] bg-white shadow-[var(--shadow-lifted)]">
           <div className="flex items-center gap-1.5 border-b border-[--color-border-subtle] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">
             {menu.kind === '/' ? <Zap className="h-3 w-3" /> : <AtSign className="h-3 w-3" />}
             {menu.kind === '/' ? 'Comandos' : 'Mencionar a'}
           </div>
-          <ul className="max-h-64 overflow-y-auto p-1.5">
+          <ul className="max-h-52 overflow-y-auto p-1.5">
             {options.map((opt, i) => (
               <li key={opt.id}>
                 <button
@@ -423,7 +457,10 @@ export function Composer({
       <div
         className={cn(
           'flex items-end gap-2 rounded-[20px] border border-[--color-border] bg-white p-2 shadow-[var(--shadow-soft)]',
-          'transition-[border-color,box-shadow] duration-300 focus-within:border-brand-300 focus-within:shadow-[0_0_0_4px_rgba(55,118,106,0.10)]',
+          // La caja se enfoca sola al entrar en un canal: un halo de color ahí
+          // hace que la pantalla parezca pulsada nada más abrirla. Queda una
+          // pista neutra, que quien navega con teclado necesita ver el foco.
+          'transition-[border-color] duration-300 focus-within:border-zinc-300',
           disabled && 'opacity-60',
         )}
       >
@@ -459,7 +496,7 @@ export function Composer({
           rows={1}
           placeholder={placeholder ?? `Escribí en ${channelName}…  (/ comandos · @ menciones)`}
           aria-label={`Mensaje para ${channelName}`}
-          className="scrollbar-none max-h-[200px] min-h-[36px] flex-1 resize-none bg-transparent px-1 py-2 text-[14px] leading-relaxed text-zinc-900 placeholder:text-zinc-400 focus-visible:outline-none"
+          className="scrollbar-none max-h-[200px] min-h-[36px] flex-1 resize-none border-0 bg-transparent px-1 py-2 text-[14px] leading-relaxed text-zinc-900 outline-none ring-0 placeholder:text-zinc-400 focus:outline-none focus:ring-0 focus-visible:outline-none"
         />
 
         <button

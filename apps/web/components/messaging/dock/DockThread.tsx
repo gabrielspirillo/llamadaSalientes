@@ -282,7 +282,7 @@ export function DockThread({ channelId }: { channelId: string }) {
           }}
           placeholder="Escribí un mensaje…"
           aria-label="Mensaje"
-          className="h-10 min-w-0 flex-1 rounded-full border border-[--color-border] bg-white px-4 text-[14px] outline-none transition-colors placeholder:text-zinc-400 focus:border-brand-300"
+          className="h-10 min-w-0 flex-1 rounded-full border border-[--color-border] bg-white px-4 text-[14px] outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-300"
         />
         <button
           type="button"

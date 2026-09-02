@@ -3,8 +3,11 @@ import { and, eq } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import { imChannels, imMentions, imUserSettings, users } from '@/lib/db/schema';
+import { isWithinDnd } from '@/lib/messaging/dnd';
 import type { QueueJobs } from '@/lib/queue/queues';
 import type { StepRunner } from '@/lib/queue/step';
+import { getTenantTimezone } from '@/lib/tasks/materialize';
+import { localParts } from '@/lib/tasks/tz';
 
 /**
  * Escalado de una mención que nadie leyó.
@@ -47,6 +50,8 @@ export async function processImMentionEscalateJob(
         channelSlug: imChannels.slug,
         channelKind: imChannels.kind,
         afterMinutes: imUserSettings.escalateMentionsAfterMinutes,
+        dndFrom: imUserSettings.dndFrom,
+        dndTo: imUserSettings.dndTo,
         clerkUserId: users.clerkUserId,
       })
       .from(imMentions)
@@ -75,6 +80,18 @@ export async function processImMentionEscalateJob(
   if (loaded.resolvedAt) return { status: 'skipped', reason: 'ya-resuelta' };
   if (loaded.escalatedAt) return { status: 'skipped', reason: 'ya-escalada' };
   if ((loaded.afterMinutes ?? 0) <= 0) return { status: 'skipped', reason: 'escalado-desactivado' };
+
+  // No molestar. La UI promete que dentro de la franja no se avisa por fuera;
+  // si el worker no lo respetara, la promesa sería mentira. Se evalúa en la
+  // zona de la clínica, no en la del servidor.
+  if (loaded.dndFrom && loaded.dndTo) {
+    const tz = await getTenantTimezone(tenantId).catch(() => 'Europe/Madrid');
+    const { hour, minute } = localParts(new Date(), tz);
+    const nowHHMM = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+    if (isWithinDnd(loaded.dndFrom, loaded.dndTo, nowHHMM)) {
+      return { status: 'skipped', reason: 'no-molestar' };
+    }
+  }
 
   // Se marca ANTES de intentar el envío: si WhatsApp está caído no queremos que
   // el retry del job dispare un segundo aviso al reconectar.
