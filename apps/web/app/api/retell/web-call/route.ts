@@ -1,6 +1,7 @@
 import { resolveRetellAgentId } from '@/lib/data/agent-config';
 import { getRetellClient } from '@/lib/retell/client';
 import { buildClinicContextVars } from '@/lib/retell/clinic-context';
+import { describeRetellError } from '@/lib/retell/errors';
 import { getCurrentTenant } from '@/lib/tenant';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -29,7 +30,7 @@ export async function POST(_req: NextRequest) {
     return NextResponse.json(
       {
         error:
-          'No hay agente Retell configurado para este tenant. Andá a /dashboard/agent y guardá el Agent ID.',
+          'No hay ningún agente de voz configurado para esta clínica. Ve a Asistente y guarda el Agent ID.',
       },
       { status: 400 },
     );
@@ -39,28 +40,44 @@ export async function POST(_req: NextRequest) {
     return NextResponse.json({ error: 'RETELL_API_KEY no configurada' }, { status: 500 });
   }
 
-  const clinicVars = await buildClinicContextVars(tenantId);
-  const retell = getRetellClient();
+  // Todo lo que sigue puede fallar por causas ajenas al código —la cuenta de
+  // Retell sin crédito, un agente borrado desde su panel, la BD caída— y antes
+  // esas excepciones subían sin capturar: el navegador recibía un 500 vacío y
+  // en pantalla solo se leía "Error 500". Quien lleva la clínica no puede
+  // actuar sobre eso.
+  try {
+    const clinicVars = await buildClinicContextVars(tenantId);
+    const retell = getRetellClient();
 
-  const webCall = await retell.call.createWebCall({
-    agent_id: agentId,
-    metadata: {
-      tenant_id: tenantId,
-      source: 'dashboard-test',
-      direction: 'inbound',
-    },
-    retell_llm_dynamic_variables: {
-      ...clinicVars,
-      patient_name: 'paciente',
-      current_date: new Date().toISOString().slice(0, 10),
-      direction: 'inbound',
-      lead_source: 'dashboard-test',
-    },
-  });
+    const webCall = await retell.call.createWebCall({
+      agent_id: agentId,
+      metadata: {
+        tenant_id: tenantId,
+        source: 'dashboard-test',
+        direction: 'inbound',
+      },
+      retell_llm_dynamic_variables: {
+        ...clinicVars,
+        patient_name: 'paciente',
+        current_date: new Date().toISOString().slice(0, 10),
+        direction: 'inbound',
+        lead_source: 'dashboard-test',
+      },
+    });
 
-  return NextResponse.json({
-    accessToken: webCall.access_token,
-    callId: webCall.call_id,
-    agentId,
-  });
+    return NextResponse.json({
+      accessToken: webCall.access_token,
+      callId: webCall.call_id,
+      agentId,
+    });
+  } catch (err) {
+    const { status, message } = describeRetellError(err);
+    console.error('[retell:web-call] fallo al crear la llamada de prueba', {
+      tenantId,
+      agentId,
+      status,
+      detail: err instanceof Error ? err.message : String(err),
+    });
+    return NextResponse.json({ error: message }, { status });
+  }
 }
