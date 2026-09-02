@@ -387,6 +387,39 @@ export function isImageAttachment(a: ImAttachment): boolean {
   return typeof a.mime === 'string' && a.mime.startsWith('image/');
 }
 
+export function isAudioAttachment(a: ImAttachment): boolean {
+  return typeof a.mime === 'string' && a.mime.startsWith('audio/');
+}
+
+export function isVideoAttachment(a: ImAttachment): boolean {
+  return typeof a.mime === 'string' && a.mime.startsWith('video/');
+}
+
+/**
+ * Alturas (0–1) de la onda de una nota de voz. No analizamos el audio: eso
+ * obligaría a descargar el fichero entero solo para dibujar. Derivamos las
+ * barras del identificador del adjunto, que es lo que hace falta para que cada
+ * nota se vea distinta y siempre igual a sí misma.
+ */
+export function waveformBars(seed: string, count = 34): number[] {
+  let h = 0;
+  for (let i = 0; i < seed.length; i += 1) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  const out: number[] = [];
+  for (let i = 0; i < count; i += 1) {
+    h = (h * 1664525 + 1013904223) >>> 0;
+    out.push(0.28 + ((h >>> 9) % 100) / 139);
+  }
+  return out;
+}
+
+/** mm:ss — duración de una nota de voz o de un vídeo. */
+export function formatDuration(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+  const s = Math.floor(seconds % 60);
+  const m = Math.floor(seconds / 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 /**
  * URL de descarga del adjunto. La API de subida devuelve la clave pública de
  * MinIO; si ya viene absoluta se usa tal cual.

@@ -7,12 +7,13 @@ import { InputWithIcon } from '@/components/ui/input';
 import { Equalizer } from '@/components/ui/stat';
 import { cn } from '@/lib/cn';
 import type { ImChannelDTO, ImPerson, ImPresence } from '@/lib/messaging/types';
-import { Plus, Search, Sparkles, WifiOff, X } from 'lucide-react';
+import { PenSquare, Plus, Search, Sparkles, WifiOff, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import {
   ACTIVE_BAR,
   PersonAvatar,
+  TypingDots,
   channelIcon,
   plainPreview,
   timeAgo,
@@ -34,6 +35,7 @@ export function ChannelRail({
   activeId,
   totalUnread,
   connected,
+  typingByChannel,
   onSelect,
   onStartDm,
   onNewChannel,
@@ -46,6 +48,8 @@ export function ChannelRail({
   activeId: string | null;
   totalUnread: number;
   connected: boolean;
+  /** Quién está escribiendo en cada canal, para pintarlo en la propia fila. */
+  typingByChannel?: Record<string, string[]>;
   onSelect: (channelId: string) => void;
   onStartDm: (userId: string) => void;
   /** Abre el diálogo de crear canal. Sin esto no había forma de crear ninguno. */
@@ -94,48 +98,84 @@ export function ChannelRail({
 
   return (
     <Card tone="glass" className={cn('flex h-full min-h-0 flex-col overflow-hidden', className)}>
-      {/* Cabecera: buscador + estado de la conexión en vivo */}
-      <div className="shrink-0 border-b border-white/60 p-3">
-        <InputWithIcon
-          icon={<Search className="h-4 w-4" />}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar canal o persona"
-          aria-label="Buscar canal o persona"
-          className="h-10 bg-white/80 text-[14px]"
-          trailing={
-            query ? (
-              <button
-                type="button"
-                onClick={() => setQuery('')}
-                aria-label="Limpiar búsqueda"
-                className="pointer-events-auto rounded-full p-0.5 text-zinc-400 transition-colors hover:text-zinc-600"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            ) : undefined
-          }
+      {/* Cabecera: quién soy, buscador y estado de la conexión en vivo */}
+      <div className="relative shrink-0 border-b border-white/60 p-3">
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(80%_100%_at_0%_0%,rgba(95,168,150,0.14),transparent_70%)]"
         />
-        <div className="mt-2.5 flex items-center justify-between px-1">
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-400">
-            {connected ? (
-              <>
-                <Equalizer className="text-emerald-500" />
-                En vivo
-              </>
-            ) : (
-              <>
-                <WifiOff className="h-3 w-3 text-amber-500" />
-                Reconectando
-              </>
-            )}
+
+        <div className="relative mb-3 flex items-center gap-2.5">
+          <PersonAvatar
+            name={me?.name ?? 'Tú'}
+            seed={me?.userId ?? 'me'}
+            size={38}
+            online={connected}
+          />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[15px] font-bold tracking-tight text-zinc-900">
+              {me?.name ?? 'Mi equipo'}
+            </span>
+            <span className="mt-0.5 flex items-center gap-1.5 text-[12px] font-semibold">
+              {connected ? (
+                <>
+                  <Equalizer className="text-emerald-500" />
+                  <span className="text-emerald-600">En línea</span>
+                </>
+              ) : (
+                <>
+                  <WifiOff className="h-3 w-3 text-amber-500" />
+                  <span className="text-amber-600">Reconectando</span>
+                </>
+              )}
+            </span>
           </span>
-          {totalUnread > 0 && (
+          {onNewChannel && (
+            <button
+              type="button"
+              onClick={onNewChannel}
+              aria-label="Crear un canal"
+              title="Crear un canal"
+              className="press inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#37766a,#5fa896)] text-white shadow-[0_10px_22px_-12px_rgba(55,118,106,0.95)] transition-transform duration-300 hover:scale-105"
+            >
+              <PenSquare className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        <div className="relative">
+          <InputWithIcon
+            icon={<Search className="h-4 w-4" />}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar canal o persona"
+            aria-label="Buscar canal o persona"
+            className="h-10 bg-white/85 text-[14px]"
+            trailing={
+              query ? (
+                <button
+                  type="button"
+                  onClick={() => setQuery('')}
+                  aria-label="Limpiar la búsqueda"
+                  className="pointer-events-auto rounded-full p-0.5 text-zinc-400 transition-colors hover:text-zinc-600"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              ) : undefined
+            }
+          />
+        </div>
+
+        {totalUnread > 0 && (
+          <div className="relative mt-2.5 flex items-center justify-between px-1">
+            <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+              Pendientes
+            </span>
             <Badge tone="brand" size="sm">
               {totalUnread} sin leer
             </Badge>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Lista */}
@@ -163,6 +203,7 @@ export function ChannelRail({
                 index={i}
                 active={c.id === activeId}
                 presence={presence}
+                typingNames={typingByChannel?.[c.id]}
                 onSelect={onSelect}
               />
             ))}
@@ -193,6 +234,7 @@ export function ChannelRail({
                 index={i}
                 active={c.id === activeId}
                 presence={presence}
+                typingNames={typingByChannel?.[c.id]}
                 onSelect={onSelect}
               />
             ))}
@@ -208,6 +250,7 @@ export function ChannelRail({
                 index={i}
                 active={c.id === activeId}
                 presence={presence}
+                typingNames={typingByChannel?.[c.id]}
                 onSelect={onSelect}
               />
             ))}
@@ -238,6 +281,7 @@ export function ChannelRail({
                 index={i}
                 active={c.id === activeId}
                 presence={presence}
+                typingNames={typingByChannel?.[c.id]}
                 onSelect={onSelect}
               />
             ))}
@@ -298,18 +342,21 @@ function RailChannel({
   index,
   active,
   presence,
+  typingNames,
   onSelect,
 }: {
   channel: ImChannelDTO;
   index: number;
   active: boolean;
   presence: Map<string, ImPresence>;
+  typingNames?: string[];
   onSelect: (id: string) => void;
 }) {
   const Icon = channelIcon(channel);
   const tone = toneMeta(channel.tone);
   const unread = channel.unreadCount > 0;
   const isDm = channel.kind === 'DM';
+  const typing = (typingNames ?? []).length > 0;
   const online =
     isDm && channel.counterpartUserId
       ? (presence.get(channel.counterpartUserId)?.online ?? false)
@@ -322,16 +369,18 @@ function RailChannel({
         onClick={() => onSelect(channel.id)}
         aria-current={active ? 'true' : undefined}
         className={cn(
-          'group relative flex w-full items-center gap-2.5 rounded-[14px] px-2.5 py-2 text-left',
+          'group relative flex w-full items-center gap-2.5 overflow-hidden rounded-[16px] px-2.5 py-2.5 text-left',
           'transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
-          active ? 'bg-white shadow-[var(--shadow-soft)]' : 'hover:bg-white/70',
+          active
+            ? 'bg-white shadow-[0_14px_30px_-22px_rgba(22,26,25,0.55)] ring-1 ring-brand-100'
+            : 'hover:bg-white/75',
         )}
       >
         {/* Barra de acento del ítem activo */}
         <span
           aria-hidden
           className={cn(
-            'absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full transition-all duration-300',
+            'absolute left-0 top-1/2 h-7 w-[3px] -translate-y-1/2 rounded-r-full transition-all duration-300',
             active ? cn(ACTIVE_BAR, 'opacity-100') : 'opacity-0',
           )}
         />
@@ -340,17 +389,18 @@ function RailChannel({
           <PersonAvatar
             name={channel.name}
             seed={channel.counterpartUserId ?? channel.id}
-            size={26}
+            size={34}
             online={online}
           />
         ) : (
           <span
             className={cn(
-              'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[10px] transition-transform duration-300 group-hover:scale-110',
+              'inline-flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[12px] transition-transform duration-300 group-hover:scale-105',
               tone.chip,
+              active && 'shadow-[0_8px_18px_-12px_rgba(22,26,25,0.7)]',
             )}
           >
-            <Icon className="h-3.5 w-3.5" />
+            <Icon className="h-4 w-4" />
           </span>
         )}
 
@@ -368,24 +418,40 @@ function RailChannel({
             >
               {channel.name}
             </span>
+            {channel.pinned && !unread && (
+              <span aria-hidden className="shrink-0 text-[11px] text-zinc-300">
+                ●
+              </span>
+            )}
             {channel.lastMessageAt && (
               <time
                 suppressHydrationWarning
-                className="shrink-0 text-[11px] font-medium text-zinc-400"
+                className={cn(
+                  'shrink-0 text-[11px] font-semibold tabular-nums',
+                  unread ? 'text-brand-600' : 'text-zinc-400',
+                )}
               >
                 {timeAgo(channel.lastMessageAt)}
               </time>
             )}
           </span>
-          {channel.lastMessagePreview && (
-            <span
-              className={cn(
-                'mt-0.5 block truncate text-[13px] leading-tight',
-                unread ? 'text-zinc-600' : 'text-zinc-400',
-              )}
-            >
-              {plainPreview(channel.lastMessagePreview, 44)}
+
+          {typing ? (
+            <span className="mt-1 flex items-center gap-1.5 text-[13px] font-semibold leading-tight text-brand-600">
+              <TypingDots />
+              escribiendo…
             </span>
+          ) : (
+            channel.lastMessagePreview && (
+              <span
+                className={cn(
+                  'mt-0.5 block truncate text-[13px] leading-tight',
+                  unread ? 'font-medium text-zinc-600' : 'text-zinc-400',
+                )}
+              >
+                {plainPreview(channel.lastMessagePreview, 44)}
+              </span>
+            )
           )}
         </span>
 
@@ -394,13 +460,13 @@ function RailChannel({
             @{channel.mentionCount}
           </Badge>
         ) : unread ? (
-          <span className="inline-flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-brand-600 px-1.5 text-[11px] font-bold tabular-nums text-white shadow-[0_4px_12px_-4px_rgba(55,118,106,0.6)]">
+          <span className="inline-flex h-[22px] min-w-[22px] shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#37766a,#5fa896)] px-1.5 text-[11px] font-bold tabular-nums text-white shadow-[0_6px_14px_-6px_rgba(55,118,106,0.8)]">
             {channel.unreadCount > 99 ? '99+' : channel.unreadCount}
           </span>
         ) : channel.muted ? (
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-200" />
         ) : channel.kind === 'CONTEXT' ? (
-          <Sparkles className="h-3 w-3 shrink-0 text-zinc-300" />
+          <Sparkles className="h-3.5 w-3.5 shrink-0 text-zinc-300 transition-colors group-hover:text-brand-400" />
         ) : null}
       </button>
     </li>

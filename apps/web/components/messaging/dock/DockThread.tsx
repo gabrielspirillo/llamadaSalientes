@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { useMessaging } from '@/components/messaging/MessagingProvider';
+import { TypingDots } from '@/components/messaging/shared';
 import { EmptyState, SkeletonRows } from '@/components/ui/feedback';
 import { Avatar } from '@/components/ui/stat';
 import { cn } from '@/lib/cn';
@@ -193,7 +194,7 @@ export function DockThread({ channelId }: { channelId: string }) {
       <div
         ref={scrollRef}
         onScroll={onScroll}
-        className="scrollbar-none min-h-0 flex-1 space-y-2.5 overflow-y-auto px-3 py-3"
+        className="thread-canvas scrollbar-none min-h-0 flex-1 space-y-2.5 overflow-y-auto px-3 py-3"
       >
         {loading ? (
           <SkeletonRows rows={4} />
@@ -201,7 +202,7 @@ export function DockThread({ channelId }: { channelId: string }) {
           <EmptyState
             icon={<MessageSquare className="h-5 w-5" />}
             title="Todavía no hay nada"
-            description="Escribí el primer mensaje del canal."
+            description="Escribe el primer mensaje del canal."
           />
         ) : (
           messages.map((m, i) => {
@@ -231,12 +232,12 @@ export function DockThread({ channelId }: { channelId: string }) {
                   )}
                   <div
                     className={cn(
-                      'inline-block rounded-[16px] px-3 py-2 text-left text-[14px] leading-snug transition-opacity duration-200',
+                      'inline-block rounded-[18px] px-3.5 py-2 text-left text-[14px] leading-snug transition-opacity duration-200',
                       mine
-                        ? 'bg-[linear-gradient(120deg,#37766a,#5fa896)] text-white'
+                        ? 'rounded-br-[6px] bg-[linear-gradient(135deg,#2e5f56,#479183_60%,#5fa896)] text-white shadow-[0_10px_22px_-14px_rgba(55,118,106,0.95)]'
                         : isSystem
-                          ? 'bg-brand-50 text-brand-800 ring-1 ring-brand-100'
-                          : 'bg-white text-zinc-800 ring-1 ring-[--color-border]',
+                          ? 'rounded-bl-[6px] bg-brand-50 text-brand-800 ring-1 ring-brand-100'
+                          : 'rounded-bl-[6px] bg-white text-zinc-800 shadow-[0_1px_2px_rgba(22,26,25,0.05)] ring-1 ring-[--color-border]',
                       m.pending && 'opacity-60',
                       m.failed && 'ring-1 ring-rose-300',
                     )}
@@ -253,7 +254,8 @@ export function DockThread({ channelId }: { channelId: string }) {
         )}
 
         {peers.length > 0 && (
-          <p className="px-1 text-[12px] italic text-zinc-400">
+          <p className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[12px] font-medium text-zinc-500 shadow-[var(--shadow-soft)] ring-1 ring-[--color-border-subtle]">
+            <TypingDots />
             {peers.length === 1
               ? `${peers[0]?.name} está escribiendo…`
               : `${peers.length} personas están escribiendo…`}
@@ -279,7 +281,7 @@ export function DockThread({ channelId }: { channelId: string }) {
               setDraft('');
             }
           }}
-          placeholder="Escribí un mensaje…"
+          placeholder="Escribe un mensaje…"
           aria-label="Mensaje"
           className="h-10 min-w-0 flex-1 rounded-full border border-[--color-border] bg-white px-4 text-[14px] outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-300"
         />

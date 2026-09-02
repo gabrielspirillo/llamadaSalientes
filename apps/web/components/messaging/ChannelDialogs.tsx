@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
 import { Check, Hash, Lock, Search, Users, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -355,10 +355,7 @@ export function ChannelMembersDialog({
   }, [open, channel?.id]);
 
   const memberIds = useMemo(() => new Set(channel?.memberIds ?? []), [channel?.memberIds]);
-  const members = useMemo(
-    () => people.filter((p) => memberIds.has(p.userId)),
-    [people, memberIds],
-  );
+  const members = useMemo(() => people.filter((p) => memberIds.has(p.userId)), [people, memberIds]);
 
   const call = async (body: Record<string, string[]>) => {
     if (!channel) return;

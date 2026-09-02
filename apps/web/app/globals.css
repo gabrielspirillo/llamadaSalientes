@@ -388,6 +388,15 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+/* Lienzo del hilo de mensajes: papel muy claro con una trama de puntos que
+   separa las burbujas del fondo sin meter otro color en la pantalla. */
+.thread-canvas {
+  background-color: #fafbfb;
+  background-image: radial-gradient(rgba(22, 26, 25, 0.045) 1px, transparent 1px);
+  background-size: 22px 22px;
+  background-position: -1px -1px;
+}
+
 /* Borde con gradiente (para tarjetas destacadas) */
 .gradient-ring {
   position: relative;

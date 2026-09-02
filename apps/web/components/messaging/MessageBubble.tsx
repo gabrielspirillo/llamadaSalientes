@@ -1,6 +1,7 @@
 'use client';
 
 import { EventCard } from '@/components/messaging/EventCard';
+import { VoiceNote } from '@/components/messaging/VoiceNote';
 import {
   type MentionIndex,
   PersonAvatar,
@@ -8,6 +9,7 @@ import {
   attachmentUrl,
   formatBytes,
   formatClock,
+  isAudioAttachment,
   isImageAttachment,
 } from '@/components/messaging/shared';
 import { Button } from '@/components/ui/button';
@@ -22,6 +24,7 @@ import {
   MessageSquare,
   Pencil,
   Pin,
+  Plus,
   RotateCcw,
   Smile,
   Sparkles,
@@ -259,11 +262,13 @@ export function MessageBubble(props: MessageBubbleProps) {
         ) : (
           <div
             className={cn(
-              'relative inline-block max-w-full rounded-[16px] px-3 py-2',
+              'relative inline-block max-w-full rounded-[18px] px-3.5 py-2.5',
+              'rounded-tl-[6px]',
+              'shadow-[0_1px_2px_rgba(22,26,25,0.04)] transition-shadow duration-300 group-hover:shadow-[0_10px_24px_-16px_rgba(22,26,25,0.45)]',
               isDecision
-                ? 'border border-brand-200 bg-[linear-gradient(120deg,#f4f1ff,#fdf0f7)] shadow-[var(--shadow-soft)]'
+                ? 'border border-brand-200 bg-[linear-gradient(120deg,#effaf5,#e6f5ef)] shadow-[var(--shadow-soft)]'
                 : isOwn
-                  ? 'bg-brand-50/80 ring-1 ring-brand-100'
+                  ? 'bg-[linear-gradient(135deg,#f1faf6,#e7f5ef)] ring-1 ring-brand-200/70'
                   : 'bg-white ring-1 ring-[--color-border-subtle]',
               message.failed && 'ring-2 ring-rose-300',
               compact && 'py-1.5',
@@ -275,7 +280,9 @@ export function MessageBubble(props: MessageBubbleProps) {
               </p>
             )}
             <RichText text={message.body} mentions={mentions} className="text-zinc-800" />
-            {message.attachments.length > 0 && <AttachmentGrid attachments={message.attachments} />}
+            {message.attachments.length > 0 && (
+              <AttachmentGrid attachments={message.attachments} own={isOwn} />
+            )}
             {message.pending && (
               <span
                 aria-hidden
@@ -307,7 +314,8 @@ export function MessageBubble(props: MessageBubbleProps) {
             message={message}
             currentUserId={currentUserId}
             onToggleReaction={onToggleReaction}
-            className="mt-1"
+            onAdd={() => setEmojiOpen(true)}
+            className="mt-1.5"
           />
         )}
 
@@ -450,16 +458,19 @@ function ReactionRow({
   message,
   currentUserId,
   onToggleReaction,
+  onAdd,
   className,
 }: {
   message: ImMessageDTO;
   currentUserId: string | null;
   onToggleReaction: (messageId: string, emoji: string) => void;
+  /** Abre la paleta completa. Sin esto la fila no muestra el botón de añadir. */
+  onAdd?: () => void;
   className?: string;
 }) {
   if (message.reactions.length === 0) return null;
   return (
-    <div className={cn('flex flex-wrap items-center gap-1', className)}>
+    <div className={cn('flex flex-wrap items-center gap-1.5', className)}>
       {message.reactions.map((r) => {
         const mine = !!currentUserId && r.userIds.includes(currentUserId);
         return (
@@ -468,64 +479,120 @@ function ReactionRow({
             type="button"
             onClick={() => onToggleReaction(message.id, r.emoji)}
             className={cn(
-              'press inline-flex animate-pop items-center gap-1 rounded-full px-2 py-0.5 text-[13px] font-semibold transition-all duration-200',
+              'press inline-flex animate-pop items-center gap-1 rounded-full py-0.5 pl-1.5 pr-2 text-[13px] font-semibold',
+              'transition-all duration-200 hover:-translate-y-0.5',
               mine
-                ? 'bg-brand-100 text-brand-700 ring-1 ring-brand-300'
-                : 'bg-white text-zinc-600 ring-1 ring-[--color-border] hover:ring-brand-200',
+                ? 'bg-brand-100 text-brand-800 ring-1 ring-brand-300 shadow-[0_6px_14px_-10px_rgba(55,118,106,0.9)]'
+                : 'bg-white text-zinc-600 ring-1 ring-[--color-border] hover:ring-brand-200 hover:shadow-[var(--shadow-soft)]',
             )}
             title={`${r.count} ${r.count === 1 ? 'persona' : 'personas'}`}
           >
-            <span className="text-[14px] leading-none">{r.emoji}</span>
+            <span className="text-[15px] leading-none">{r.emoji}</span>
             <span className="tabular-nums">{r.count}</span>
           </button>
         );
       })}
+      {onAdd && (
+        <button
+          type="button"
+          onClick={onAdd}
+          aria-label="Añadir una reacción"
+          title="Añadir una reacción"
+          className="press inline-flex h-[26px] w-[26px] items-center justify-center rounded-full bg-white text-zinc-400 opacity-0 ring-1 ring-[--color-border] transition-all duration-200 hover:-translate-y-0.5 hover:text-brand-600 hover:ring-brand-200 group-hover:opacity-100 group-focus-within:opacity-100"
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </button>
+      )}
     </div>
   );
 }
 
-function AttachmentGrid({ attachments }: { attachments: ImAttachment[] }) {
+function AttachmentGrid({
+  attachments,
+  own,
+}: {
+  attachments: ImAttachment[];
+  own?: boolean;
+}) {
   const images = attachments.filter(isImageAttachment);
-  const files = attachments.filter((a) => !isImageAttachment(a));
+  const audios = attachments.filter(isAudioAttachment);
+  const files = attachments.filter((a) => !isImageAttachment(a) && !isAudioAttachment(a));
+
+  // Mosaico: hasta cuatro miniaturas; el resto se cuenta sobre la última. Con
+  // tres, la primera ocupa el ancho para que la fila no quede coja.
+  const shown = images.slice(0, 4);
+  const extra = images.length - shown.length;
 
   return (
     <div className="mt-2 space-y-2">
-      {images.length > 0 && (
-        <div className={cn('grid gap-1.5', images.length > 1 ? 'grid-cols-2' : 'grid-cols-1')}>
-          {images.map((a) => (
+      {shown.length > 0 && (
+        <div
+          className={cn(
+            'grid gap-1.5 overflow-hidden rounded-[18px]',
+            shown.length === 1 ? 'grid-cols-1' : 'grid-cols-2',
+          )}
+        >
+          {shown.map((a, i) => (
             <a
               key={a.key}
               href={attachmentUrl(a)}
               target="_blank"
               rel="noreferrer"
-              className="hover-lift block overflow-hidden rounded-[14px] ring-1 ring-[--color-border]"
+              className={cn(
+                'group/img relative block overflow-hidden rounded-[14px] ring-1 ring-[--color-border]',
+                shown.length === 3 && i === 0 && 'col-span-2',
+              )}
             >
+              {/* biome-ignore lint/performance/noImgElement: adjunto arbitrario servido por la API firmada */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={attachmentUrl(a)}
                 alt={a.name}
-                className="max-h-64 w-full object-cover"
+                className={cn(
+                  'w-full object-cover transition-transform duration-500 group-hover/img:scale-105',
+                  shown.length === 1 ? 'max-h-72' : 'h-32',
+                )}
                 loading="lazy"
               />
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,transparent_55%,rgba(22,26,25,0.45))] opacity-0 transition-opacity duration-300 group-hover/img:opacity-100"
+              />
+              <span className="pointer-events-none absolute bottom-1.5 left-2 right-2 truncate text-[12px] font-semibold text-white opacity-0 transition-opacity duration-300 group-hover/img:opacity-100">
+                {a.name}
+              </span>
+              {extra > 0 && i === shown.length - 1 && (
+                <span className="absolute inset-0 flex items-center justify-center bg-[#161a19]/55 text-[18px] font-bold text-white backdrop-blur-[2px]">
+                  +{extra}
+                </span>
+              )}
             </a>
           ))}
         </div>
       )}
+
+      {audios.map((a) => (
+        <VoiceNote key={a.key} attachment={a} own={own} className="mt-0" />
+      ))}
+
       {files.map((a) => (
         <a
           key={a.key}
           href={attachmentUrl(a)}
           target="_blank"
           rel="noreferrer"
-          className="group/file flex items-center gap-2.5 rounded-[14px] border border-[--color-border] bg-white px-3 py-2 transition-all duration-300 hover:border-brand-200 hover:shadow-[var(--shadow-soft)]"
+          className="group/file flex items-center gap-2.5 rounded-[16px] border border-[--color-border] bg-white px-3 py-2.5 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-[var(--shadow-soft)]"
         >
-          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-brand-50 text-brand-600">
+          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-[linear-gradient(135deg,#e7f5ef,#ddf3ea)] text-brand-700">
             <FileText className="h-4 w-4" />
           </span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[14px] font-semibold text-zinc-800">{a.name}</span>
             <span className="block text-[12px] text-zinc-400">{formatBytes(a.size)}</span>
           </span>
-          <Download className="h-3.5 w-3.5 shrink-0 text-zinc-300 transition-colors group-hover/file:text-brand-500" />
+          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-zinc-300 transition-colors group-hover/file:bg-brand-50 group-hover/file:text-brand-600">
+            <Download className="h-3.5 w-3.5" />
+          </span>
         </a>
       ))}
     </div>

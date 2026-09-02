@@ -3,7 +3,7 @@
 import { type MentionIndex, PersonAvatar, formatBytes } from '@/components/messaging/shared';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
-import { MAX_ATTACHMENT_BYTES, MAX_BODY_LENGTH } from '@/lib/messaging/constants';
+import { MAX_ATTACHMENT_BYTES, MAX_BODY_LENGTH, REACTION_EMOJIS } from '@/lib/messaging/constants';
 import type { ImAttachment, ImPerson } from '@/lib/messaging/types';
 import {
   AtSign,
@@ -13,6 +13,7 @@ import {
   Paperclip,
   Phone,
   Send,
+  Smile,
   Sparkles,
   Users,
   X,
@@ -23,7 +24,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 /* ============================================================================
    Composer con comandos (`/`) y menciones (`@`).
 
-   El popover filtra a medida que escribís, se navega con flechas, se acepta
+   El popover filtra a medida que escribes, se navega con flechas, se acepta
    con Enter o Tab y se cierra con Escape. Enter envía; Shift+Enter salta de
    línea. El aviso de "está escribiendo" sale como mucho una vez cada 3 s.
    ========================================================================== */
@@ -136,6 +137,7 @@ export function Composer({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [emojiOpen, setEmojiOpen] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -293,6 +295,20 @@ export function Composer({
     setMenu(null);
   };
 
+  /** Inserta texto (un emoji) donde esté el cursor y devuelve el foco. */
+  const insertAtCaret = (text: string) => {
+    const el = textareaRef.current;
+    const caret = el?.selectionStart ?? value.length;
+    const next = `${value.slice(0, caret)}${text}${value.slice(caret)}`.slice(0, MAX_BODY_LENGTH);
+    setValue(next);
+    setEmojiOpen(false);
+    requestAnimationFrame(() => {
+      const pos = Math.min(caret + text.length, next.length);
+      el?.focus();
+      el?.setSelectionRange(pos, pos);
+    });
+  };
+
   const applyOption = (index: number) => {
     const opt = options[index];
     if (!opt || !menu) return;
@@ -307,6 +323,22 @@ export function Composer({
       el?.setSelectionRange(pos, pos);
     });
   };
+
+  useEffect(() => {
+    if (!emojiOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('[data-composer-emoji]')) setEmojiOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setEmojiOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [emojiOpen]);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const text = e.target.value.slice(0, MAX_BODY_LENGTH);
@@ -456,11 +488,11 @@ export function Composer({
       {/* Caja */}
       <div
         className={cn(
-          'flex items-end gap-2 rounded-[20px] border border-[--color-border] bg-white p-2 shadow-[var(--shadow-soft)]',
+          'relative flex items-end gap-1 rounded-[22px] border border-[--color-border] bg-white p-2 shadow-[var(--shadow-soft)]',
           // La caja se enfoca sola al entrar en un canal: un halo de color ahí
           // hace que la pantalla parezca pulsada nada más abrirla. Queda una
-          // pista neutra, que quien navega con teclado necesita ver el foco.
-          'transition-[border-color] duration-300 focus-within:border-zinc-300',
+          // pista sobria, que quien navega con teclado necesita ver el foco.
+          'transition-all duration-300 focus-within:border-brand-300 focus-within:shadow-[0_0_0_4px_rgba(95,168,150,0.10)]',
           disabled && 'opacity-60',
         )}
       >
@@ -481,7 +513,7 @@ export function Composer({
           onClick={() => fileInputRef.current?.click()}
           aria-label="Adjuntar archivo"
           title="Adjuntar archivo"
-          className="press mb-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-colors duration-200 hover:bg-zinc-100 hover:text-zinc-700"
+          className="press mb-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-colors duration-200 hover:bg-brand-50 hover:text-brand-600"
         >
           <Paperclip className="h-4 w-4" />
         </button>
@@ -494,10 +526,48 @@ export function Composer({
           onKeyDown={handleKeyDown}
           onClick={(e) => detectMenu(value, e.currentTarget.selectionStart ?? 0)}
           rows={1}
-          placeholder={placeholder ?? `Escribí en ${channelName}…  (/ comandos · @ menciones)`}
+          placeholder={placeholder ?? `Escribe en ${channelName}…  (/ comandos · @ menciones)`}
           aria-label={`Mensaje para ${channelName}`}
           className="scrollbar-none max-h-[200px] min-h-[36px] flex-1 resize-none border-0 bg-transparent px-1 py-2 text-[14px] leading-relaxed text-zinc-900 outline-none ring-0 placeholder:text-zinc-400 focus:outline-none focus:ring-0 focus-visible:outline-none"
         />
+
+        <div className="relative mb-0.5 shrink-0" data-composer-emoji>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => setEmojiOpen((v) => !v)}
+            aria-label="Insertar un emoji"
+            title="Insertar un emoji"
+            aria-expanded={emojiOpen}
+            className={cn(
+              'press inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors duration-200',
+              emojiOpen
+                ? 'bg-brand-100 text-brand-700'
+                : 'text-zinc-400 hover:bg-brand-50 hover:text-brand-600',
+            )}
+          >
+            <Smile className="h-4 w-4" />
+          </button>
+
+          {emojiOpen && (
+            <div
+              data-composer-emoji
+              className="absolute bottom-full right-0 z-30 mb-2 grid w-[228px] animate-zoom-in grid-cols-6 gap-0.5 rounded-[18px] border border-[--color-border] bg-white p-2 shadow-[var(--shadow-lifted)]"
+            >
+              {REACTION_EMOJIS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => insertAtCaret(emoji)}
+                  aria-label={`Insertar ${emoji}`}
+                  className="press inline-flex h-8 w-8 items-center justify-center rounded-full text-[18px] transition-transform duration-200 hover:scale-125 hover:bg-brand-50"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         <button
           type="button"
@@ -515,7 +585,7 @@ export function Composer({
           }}
           aria-label="Mencionar a alguien"
           title="Mencionar a alguien"
-          className="press mb-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-colors duration-200 hover:bg-zinc-100 hover:text-zinc-700"
+          className="press mb-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-colors duration-200 hover:bg-brand-50 hover:text-brand-600"
         >
           <AtSign className="h-4 w-4" />
         </button>

@@ -1,10 +1,7 @@
 'use client';
 
+import { ChannelMembersDialog, NewChannelDialog } from '@/components/messaging/ChannelDialogs';
 import { ChannelRail } from '@/components/messaging/ChannelRail';
-import {
-  ChannelMembersDialog,
-  NewChannelDialog,
-} from '@/components/messaging/ChannelDialogs';
 import { Composer } from '@/components/messaging/Composer';
 import { ContextPanel } from '@/components/messaging/ContextPanel';
 import { MessageThread } from '@/components/messaging/MessageThread';
@@ -604,6 +601,26 @@ export function MessagesWorkspace({
     [patchMessage],
   );
 
+  /**
+   * Preferencias del canal para quien lo mira (silenciar, fijar en el rail).
+   * Son de la membresía, no del canal: cualquier miembro las cambia sobre sí
+   * mismo. Se aplican en local y se guardan sin bloquear la interfaz.
+   */
+  const updateChannelPrefs = useCallback(
+    (channelId: string, patch: { muted?: boolean; pinned?: boolean }) => {
+      setRail((prev) => ({
+        ...prev,
+        channels: prev.channels.map((c) => (c.id === channelId ? { ...c, ...patch } : c)),
+      }));
+      void fetch(`/api/messages/channels/${channelId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      }).catch(() => setError('No se pudieron guardar las preferencias del canal'));
+    },
+    [],
+  );
+
   const deleteMessage = useCallback(
     (message: ImMessageDTO) => {
       patchMessage(message.id, { deletedAt: new Date().toISOString() });
@@ -903,6 +920,20 @@ export function MessagesWorkspace({
       .map(([, entry]) => entry.name);
   }, [typing, activeId, currentUserId]);
 
+  // Lo mismo pero por canal: el rail pinta "escribiendo…" en la fila, que es
+  // donde se busca cuando no estás mirando ese hilo.
+  const typingByChannel = useMemo(() => {
+    const now = Date.now();
+    const out: Record<string, string[]> = {};
+    for (const [channelId, entries] of Object.entries(typing)) {
+      const names = Object.entries(entries)
+        .filter(([uid, entry]) => uid !== currentUserId && entry.expiresAt > now)
+        .map(([, entry]) => entry.name);
+      if (names.length > 0) out[channelId] = names;
+    }
+    return out;
+  }, [typing, currentUserId]);
+
   const jumpToMessage = useCallback((messageId: string) => {
     const el = document.querySelector(`[data-message-id="${messageId}"]`);
     el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -948,11 +979,12 @@ export function MessagesWorkspace({
           activeId={activeId}
           totalUnread={rail.totalUnread}
           connected={connected}
+          typingByChannel={typingByChannel}
           onSelect={openChannel}
           onStartDm={startDm}
           onNewChannel={() => setNewChannelOpen(true)}
           className={cn(
-            'w-full shrink-0 lg:flex lg:w-[286px]',
+            'w-full shrink-0 lg:flex lg:w-[300px]',
             mobilePane === 'rail' ? 'flex' : 'hidden',
           )}
         />
@@ -1024,9 +1056,12 @@ export function MessagesWorkspace({
           mentions={mentions}
           onJumpToMessage={jumpToMessage}
           onTogglePin={togglePin}
+          onUpdateChannel={
+            activeChannel ? (patch) => updateChannelPrefs(activeChannel.id, patch) : undefined
+          }
           onManageMembers={
             // En un DM o en un hilo de contexto la lista no la elige nadie:
-            // sale de con quién hablás o de la entidad que ancla el hilo.
+            // sale de con quién hablas o de la entidad que ancla el hilo.
             activeChannel &&
             (activeChannel.kind === 'PUBLIC' ||
               activeChannel.kind === 'PRIVATE' ||
@@ -1039,7 +1074,7 @@ export function MessagesWorkspace({
             setMobilePane((p) => (p === 'context' ? 'thread' : p));
           }}
           className={cn(
-            'w-full shrink-0 xl:w-[300px]',
+            'w-full shrink-0 xl:w-[316px]',
             mobilePane === 'context' ? 'flex' : 'hidden',
             contextOpen ? 'xl:flex' : 'xl:hidden',
           )}
