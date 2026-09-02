@@ -1,9 +1,8 @@
+import { DashboardOverlays } from '@/components/dashboard/dashboard-overlays';
 import { ImpersonationBanner } from '@/components/dashboard/impersonation-banner';
 import { DashboardSidebar } from '@/components/dashboard/sidebar';
 import { DashboardTopbar } from '@/components/dashboard/topbar';
-import { WelcomeTour } from '@/components/dashboard/welcome-tour';
 import { MessagingProvider } from '@/components/messaging/MessagingProvider';
-import { MessagesDock } from '@/components/messaging/dock/MessagesDock';
 import { unreadSummary } from '@/lib/messaging/queries';
 import { DEFAULT_ENABLED_MODULES, type EnabledModules } from '@/lib/modules';
 import { countActionableTasks, internalUserIdFor } from '@/lib/tasks/queries';
@@ -94,8 +93,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <div className="mx-auto w-full max-w-[1480px]">{children}</div>
           </main>
         </div>
-        <WelcomeTour autoStart={!isSuperAdmin && !tenantCtx?.impersonating} />
-        <MessagesDock />
+        <DashboardOverlays tourAutoStart={!isSuperAdmin && !tenantCtx?.impersonating} />
       </div>
     </MessagingProvider>
   );

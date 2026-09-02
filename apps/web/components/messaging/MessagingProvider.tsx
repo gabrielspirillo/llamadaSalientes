@@ -261,14 +261,12 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Las menciones no dependen del rail: encadenarlas detrás de `ready` sumaba
+  // un round-trip antes de que el módulo estuviera vivo. Van en paralelo.
   useEffect(() => {
     void refreshRail();
-  }, [refreshRail]);
-
-  useEffect(() => {
-    if (!ready) return;
     void refreshMentions();
-  }, [ready, refreshMentions]);
+  }, [refreshRail, refreshMentions]);
 
   /* --- Aplicación de eventos al rail ------------------------------------ */
   const patchChannel = useCallback((channelId: string, patch: Partial<ImChannelDTO>) => {
@@ -376,8 +374,16 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
   );
 
   /* --- El único EventSource --------------------------------------------- */
+  //
+  // Los handlers se leen por ref: tenerlos en las dependencias hacía que
+  // cualquier cambio de identidad cerrara y reabriera la conexión, y cada
+  // reconexión difunde a todo el tenant un par presence.changed false/true.
+  const handlersRef = useRef({ applyEvent, refreshRail, refreshMentions });
+  handlersRef.current = { applyEvent, refreshRail, refreshMentions };
+
   useEffect(() => {
-    if (!ready) return;
+    // No espera a `ready`: la conexión sólo necesita sesión, no el rail
+    // cargado. Esperarlo dejaba el tiempo real detrás de dos round-trips.
     if (typeof window === 'undefined' || typeof EventSource === 'undefined') return;
     if (esRef.current) return;
 
@@ -396,7 +402,7 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
       } catch {
         return;
       }
-      applyEvent(event);
+      handlersRef.current.applyEvent(event);
       const exact = subscribersRef.current.get(event.kind);
       if (exact) for (const h of Array.from(exact)) h(event);
       const wild = subscribersRef.current.get('*');
@@ -417,8 +423,8 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
       setConnected(true);
       if (hadError) {
         hadError = false;
-        void refreshRail();
-        void refreshMentions();
+        void handlersRef.current.refreshRail();
+        void handlersRef.current.refreshMentions();
       }
     };
     const onError = () => {
@@ -437,7 +443,8 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
       esRef.current = null;
       setConnected(false);
     };
-  }, [ready, applyEvent, refreshRail, refreshMentions]);
+    // Sin dependencias a propósito: una sola conexión por montaje.
+  }, []);
 
   /* --- Purga del "está escribiendo" ------------------------------------- */
   useEffect(() => {
