@@ -39,7 +39,7 @@ import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } f
    composer al pie.
 
    Reglas de scroll (lo que separa un chat que se siente instantáneo de uno que
-   pelea contra vos):
+   pelea contigo):
    · Solo autoscrolleamos si estabas pegado al fondo.
    · Si estabas leyendo historial, aparece un botón flotante "nuevos mensajes".
    · Al paginar hacia arriba se preserva la posición exacta de lectura.
@@ -182,8 +182,8 @@ export function MessageThread({
       <Card className={cn('flex h-full min-h-0 flex-col overflow-hidden', className)}>
         <EmptyState
           icon={<MessageSquare className="h-6 w-6" />}
-          title="Elegí un canal"
-          description="Las conversaciones del equipo, los avisos del sistema y los hilos de cada paciente viven acá."
+          title="Elige un canal"
+          description="Las conversaciones del equipo, los avisos del sistema y los hilos de cada paciente están aquí."
         />
       </Card>
     );
@@ -194,6 +194,7 @@ export function MessageThread({
   const memberNames = channel.memberIds
     .map((id) => people.find((p) => p.userId === id)?.name)
     .filter((n): n is string => !!n);
+  const onlineCount = channel.memberIds.filter((id) => presence.get(id)?.online).length;
 
   return (
     <Card
@@ -220,76 +221,106 @@ export function MessageThread({
       }}
     >
       {/* Cabecera */}
-      <header className="flex shrink-0 items-center gap-3 border-b border-[--color-border-subtle] px-3 py-3 sm:px-4">
+      <header className="relative flex shrink-0 items-center gap-3 border-b border-[--color-border-subtle] bg-[linear-gradient(180deg,#ffffff,#fbfcfc)] px-3 py-3 sm:px-4">
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-full bg-[radial-gradient(70%_140%_at_0%_0%,rgba(95,168,150,0.10),transparent_65%)]"
+        />
+
         <button
           type="button"
           onClick={onBack}
           aria-label="Volver a los canales"
-          className="press inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 lg:hidden"
+          className="press relative inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 lg:hidden"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
 
-        <span
-          className={cn(
-            'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl',
-            tone.chip,
+        <span className="relative inline-flex shrink-0">
+          <span
+            className={cn(
+              'inline-flex h-11 w-11 items-center justify-center rounded-[15px] shadow-[0_10px_24px_-16px_rgba(22,26,25,0.6)]',
+              tone.chip,
+            )}
+          >
+            <Icon className="h-[18px] w-[18px]" />
+          </span>
+          {connected && (
+            <span
+              aria-hidden
+              className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white"
+            />
           )}
-        >
-          <Icon className="h-4 w-4" />
         </span>
 
-        <div className="min-w-0 flex-1">
-          <h2 className="truncate text-[16px] font-semibold tracking-tight text-zinc-900">
+        <div className="relative min-w-0 flex-1">
+          <h2 className="truncate text-[17px] font-bold tracking-tight text-zinc-900">
             {channel.name}
           </h2>
-          <p className="truncate text-[13px] text-zinc-500">
-            {channel.topic ??
-              channel.contextLabel ??
-              `${channel.memberIds.length} ${channel.memberIds.length === 1 ? 'persona' : 'personas'}`}
+          <p className="mt-0.5 flex items-center gap-1.5 truncate text-[13px] text-zinc-500">
+            {onlineCount > 0 && (
+              <span className="inline-flex shrink-0 items-center gap-1 font-semibold text-emerald-600">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                {onlineCount} en línea
+              </span>
+            )}
+            {onlineCount > 0 && <span className="text-zinc-300">·</span>}
+            <span className="truncate">
+              {channel.topic ??
+                channel.contextLabel ??
+                `${channel.memberIds.length} ${channel.memberIds.length === 1 ? 'persona' : 'personas'}`}
+            </span>
           </p>
         </div>
 
         {memberNames.length > 0 && (
-          <AvatarStack names={memberNames} max={4} size={26} className="hidden sm:flex" />
+          <AvatarStack names={memberNames} max={4} size={28} className="relative hidden sm:flex" />
         )}
 
         {!connected && (
-          <span className="hidden rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-amber-700 sm:inline">
+          <span className="relative hidden items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-amber-700 ring-1 ring-amber-200/70 sm:inline-flex">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />
             Reconectando
           </span>
         )}
 
-        <button
-          type="button"
-          onClick={onToggleContext}
-          aria-label={contextOpen ? 'Ocultar contexto' : 'Mostrar contexto'}
-          title={contextOpen ? 'Ocultar contexto' : 'Mostrar contexto'}
-          className="press inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
-        >
-          {contextOpen ? (
-            <PanelRightClose className="h-4 w-4" />
-          ) : (
-            <PanelRightOpen className="h-4 w-4" />
-          )}
-        </button>
+        <div className="relative flex shrink-0 items-center gap-0.5 rounded-full bg-white/80 p-1 ring-1 ring-[--color-border-subtle]">
+          <button
+            type="button"
+            onClick={onToggleContext}
+            aria-label={contextOpen ? 'Ocultar el panel del canal' : 'Ver el panel del canal'}
+            title={contextOpen ? 'Ocultar el panel del canal' : 'Ver el panel del canal'}
+            className={cn(
+              'press inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors',
+              contextOpen
+                ? 'bg-brand-100 text-brand-700'
+                : 'text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700',
+            )}
+          >
+            {contextOpen ? (
+              <PanelRightClose className="h-4 w-4" />
+            ) : (
+              <PanelRightOpen className="h-4 w-4" />
+            )}
+          </button>
+        </div>
       </header>
 
       {/* Hilo */}
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="relative min-h-0 flex-1 overflow-y-auto bg-[linear-gradient(180deg,#fbfaff_0%,#f8f7fd_100%)] px-1 py-3 sm:px-2"
+        className="thread-canvas relative min-h-0 flex-1 overflow-y-auto px-1 py-3 sm:px-2"
       >
         {loading ? (
           <SkeletonRows rows={6} />
         ) : messages.length === 0 ? (
           <EmptyState
             icon={<Sparkles className="h-6 w-6" />}
-            title={`Nadie escribió todavía en ${channel.name}`}
+            title={`Todavía no ha escrito nadie en ${channel.name}`}
             description={
               channel.topic ??
-              'Contá qué pasó, arrastrá un archivo o mencioná a alguien con @ para arrancar.'
+              'Cuenta qué ha pasado, arrastra un archivo o menciona a alguien con @ para empezar.'
             }
           />
         ) : (
@@ -384,9 +415,10 @@ export function MessageThread({
         )}
 
         {typingNames.length > 0 && (
-          <div className="flex animate-fade-up items-center gap-2 px-5 py-2">
-            <TypingDots />
-            <span className="text-[13px] font-medium text-zinc-500">
+          <div className="flex animate-fade-up items-center gap-2 px-4 py-2">
+            <AvatarStack names={typingNames} max={3} size={22} />
+            <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[13px] font-medium text-zinc-600 shadow-[var(--shadow-soft)] ring-1 ring-[--color-border-subtle]">
+              <TypingDots />
               {typingLabel(typingNames)}
             </span>
           </div>
@@ -416,11 +448,11 @@ export function MessageThread({
       {dragging && (
         <div className="spotlight pointer-events-none absolute inset-2 z-30 flex animate-fade-in items-center justify-center rounded-[20px] border-2 border-dashed border-brand-400 bg-white/80 backdrop-blur-sm">
           <div className="text-center">
-            <span className="mx-auto mb-3 inline-flex h-14 w-14 animate-float items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#f4f0ff,#fdf0f7)] text-brand-600">
+            <span className="mx-auto mb-3 inline-flex h-14 w-14 animate-float items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#e7f5ef,#ddf3ea)] text-brand-700">
               <Paperclip className="h-6 w-6" />
             </span>
-            <p className="text-[16px] font-semibold text-zinc-800">Soltá para adjuntar</p>
-            <p className="mt-1 text-[14px] text-zinc-500">Se sube y se manda con tu mensaje</p>
+            <p className="text-[16px] font-semibold text-zinc-800">Suelta para adjuntar</p>
+            <p className="mt-1 text-[14px] text-zinc-500">Se sube y se envía con tu mensaje</p>
           </div>
         </div>
       )}
