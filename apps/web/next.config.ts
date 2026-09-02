@@ -19,6 +19,14 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '4mb',
     },
+    // El build picaba en ~3,3 GB de RSS. En el VPS, con Postgres, Redis, MinIO
+    // y los dos contenedores de la app ya residentes, eso termina en OOM y el
+    // deploy falla sin dejar la app caída (sigue sirviendo el contenedor
+    // viejo). Estas dos opciones bajan el pico a costa de algo de tiempo.
+    webpackMemoryOptimizations: true,
+    // Sin esto, webpack levanta un worker por core: en un VPS de muchos cores
+    // se multiplica la memoria del build sin ganar gran cosa.
+    cpus: 2,
   },
   async headers() {
     return [

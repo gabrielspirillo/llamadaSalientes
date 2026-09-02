@@ -65,6 +65,10 @@ ENV DIRECT_URL=${DIRECT_URL}
 ENV ENCRYPTION_KEY=${ENCRYPTION_KEY}
 ENV SENTRY_DSN=${SENTRY_DSN}
 
+# Techo de heap para V8. Sin él, Node crece hasta que el kernel lo mata y el
+# deploy falla con un error opaco; con el techo, V8 recolecta antes de llegar.
+ENV NODE_OPTIONS="--max-old-space-size=2560"
+
 RUN pnpm --filter web build
 
 # ───────────────────────────────────────────────────────────────────────────
