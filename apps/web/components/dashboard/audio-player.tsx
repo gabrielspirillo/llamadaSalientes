@@ -32,7 +32,7 @@ export function AudioPlayer({ callId }: Props) {
     const onEnded = () => setPlaying(false);
     const onError = () => {
       setLoadState('error');
-      setErrorMsg('No se pudo reproducir el audio. Probá reintentar.');
+      setErrorMsg('No se pudo reproducir el audio. Inténtalo de nuevo.');
     };
     const onCanPlay = () => {
       if (loadState !== 'ready') setLoadState('ready');
@@ -125,7 +125,7 @@ export function AudioPlayer({ callId }: Props) {
       {loadState === 'idle' && (
         <div className="flex flex-col items-center justify-center py-6">
           <Volume2 className="h-8 w-8 text-zinc-300 mb-3" />
-          <p className="text-sm text-zinc-500 mb-4">Cargá la grabación para escucharla.</p>
+          <p className="text-sm text-zinc-500 mb-4">Carga la grabación para escucharla.</p>
           <Button size="sm" onClick={load}>
             <Play className="h-4 w-4" /> Cargar grabación
           </Button>

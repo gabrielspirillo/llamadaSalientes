@@ -74,7 +74,7 @@ export function RulesEditor(props: {
       await fn();
     } catch (err) {
       console.error(`[reminders] ${what} falló`, err);
-      setError(`No se pudo ${what}. Revisá la conexión y probá de nuevo.`);
+      setError(`No se pudo ${what}. Revisa la conexión e inténtalo de nuevo.`);
     }
   }
 

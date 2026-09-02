@@ -329,7 +329,7 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
           ) : hits.length === 0 ? (
             <EmptyState
               title={`Sin resultados para “${q}”`}
-              description="Probá con otro término."
+              description="Prueba con otro término."
             />
           ) : (
             <ul className="stagger p-2" style={{ ['--stagger-step' as string]: '35ms' }}>

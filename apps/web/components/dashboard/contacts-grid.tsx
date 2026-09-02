@@ -153,7 +153,7 @@ export function ContactsGrid({ initial }: { initial: Contact[] }) {
             title={q.length > 0 ? 'Sin resultados' : 'Aún no hay contactos'}
             description={
               q.length > 0
-                ? `No encontré contactos para “${q}”. Probá otro término.`
+                ? `No encontré contactos para “${q}”. Prueba con otro término.`
                 : 'Cuando el agente registre pacientes en GHL, vas a verlos acá.'
             }
           />

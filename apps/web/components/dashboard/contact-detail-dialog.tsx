@@ -305,7 +305,7 @@ export function ContactDetailDialog({
                       </a>
                     </Button>
                     <span className="text-xs text-zinc-500">
-                      Para editar datos personales, abrí la ficha en GHL.
+                      Para editar datos personales, abre la ficha en GHL.
                     </span>
                   </div>
                 </div>

@@ -129,7 +129,7 @@ export function ReminderDetailDialog({
       onClose();
     } catch (err) {
       console.error('[reminders] marcar falló', err);
-      setError('No se pudo marcar. Revisá la conexión y probá de nuevo.');
+      setError('No se pudo marcar. Revisa la conexión e inténtalo de nuevo.');
     } finally {
       // En el finally a propósito: con setBusy(false) en la ruta feliz, un
       // corte de red dejaba los tres botones deshabilitados para siempre y

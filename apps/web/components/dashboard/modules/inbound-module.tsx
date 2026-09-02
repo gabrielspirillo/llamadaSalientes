@@ -109,7 +109,7 @@ export async function InboundModule({ tenantId }: { tenantId: string }) {
                 <EmptyState
                   icon={<PhoneCall className="h-5 w-5" />}
                   title="Aún no hay llamadas"
-                  description="Probá el agente desde el panel o llamá al número configurado."
+                  description="Prueba el agente desde el panel o llama al número configurado."
                   action={
                     <Button asChild size="sm">
                       <Link href="/dashboard/agent">Probar agente ahora</Link>

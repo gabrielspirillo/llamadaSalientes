@@ -185,7 +185,7 @@ function QuickSwitcherPanel({ onClose }: { onClose: () => void }) {
             <EmptyState
               icon={<MessageSquare className="h-5 w-5" />}
               title="Sin coincidencias"
-              description="Probá con otro nombre de canal o de compañera."
+              description="Prueba con otro nombre de canal o de compañera."
             />
           ) : (
             <ul className="p-2">
