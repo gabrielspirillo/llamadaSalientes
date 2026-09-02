@@ -71,12 +71,12 @@ export async function POST(_req: NextRequest) {
       agentId,
     });
   } catch (err) {
-    const { status, message } = describeRetellError(err);
+    const { status, message, detail } = describeRetellError(err);
     console.error('[retell:web-call] fallo al crear la llamada de prueba', {
       tenantId,
       agentId,
       status,
-      detail: err instanceof Error ? err.message : String(err),
+      detail,
     });
     return NextResponse.json({ error: message }, { status });
   }

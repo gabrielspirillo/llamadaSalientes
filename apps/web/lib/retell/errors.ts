@@ -1,65 +1,48 @@
 import 'server-only';
 import Retell from 'retell-sdk';
 
+// Lo que ve quien lleva la clínica: neutro, sin nombrar a Retell, ni crédito,
+// ni claves, ni agentes. Esos detalles son internos —del operador del
+// sistema— y no accionables para el usuario final. El motivo real de cada
+// fallo queda en `detail` para el log del servidor, no en pantalla.
+const USER_MESSAGE =
+  'Estamos haciendo unos ajustes en el sistema y el asistente no está disponible ahora mismo. Vuelve a intentarlo en un rato.';
+
 /**
- * Traduce un fallo de la API de Retell a algo que se pueda enseñar en pantalla.
+ * Traduce un fallo de la API de Retell a lo que se muestra en pantalla más el
+ * detalle técnico para el log.
  *
- * Sin esto, cualquier problema de la cuenta (crédito agotado, clave caducada,
- * agente borrado) llegaba al navegador como un 500 pelado: el usuario leía
- * "Error 500" y no había forma de saber si la culpa era nuestra o de Retell.
- * Los mensajes van dirigidos a quien lleva la clínica, no a un programador.
+ * `message` es siempre el mismo aviso neutro: cualquier problema (crédito
+ * agotado, clave caducada, agente borrado, corte de red) se enseña como "unos
+ * ajustes en el sistema", nunca como el error crudo. Antes esto subía como un
+ * "Error 500" pelado; ahora el usuario lee algo tranquilizador y quien opera
+ * el sistema tiene el porqué exacto en `detail`.
  */
-export function describeRetellError(err: unknown): { status: number; message: string } {
+export function describeRetellError(err: unknown): {
+  status: number;
+  message: string;
+  detail: string;
+} {
   if (err instanceof Retell.APIError) {
     const detail =
       (typeof err.error === 'object' && err.error && 'message' in err.error
         ? String((err.error as { message?: unknown }).message ?? '')
         : '') || err.message;
 
-    switch (err.status) {
-      case 402:
-        return {
-          status: 402,
-          message:
-            'La cuenta de Retell se ha quedado sin crédito: hay que añadir un método de pago en su panel para poder llamar. Hasta entonces el asistente no puede atender ni llamar.',
-        };
-      case 401:
-      case 403:
-        return {
-          status: 502,
-          message:
-            'Retell ha rechazado nuestras credenciales. Hay que revisar la clave de API en la configuración del servidor.',
-        };
-      case 404:
-        return {
-          status: 502,
-          message:
-            'Retell no encuentra el agente configurado. Puede que se haya borrado desde su panel: revisa el Agent ID en Asistente.',
-        };
-      case 429:
-        return {
-          status: 429,
-          message: 'Retell está limitando las peticiones. Espera unos segundos y vuelve a probar.',
-        };
-      default:
-        return {
-          status: 502,
-          message: `Retell ha devuelto un error${err.status ? ` (${err.status})` : ''}${
-            detail ? `: ${detail}` : '.'
-          }`,
-        };
-    }
+    // El status HTTP sí refleja la causa (para métricas y para el cliente),
+    // aunque el texto sea el mismo para todos.
+    const status = err.status === 402 || err.status === 429 ? err.status : err.status ? 502 : 500;
+
+    return { status, message: USER_MESSAGE, detail: `retell ${err.status}: ${detail}` };
   }
 
   if (err instanceof Retell.APIConnectionError) {
-    return {
-      status: 504,
-      message: 'No se ha podido contactar con Retell. Puede ser un corte temporal suyo.',
-    };
+    return { status: 504, message: USER_MESSAGE, detail: `conexión con retell: ${err.message}` };
   }
 
   return {
     status: 500,
-    message: err instanceof Error ? err.message : 'Error inesperado al hablar con Retell.',
+    message: USER_MESSAGE,
+    detail: err instanceof Error ? err.message : String(err),
   };
 }

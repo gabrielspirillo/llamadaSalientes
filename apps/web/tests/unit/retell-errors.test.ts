@@ -7,44 +7,44 @@ function apiError(status: number, body: unknown) {
   return Retell.APIError.generate(status, body as object, undefined, new Headers());
 }
 
+const NEUTRO = 'ajustes en el sistema';
+
 describe('describeRetellError', () => {
-  it('cuenta sin crédito: lo dice con esas palabras y no como un 500', () => {
+  it('cuenta sin crédito: al usuario mensaje neutro, motivo real en el detalle', () => {
     const r = describeRetellError(
       apiError(402, { status: 'error', message: 'Trial over quota, please add payment.' }),
     );
-    expect(r.status).toBe(402);
-    expect(r.message).toContain('sin crédito');
-    expect(r.message).toContain('método de pago');
+    expect(r.status).toBe(402); // el status HTTP sí refleja la causa
+    expect(r.message).toContain(NEUTRO);
+    expect(r.message).not.toMatch(/retell|crédito|pago/i);
+    expect(r.detail).toContain('Trial over quota');
   });
 
-  it('credenciales rechazadas', () => {
+  it('credenciales rechazadas: neutro fuera, causa dentro', () => {
     for (const status of [401, 403]) {
-      const r = describeRetellError(apiError(status, { message: 'nope' }));
+      const r = describeRetellError(apiError(status, { message: 'bad key' }));
       expect(r.status).toBe(502);
-      expect(r.message).toContain('credenciales');
+      expect(r.message).toContain(NEUTRO);
+      expect(r.detail).toContain(String(status));
     }
   });
 
-  it('agente inexistente apunta a la pantalla que hay que revisar', () => {
+  it('agente inexistente: no se nombra en pantalla', () => {
     const r = describeRetellError(apiError(404, { message: 'agent not found' }));
-    expect(r.message).toContain('Agent ID');
+    expect(r.message).toContain(NEUTRO);
+    expect(r.detail).toContain('agent not found');
   });
 
-  it('límite de peticiones pide reintentar', () => {
+  it('límite de peticiones conserva su status', () => {
     const r = describeRetellError(apiError(429, { message: 'slow down' }));
     expect(r.status).toBe(429);
-    expect(r.message).toContain('vuelve a probar');
+    expect(r.message).toContain(NEUTRO);
   });
 
-  it('un error desconocido conserva el detalle de Retell', () => {
-    const r = describeRetellError(apiError(500, { message: 'boom interno' }));
-    expect(r.status).toBe(502);
-    expect(r.message).toContain('boom interno');
-  });
-
-  it('un fallo que no viene de Retell no se disfraza', () => {
+  it('un fallo que no viene de Retell tampoco se enseña crudo', () => {
     const r = describeRetellError(new Error('la base de datos no responde'));
     expect(r.status).toBe(500);
-    expect(r.message).toBe('la base de datos no responde');
+    expect(r.message).toContain(NEUTRO);
+    expect(r.detail).toBe('la base de datos no responde');
   });
 });
