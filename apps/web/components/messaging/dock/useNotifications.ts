@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { ImEventHandler } from '@/components/messaging/MessagingProvider';
 import type { ImRealtimeEventKind } from '@/lib/messaging/events';
@@ -293,15 +293,34 @@ export function useNotifications(opts: {
     };
   }, [enabled, subscribe, pushToast, isDmChannel, isMutedChannel, channelName, myUserId]);
 
-  return {
-    soundEnabled,
-    setSoundEnabled,
-    toastsEnabled,
-    setToastsEnabled,
-    desktopPermission,
-    requestDesktopPermission,
-    toasts,
-    dismissToast,
-    clearToasts,
-  };
+  // Memoizado a propósito: este objeto es dependencia del useMemo que arma el
+  // value de MessagingContext. Devolver un literal nuevo en cada render hacía
+  // que ese memo NUNCA memoizara, así que cualquier evento del SSE —un typing
+  // ajeno, una presencia, un mensaje en un canal que no estás mirando—
+  // re-renderizaba el sidebar entero, la topbar y el dock. Todas las callbacks
+  // de arriba ya son estables; sólo faltaba no romper la identidad acá.
+  return useMemo(
+    () => ({
+      soundEnabled,
+      setSoundEnabled,
+      toastsEnabled,
+      setToastsEnabled,
+      desktopPermission,
+      requestDesktopPermission,
+      toasts,
+      dismissToast,
+      clearToasts,
+    }),
+    [
+      soundEnabled,
+      setSoundEnabled,
+      toastsEnabled,
+      setToastsEnabled,
+      desktopPermission,
+      requestDesktopPermission,
+      toasts,
+      dismissToast,
+      clearToasts,
+    ],
+  );
 }

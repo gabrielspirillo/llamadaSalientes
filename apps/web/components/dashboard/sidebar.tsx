@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import * as React from 'react';
 import { useEffect } from 'react';
 
 type NavItem = {
@@ -109,7 +110,12 @@ function BrandMark() {
   );
 }
 
-function NavLink({
+/**
+ * Memoizado: el sidebar se re-renderiza cada vez que cambia el contador de
+ * Mensajes (que llega por SSE). Sin esto se rehacían los trece enlaces y el
+ * OrganizationSwitcher de Clerk en cada evento, aunque sólo cambiara un número.
+ */
+const NavLink = React.memo(function NavLink({
   item,
   active,
   locked,
@@ -175,7 +181,7 @@ function NavLink({
       )}
     </Link>
   );
-}
+});
 
 function SidebarNav({
   onNavigate,

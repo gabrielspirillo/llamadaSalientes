@@ -21,6 +21,7 @@ import {
 import { getCurrentTenant } from '@/lib/tenant';
 import { getOrCreateWaitlistSettings } from '@/lib/waitlist/settings';
 import { ListChecks, Settings2 } from 'lucide-react';
+import { after } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,7 +37,11 @@ function patientNameFrom(
 
 export default async function WaitlistPage() {
   const { tenant } = await getCurrentTenant();
-  await getOrCreateWaitlistSettings(tenant.id);
+  // Upsert de conveniencia cuyo resultado la página no usa: bloqueaba el
+  // render sin aportar nada. Mismo patrón que la auto-provisión de Tareas.
+  after(() => {
+    void getOrCreateWaitlistSettings(tenant.id).catch(() => undefined);
+  });
 
   const [clinic] = await db
     .select({ timezone: clinicSettings.timezone })
@@ -45,29 +50,89 @@ export default async function WaitlistPage() {
     .limit(1);
   const tz = clinic?.timezone ?? 'Europe/Madrid';
 
+  // Las tres consultas grandes de la página (cola, ofertas e histórico) son
+  // independientes entre sí; encadenadas eran tres viajes en serie y esta es
+  // la página más lenta de navegar del panel. Se lanzan juntas y cada bloque
+  // se lanzan juntas.
+  const [queueRowsRaw, offerRowsRaw, acceptedRowsRaw] = await Promise.all([
+    db
+      .select({
+        id: waitlistEntries.id,
+        ghlContactId: waitlistEntries.ghlContactId,
+        treatmentId: waitlistEntries.treatmentId,
+        originalStartTime: waitlistEntries.originalStartTime,
+        createdAt: waitlistEntries.createdAt,
+        status: waitlistEntries.status,
+        source: waitlistEntries.source,
+        notes: waitlistEntries.notes,
+        preferredTimeWindowStart: waitlistEntries.preferredTimeWindowStart,
+        preferredTimeWindowEnd: waitlistEntries.preferredTimeWindowEnd,
+      })
+      .from(waitlistEntries)
+      .where(
+        and(
+          eq(waitlistEntries.tenantId, tenant.id),
+          inArray(waitlistEntries.status, ['ACTIVE', 'PAUSED']),
+        ),
+      )
+      .orderBy(desc(waitlistEntries.createdAt))
+      .limit(500)
+      .execute(),
+    db
+      .select({
+        id: waitlistOffers.id,
+        status: waitlistOffers.status,
+        channel: waitlistOffers.channel,
+        driverScope: waitlistOffers.driverScope,
+        sentAt: waitlistOffers.sentAt,
+        expiresAt: waitlistOffers.expiresAt,
+        respondedAt: waitlistOffers.respondedAt,
+        errorMessage: waitlistOffers.errorMessage,
+        entryId: waitlistOffers.waitlistEntryId,
+        cancelledSlotId: waitlistOffers.cancelledSlotId,
+        slotStartTime: cancelledSlots.startTime,
+        entryGhlContactId: waitlistEntries.ghlContactId,
+        entryTreatmentId: waitlistEntries.treatmentId,
+        entryOriginalStartTime: waitlistEntries.originalStartTime,
+      })
+      .from(waitlistOffers)
+      .innerJoin(cancelledSlots, eq(cancelledSlots.id, waitlistOffers.cancelledSlotId))
+      .innerJoin(waitlistEntries, eq(waitlistEntries.id, waitlistOffers.waitlistEntryId))
+      .where(eq(waitlistOffers.tenantId, tenant.id))
+      .orderBy(desc(waitlistOffers.createdAt))
+      .limit(200)
+      .execute(),
+    db
+      .select({
+        offerId: waitlistOffers.id,
+        acceptedAt: waitlistOffers.respondedAt,
+        channel: waitlistOffers.channel,
+        slotStartTime: cancelledSlots.startTime,
+        entryGhlContactId: waitlistEntries.ghlContactId,
+        entryTreatmentId: waitlistEntries.treatmentId,
+        entryOriginalStartTime: waitlistEntries.originalStartTime,
+        revenueCents: schedulingOffers.estimatedRevenueCents,
+        currency: schedulingOffers.currency,
+        source: schedulingOffers.source,
+        newGhlAppointmentId: schedulingOffers.ghlAppointmentId,
+      })
+      .from(waitlistOffers)
+      .innerJoin(cancelledSlots, eq(cancelledSlots.id, waitlistOffers.cancelledSlotId))
+      .innerJoin(waitlistEntries, eq(waitlistEntries.id, waitlistOffers.waitlistEntryId))
+      .leftJoin(
+        schedulingOffers,
+        and(
+          eq(schedulingOffers.tenantId, waitlistOffers.tenantId),
+          eq(schedulingOffers.cancelledSlotId, waitlistOffers.cancelledSlotId),
+        ),
+      )
+      .where(and(eq(waitlistOffers.tenantId, tenant.id), eq(waitlistOffers.status, 'ACCEPTED')))
+      .orderBy(desc(waitlistOffers.respondedAt))
+      .limit(200)
+      .execute(),
+  ]);
+
   // ── Cola activa ──────────────────────────────────────────────────────────
-  const queueRowsRaw = await db
-    .select({
-      id: waitlistEntries.id,
-      ghlContactId: waitlistEntries.ghlContactId,
-      treatmentId: waitlistEntries.treatmentId,
-      originalStartTime: waitlistEntries.originalStartTime,
-      createdAt: waitlistEntries.createdAt,
-      status: waitlistEntries.status,
-      source: waitlistEntries.source,
-      notes: waitlistEntries.notes,
-      preferredTimeWindowStart: waitlistEntries.preferredTimeWindowStart,
-      preferredTimeWindowEnd: waitlistEntries.preferredTimeWindowEnd,
-    })
-    .from(waitlistEntries)
-    .where(
-      and(
-        eq(waitlistEntries.tenantId, tenant.id),
-        inArray(waitlistEntries.status, ['ACTIVE', 'PAUSED']),
-      ),
-    )
-    .orderBy(desc(waitlistEntries.createdAt))
-    .limit(500);
 
   const treatmentIds = Array.from(
     new Set(queueRowsRaw.map((r) => r.treatmentId).filter((x): x is string => !!x)),
@@ -128,29 +193,6 @@ export default async function WaitlistPage() {
   });
 
   // ── Ofertas en curso / recientes ────────────────────────────────────────
-  const offerRowsRaw = await db
-    .select({
-      id: waitlistOffers.id,
-      status: waitlistOffers.status,
-      channel: waitlistOffers.channel,
-      driverScope: waitlistOffers.driverScope,
-      sentAt: waitlistOffers.sentAt,
-      expiresAt: waitlistOffers.expiresAt,
-      respondedAt: waitlistOffers.respondedAt,
-      errorMessage: waitlistOffers.errorMessage,
-      entryId: waitlistOffers.waitlistEntryId,
-      cancelledSlotId: waitlistOffers.cancelledSlotId,
-      slotStartTime: cancelledSlots.startTime,
-      entryGhlContactId: waitlistEntries.ghlContactId,
-      entryTreatmentId: waitlistEntries.treatmentId,
-      entryOriginalStartTime: waitlistEntries.originalStartTime,
-    })
-    .from(waitlistOffers)
-    .innerJoin(cancelledSlots, eq(cancelledSlots.id, waitlistOffers.cancelledSlotId))
-    .innerJoin(waitlistEntries, eq(waitlistEntries.id, waitlistOffers.waitlistEntryId))
-    .where(eq(waitlistOffers.tenantId, tenant.id))
-    .orderBy(desc(waitlistOffers.createdAt))
-    .limit(200);
 
   // Cargar contactos + tratamientos de las ofertas que no estuvieran ya en queue.
   const offerContactIds = Array.from(new Set(offerRowsRaw.map((r) => r.entryGhlContactId)));
@@ -214,33 +256,6 @@ export default async function WaitlistPage() {
   );
 
   // ── Histórico de aceptadas + totales de revenue ─────────────────────────
-  const acceptedRowsRaw = await db
-    .select({
-      offerId: waitlistOffers.id,
-      acceptedAt: waitlistOffers.respondedAt,
-      channel: waitlistOffers.channel,
-      slotStartTime: cancelledSlots.startTime,
-      entryGhlContactId: waitlistEntries.ghlContactId,
-      entryTreatmentId: waitlistEntries.treatmentId,
-      entryOriginalStartTime: waitlistEntries.originalStartTime,
-      revenueCents: schedulingOffers.estimatedRevenueCents,
-      currency: schedulingOffers.currency,
-      source: schedulingOffers.source,
-      newGhlAppointmentId: schedulingOffers.ghlAppointmentId,
-    })
-    .from(waitlistOffers)
-    .innerJoin(cancelledSlots, eq(cancelledSlots.id, waitlistOffers.cancelledSlotId))
-    .innerJoin(waitlistEntries, eq(waitlistEntries.id, waitlistOffers.waitlistEntryId))
-    .leftJoin(
-      schedulingOffers,
-      and(
-        eq(schedulingOffers.tenantId, waitlistOffers.tenantId),
-        eq(schedulingOffers.cancelledSlotId, waitlistOffers.cancelledSlotId),
-      ),
-    )
-    .where(and(eq(waitlistOffers.tenantId, tenant.id), eq(waitlistOffers.status, 'ACCEPTED')))
-    .orderBy(desc(waitlistOffers.respondedAt))
-    .limit(200);
 
   const historyContactIds = Array.from(new Set(acceptedRowsRaw.map((r) => r.entryGhlContactId)));
   const histMissingContactIds = historyContactIds.filter((id) => !contactMap.has(id));

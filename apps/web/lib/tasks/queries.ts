@@ -497,14 +497,9 @@ export async function loadAutomationRules(tenantId: string): Promise<TaskAutomat
 }
 
 /** users.id interno a partir del id de Clerk. Null si todavía no se sincronizó. */
-export async function internalUserIdFor(clerkUserId: string): Promise<string | null> {
-  const [row] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.clerkUserId, clerkUserId))
-    .limit(1);
-  return row?.id ?? null;
-}
+// Reexportado desde lib/auth/internal-user.ts, que lo cachea por request: el
+// layout del panel y la página lo pedían por separado en el mismo render.
+export { internalUserIdFor } from '@/lib/auth/internal-user';
 
 /** Últimas tareas archivadas — el historial que la vista de rutinas muestra. */
 export async function loadArchivedTasks(tenantId: string, limit = 50): Promise<TaskDTO[]> {

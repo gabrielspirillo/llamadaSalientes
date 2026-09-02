@@ -104,7 +104,6 @@ export interface MessagingContextValue {
   mounted: boolean;
   /** true mientras el EventSource está vivo. Pasa a false en un corte. */
   connected: boolean;
-  typingIn(channelId: string): TypingPeer[];
   channelById(channelId: string): ImChannelDTO | null;
   isOnline(userId: string): boolean;
   notifications: NotificationsApi;
@@ -150,16 +149,35 @@ const DEFAULT_VALUE: MessagingContextValue = {
   subscribe: () => () => {},
   mounted: false,
   connected: false,
-  typingIn: () => [],
   channelById: () => null,
   isOnline: () => false,
   notifications: NOOP_NOTIFICATIONS,
 };
 
+const EMPTY_CHANNELS: ImChannelDTO[] = [];
+const EMPTY_PEOPLE: ImPerson[] = [];
+const EMPTY_PRESENCE: ImPresence[] = [];
+
 const MessagingContext = createContext<MessagingContextValue>(DEFAULT_VALUE);
+
+/**
+ * `typing` vive en su propio contexto.
+ *
+ * Es el estado que más cambia de todo el módulo (un evento cada 3 s por cada
+ * persona que esté escribiendo, en cualquier canal del tenant). Mientras
+ * formaba parte del value principal, cada tecleo ajeno invalidaba el memo y
+ * re-renderizaba el sidebar, la topbar y el dock enteros. Separado, sólo
+ * re-renderiza a quien de verdad muestra el "está escribiendo…".
+ */
+const TypingContext = createContext<(channelId: string) => TypingPeer[]>(() => []);
 
 export function useMessaging(): MessagingContextValue {
   return useContext(MessagingContext);
+}
+
+/** Peers escribiendo en un canal. Sólo para quien pinta el indicador. */
+export function useTypingIn(): (channelId: string) => TypingPeer[] {
+  return useContext(TypingContext);
 }
 
 export function MessagingProvider({ children }: { children: React.ReactNode }) {
@@ -551,9 +569,12 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
     [refreshMentions],
   );
 
-  const channels = rail?.channels ?? [];
-  const people = rail?.people ?? [];
-  const presence = rail?.presence ?? [];
+  // Constantes compartidas: `?? []` devuelve un array NUEVO en cada render
+  // mientras el rail es null, con lo que las callbacks que dependen de ellos
+  // cambian de identidad y vuelven a invalidar el memo del contexto.
+  const channels = rail?.channels ?? EMPTY_CHANNELS;
+  const people = rail?.people ?? EMPTY_PEOPLE;
+  const presence = rail?.presence ?? EMPTY_PRESENCE;
 
   const channelById = useCallback(
     (channelId: string) => channels.find((c) => c.id === channelId) ?? null,
@@ -623,7 +644,6 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
       subscribe,
       mounted: true,
       connected,
-      typingIn,
       channelById,
       isOnline,
       notifications,
@@ -647,7 +667,6 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
       refreshRail,
       refreshMentions,
       subscribe,
-      typingIn,
       channelById,
       isOnline,
       notifications,
@@ -656,7 +675,7 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <MessagingContext.Provider value={value}>
-      {children}
+      <TypingContext.Provider value={typingIn}>{children}</TypingContext.Provider>
       <NotificationToasts
         toasts={notifications.toasts}
         onDismiss={notifications.dismissToast}

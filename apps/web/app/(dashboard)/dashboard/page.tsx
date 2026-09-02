@@ -22,16 +22,20 @@ export default async function DashboardOverview({
 }) {
   const { tenant } = await getCurrentTenant();
   const demo = (await searchParams).demo === '1';
-  const upcoming = demo ? getDemoUpcoming() : await getUpcomingAppointments(tenant.id, 8);
-  const stats = demo
-    ? {
-        callsToday: 12,
-        callsYesterday: 9,
-        avgDurationSec: 168,
-        conversionRate: 64,
-        containmentRate: 82,
-      }
-    : await getDashboardStats(tenant.id);
+  // Las dos sólo dependen del tenant: encadenarlas sumaba un round-trip a cada
+  // carga del home, y este se repite con el refresco automático.
+  const [upcoming, stats] = demo
+    ? [
+        getDemoUpcoming(),
+        {
+          callsToday: 12,
+          callsYesterday: 9,
+          avgDurationSec: 168,
+          conversionRate: 64,
+          containmentRate: 82,
+        },
+      ]
+    : await Promise.all([getUpcomingAppointments(tenant.id, 8), getDashboardStats(tenant.id)]);
 
   const nextNames = upcoming
     .map((u) => u.patientName ?? u.phone ?? 'Paciente')
@@ -74,7 +78,12 @@ export default async function DashboardOverview({
           En demo lo desactivamos: los datos son fijos y no queremos re-fetchs. */}
       {!demo && (
         <div className="hidden">
-          <RealtimeRefresh intervalMs={30_000} />
+          {/* Cada tick es un router.refresh() completo: re-ejecuta el layout
+              (auth + los dos badges) y la página entera. A 30 s era un
+              round-trip de servidor cada media vuelta de reloj mientras alguien
+              simplemente miraba la pantalla, y el contador de Mensajes ya llega
+              en vivo por SSE. */}
+          <RealtimeRefresh intervalMs={120_000} />
         </div>
       )}
 

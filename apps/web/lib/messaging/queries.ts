@@ -628,11 +628,6 @@ export async function unreadSummary(
 }
 
 /** Clerk user id → `users.id` interno, que es lo que referencia todo el módulo. */
-export async function internalUserIdFor(clerkUserId: string): Promise<string | null> {
-  const [row] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.clerkUserId, clerkUserId))
-    .limit(1);
-  return row?.id ?? null;
-}
+// Reexportado desde lib/auth/internal-user.ts, que lo cachea por request: el
+// layout del panel y la página lo pedían por separado en el mismo render.
+export { internalUserIdFor } from '@/lib/auth/internal-user';

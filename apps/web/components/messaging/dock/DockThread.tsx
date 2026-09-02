@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
-import { useMessaging } from '@/components/messaging/MessagingProvider';
+import { useMessaging, useTypingIn } from '@/components/messaging/MessagingProvider';
 import { EmptyState, SkeletonRows } from '@/components/ui/feedback';
 import { Avatar } from '@/components/ui/stat';
 import { cn } from '@/lib/cn';
@@ -38,7 +38,8 @@ function hourOf(iso: string): string {
 }
 
 export function DockThread({ channelId }: { channelId: string }) {
-  const { sendMessage, markRead, subscribe, typingIn, rail } = useMessaging();
+  const { sendMessage, markRead, subscribe, rail } = useMessaging();
+  const typingIn = useTypingIn();
 
   const [messages, setMessages] = useState<ImMessageDTO[]>([]);
   const [loading, setLoading] = useState(true);

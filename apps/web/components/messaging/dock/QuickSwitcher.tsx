@@ -30,15 +30,13 @@ function normalize(s: string): string {
   );
 }
 
+/**
+ * Sólo el atajo. No consume el contexto de mensajería, así que estar montado
+ * de forma permanente en el panel no cuesta nada: el panel de verdad, que sí
+ * lee canales y personas, se monta recién al abrirlo.
+ */
 export function QuickSwitcher() {
-  const { channels, people, rail, openChannel, openDmWith, ready } = useMessaging();
   const [open, setOpen] = useState(false);
-  const [q, setQ] = useState('');
-  const [cursor, setCursor] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const router = useRouter();
-  const pathname = usePathname();
-  const onMessagesPage = pathname.startsWith('/dashboard/messages');
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -51,13 +49,27 @@ export function QuickSwitcher() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  if (!open) return null;
+  return <QuickSwitcherPanel onClose={() => setOpen(false)} />;
+}
+
+function QuickSwitcherPanel({ onClose }: { onClose: () => void }) {
+  const { channels, people, rail, openChannel, openDmWith, ready } = useMessaging();
+  const open = true;
+  const setOpen = (v: boolean) => {
+    if (!v) onClose();
+  };
+  const [q, setQ] = useState('');
+  const [cursor, setCursor] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const pathname = usePathname();
+  const onMessagesPage = pathname.startsWith('/dashboard/messages');
+
   useEffect(() => {
-    if (!open) return;
-    setQ('');
-    setCursor(0);
     const t = setTimeout(() => inputRef.current?.focus(), 20);
     return () => clearTimeout(t);
-  }, [open]);
+  }, []);
 
   const rows = useMemo<Row[]>(() => {
     const meId = rail?.me?.userId ?? null;
