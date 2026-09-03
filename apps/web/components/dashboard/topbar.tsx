@@ -1,6 +1,7 @@
 'use client';
 
 import { DashboardSidebarMobile } from '@/components/dashboard/sidebar';
+import { TeamMenu } from '@/components/dashboard/team-menu';
 import { useMessaging } from '@/components/messaging/MessagingProvider';
 import { MentionsInbox } from '@/components/messaging/dock/MentionsInbox';
 import { StatusDot } from '@/components/ui/badge';
@@ -184,7 +185,7 @@ export function DashboardTopbar({
             onClose={() => setNotifOpen(false)}
           />
 
-          <TeamAvatars />
+          <TeamMenu />
 
           <div className="ml-0.5 rounded-full p-1 ring-1 ring-[--color-border] transition-all hover:ring-brand-300">
             <UserButton
@@ -379,57 +380,6 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
         </div>
       </div>
     </div>
-  );
-}
-
-type TeamAvatar = { id: string; name: string; imageUrl: string | null };
-
-/**
- * Pila de avatares del equipo de la clínica. Se carga después del montaje
- * para no añadir una llamada a Clerk al render de cada página.
- */
-function TeamAvatars() {
-  const [members, setMembers] = useState<TeamAvatar[]>([]);
-
-  useEffect(() => {
-    let mounted = true;
-    fetch('/api/team/avatars')
-      .then((r) => (r.ok ? r.json() : { members: [] }))
-      .then((d: { members?: TeamAvatar[] }) => {
-        if (mounted) setMembers(d.members ?? []);
-      })
-      .catch(() => {});
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  if (members.length === 0) return null;
-
-  const shown = members.slice(0, 4);
-  const rest = members.length - shown.length;
-
-  return (
-    <Link
-      href="/dashboard/team"
-      title="Ver el equipo de la clínica"
-      className="mr-1 hidden items-center rounded-full py-1 pl-1 pr-2 transition-colors duration-300 hover:bg-zinc-100 sm:flex"
-    >
-      {shown.map((m, i) => (
-        <span
-          key={m.id}
-          className="-ml-2.5 transition-transform duration-300 first:ml-0 hover:-translate-y-1"
-          style={{ zIndex: shown.length - i }}
-        >
-          <Avatar name={m.name} src={m.imageUrl} size={34} />
-        </span>
-      ))}
-      {rest > 0 && (
-        <span className="-ml-2.5 inline-flex h-[34px] w-[34px] items-center justify-center rounded-full bg-brand-100 text-[12px] font-bold text-brand-700 ring-2 ring-white">
-          +{rest}
-        </span>
-      )}
-    </Link>
   );
 }
 

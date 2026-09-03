@@ -5,7 +5,13 @@ import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export type TeamAvatar = { id: string; name: string; imageUrl: string | null };
+export type TeamAvatar = {
+  id: string;
+  /** clerkUserId, para cruzar con la lista interna de mensajería. */
+  userId: string | null;
+  name: string;
+  imageUrl: string | null;
+};
 
 /**
  * Miembros de la clínica para la pila de avatares de la cabecera.
@@ -31,6 +37,7 @@ export async function GET() {
     });
     const members: TeamAvatar[] = res.data.map((m) => ({
       id: m.id,
+      userId: m.publicUserData?.userId ?? null,
       name:
         [m.publicUserData?.firstName, m.publicUserData?.lastName].filter(Boolean).join(' ') ||
         m.publicUserData?.identifier ||
