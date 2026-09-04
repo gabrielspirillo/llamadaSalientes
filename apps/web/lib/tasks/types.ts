@@ -1,6 +1,7 @@
 // DTOs que cruzan el borde server → client. Todo serializable (fechas en ISO).
 
 import type {
+  AutomationCondition,
   TaskAutomationTrigger,
   TaskCategory,
   TaskPriority,
@@ -107,6 +108,10 @@ export interface TaskTemplateDTO {
 export interface TaskAutomationRuleDTO {
   id: string;
   trigger: TaskAutomationTrigger;
+  /** Nombre legible. Null en las de sistema (caen al rótulo del evento). */
+  name: string | null;
+  /** Las del catálogo: no se borran y hay una por evento. */
+  isSystem: boolean;
   enabled: boolean;
   titleTemplate: string;
   descriptionTemplate: string | null;
@@ -116,6 +121,10 @@ export interface TaskAutomationRuleDTO {
   assigneeUserId: string | null;
   assigneeRole: string | null;
   requiresEvidence: boolean;
+  /** Filtros que deciden si la regla dispara. Vacío = siempre. */
+  conditions: AutomationCondition[];
+  /** Pasos que hereda la tarea creada. */
+  checklist: string[];
   params: Record<string, unknown>;
   /** Tareas creadas por esta regla en los últimos 30 días. */
   generatedLast30d: number;

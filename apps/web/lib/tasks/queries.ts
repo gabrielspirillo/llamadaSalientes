@@ -494,14 +494,20 @@ export async function loadAutomationRules(tenantId: string): Promise<TaskAutomat
     .select()
     .from(taskAutomationRules)
     .where(eq(taskAutomationRules.tenantId, tenantId))
-    .orderBy(asc(taskAutomationRules.trigger));
+    // De sistema primero y, dentro de cada evento, por creación: la regla del
+    // catálogo encabeza su grupo y las de a medida quedan debajo, en orden.
+    .orderBy(
+      asc(taskAutomationRules.trigger),
+      desc(taskAutomationRules.isSystem),
+      asc(taskAutomationRules.createdAt),
+    );
 
+  // Las tareas no guardan el id de la regla, así que atribuimos por el prefijo
+  // del `dedupe_key`: `auto:<trigger>:<ruleId>:…` las de a medida, y
+  // `auto:<trigger>:…` (sin ruleId) las de sistema.
   const monthAgo = new Date(Date.now() - 30 * 86_400_000);
-  const counts = await db
-    .select({
-      trigger: tasks.automationTrigger,
-      n: sql<number>`count(*)::int`,
-    })
+  const events = await db
+    .select({ trigger: tasks.automationTrigger, dedupeKey: tasks.dedupeKey })
     .from(tasks)
     .where(
       and(
@@ -509,13 +515,36 @@ export async function loadAutomationRules(tenantId: string): Promise<TaskAutomat
         eq(tasks.source, 'AUTOMATION'),
         gte(tasks.createdAt, monthAgo),
       ),
-    )
-    .groupBy(tasks.automationTrigger);
-  const countMap = new Map(counts.filter((c) => c.trigger).map((c) => [c.trigger as string, c.n]));
+    );
+
+  const customIdsByTrigger = new Map<string, string[]>();
+  for (const r of rows) {
+    if (r.isSystem) continue;
+    const list = customIdsByTrigger.get(r.trigger) ?? [];
+    list.push(r.id);
+    customIdsByTrigger.set(r.trigger, list);
+  }
+
+  const countFor = (rule: (typeof rows)[number]): number => {
+    if (!rule.isSystem) {
+      const prefix = `auto:${rule.trigger}:${rule.id}:`;
+      return events.filter((e) => (e.dedupeKey ?? '').startsWith(prefix)).length;
+    }
+    const customPrefixes = (customIdsByTrigger.get(rule.trigger) ?? []).map(
+      (id) => `auto:${rule.trigger}:${id}:`,
+    );
+    return events.filter((e) => {
+      if (e.trigger !== rule.trigger) return false;
+      const key = e.dedupeKey ?? '';
+      return !customPrefixes.some((p) => key.startsWith(p));
+    }).length;
+  };
 
   return rows.map((r) => ({
     id: r.id,
     trigger: r.trigger,
+    name: r.name,
+    isSystem: r.isSystem,
     enabled: r.enabled,
     titleTemplate: r.titleTemplate,
     descriptionTemplate: r.descriptionTemplate,
@@ -525,8 +554,10 @@ export async function loadAutomationRules(tenantId: string): Promise<TaskAutomat
     assigneeUserId: r.assigneeUserId,
     assigneeRole: r.assigneeRole,
     requiresEvidence: r.requiresEvidence,
+    conditions: (r.conditions as TaskAutomationRuleDTO['conditions']) ?? [],
+    checklist: (r.checklist as string[]) ?? [],
     params: (r.params as Record<string, unknown>) ?? {},
-    generatedLast30d: countMap.get(r.trigger) ?? 0,
+    generatedLast30d: countFor(r),
   }));
 }
 

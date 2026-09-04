@@ -234,6 +234,9 @@ async function readInactiveMonths(tenantId: string): Promise<number> {
       and(
         eq(taskAutomationRules.tenantId, tenantId),
         eq(taskAutomationRules.trigger, 'PATIENT_INACTIVE'),
+        // El barrido usa un único umbral: el de la regla de sistema. Las de a
+        // medida sobre este evento heredan esa ventana.
+        eq(taskAutomationRules.isSystem, true),
       ),
     )
     .limit(1);

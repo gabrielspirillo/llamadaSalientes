@@ -132,6 +132,8 @@ export function rule(over: Partial<TaskAutomationRuleDTO> = {}): TaskAutomationR
   return {
     id: 'r-1',
     trigger: 'MISSED_CALL',
+    name: null,
+    isSystem: true,
     enabled: true,
     titleTemplate: 'Devolver llamada a {{patientName}}',
     descriptionTemplate: null,
@@ -141,6 +143,8 @@ export function rule(over: Partial<TaskAutomationRuleDTO> = {}): TaskAutomationR
     assigneeUserId: null,
     assigneeRole: null,
     requiresEvidence: false,
+    conditions: [],
+    checklist: [],
     params: {},
     generatedLast30d: 4,
     ...over,

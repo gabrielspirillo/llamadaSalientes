@@ -1,17 +1,31 @@
 'use client';
 
+import { AutomationBuilder } from '@/components/tasks/AutomationBuilder';
 import { EmptyState } from '@/components/tasks/shared';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
 import {
   CATEGORY_META,
+  CONDITION_FIELD_META,
+  CONDITION_OP_META,
   PRIORITY_META,
   TRIGGER_META,
   type TaskPriority,
 } from '@/lib/tasks/constants';
 import { describeRecurrence } from '@/lib/tasks/recurrence';
 import type { TaskAutomationRuleDTO, TaskMember, TaskTemplateDTO } from '@/lib/tasks/types';
-import { Bot, ChevronDown, Loader2, Play, Repeat, ShieldCheck, Sparkles } from 'lucide-react';
+import {
+  Bot,
+  ChevronDown,
+  Loader2,
+  Pencil,
+  Play,
+  Plus,
+  Repeat,
+  ShieldCheck,
+  Sparkles,
+  Trash2,
+} from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 /**
@@ -36,6 +50,8 @@ export function RoutinesView({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  /** null = cerrado; { rule } = editar; { rule: null } = crear nueva. */
+  const [builder, setBuilder] = useState<{ rule: TaskAutomationRuleDTO | null } | null>(null);
 
   const call = async (fn: () => Promise<Response>, okMessage?: string) => {
     setBusy(true);
@@ -87,6 +103,12 @@ export function RoutinesView({
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(body),
       }),
+    );
+
+  const deleteRule = (id: string) =>
+    call(
+      () => fetch(`/api/tasks/automations/${id}`, { method: 'DELETE' }),
+      'Automatización eliminada.',
     );
 
   return (
@@ -163,16 +185,25 @@ export function RoutinesView({
 
       {/* ── Automatizaciones ────────────────────────────────────────────── */}
       <section>
-        <header className="mb-3">
-          <h2 className="flex items-center gap-2 text-base font-semibold text-zinc-900">
-            <Bot className="h-4 w-4 text-zinc-400" />
-            Tareas que se crean solas
-          </h2>
-          <p className="mt-0.5 max-w-2xl text-xs text-zinc-500">
-            Si alguien tiene que acordarse de crear la tarea, la tarea no se crea. Estas reglas
-            escuchan lo que ya pasa en la clínica —llamadas, citas, recordatorios, WhatsApp— y dejan
-            la tarea creada, con responsable y fecha límite.
-          </p>
+        <header className="mb-3 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="flex items-center gap-2 text-base font-semibold text-zinc-900">
+              <Bot className="h-4 w-4 text-zinc-400" />
+              Tareas que se crean solas
+            </h2>
+            <p className="mt-0.5 max-w-2xl text-xs text-zinc-500">
+              Si alguien tiene que acordarse de crear la tarea, la tarea no se crea. Estas reglas
+              escuchan lo que ya pasa en la clínica —llamadas, citas, recordatorios, WhatsApp— y
+              dejan la tarea creada, con responsable y fecha límite. Además del catálogo, puedes
+              armar las tuyas con condiciones.
+            </p>
+          </div>
+          {isAdmin && (
+            <Button size="sm" onClick={() => setBuilder({ rule: null })} disabled={busy}>
+              <Plus className="h-3.5 w-3.5" />
+              Nueva automatización
+            </Button>
+          )}
         </header>
 
         <div className="space-y-2">
@@ -184,6 +215,8 @@ export function RoutinesView({
               isAdmin={isAdmin}
               busy={busy}
               onPatch={patchRule}
+              onEdit={(rule) => setBuilder({ rule })}
+              onDelete={deleteRule}
             />
           ))}
           {rules.length === 0 && (
@@ -194,6 +227,18 @@ export function RoutinesView({
           )}
         </div>
       </section>
+
+      {builder && (
+        <AutomationBuilder
+          open
+          onOpenChange={(v) => {
+            if (!v) setBuilder(null);
+          }}
+          members={members}
+          rule={builder.rule}
+          onSaved={onRefresh}
+        />
+      )}
     </div>
   );
 }
@@ -354,15 +399,21 @@ function RuleRow({
   isAdmin,
   busy,
   onPatch,
+  onEdit,
+  onDelete,
 }: {
   rule: TaskAutomationRuleDTO;
   members: TaskMember[];
   isAdmin: boolean;
   busy: boolean;
   onPatch: (id: string, body: Record<string, unknown>) => void;
+  onEdit: (rule: TaskAutomationRuleDTO) => void;
+  onDelete: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const meta = TRIGGER_META[rule.trigger];
+  const displayName = rule.name?.trim() || meta.label;
 
   return (
     <article
@@ -374,7 +425,17 @@ function RuleRow({
       <div className="flex flex-wrap items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-sm font-semibold text-zinc-900">{meta.label}</h3>
+            <h3 className="text-sm font-semibold text-zinc-900">{displayName}</h3>
+            <span
+              className={cn(
+                'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-inset',
+                rule.isSystem
+                  ? 'bg-zinc-50 text-zinc-500 ring-zinc-200'
+                  : 'bg-brand-50 text-brand-700 ring-brand-200',
+              )}
+            >
+              {rule.isSystem ? 'Catálogo' : 'A medida'}
+            </span>
             <span
               className={cn(
                 'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset',
@@ -390,9 +451,20 @@ function RuleRow({
           <p className="mt-0.5 text-xs text-zinc-500">
             <span className="font-medium text-zinc-600">Cuándo:</span> {meta.when}
           </p>
-          <p className="mt-0.5 text-xs text-zinc-500">
-            <span className="font-medium text-zinc-600">Por qué:</span> {meta.why}
-          </p>
+          {rule.isSystem ? (
+            <p className="mt-0.5 text-xs text-zinc-500">
+              <span className="font-medium text-zinc-600">Por qué:</span> {meta.why}
+            </p>
+          ) : (
+            <p className="mt-0.5 text-xs text-zinc-500">
+              <span className="font-medium text-zinc-600">Crea:</span> {rule.titleTemplate}
+            </p>
+          )}
+          {rule.conditions.length > 0 && (
+            <p className="mt-1 text-xs text-brand-700">
+              <span className="font-medium">Solo si:</span> {describeConditions(rule.conditions)}
+            </p>
+          )}
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <span className="text-[12px] tabular-nums text-zinc-500">
@@ -403,13 +475,57 @@ function RuleRow({
             checked={rule.enabled}
             disabled={!isAdmin || busy}
             onChange={(e) => onPatch(rule.id, { enabled: e.target.checked })}
-            aria-label={`Activar regla ${meta.label}`}
+            aria-label={`Activar regla ${displayName}`}
             className="h-4 w-4 rounded border-zinc-300 accent-zinc-900"
           />
         </div>
       </div>
 
-      {isAdmin && (
+      {isAdmin && !rule.isSystem && (
+        <div className="mt-2 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => onEdit(rule)}
+            disabled={busy}
+            className="inline-flex items-center gap-1 text-[12px] font-medium text-zinc-600 hover:text-zinc-900"
+          >
+            <Pencil className="h-3 w-3" />
+            Editar
+          </button>
+          {confirmDelete ? (
+            <span className="inline-flex items-center gap-2 text-[12px]">
+              <span className="text-zinc-500">¿Seguro?</span>
+              <button
+                type="button"
+                onClick={() => onDelete(rule.id)}
+                disabled={busy}
+                className="font-medium text-red-600 hover:text-red-700"
+              >
+                Sí, eliminar
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(false)}
+                className="font-medium text-zinc-500 hover:text-zinc-700"
+              >
+                No
+              </button>
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              disabled={busy}
+              className="inline-flex items-center gap-1 text-[12px] font-medium text-zinc-500 hover:text-red-600"
+            >
+              <Trash2 className="h-3 w-3" />
+              Eliminar
+            </button>
+          )}
+        </div>
+      )}
+
+      {isAdmin && rule.isSystem && (
         <>
           <button
             type="button"
@@ -612,6 +728,19 @@ function PostOpSection({ isAdmin }: { isAdmin: boolean }) {
       )}
     </section>
   );
+}
+
+/** Resumen legible de las condiciones de una regla a medida. */
+function describeConditions(conditions: TaskAutomationRuleDTO['conditions']): string {
+  return conditions
+    .map((c) => {
+      const field = CONDITION_FIELD_META[c.field].label;
+      const op = CONDITION_OP_META[c.op].label;
+      return CONDITION_OP_META[c.op].needsValue
+        ? `${field} ${op} «${c.value ?? ''}»`
+        : `${field} ${op}`;
+    })
+    .join(' · ');
 }
 
 function formatOffset(minutes: number): string {

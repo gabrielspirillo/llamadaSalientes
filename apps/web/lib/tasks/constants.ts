@@ -251,6 +251,68 @@ export const TRIGGER_META: Record<
   },
 };
 
+// ─── Condiciones de las automatizaciones ─────────────────────────────────────
+//
+// Una regla puede llevar filtros que deciden si dispara para un evento
+// concreto. Sin filtros (el caso de las 10 de sistema) dispara siempre.
+
+export const AUTOMATION_CONDITION_FIELDS = ['patientName', 'phone', 'treatment', 'date'] as const;
+export type AutomationConditionField = (typeof AUTOMATION_CONDITION_FIELDS)[number];
+
+export const AUTOMATION_CONDITION_OPS = [
+  'contains',
+  'not_contains',
+  'equals',
+  'exists',
+  'not_exists',
+] as const;
+export type AutomationConditionOp = (typeof AUTOMATION_CONDITION_OPS)[number];
+
+export interface AutomationCondition {
+  field: AutomationConditionField;
+  op: AutomationConditionOp;
+  /** No se usa con `exists` / `not_exists`. */
+  value?: string;
+}
+
+export const CONDITION_FIELD_META: Record<
+  AutomationConditionField,
+  { label: string; hint: string }
+> = {
+  patientName: { label: 'Nombre del paciente', hint: 'El nombre resuelto del contacto' },
+  phone: { label: 'Teléfono', hint: 'El teléfono del paciente' },
+  treatment: {
+    label: 'Tratamiento',
+    hint: 'Solo en eventos con tratamiento (postoperatorio, presupuesto)',
+  },
+  date: { label: 'Fecha', hint: 'La fecha del evento, ya formateada' },
+};
+
+export const CONDITION_OP_META: Record<
+  AutomationConditionOp,
+  { label: string; needsValue: boolean }
+> = {
+  contains: { label: 'contiene', needsValue: true },
+  not_contains: { label: 'no contiene', needsValue: true },
+  equals: { label: 'es exactamente', needsValue: true },
+  exists: { label: 'tiene valor', needsValue: false },
+  not_exists: { label: 'está vacío', needsValue: false },
+};
+
+/** Qué campos de condición tienen sentido para cada evento. */
+export const TRIGGER_CONDITION_FIELDS: Record<TaskAutomationTrigger, AutomationConditionField[]> = {
+  MISSED_CALL: ['patientName', 'phone'],
+  CALL_INTENT_UNRESOLVED: ['patientName', 'phone'],
+  APPOINTMENT_CANCELLED: ['patientName', 'phone', 'date'],
+  APPOINTMENT_NO_SHOW: ['patientName', 'phone', 'date'],
+  REMINDER_NO_RESPONSE: ['patientName', 'phone', 'date'],
+  POST_TREATMENT_FOLLOWUP: ['patientName', 'phone', 'treatment', 'date'],
+  PENDING_TREATMENT_UNSCHEDULED: ['patientName', 'phone', 'treatment', 'date'],
+  PATIENT_INACTIVE: ['patientName', 'phone', 'date'],
+  WHATSAPP_HANDOFF: ['patientName', 'phone'],
+  WAITLIST_ACCEPTED_UNSCHEDULED: ['patientName', 'phone', 'date'],
+};
+
 // ─── Helpers de presentación compartidos ─────────────────────────────────────
 
 export type DueTone = 'none' | 'future' | 'soon' | 'today' | 'overdue';

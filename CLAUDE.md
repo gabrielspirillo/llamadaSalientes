@@ -173,6 +173,11 @@ Sección `/dashboard/tasks` (label "Tareas"). Es transversal: no se contrata, vi
 
 **Idempotencia**: `tasks.dedupe_key` con índice único parcial por tenant. Rutinas usan `routine:<templateId>:<YYYY-MM-DD>`, automatizaciones `auto:<trigger>:<entidad>`. Cualquier reintento de webhook o job es seguro.
 
+**Constructor de automatizaciones** (migración `0024_task_automation_builder.sql`): además del catálogo de 10 reglas de sistema (una por evento, `is_system=true`, no se borran, solo se afinan o apagan), un admin puede **crear reglas a medida** sobre los mismos eventos, con **condiciones** (filtros `campo/operador/valor` que decide `evaluateConditions`) y su propia checklist. Claves:
+- El único `(tenant_id, trigger)` se cambió por un **único parcial `WHERE is_system`**: como mucho una regla de sistema por evento (la que siembra `ensureAutomationRules` y la que leen los barridos para sus params), pero varias a medida.
+- `runTaskAutomation` recorre **todas** las reglas activas del evento cuyas condiciones se cumplen y cada una crea su tarea. El `dedupe_key` de la de sistema conserva el formato histórico `auto:<trigger>:<suffix>`; las de a medida meten su id: `auto:<trigger>:<ruleId>:<suffix>`. Eso mantiene la retrocompatibilidad (es un invariante testeado) y evita que dos reglas del mismo evento se pisen.
+- API: `POST /api/tasks/automations` (alta), `DELETE /api/tasks/automations/:id` (baja, rechaza las de sistema), `PATCH` (edición). UI en `components/tasks/AutomationBuilder.tsx`.
+
 **Puntos de enganche** (todos best-effort, nunca rompen el flujo principal — están en `lib/tasks/hooks.ts`):
 
 - `worker/jobs/process-call.ts` → `MISSED_CALL` / `CALL_INTENT_UNRESOLVED`

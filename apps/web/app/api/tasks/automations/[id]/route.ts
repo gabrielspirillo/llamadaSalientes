@@ -29,6 +29,7 @@ export async function PATCH(
 
     const patch: Record<string, unknown> = { updatedAt: new Date() };
     for (const key of [
+      'name',
       'enabled',
       'titleTemplate',
       'descriptionTemplate',
@@ -38,12 +39,47 @@ export async function PATCH(
       'assigneeUserId',
       'assigneeRole',
       'requiresEvidence',
+      'conditions',
+      'checklist',
       'params',
     ] as const) {
       if (parsed.data[key] !== undefined) patch[key] = parsed.data[key];
     }
 
     await db.update(taskAutomationRules).set(patch).where(eq(taskAutomationRules.id, id));
+    return NextResponse.json({ rules: await loadAutomationRules(auth.tenantId) });
+  } catch (err) {
+    return taskErrorResponse(err);
+  }
+}
+
+/** Borra una automatización a medida. Las de sistema no se borran, se apagan. */
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<NextResponse> {
+  try {
+    const auth = await requireTaskRole('admin');
+    const { id } = await params;
+
+    const [existing] = await db
+      .select({ id: taskAutomationRules.id, isSystem: taskAutomationRules.isSystem })
+      .from(taskAutomationRules)
+      .where(and(eq(taskAutomationRules.id, id), eq(taskAutomationRules.tenantId, auth.tenantId)))
+      .limit(1);
+    if (!existing) return NextResponse.json({ error: 'Regla no encontrada' }, { status: 404 });
+    if (existing.isSystem) {
+      return NextResponse.json(
+        {
+          error: 'Las automatizaciones del catálogo no se borran; desactívalas si no las quieres.',
+        },
+        { status: 422 },
+      );
+    }
+
+    await db
+      .delete(taskAutomationRules)
+      .where(and(eq(taskAutomationRules.id, id), eq(taskAutomationRules.tenantId, auth.tenantId)));
     return NextResponse.json({ rules: await loadAutomationRules(auth.tenantId) });
   } catch (err) {
     return taskErrorResponse(err);

@@ -13,6 +13,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 
@@ -1495,6 +1496,13 @@ export const taskAutomationRules = pgTable(
       .references(() => tenants.id, { onDelete: 'cascade' })
       .notNull(),
     trigger: taskAutomationTriggerEnum('trigger').notNull(),
+    // Nombre legible de la automatización. Las de sistema caen al rótulo del
+    // evento; las de a medida lo llevan siempre.
+    name: text('name'),
+    // Las 10 del catálogo (`is_system`) no se pueden borrar y hay como mucho
+    // una por evento. Las de a medida sí se crean y se borran, y puede haber
+    // varias sobre el mismo evento.
+    isSystem: boolean('is_system').notNull().default(false),
     enabled: boolean('enabled').notNull().default(true),
     titleTemplate: text('title_template').notNull(),
     descriptionTemplate: text('description_template'),
@@ -1504,15 +1512,26 @@ export const taskAutomationRules = pgTable(
     assigneeUserId: uuid('assignee_user_id').references(() => users.id, { onDelete: 'set null' }),
     assigneeRole: text('assignee_role'),
     requiresEvidence: boolean('requires_evidence').notNull().default(false),
+    // Filtros que deciden si la regla dispara para un evento concreto. Vacío =
+    // dispara siempre (comportamiento de las reglas de sistema).
+    conditions: jsonb('conditions')
+      .$type<{ field: string; op: string; value?: string }[]>()
+      .notNull()
+      .default([]),
+    // Pasos que hereda la tarea creada.
+    checklist: text('checklist').array().notNull().default([]),
     params: jsonb('params').$type<Record<string, unknown>>().notNull().default({}),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => ({
-    tenantTriggerUnique: unique('task_automation_rules_tenant_id_trigger_key').on(
-      t.tenantId,
-      t.trigger,
-    ),
+    // Como mucho UNA regla de sistema por evento; las de a medida no compiten.
+    systemUnique: uniqueIndex('task_automation_rules_system_unique')
+      .on(t.tenantId, t.trigger)
+      .where(sql`is_system`),
+    tenantTriggerEnabled: index('task_automation_rules_tenant_trigger_enabled_idx')
+      .on(t.tenantId, t.trigger)
+      .where(sql`enabled`),
   }),
 );
 

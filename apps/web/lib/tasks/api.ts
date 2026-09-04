@@ -4,6 +4,9 @@ import { z } from 'zod';
 
 import { TaskForbiddenError } from '@/lib/tasks/auth';
 import {
+  AUTOMATION_CONDITION_FIELDS,
+  AUTOMATION_CONDITION_OPS,
+  TASK_AUTOMATION_TRIGGERS,
   TASK_CATEGORIES,
   TASK_PRIORITIES,
   TASK_RECURRENCE_FREQS,
@@ -111,7 +114,23 @@ export const templateSchema = z.object({
   items: z.array(z.string().trim().min(1).max(300)).max(50).optional(),
 });
 
+/** Una condición: `exists`/`not_exists` no llevan valor; el resto sí. */
+export const conditionSchema = z
+  .object({
+    field: z.enum(AUTOMATION_CONDITION_FIELDS),
+    op: z.enum(AUTOMATION_CONDITION_OPS),
+    value: z.string().trim().max(120).optional(),
+  })
+  .refine((c) => c.op === 'exists' || c.op === 'not_exists' || (c.value?.length ?? 0) > 0, {
+    message: 'La condición necesita un valor',
+  });
+
+export const conditionsSchema = z.array(conditionSchema).max(10);
+export const checklistSchema = z.array(z.string().trim().min(1).max(300)).max(50);
+
+/** PATCH de una regla (de sistema o a medida). No admite cambiar el evento. */
 export const automationSchema = z.object({
+  name: z.string().trim().min(1).max(120).optional(),
   enabled: z.boolean().optional(),
   titleTemplate: z.string().trim().min(1).max(300).optional(),
   descriptionTemplate: z.string().max(2000).nullable().optional(),
@@ -121,5 +140,22 @@ export const automationSchema = z.object({
   assigneeUserId: z.string().uuid().nullable().optional(),
   assigneeRole: z.string().max(60).nullable().optional(),
   requiresEvidence: z.boolean().optional(),
+  conditions: conditionsSchema.optional(),
+  checklist: checklistSchema.optional(),
   params: z.record(z.unknown()).optional(),
+});
+
+/** POST: alta de una automatización a medida. El evento es obligatorio. */
+export const automationCreateSchema = z.object({
+  trigger: z.enum(TASK_AUTOMATION_TRIGGERS),
+  name: z.string().trim().min(1).max(120),
+  titleTemplate: z.string().trim().min(1).max(300),
+  descriptionTemplate: z.string().max(2000).nullable().optional(),
+  category: categorySchema.optional(),
+  priority: prioritySchema.optional(),
+  dueOffsetMinutes: z.number().int().min(5).max(20160).optional(),
+  assigneeUserId: z.string().uuid().nullable().optional(),
+  requiresEvidence: z.boolean().optional(),
+  conditions: conditionsSchema.optional(),
+  checklist: checklistSchema.optional(),
 });

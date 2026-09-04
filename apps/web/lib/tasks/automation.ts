@@ -1,10 +1,16 @@
 import 'server-only';
-import { and, eq } from 'drizzle-orm';
+import { and, asc, desc, eq } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import { taskAutomationRules } from '@/lib/db/schema';
-import type { TaskAutomationTrigger, TaskCategory, TaskPriority } from '@/lib/tasks/constants';
-import { TASK_AUTOMATION_TRIGGERS } from '@/lib/tasks/constants';
+import type {
+  AutomationCondition,
+  AutomationConditionField,
+  TaskAutomationTrigger,
+  TaskCategory,
+  TaskPriority,
+} from '@/lib/tasks/constants';
+import { TASK_AUTOMATION_TRIGGERS, TRIGGER_META } from '@/lib/tasks/constants';
 import { createTask } from '@/lib/tasks/service';
 
 /**
@@ -150,12 +156,14 @@ export const AUTOMATION_DEFAULTS: AutomationRuleDefaults[] = [
   },
 ];
 
-/** Crea las reglas que falten para el tenant. Idempotente. */
+/** Siembra las reglas de sistema que falten para el tenant. Idempotente. */
 export async function ensureAutomationRules(tenantId: string): Promise<void> {
+  // Solo miramos las de sistema: un tenant puede tener reglas a medida sobre un
+  // evento y aun así faltarle la del catálogo, y hay que sembrarla igual.
   const existing = await db
     .select({ trigger: taskAutomationRules.trigger })
     .from(taskAutomationRules)
-    .where(eq(taskAutomationRules.tenantId, tenantId));
+    .where(and(eq(taskAutomationRules.tenantId, tenantId), eq(taskAutomationRules.isSystem, true)));
   const have = new Set(existing.map((r) => r.trigger));
   const missing = AUTOMATION_DEFAULTS.filter((d) => !have.has(d.trigger));
   if (missing.length === 0) return;
@@ -166,6 +174,8 @@ export async function ensureAutomationRules(tenantId: string): Promise<void> {
       missing.map((d) => ({
         tenantId,
         trigger: d.trigger,
+        name: TRIGGER_META[d.trigger].label,
+        isSystem: true,
         enabled: d.enabled,
         titleTemplate: d.titleTemplate,
         descriptionTemplate: d.descriptionTemplate,
@@ -173,6 +183,8 @@ export async function ensureAutomationRules(tenantId: string): Promise<void> {
         priority: d.priority,
         dueOffsetMinutes: d.dueOffsetMinutes,
         requiresEvidence: d.requiresEvidence,
+        conditions: [],
+        checklist: [],
         params: d.params,
       })),
     )
@@ -203,13 +215,73 @@ export function renderTemplate(tpl: string, ctx: AutomationContext): string {
     .replace(/\{\{treatment\}\}/g, ctx.treatment?.trim() || 'tratamiento sin especificar');
 }
 
-export type AutomationResult =
-  | { created: true; taskId: string }
-  | { created: false; reason: 'no_rule' | 'disabled' | 'duplicate' | 'error' };
+/** Minúsculas + sin acentos, para comparar sin sorpresas con nombres. */
+function fold(value: string): string {
+  return value.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '').trim();
+}
+
+/** Valor de un campo de condición sacado del contexto del evento. */
+function conditionValue(field: AutomationConditionField, ctx: AutomationContext): string {
+  const raw =
+    field === 'patientName'
+      ? ctx.patientName
+      : field === 'phone'
+        ? ctx.phone
+        : field === 'treatment'
+          ? ctx.treatment
+          : ctx.date;
+  return (raw ?? '').trim();
+}
 
 /**
- * Dispara una regla. Silencioso y best-effort a propósito: ningún webhook ni
- * job debe fallar porque no se pudo crear una tarea.
+ * Evalúa los filtros de una regla contra el evento. Sin filtros → dispara
+ * siempre (el caso de las 10 de sistema). Todos los filtros deben cumplirse (Y).
+ * Una condición mal formada no bloquea el disparo: se ignora.
+ */
+export function evaluateConditions(
+  conditions: AutomationCondition[] | null | undefined,
+  ctx: AutomationContext,
+): boolean {
+  if (!conditions || conditions.length === 0) return true;
+  for (const c of conditions) {
+    const actual = conditionValue(c.field, ctx);
+    const needle = (c.value ?? '').trim();
+    switch (c.op) {
+      case 'exists':
+        if (actual.length === 0) return false;
+        break;
+      case 'not_exists':
+        if (actual.length > 0) return false;
+        break;
+      case 'equals':
+        if (fold(actual) !== fold(needle)) return false;
+        break;
+      case 'contains':
+        if (!fold(actual).includes(fold(needle))) return false;
+        break;
+      case 'not_contains':
+        if (fold(actual).includes(fold(needle))) return false;
+        break;
+      default:
+        break; // operador desconocido: no bloquea
+    }
+  }
+  return true;
+}
+
+export type AutomationResult =
+  | { created: true; taskId: string }
+  | { created: false; reason: 'no_rule' | 'disabled' | 'no_match' | 'duplicate' | 'error' };
+
+/**
+ * Dispara las reglas de un evento. Silencioso y best-effort a propósito:
+ * ningún webhook ni job debe fallar porque no se pudo crear una tarea.
+ *
+ * Puede haber varias reglas sobre el mismo evento (una de sistema + las de a
+ * medida). Se recorren todas las activas cuyas condiciones se cumplan y cada
+ * una crea su tarea. El dedupe de la regla de sistema conserva el formato
+ * histórico (`auto:<trigger>:<suffix>`); las de a medida meten su id para no
+ * pisarse entre ellas.
  */
 export async function runTaskAutomation(args: {
   tenantId: string;
@@ -217,7 +289,7 @@ export async function runTaskAutomation(args: {
   context: AutomationContext;
 }): Promise<AutomationResult> {
   try {
-    const [rule] = await db
+    const rules = await db
       .select()
       .from(taskAutomationRules)
       .where(
@@ -226,39 +298,58 @@ export async function runTaskAutomation(args: {
           eq(taskAutomationRules.trigger, args.trigger),
         ),
       )
-      .limit(1);
+      // La de sistema primero, y estable por creación: el taskId que se
+      // devuelve es determinista.
+      .orderBy(desc(taskAutomationRules.isSystem), asc(taskAutomationRules.createdAt));
 
-    if (!rule) return { created: false, reason: 'no_rule' };
-    if (!rule.enabled) return { created: false, reason: 'disabled' };
+    if (rules.length === 0) return { created: false, reason: 'no_rule' };
+    const active = rules.filter((r) => r.enabled);
+    if (active.length === 0) return { created: false, reason: 'disabled' };
 
-    const dueAt = new Date(Date.now() + rule.dueOffsetMinutes * 60_000);
-    const res = await createTask({
-      tenantId: args.tenantId,
-      title: renderTemplate(rule.titleTemplate, args.context),
-      description: rule.descriptionTemplate
-        ? renderTemplate(rule.descriptionTemplate, args.context)
-        : null,
-      category: rule.category,
-      priority: rule.priority,
-      dueAt,
-      source: 'AUTOMATION',
-      automationTrigger: args.trigger,
-      dedupeKey: `auto:${args.trigger}:${args.context.dedupeSuffix}`,
-      requiresEvidence: rule.requiresEvidence,
-      assigneeUserIds: rule.assigneeUserId ? [rule.assigneeUserId] : [],
-      patientGhlContactId: args.context.patientGhlContactId ?? null,
-      patientName: args.context.patientName ?? null,
-      patientPhone: args.context.phone ?? null,
-      callId: args.context.callId ?? null,
-      whatsappConversationId: args.context.whatsappConversationId ?? null,
-      ghlAppointmentId: args.context.ghlAppointmentId ?? null,
-      reminderId: args.context.reminderId ?? null,
-      waitlistEntryId: args.context.waitlistEntryId ?? null,
-      activityNote: `Creada por la automatización "${args.trigger}"`,
-    });
+    let firstTaskId: string | null = null;
+    let anyMatched = false;
 
-    if (!res.created || !res.id) return { created: false, reason: 'duplicate' };
-    return { created: true, taskId: res.id };
+    for (const rule of active) {
+      if (!evaluateConditions(rule.conditions as AutomationCondition[] | null, args.context)) {
+        continue;
+      }
+      anyMatched = true;
+      const dedupeKey = rule.isSystem
+        ? `auto:${args.trigger}:${args.context.dedupeSuffix}`
+        : `auto:${args.trigger}:${rule.id}:${args.context.dedupeSuffix}`;
+
+      const res = await createTask({
+        tenantId: args.tenantId,
+        title: renderTemplate(rule.titleTemplate, args.context),
+        description: rule.descriptionTemplate
+          ? renderTemplate(rule.descriptionTemplate, args.context)
+          : null,
+        category: rule.category,
+        priority: rule.priority,
+        dueAt: new Date(Date.now() + rule.dueOffsetMinutes * 60_000),
+        source: 'AUTOMATION',
+        automationTrigger: args.trigger,
+        dedupeKey,
+        requiresEvidence: rule.requiresEvidence,
+        assigneeUserIds: rule.assigneeUserId ? [rule.assigneeUserId] : [],
+        checklist: (rule.checklist ?? []).filter((c) => c.trim().length > 0),
+        patientGhlContactId: args.context.patientGhlContactId ?? null,
+        patientName: args.context.patientName ?? null,
+        patientPhone: args.context.phone ?? null,
+        callId: args.context.callId ?? null,
+        whatsappConversationId: args.context.whatsappConversationId ?? null,
+        ghlAppointmentId: args.context.ghlAppointmentId ?? null,
+        reminderId: args.context.reminderId ?? null,
+        waitlistEntryId: args.context.waitlistEntryId ?? null,
+        activityNote: `Creada por la automatización "${rule.name ?? args.trigger}"`,
+      });
+
+      if (res.created && res.id && !firstTaskId) firstTaskId = res.id;
+    }
+
+    if (firstTaskId) return { created: true, taskId: firstTaskId };
+    if (!anyMatched) return { created: false, reason: 'no_match' };
+    return { created: false, reason: 'duplicate' };
   } catch (err) {
     console.error('[tasks] automation failed', {
       trigger: args.trigger,
