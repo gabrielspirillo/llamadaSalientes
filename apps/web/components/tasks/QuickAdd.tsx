@@ -18,10 +18,7 @@ import { useMemo, useRef, useState } from 'react';
  */
 /** Minúsculas y sin tildes, para comparar nombres como los escribe la gente. */
 function fold(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+  return value.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '');
 }
 
 export function QuickAdd({
@@ -29,12 +26,15 @@ export function QuickAdd({
   status,
   onCreated,
   onCancel,
+  onExpand,
   autoFocus = true,
 }: {
   members: TaskMember[];
   status: TaskStatus;
   onCreated: () => void;
   onCancel?: () => void;
+  /** Abre el alta completa arrastrando lo ya escrito. */
+  onExpand?: (text: string) => void;
   autoFocus?: boolean;
 }) {
   const [value, setValue] = useState('');
@@ -138,6 +138,15 @@ export function QuickAdd({
         <span className="hidden shrink-0 text-[11px] text-zinc-500 sm:inline">
           en {STATUS_META[status].label}
         </span>
+        {onExpand && (
+          <button
+            type="button"
+            onClick={() => onExpand(value)}
+            className="hidden shrink-0 text-[12px] font-medium text-brand-700 hover:text-brand-800 sm:inline"
+          >
+            Más opciones
+          </button>
+        )}
         <Button type="submit" size="sm" disabled={busy || !parsed.title.trim()}>
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Crear'}
         </Button>

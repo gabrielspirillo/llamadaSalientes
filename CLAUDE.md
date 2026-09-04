@@ -171,6 +171,8 @@ Sección `/dashboard/tasks` (label "Tareas"). Es transversal: no se contrata, vi
 | `ROUTINE` | Plantilla recurrente materializada por el worker | `lib/tasks/templates.ts` (catálogo) + `lib/tasks/materialize.ts` |
 | `AUTOMATION` | Regla que reacciona a un evento del producto | `lib/tasks/automation.ts` + `lib/tasks/hooks.ts` |
 
+**Dos altas manuales**: el alta rápida de una línea (`QuickAdd`, con parser `#cat !prio @user` + fecha en `lib/tasks/quick-parse.ts`) para lo urgente, y el **alta completa** (`components/tasks/TaskComposer.tsx`) para el resto: descripción, checklist, varios responsables, etiquetas, vencimiento con hora/todo-el-día, paciente vinculado y candado de evidencia. El composer no necesitó backend nuevo: `createTaskSchema` y `createTask` ya aceptaban todos esos campos; solo faltaba exponerlos. Se abre desde "Nueva tarea" y desde el "Más opciones" del alta rápida (que arrastra lo ya escrito).
+
 **Idempotencia**: `tasks.dedupe_key` con índice único parcial por tenant. Rutinas usan `routine:<templateId>:<YYYY-MM-DD>`, automatizaciones `auto:<trigger>:<entidad>`. Cualquier reintento de webhook o job es seguro.
 
 **Constructor de automatizaciones** (migración `0024_task_automation_builder.sql`): además del catálogo de 10 reglas de sistema (una por evento, `is_system=true`, no se borran, solo se afinan o apagan), un admin puede **crear reglas a medida** sobre los mismos eventos, con **condiciones** (filtros `campo/operador/valor` que decide `evaluateConditions`) y su propia checklist. Claves:
