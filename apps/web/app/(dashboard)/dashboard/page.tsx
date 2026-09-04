@@ -7,10 +7,11 @@ import { BoardCard, BoardColumn } from '@/components/ui/board';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Reveal } from '@/components/ui/motion';
+import { Avatar } from '@/components/ui/stat';
 import { formatDuration, getDashboardStats, getUpcomingAppointments } from '@/lib/data/calls-list';
 import { getDemoUpcoming } from '@/lib/demo-data';
 import { getCurrentTenant } from '@/lib/tenant';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, CalendarClock, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
 export default async function DashboardOverview({
@@ -88,6 +89,67 @@ export default async function DashboardOverview({
       {demo && <DemoBanner />}
 
       <GlobalAnalyticsBar tenantId={tenant.id} demo={demo} />
+
+      {/* Próximas citas — cuáles son, no solo cuántas */}
+      <Reveal>
+        <Card className="mb-6 overflow-hidden">
+          <div className="flex items-center justify-between gap-3 border-b border-[--color-border-subtle] px-5 py-3.5">
+            <h3 className="inline-flex items-center gap-2 text-[14px] font-bold tracking-tight text-zinc-800">
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-[10px] bg-brand-100 text-brand-700">
+                <CalendarClock className="h-4 w-4" />
+              </span>
+              Próximas citas
+            </h3>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/dashboard/calls">
+                Ver todas
+                <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1" />
+              </Link>
+            </Button>
+          </div>
+          {upcoming.length === 0 ? (
+            <p className="px-5 py-6 text-[14px] text-zinc-500">
+              Todavía no hay citas reservadas. Cuando el asistente dé una cita, aparecerá aquí.
+            </p>
+          ) : (
+            <ul className="divide-y divide-[--color-border-subtle]">
+              {upcoming.slice(0, 6).map((a) => (
+                <li
+                  key={a.callId}
+                  className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-zinc-50"
+                >
+                  <Avatar name={a.patientName ?? a.phone ?? 'Paciente'} size={36} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[14px] font-semibold text-zinc-800">
+                      {a.patientName ?? a.phone ?? 'Paciente'}
+                    </span>
+                    {a.treatmentName && (
+                      <span className="block truncate text-[13px] text-zinc-500">
+                        {a.treatmentName}
+                      </span>
+                    )}
+                  </span>
+                  <span className="shrink-0 text-right">
+                    <span className="block text-[13px] font-semibold text-zinc-700">
+                      {a.startTime.toLocaleDateString('es-ES', {
+                        weekday: 'short',
+                        day: '2-digit',
+                        month: 'short',
+                      })}
+                    </span>
+                    <span className="block text-[13px] tabular-nums text-brand-600">
+                      {a.startTime.toLocaleTimeString('es-ES', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      </Reveal>
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
         <Reveal direction="left">

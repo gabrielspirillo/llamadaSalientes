@@ -11,14 +11,12 @@ import {
   getOptimizedRevenueMTD,
   getTopTreatments,
 } from '@/lib/data/analytics/global';
-import { getUpcomingAppointments } from '@/lib/data/calls-list';
 import { db } from '@/lib/db/client';
 import { tasks, tenantMemberships } from '@/lib/db/schema';
-import { getDemoAnalytics, getDemoUpcoming } from '@/lib/demo-data';
+import { getDemoAnalytics } from '@/lib/demo-data';
 import { and, count, eq, isNull, ne } from 'drizzle-orm';
 import {
   CalendarCheck,
-  CalendarClock,
   Coins,
   ListTodo,
   MessageCircle,
@@ -70,12 +68,9 @@ export async function GlobalAnalyticsBar({
   // Tres números más para completar el panorama: qué viene, qué hay pendiente
   // y quién lo lleva. En demo son valores de ejemplo; en real, consultas
   // baratas (best-effort: si alguna falla, queda en 0 y el resto se dibuja).
-  const [upcomingCount, openTasks, teamCount] = demo
-    ? [getDemoUpcoming().length, 7, 5]
+  const [openTasks, teamCount] = demo
+    ? [7, 5]
     : await Promise.all([
-        getUpcomingAppointments(tenantId, 50)
-          .then((a) => a.length)
-          .catch(() => 0),
         db
           .select({ n: count() })
           .from(tasks)
@@ -150,17 +145,8 @@ export async function GlobalAnalyticsBar({
         </Reveal>
       </div>
 
-      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
         <Reveal delay={0}>
-          <StatTile
-            label="Próximas citas"
-            numeric={upcomingCount}
-            hint="Reservadas de aquí en adelante"
-            icon={<CalendarClock className="h-4 w-4" />}
-            tone="sky"
-          />
-        </Reveal>
-        <Reveal delay={80}>
           <StatTile
             label="Tareas abiertas"
             numeric={openTasks}

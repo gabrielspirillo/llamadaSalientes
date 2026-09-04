@@ -27,6 +27,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import * as React from 'react';
@@ -283,32 +284,25 @@ function SidebarNav({
         ))}
       </nav>
 
-      {/* --- Pie: ajustes de la cuenta. Separado del scroll de navegación con
-             una franja propia para que se lea como "otra zona", no como un
-             grupo más de canales. --------------------------------------------- */}
-      <div className="mt-auto shrink-0 space-y-0.5 border-t border-[#d7dddb] bg-[linear-gradient(0deg,#e4e9e7,#e9edee00)] px-3 pb-4 pt-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]">
+      {/* --- Pie: ajustes de la cuenta, sobre una franja de verde intenso para
+             que se lea como "otra zona" y no como un grupo más del menú. Sus
+             enlaces son claros (los NavLink normales tienen texto oscuro, que
+             no se leería sobre el verde). ----------------------------------- */}
+      <div className="mt-auto shrink-0 space-y-0.5 bg-[linear-gradient(180deg,#3f7061,#325e52)] px-3 pb-4 pt-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
         {isSuperAdmin && (
-          <NavLink
-            item={{
-              href: '/dashboard/futura',
-              label: 'Panel Futura',
-              icon: LayoutDashboard,
-              tone: 'brand',
-            }}
+          <FooterLink
+            href="/dashboard/futura"
+            label="Panel Futura"
+            icon={LayoutDashboard}
             active={pathname.startsWith('/dashboard/futura')}
-            locked={false}
             onNavigate={onNavigate}
           />
         )}
-        <NavLink
-          item={{
-            href: '/dashboard/configuration',
-            label: isSuperAdmin ? 'Configuración' : 'Estado',
-            icon: isSuperAdmin ? Settings : ShieldCheck,
-            tone: 'sky',
-          }}
+        <FooterLink
+          href="/dashboard/configuration"
+          label={isSuperAdmin ? 'Configuración' : 'Estado'}
+          icon={isSuperAdmin ? Settings : ShieldCheck}
           active={pathname.startsWith('/dashboard/configuration')}
-          locked={false}
           onNavigate={onNavigate}
         />
         <button
@@ -319,9 +313,9 @@ function SidebarNav({
               window.dispatchEvent(new Event('futura:open-tour'));
             }
           }}
-          className="group flex w-full items-center gap-3 rounded-2xl px-2.5 py-2 text-[14px] font-medium text-zinc-600 transition-all duration-300 hover:bg-white/70 hover:text-zinc-900"
+          className="group flex w-full items-center gap-3 rounded-2xl px-2.5 py-2 text-[14px] font-medium text-white/85 transition-all duration-300 hover:bg-white/12 hover:text-white"
         >
-          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/70 text-brand-600 transition-transform duration-300 group-hover:scale-110 group-hover:bg-white">
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white transition-transform duration-300 group-hover:scale-110 group-hover:bg-white/25">
             <Sparkles className="h-[17px] w-[17px]" />
           </span>
           <span className="flex-1 text-left">Tutorial</span>
@@ -333,6 +327,46 @@ function SidebarNav({
 
 /* La barra lateral usa un verde más saturado que el lienzo para que se lea
    como una zona fija, distinta del contenido. */
+/* Enlace del pie, pensado para leerse sobre el verde intenso: texto e icono
+   claros; el activo pasa a pastilla blanca con icono oscuro. */
+function FooterLink({
+  href,
+  label,
+  icon: Icon,
+  active,
+  onNavigate,
+}: {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  active: boolean;
+  onNavigate?: () => void;
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      aria-current={active ? 'page' : undefined}
+      className={cn(
+        'group flex items-center gap-3 rounded-2xl px-2.5 py-2 text-[14px] font-medium transition-all duration-300',
+        active
+          ? 'bg-white text-zinc-900 shadow-[0_8px_20px_-12px_rgba(20,33,29,0.5)]'
+          : 'text-white/85 hover:bg-white/12 hover:text-white',
+      )}
+    >
+      <span
+        className={cn(
+          'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110',
+          active ? 'bg-brand-100 text-brand-700' : 'bg-white/15 text-white',
+        )}
+      >
+        <Icon className="h-[17px] w-[17px]" />
+      </span>
+      <span className="flex-1 truncate">{label}</span>
+    </Link>
+  );
+}
+
 const SIDEBAR_SURFACE =
   'bg-[linear-gradient(190deg,#f1f3f2_0%,#ecefee_50%,#e8ecea_100%)] border-r border-[#dfe4e2]';
 

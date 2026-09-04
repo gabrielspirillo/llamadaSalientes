@@ -150,7 +150,10 @@ export function AnimatedNumber({
   className?: string;
 }) {
   const ref = React.useRef<HTMLSpanElement>(null);
-  const [display, setDisplay] = React.useState(0);
+  // Arranca ya en el valor real: si por lo que sea la animación no llega a
+  // dispararse (el IntersectionObserver no siempre avisa de lo que ya está en
+  // pantalla), el número se ve correcto igualmente en vez de quedarse en 0.
+  const [display, setDisplay] = React.useState(value);
   const started = React.useRef(false);
 
   React.useEffect(() => {

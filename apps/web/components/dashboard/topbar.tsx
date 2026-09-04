@@ -115,13 +115,13 @@ export function DashboardTopbar({
 
   return (
     <>
-      <header className="sticky top-0 z-40 flex h-[68px] items-center justify-between gap-3 border-b border-white/60 bg-white/65 px-4 backdrop-blur-2xl sm:px-6">
+      <header className="sticky top-0 z-40 flex h-[68px] items-center justify-between gap-3 border-b border-black/10 bg-[linear-gradient(180deg,#3f7061,#315e52)] px-4 shadow-[0_10px_30px_-24px_rgba(20,33,29,0.9)] sm:px-6">
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
           <button
             type="button"
             onClick={() => setMobileNavOpen(true)}
             aria-label="Abrir menú"
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-zinc-600 transition-all hover:bg-zinc-100 hover:text-brand-700 active:scale-95 lg:hidden"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white/85 transition-all hover:bg-white/15 hover:text-white active:scale-95 lg:hidden"
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -131,16 +131,16 @@ export function DashboardTopbar({
             className="flex shrink-0 items-center gap-1.5 lg:hidden"
             aria-label="FUTURA"
           >
-            <span className="text-[18px] font-extrabold leading-none tracking-tight text-[#0f1f2e]">
+            <span className="text-[18px] font-extrabold leading-none tracking-tight text-white">
               FUTURA
             </span>
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#5fa896]" />
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#bff0dd]" />
           </Link>
 
           {/* Saludo — equivalente al "Welcome, …" de la referencia */}
           <div className="hidden min-w-0 lg:block">
-            <p className="text-[14px] font-medium leading-none text-zinc-500">{hello},</p>
-            <p className="mt-1.5 truncate text-[22px] font-extrabold leading-none tracking-tight text-zinc-900">
+            <p className="text-[14px] font-medium leading-none text-white/70">{hello},</p>
+            <p className="mt-1.5 truncate text-[22px] font-extrabold leading-none tracking-tight text-white">
               {firstName || 'bienvenido'}
             </p>
           </div>
@@ -150,13 +150,13 @@ export function DashboardTopbar({
             type="button"
             onClick={() => setSearchOpen(true)}
             className={cn(
-              'group hidden items-center gap-2.5 rounded-full border border-[--color-border] bg-white/80 px-4 py-2.5 text-sm text-zinc-500',
-              'w-full max-w-md transition-all duration-300 hover:border-brand-200 hover:bg-white hover:shadow-[0_10px_26px_-16px_rgba(20,33,29,0.5)] md:flex',
+              'group hidden items-center gap-2.5 rounded-full border border-white/25 bg-white/15 px-4 py-2.5 text-sm text-white/80',
+              'w-full max-w-md transition-all duration-300 hover:border-white/40 hover:bg-white/25 md:flex',
             )}
           >
-            <Search className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:text-brand-500" />
+            <Search className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:scale-110" />
             <span className="truncate">Buscar llamadas, pacientes, mensajes…</span>
-            <kbd className="ml-auto shrink-0 rounded-lg bg-zinc-100 px-1.5 py-0.5 text-[11px] font-semibold text-zinc-500">
+            <kbd className="ml-auto shrink-0 rounded-lg bg-white/20 px-1.5 py-0.5 text-[11px] font-semibold text-white/85">
               ⌘K
             </kbd>
           </button>
@@ -164,7 +164,7 @@ export function DashboardTopbar({
 
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
           {impersonatingClinic && (
-            <span className="hidden max-w-[220px] items-center gap-1.5 rounded-full bg-[linear-gradient(120deg,#effaf5,#ddf3ea)] px-3 py-1.5 text-[12px] font-semibold text-brand-700 ring-1 ring-brand-100 sm:inline-flex">
+            <span className="hidden max-w-[220px] items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-[12px] font-semibold text-white ring-1 ring-white/20 sm:inline-flex">
               <StatusDot tone="success" />
               <span className="truncate">Gestionando: {impersonatingClinic}</span>
             </span>
@@ -174,7 +174,7 @@ export function DashboardTopbar({
             type="button"
             onClick={() => setSearchOpen(true)}
             aria-label="Buscar"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-zinc-600 transition-all hover:bg-zinc-100 hover:text-brand-700 active:scale-95 md:hidden"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-white/85 transition-all hover:bg-white/15 hover:text-white active:scale-95 md:hidden"
           >
             <Search className="h-4 w-4" />
           </button>
@@ -187,7 +187,7 @@ export function DashboardTopbar({
 
           <TeamMenu />
 
-          <div className="ml-0.5 rounded-full p-1 ring-1 ring-[--color-border] transition-all hover:ring-brand-300">
+          <div className="ml-0.5 rounded-full p-1 ring-1 ring-white/25 transition-all hover:ring-white/50">
             <UserButton
               appearance={{
                 elements: { avatarBox: 'h-11 w-11' },
@@ -486,15 +486,13 @@ function NotificationsBell({
         }}
         className={cn(
           'relative inline-flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300 active:scale-95',
-          open
-            ? 'bg-brand-50 text-brand-700'
-            : 'text-zinc-600 hover:bg-zinc-100 hover:text-brand-700',
+          open ? 'bg-white/25 text-white' : 'text-white/85 hover:bg-white/15 hover:text-white',
         )}
         aria-label="Notificaciones"
       >
         <Bell className={cn('h-4 w-4', unreadCount > 0 && 'animate-pulse-soft')} />
         {unreadCount > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-[linear-gradient(120deg,#f43f5e,#fb7185)] px-1 text-[11px] font-bold text-white ring-2 ring-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-[linear-gradient(120deg,#f43f5e,#fb7185)] px-1 text-[11px] font-bold text-white ring-2 ring-[#315e52]">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
