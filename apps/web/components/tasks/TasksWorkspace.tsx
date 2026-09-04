@@ -5,6 +5,7 @@ import { KanbanBoard } from '@/components/tasks/KanbanBoard';
 import { QuickAdd } from '@/components/tasks/QuickAdd';
 import { RoutinesView } from '@/components/tasks/RoutinesView';
 import { StatsBar } from '@/components/tasks/StatsBar';
+import { TaskComposer } from '@/components/tasks/TaskComposer';
 import { TaskDetailPanel } from '@/components/tasks/TaskDetailPanel';
 import { Avatar } from '@/components/tasks/shared';
 import { MyDayView, PatientsView, WeekView } from '@/components/tasks/views';
@@ -86,6 +87,8 @@ export function TasksWorkspace({
   const [sourceFilter, setSourceFilter] = useState<TaskSource | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [quickAddStatus, setQuickAddStatus] = useState<TaskStatus | null>(null);
+  /** Alta completa: null cerrado; si no, la columna destino y el texto inicial. */
+  const [composer, setComposer] = useState<{ status: TaskStatus; text?: string } | null>(null);
   const [onlyMine, setOnlyMine] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -315,7 +318,7 @@ export function TasksWorkspace({
           </div>
 
           {canEdit && (
-            <Button size="sm" onClick={() => setQuickAddStatus('TODO')}>
+            <Button size="sm" onClick={() => setComposer({ status: 'TODO' })}>
               <Plus className="h-3.5 w-3.5" />
               Nueva tarea
             </Button>
@@ -408,6 +411,11 @@ export function TasksWorkspace({
           status={quickAddStatus}
           onCreated={() => void refresh()}
           onCancel={() => setQuickAddStatus(null)}
+          onExpand={(text) => {
+            const status = quickAddStatus;
+            setQuickAddStatus(null);
+            setComposer({ status, text });
+          }}
         />
       )}
 
@@ -467,6 +475,19 @@ export function TasksWorkspace({
           members={members}
           isAdmin={isAdmin}
           onRefresh={() => void refreshRoutines()}
+        />
+      )}
+
+      {composer && canEdit && (
+        <TaskComposer
+          open
+          onOpenChange={(v) => {
+            if (!v) setComposer(null);
+          }}
+          members={members}
+          defaultStatus={composer.status}
+          initialText={composer.text}
+          onCreated={() => void refresh()}
         />
       )}
 
