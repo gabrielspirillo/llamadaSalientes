@@ -179,6 +179,15 @@ export function AnimatedNumber({
       requestAnimationFrame(tick);
     };
 
+    // Si ya está en pantalla al montar (el caso del tablero, casi todo entra
+    // en el primer viewport), arrancamos ya: el IntersectionObserver a veces
+    // no dispara para lo que ya es visible y el número se quedaba en 0.
+    const r = el.getBoundingClientRect();
+    if (r.top < window.innerHeight && r.bottom > 0) {
+      run();
+      return;
+    }
+
     const io = new IntersectionObserver(
       (entries) => {
         for (const e of entries) if (e.isIntersecting) run();

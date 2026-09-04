@@ -1,23 +1,27 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { useEffect } from 'react';
+import { useLayoutEffect } from 'react';
 
 /**
  * Al cambiar de sección, el panel se quedaba a la misma altura de scroll que la
  * página anterior: entrabas a Llamadas y aparecía a media página, con la
  * cabecera fuera de vista. El App Router no siempre resetea el scroll en
- * transiciones de cliente con rutas `force-dynamic`, así que lo hacemos a mano.
+ * transiciones de cliente con rutas `force-dynamic`.
  *
- * Se sube al tope en cuanto cambia la ruta. `instant` para que no se vea el
- * viaje; si el usuario prefiere menos movimiento, igual es instantáneo.
+ * Se sube al tope antes de pintar (useLayoutEffect) y otra vez en el siguiente
+ * frame, para ganarle a cualquier restauración tardía del navegador cuando el
+ * contenido de la página nueva termina de llegar (streaming/Suspense).
  */
 export function ScrollReset() {
   const pathname = usePathname();
-  // biome-ignore lint/correctness/useExhaustiveDependencies: pathname es justo
-  // el disparador —cambia de ruta → sube al tope—, aunque el cuerpo no lo lea.
-  useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+  // biome-ignore lint/correctness/useExhaustiveDependencies: pathname es el
+  // disparador —cambia la ruta → sube al tope—, aunque el cuerpo no lo lea.
+  useLayoutEffect(() => {
+    const toTop = () => window.scrollTo(0, 0);
+    toTop();
+    const raf = requestAnimationFrame(toTop);
+    return () => cancelAnimationFrame(raf);
   }, [pathname]);
   return null;
 }

@@ -560,8 +560,13 @@ html.js [data-reveal].is-revealed {
 /* Sin `both`: con fill-mode backwards el contenido se queda en el estado
    inicial (opacity 0) antes de arrancar, y se sumaba al retraso percibido en
    cada navegación. */
+/* Solo opacidad: un `transform` en reposo sobre <main> convierte a este
+   elemento en el bloque contenedor de cualquier `position:fixed` de la página
+   (p. ej. el modal de Recordatorios), que dejaba de anclarse a la ventana y
+   quedaba descolocado con el scroll bloqueado. `fade-up` terminaba en
+   translate3d(0,0,0) —que NO es `none`— y mantenía ese transform para siempre. */
 .enter-page {
-  animation: fade-up 260ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: fade-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* ============================================================================

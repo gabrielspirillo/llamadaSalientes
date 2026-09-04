@@ -11,16 +11,23 @@ import {
   getOptimizedRevenueMTD,
   getTopTreatments,
 } from '@/lib/data/analytics/global';
-import { getDemoAnalytics } from '@/lib/demo-data';
+import { getUpcomingAppointments } from '@/lib/data/calls-list';
+import { db } from '@/lib/db/client';
+import { tasks, tenantMemberships } from '@/lib/db/schema';
+import { getDemoAnalytics, getDemoUpcoming } from '@/lib/demo-data';
+import { and, count, eq, isNull, ne } from 'drizzle-orm';
 import {
   CalendarCheck,
+  CalendarClock,
   Coins,
+  ListTodo,
   MessageCircle,
   Phone,
   PhoneCall,
   Sparkles,
   Stethoscope,
   TrendingDown,
+  Users,
 } from 'lucide-react';
 import { NoShowTrendChart, TopTreatmentsChart } from './charts-lazy';
 
@@ -59,6 +66,31 @@ export async function GlobalAnalyticsBar({
 
   // Serie corta para el sparkline de la tarjeta de no-show.
   const noShowTrend = noShowSeries.slice(-10).map((p) => p.rate * 100);
+
+  // Tres números más para completar el panorama: qué viene, qué hay pendiente
+  // y quién lo lleva. En demo son valores de ejemplo; en real, consultas
+  // baratas (best-effort: si alguna falla, queda en 0 y el resto se dibuja).
+  const [upcomingCount, openTasks, teamCount] = demo
+    ? [getDemoUpcoming().length, 7, 5]
+    : await Promise.all([
+        getUpcomingAppointments(tenantId, 50)
+          .then((a) => a.length)
+          .catch(() => 0),
+        db
+          .select({ n: count() })
+          .from(tasks)
+          .where(
+            and(eq(tasks.tenantId, tenantId), ne(tasks.status, 'DONE'), isNull(tasks.archivedAt)),
+          )
+          .then((r) => Number(r[0]?.n ?? 0))
+          .catch(() => 0),
+        db
+          .select({ n: count() })
+          .from(tenantMemberships)
+          .where(eq(tenantMemberships.tenantId, tenantId))
+          .then((r) => Number(r[0]?.n ?? 0))
+          .catch(() => 0),
+      ]);
 
   return (
     <section className="mb-8">
@@ -114,6 +146,36 @@ export async function GlobalAnalyticsBar({
             icon={<CalendarCheck className="h-4 w-4" />}
             tone="sky"
             progress={recovery.rate * 100}
+          />
+        </Reveal>
+      </div>
+
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+        <Reveal delay={0}>
+          <StatTile
+            label="Próximas citas"
+            numeric={upcomingCount}
+            hint="Reservadas de aquí en adelante"
+            icon={<CalendarClock className="h-4 w-4" />}
+            tone="sky"
+          />
+        </Reveal>
+        <Reveal delay={80}>
+          <StatTile
+            label="Tareas abiertas"
+            numeric={openTasks}
+            hint="Pendientes del equipo"
+            icon={<ListTodo className="h-4 w-4" />}
+            tone="honey"
+          />
+        </Reveal>
+        <Reveal delay={160}>
+          <StatTile
+            label="Equipo"
+            numeric={teamCount}
+            hint={teamCount === 1 ? 'persona en la clínica' : 'personas en la clínica'}
+            icon={<Users className="h-4 w-4" />}
+            tone="grape"
           />
         </Reveal>
       </div>

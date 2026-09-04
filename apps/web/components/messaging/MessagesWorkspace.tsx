@@ -952,7 +952,7 @@ export function MessagesWorkspace({
   }, []);
 
   return (
-    <div className="flex h-[calc(100dvh-15rem)] min-h-[560px] flex-col gap-3">
+    <div className="flex h-[calc(100dvh-14rem)] min-h-0 flex-col gap-3">
       {error && (
         <Callout tone="danger" icon={<TriangleAlert className="h-4 w-4" />} className="shrink-0">
           {error}{' '}

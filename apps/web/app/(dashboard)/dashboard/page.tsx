@@ -3,16 +3,14 @@ import { GlobalAnalyticsBar } from '@/components/dashboard/global-analytics-bar'
 import { PageHeader } from '@/components/dashboard/page-header';
 import { RealtimeRefresh } from '@/components/dashboard/realtime-refresh';
 import { TeamBoardCard } from '@/components/dashboard/team-board-card';
-import { StatusDot } from '@/components/ui/badge';
 import { BoardCard, BoardColumn } from '@/components/ui/board';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Reveal } from '@/components/ui/motion';
-import { Equalizer } from '@/components/ui/stat';
 import { formatDuration, getDashboardStats, getUpcomingAppointments } from '@/lib/data/calls-list';
 import { getDemoUpcoming } from '@/lib/demo-data';
 import { getCurrentTenant } from '@/lib/tenant';
-import { ArrowRight, Bot, Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
 export default async function DashboardOverview({
@@ -90,40 +88,6 @@ export default async function DashboardOverview({
       {demo && <DemoBanner />}
 
       <GlobalAnalyticsBar tenantId={tenant.id} demo={demo} />
-
-      {/* --- Tablero: cada bloque abre una sección de la app ---------------- */}
-      <Reveal>
-        <Card tone="night" className="mb-6 overflow-hidden p-6">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 animate-float rounded-full bg-[radial-gradient(circle,rgba(107,194,164,0.28),transparent_70%)] blur-2xl"
-          />
-          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[12px] font-semibold text-white/90 ring-1 ring-inset ring-white/15">
-                <StatusDot tone="success" />
-                Asistente conectado
-                <Equalizer className="text-emerald-300" />
-              </span>
-              <h3 className="mt-4 text-[22px] font-bold leading-snug tracking-tight">
-                Tu asistente de voz atiende todas las llamadas
-              </h3>
-              <p className="mt-2 max-w-xl text-[14px] leading-relaxed text-white/70">
-                Contesta el teléfono, reserva citas, las cambia de fecha y recupera las
-                cancelaciones. A cualquier hora, también por WhatsApp.
-              </p>
-            </div>
-            <div className="flex shrink-0 flex-wrap gap-2">
-              <Button asChild variant="glass" size="sm">
-                <Link href="/dashboard/agent">
-                  <Bot className="h-4 w-4" />
-                  Probar el asistente
-                </Link>
-              </Button>
-            </div>
-          </div>
-        </Card>
-      </Reveal>
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
         <Reveal direction="left">
