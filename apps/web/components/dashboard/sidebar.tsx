@@ -283,8 +283,10 @@ function SidebarNav({
         ))}
       </nav>
 
-      {/* --- Pie ------------------------------------------------------------ */}
-      <div className="space-y-0.5 px-3 pb-4">
+      {/* --- Pie: ajustes de la cuenta. Separado del scroll de navegación con
+             una franja propia para que se lea como "otra zona", no como un
+             grupo más de canales. --------------------------------------------- */}
+      <div className="mt-auto shrink-0 space-y-0.5 border-t border-[#d7dddb] bg-[linear-gradient(0deg,#e4e9e7,#e9edee00)] px-3 pb-4 pt-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]">
         {isSuperAdmin && (
           <NavLink
             item={{

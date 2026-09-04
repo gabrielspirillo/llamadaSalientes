@@ -162,6 +162,14 @@ export default async function DashboardOverview({
               progressLabel="Acaban en cita"
               counts={{ comments: stats.callsToday }}
             />
+            <BoardCard
+              href="/dashboard/tasks"
+              tone="coral"
+              tags={['tareas', 'equipo']}
+              title="Tareas del equipo"
+              noteLabel="Para hoy:"
+              note="Llamadas por devolver, seguimientos y recados. Lo urgente, arriba."
+            />
           </BoardColumn>
         </Reveal>
 
@@ -169,8 +177,8 @@ export default async function DashboardOverview({
           <BoardColumn title="Canales de contacto">
             <BoardCard
               href="/dashboard/whatsapp"
-              tone="mint"
-              tags={['whatsapp', 'mensajes']}
+              tone="grape"
+              tags={['whatsapp', 'bandeja']}
               title="Conversaciones de WhatsApp"
               noteLabel="Bandeja:"
               note="Lo que el asistente responde y lo que pasa a una persona."
@@ -191,6 +199,14 @@ export default async function DashboardOverview({
               noteLabel="Objetivo:"
               note="Menos citas no asistidas avisando por WhatsApp y por voz."
             />
+            <BoardCard
+              href="/dashboard/messages"
+              tone="sky"
+              tags={['equipo', 'chat']}
+              title="Mensajes del equipo"
+              noteLabel="Interno:"
+              note="El chat de la clínica y los avisos que levanta el asistente."
+            />
           </BoardColumn>
         </Reveal>
 
@@ -207,7 +223,7 @@ export default async function DashboardOverview({
             />
             <BoardCard
               href="/dashboard/analytics"
-              tone="coral"
+              tone="mint"
               tags={['métricas']}
               title="Cómo va la clínica"
               noteLabel="Incluye:"

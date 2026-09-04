@@ -1,5 +1,6 @@
 import { DashboardOverlays } from '@/components/dashboard/dashboard-overlays';
 import { ImpersonationBanner } from '@/components/dashboard/impersonation-banner';
+import { ScrollReset } from '@/components/dashboard/scroll-reset';
 import { DashboardSidebar } from '@/components/dashboard/sidebar';
 import { DashboardTopbar } from '@/components/dashboard/topbar';
 import { MessagingProvider } from '@/components/messaging/MessagingProvider';
@@ -73,6 +74,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     // El provider envuelve todo el panel: es el dueño único del EventSource de
     // Mensajes y lo consumen el sidebar (badge), la campana y el dock.
     <MessagingProvider>
+      <ScrollReset />
       <div data-instant-reveal className="aurora-canvas flex min-h-screen text-zinc-900">
         <DashboardSidebar
           enabledModules={enabledModules}

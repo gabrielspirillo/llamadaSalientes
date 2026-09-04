@@ -3,12 +3,19 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { useMessaging, useTypingIn } from '@/components/messaging/MessagingProvider';
-import { TypingDots } from '@/components/messaging/shared';
+import {
+  TypingDots,
+  eventIcon,
+  eventLabel,
+  eventTone,
+  toneMeta,
+} from '@/components/messaging/shared';
 import { EmptyState, SkeletonRows } from '@/components/ui/feedback';
 import { Avatar } from '@/components/ui/stat';
 import { cn } from '@/lib/cn';
 import type { ImMessageDTO, ImThreadPage } from '@/lib/messaging/types';
-import { MessageSquare, SendHorizontal } from 'lucide-react';
+import { ChevronRight, MessageSquare, SendHorizontal } from 'lucide-react';
+import Link from 'next/link';
 
 /* ============================================================================
    Hilo compacto del dock. Es la versión reducida del hilo de la página
@@ -208,9 +215,20 @@ export function DockThread({ channelId }: { channelId: string }) {
         ) : (
           messages.map((m, i) => {
             const prev = messages[i - 1];
+
+            // Los eventos del producto (llamada perdida, hueco libre, traspaso)
+            // son tarjetas, no burbujas de chat: antes se veían como un bloque
+            // de texto gris ilegible.
+            if (m.kind === 'EVENT' && !m.deletedAt) {
+              return <DockEventCard key={m.id} message={m} hour={hourOf(m.createdAt)} />;
+            }
+
             const mine = !!meId && m.senderUserId === meId;
             const grouped =
-              !!prev && prev.senderUserId === m.senderUserId && prev.senderKind === m.senderKind;
+              !!prev &&
+              prev.kind !== 'EVENT' &&
+              prev.senderUserId === m.senderUserId &&
+              prev.senderKind === m.senderKind;
             const isSystem = m.senderKind !== 'USER';
 
             return (
@@ -298,4 +316,90 @@ export function DockThread({ channelId }: { channelId: string }) {
       </div>
     </div>
   );
+}
+
+/* ============================================================================
+   Tarjeta de evento del dock. La versión compacta de la del hilo grande:
+   icono con color propio, título legible, un resumen corto y —si el evento
+   trae un enlace— un acceso para abrirlo. Nada de bloques de texto en crudo.
+   ========================================================================== */
+
+const META_LINE = /^\s*(tel[eé]fono|tel|phone|motivo|cu[aá]ndo|when|contacto)\s*[:：]/i;
+
+/** Separa el cuerpo del evento en título + resumen legible (sin las líneas
+ *  de metadatos tipo "Teléfono: …", que van aparte). */
+function splitEvent(message: ImMessageDTO): { title: string; summary: string } {
+  const fromPayload = message.contextPayload?.title;
+  const raw = (message.body ?? '').replace(/\r\n/g, '\n');
+  const lines = raw.split('\n').map((l) => l.trim());
+  const firstIdx = lines.findIndex((l) => l !== '');
+  const label = eventLabel(message.eventKey);
+
+  const title =
+    (typeof fromPayload === 'string' && fromPayload.trim()) ||
+    label ||
+    (firstIdx >= 0 ? (lines[firstIdx] ?? '') : '').replace(/^[#>\s*]+/, '').replace(/\*\*/g, '') ||
+    'Novedad';
+
+  const summary = lines
+    .slice(firstIdx + 1)
+    .filter((l) => l && !META_LINE.test(l) && l !== title)
+    .join(' ')
+    .replace(/\*\*/g, '')
+    .trim();
+
+  return { title, summary };
+}
+
+function DockEventCard({ message, hour }: { message: ImMessageDTO; hour: string }) {
+  const tone = toneMeta(eventTone(message.eventKey, 'brand'));
+  const Icon = eventIcon(message.eventKey);
+  const { title, summary } = splitEvent(message);
+  const link = message.actions.find((a) => a.href)?.href ?? null;
+
+  const inner = (
+    <div className="flex items-start gap-2.5">
+      <span
+        className={cn(
+          'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[11px]',
+          tone.chip,
+        )}
+      >
+        <Icon className="h-4 w-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="truncate text-[13.5px] font-bold tracking-tight text-zinc-900">{title}</p>
+          <time className="shrink-0 text-[11px] tabular-nums text-zinc-400">{hour}</time>
+        </div>
+        {summary && (
+          <p className="mt-0.5 line-clamp-3 text-[13px] leading-snug text-zinc-600">{summary}</p>
+        )}
+        {link && (
+          <span className="mt-1.5 inline-flex items-center gap-0.5 text-[12px] font-semibold text-brand-700">
+            Abrir
+            <ChevronRight className="h-3 w-3" />
+          </span>
+        )}
+      </div>
+    </div>
+  );
+
+  const cardClass =
+    'block animate-fade-up rounded-[16px] border bg-white p-3 shadow-[0_1px_2px_rgba(22,26,25,0.05)] transition-all duration-300';
+
+  if (link) {
+    return (
+      <Link
+        href={link}
+        className={cn(
+          cardClass,
+          'border-[--color-border] hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]',
+        )}
+      >
+        {inner}
+      </Link>
+    );
+  }
+  return <div className={cn(cardClass, 'border-[--color-border]')}>{inner}</div>;
 }

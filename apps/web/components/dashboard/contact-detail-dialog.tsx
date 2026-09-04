@@ -278,9 +278,9 @@ export function ContactDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-[880px] gap-0 overflow-hidden p-0">
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] max-w-[880px] flex-col gap-0 overflow-hidden p-0">
         {/* ── Cabecera-identidad ─────────────────────────────────────────── */}
-        <header className="relative overflow-hidden px-5 pb-4 pt-6 sm:px-7">
+        <header className="relative shrink-0 overflow-hidden px-5 pb-4 pt-6 sm:px-7">
           <span
             aria-hidden
             className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-[radial-gradient(60%_120%_at_15%_0%,rgba(95,168,150,0.18),transparent_70%)]"
@@ -414,7 +414,7 @@ export function ContactDetailDialog({
         </header>
 
         {/* ── Pestañas ───────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-1 overflow-x-auto border-y border-[--color-border-subtle] bg-white/60 px-3 sm:px-5">
+        <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-y border-[--color-border-subtle] bg-white/60 px-3 sm:px-5">
           <Tab
             active={tab === 'resumen'}
             onClick={() => setTab('resumen')}
@@ -463,7 +463,7 @@ export function ContactDetailDialog({
         </div>
 
         {/* ── Cuerpo ─────────────────────────────────────────────────────── */}
-        <div className="thread-canvas max-h-[58vh] min-h-[280px] overflow-y-auto px-5 py-5 sm:px-7">
+        <div className="thread-canvas min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7">
           {loading && (
             <div className="flex items-center justify-center py-16 text-[14px] text-zinc-500">
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />

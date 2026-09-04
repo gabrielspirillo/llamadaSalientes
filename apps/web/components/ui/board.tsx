@@ -11,42 +11,46 @@ import type * as React from 'react';
 export type BoardTone = 'sky' | 'honey' | 'mint' | 'blossom' | 'grape' | 'coral';
 
 /** Cada tono define el relleno, el borde, el color del título y el del punto. */
+// Cada tono es una familia de color distinta, suave, para que las categorías
+// del tablero se distingan de un vistazo (el verde sigue siendo el de la marca,
+// pero aquí el color codifica de qué va la tarjeta). El lienzo y las
+// superficies siguen neutros: el color vive solo en estas tarjetas de acceso.
 const TONE: Record<BoardTone, { card: string; title: string; dot: string; tag: string }> = {
-  sky: {
-    card: 'bg-[#e6f0ef] border-[#d3e5e3]',
-    title: 'text-teal-900',
-    dot: 'bg-teal-600',
-    tag: 'bg-white/70 text-teal-800',
-  },
-  honey: {
-    card: 'bg-[#eef3e9] border-[#dfe9d6]',
-    title: 'text-[#4a6b3d]',
-    dot: 'bg-[#7a9c5f]',
-    tag: 'bg-white/70 text-[#4a6b3d]',
-  },
   mint: {
-    card: 'bg-[#e6f4ec] border-[#d1e9dc]',
+    card: 'bg-[#e7f6ee] border-[#cfeadd]',
     title: 'text-emerald-900',
-    dot: 'bg-emerald-600',
+    dot: 'bg-emerald-500',
     tag: 'bg-white/70 text-emerald-800',
   },
+  sky: {
+    card: 'bg-[#e9f1fb] border-[#d5e5f6]',
+    title: 'text-sky-900',
+    dot: 'bg-sky-500',
+    tag: 'bg-white/70 text-sky-800',
+  },
+  honey: {
+    card: 'bg-[#fbf2e1] border-[#f0e2c4]',
+    title: 'text-amber-900',
+    dot: 'bg-amber-500',
+    tag: 'bg-white/70 text-amber-800',
+  },
   blossom: {
-    card: 'bg-[#e4f0ec] border-[#cfe4dd]',
-    title: 'text-brand-900',
-    dot: 'bg-brand-600',
-    tag: 'bg-white/70 text-brand-800',
+    card: 'bg-[#f3ecfb] border-[#e5d8f5]',
+    title: 'text-violet-900',
+    dot: 'bg-violet-500',
+    tag: 'bg-white/70 text-violet-800',
   },
   grape: {
-    card: 'bg-[#e9f2f0] border-[#d6e7e4]',
-    title: 'text-brand-800',
-    dot: 'bg-brand-500',
-    tag: 'bg-white/70 text-brand-700',
+    card: 'bg-[#e5f2f1] border-[#cfe6e3]',
+    title: 'text-teal-900',
+    dot: 'bg-teal-500',
+    tag: 'bg-white/70 text-teal-800',
   },
   coral: {
-    card: 'bg-[#eef2f1] border-[#e0e6e4]',
-    title: 'text-[#3f544e]',
-    dot: 'bg-[#7a908a]',
-    tag: 'bg-white/70 text-[#3f544e]',
+    card: 'bg-[#fdecef] border-[#f7d6dc]',
+    title: 'text-rose-900',
+    dot: 'bg-rose-400',
+    tag: 'bg-white/70 text-rose-700',
   },
 };
 
