@@ -8,22 +8,22 @@
 
 @theme {
   /* --- Tipografía: escala un 20% mayor que la de Tailwind ---------------- */
-  --text-xs: 0.81rem;
-  --text-xs--line-height: 1.2rem;
-  --text-sm: 0.945rem;
-  --text-sm--line-height: 1.4rem;
-  --text-base: 1.08rem;
-  --text-base--line-height: 1.62rem;
-  --text-lg: 1.215rem;
-  --text-lg--line-height: 1.75rem;
-  --text-xl: 1.35rem;
-  --text-xl--line-height: 1.9rem;
-  --text-2xl: 1.62rem;
-  --text-2xl--line-height: 2.15rem;
-  --text-3xl: 2.025rem;
-  --text-3xl--line-height: 2.45rem;
-  --text-4xl: 2.43rem;
-  --text-4xl--line-height: 2.7rem;
+  --text-xs: 0.761rem;
+  --text-xs--line-height: 1.128rem;
+  --text-sm: 0.888rem;
+  --text-sm--line-height: 1.316rem;
+  --text-base: 1.015rem;
+  --text-base--line-height: 1.523rem;
+  --text-lg: 1.142rem;
+  --text-lg--line-height: 1.645rem;
+  --text-xl: 1.269rem;
+  --text-xl--line-height: 1.786rem;
+  --text-2xl: 1.523rem;
+  --text-2xl--line-height: 2.021rem;
+  --text-3xl: 1.904rem;
+  --text-3xl--line-height: 2.303rem;
+  --text-4xl: 2.284rem;
+  --text-4xl--line-height: 2.538rem;
 
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
     "Helvetica Neue", Helvetica, Arial, sans-serif;
