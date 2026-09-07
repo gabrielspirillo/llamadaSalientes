@@ -80,6 +80,7 @@ export function DashboardTopbar({
   impersonatingClinic,
   tasksBadge = 0,
   messagesBadge = 0,
+  agendaOnly = false,
 }: {
   enabledModules: EnabledModules;
   isSuperAdmin?: boolean;
@@ -88,6 +89,8 @@ export function DashboardTopbar({
   impersonatingClinic?: string;
   tasksBadge?: number;
   messagesBadge?: number;
+  /** Profesional con acceso reducido a su agenda. */
+  agendaOnly?: boolean;
 }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -222,6 +225,7 @@ export function DashboardTopbar({
         branding={branding}
         tasksBadge={tasksBadge}
         messagesBadge={messagesBadge}
+        agendaOnly={agendaOnly}
       />
       {searchOpen && <SearchPalette onClose={() => setSearchOpen(false)} />}
     </>

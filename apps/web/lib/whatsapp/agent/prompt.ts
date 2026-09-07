@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { describeAgendaForPrompt } from '@/lib/agenda/agent';
 import { listFaqsForTenant } from '@/lib/data/faqs';
 import { listTreatmentsForTenant } from '@/lib/data/treatments';
 import { buildClinicContextVars } from '@/lib/retell/clinic-context';
@@ -59,6 +60,12 @@ export interface BuildSystemPromptInput {
   clinic: ClinicGrounding;
   treatments: TreatmentLine[];
   faqs: FaqLine[];
+  /**
+   * Profesionales con agenda en la plataforma, ya formateados. Vacío cuando la
+   * clínica no lleva la agenda aquí: en ese caso el agente NO debe nombrar a
+   * nadie, porque se lo estaría inventando.
+   */
+  professionals?: string;
   /**
    * "Ahora" ya formateado en la zona horaria de la clínica, con día de la
    * semana en castellano. Lo construye `formatNowInClinicZone`. Le pasamos al
@@ -138,11 +145,15 @@ export async function loadGroundingForTenant(tenantId: string): Promise<{
   clinic: ClinicGrounding;
   treatments: TreatmentLine[];
   faqs: FaqLine[];
+  professionals: string;
 }> {
-  const [ctxVars, treatmentRows, faqRows] = await Promise.all([
+  const [ctxVars, treatmentRows, faqRows, professionals] = await Promise.all([
     buildClinicContextVars(tenantId),
     listTreatmentsForTenant(tenantId),
     listFaqsForTenant(tenantId),
+    // Si la clínica no usa la agenda interna esto viene vacío y el prompt no
+    // menciona profesionales. Un fallo aquí no puede dejar al agente mudo.
+    describeAgendaForPrompt(tenantId).catch(() => ''),
   ]);
 
   const clinic: ClinicGrounding = {
@@ -169,7 +180,7 @@ export async function loadGroundingForTenant(tenantId: string): Promise<{
     answer: f.answer,
   }));
 
-  return { clinic, treatments, faqs };
+  return { clinic, treatments, faqs, professionals };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -227,6 +238,7 @@ export function buildSystemPrompt(input: BuildSystemPromptInput): string {
     clinic,
     treatments,
     faqs,
+    professionals,
     now,
     remindersResume,
     leadMemory,
@@ -415,6 +427,8 @@ D. **Urgencia clínica BUCODENTAL** — dolor de muela/diente/encía, flemón, h
 - get_patient_info: necesitas el contact_id para reservar/cancelar.
 - register_patient: el paciente es nuevo y necesitas crearlo antes de reservar.
 - list_treatments: el paciente pregunta "¿qué tratamientos hacéis?".
+- list_professionals: el paciente pregunta por los profesionales o quiere elegir
+  con quién se atiende. No inventes nombres: sólo los que devuelva la herramienta.
 - get_treatment_details: el paciente pregunta por un tratamiento concreto.
 - search_faqs: pregunta general sobre la clínica (parking, seguros, financiación,
   formas de pago, primera visita, etc.). Busca antes de inventar.
@@ -443,6 +457,11 @@ ${clinic.transferNumber ? `Número de transferencia humana: ${clinic.transferNum
 
 # CATÁLOGO DE TRATAMIENTOS
 ${formatTreatments(treatments)}
+${
+  professionals
+    ? `\n# PROFESIONALES CON AGENDA\n${professionals}\nSi el paciente pide a alguien concreto, pásalo en professional_name a check_availability. Al reservar, copia el professional_id del hueco elegido. No nombres a nadie que no esté en esta lista.`
+    : ''
+}
 
 # FAQs CARGADAS
 ${formatFaqs(faqs)}

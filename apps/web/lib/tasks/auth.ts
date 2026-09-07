@@ -1,6 +1,7 @@
 import 'server-only';
 import { and, eq } from 'drizzle-orm';
 
+import { findProfessionalForClerkUser, isAgendaOnly } from '@/lib/agenda/access';
 import { db } from '@/lib/db/client';
 import { tenantMemberships, users } from '@/lib/db/schema';
 import { getCurrentTenant } from '@/lib/tenant';
@@ -49,6 +50,15 @@ export async function requireTaskRole(min: TaskRole): Promise<TaskAuthContext> {
 
   const role = normalizeRole(m.role);
   if (ORDER[role] < ORDER[min]) throw new TaskForbiddenError(role, min);
+
+  // Un profesional con acceso restringido a su agenda no escribe en el resto
+  // del panel. Este es el gate de rol por el que pasan las Server Actions y los
+  // route handlers (`denyUnlessRole`), así que aquí se cierra de verdad: la
+  // agenda usa su propio contexto (`lib/agenda/auth.ts`) y no pasa por acá.
+  const professional = await findProfessionalForClerkUser(tenant.id, clerkUserId);
+  if (isAgendaOnly(professional, { role, isSuperAdmin: false })) {
+    throw new TaskForbiddenError(role, min);
+  }
 
   return {
     tenantId: tenant.id,

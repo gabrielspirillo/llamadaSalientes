@@ -1,4 +1,11 @@
 import 'server-only';
+import {
+  agendaBookAppointment,
+  agendaCancelAppointment,
+  agendaCheckAvailability,
+  agendaListProfessionals,
+  agendaPatientSummary,
+} from '@/lib/agenda/voice';
 import { upsertAppointmentCache } from '@/lib/appointments/cache';
 import { patchCallCustomData, setCallGhlContact } from '@/lib/data/calls';
 import { listFaqsForTenant } from '@/lib/data/faqs';
@@ -20,6 +27,8 @@ export type CheckAvailabilityArgs = {
   treatment_name: string;
   preferred_date: string; // ISO date "YYYY-MM-DD"
   calendar_id?: string;
+  /** Agenda interna: el paciente pidió un profesional concreto. */
+  professional_name?: string;
 };
 
 export type BookAppointmentArgs = {
@@ -28,6 +37,12 @@ export type BookAppointmentArgs = {
   calendar_id?: string; // opcional, auto-resuelve por treatment_name
   start_time: string; // ISO datetime
   treatment_name: string;
+  /** Agenda interna: id que devolvió check_availability entre corchetes. */
+  professional_id?: string;
+  professional_name?: string;
+  /** Agenda interna: la cita se deja a nombre del paciente. */
+  patient_name?: string;
+  email?: string;
 };
 
 export type CancelAppointmentArgs = {
@@ -114,6 +129,16 @@ export async function checkAvailability(
   tenantId: string,
   args: CheckAvailabilityArgs,
 ): Promise<ToolResult> {
+  // La agenda de la plataforma manda cuando la clínica la usa. Si no hay
+  // ningún profesional con la agenda encendida, `agendaCheckAvailability`
+  // devuelve null y seguimos por GoHighLevel como siempre.
+  const internal = await agendaCheckAvailability(tenantId, {
+    treatment_name: args.treatment_name,
+    preferred_date: args.preferred_date,
+    professional_name: args.professional_name,
+  });
+  if (internal) return internal;
+
   const integration = await getGhlIntegration(tenantId);
   if (!integration) return ghlNotConnected();
 
@@ -193,8 +218,27 @@ export async function checkAvailability(
 export async function bookAppointment(
   tenantId: string,
   args: BookAppointmentArgs,
-  ctx: { retellCallId?: string } = {},
+  ctx: ToolContext = {},
 ): Promise<ToolResult> {
+  // Idem: si la clínica lleva su agenda en la plataforma, la cita se crea ahí.
+  // El dedupe_key sale de la llamada: un reintento del webhook no puede dejar
+  // dos citas al mismo paciente.
+  const internal = await agendaBookAppointment(tenantId, {
+    start_time: args.start_time,
+    professional_id: args.professional_id,
+    professional_name: args.professional_name,
+    treatment_name: args.treatment_name,
+    patient_name: args.patient_name,
+    phone: args.phone,
+    email: args.email,
+    contact_id: args.contact_id,
+    source: ctx.channel === 'WHATSAPP' ? 'WHATSAPP_AGENT' : 'VOICE_AGENT',
+    dedupe_key:
+      ctx.dedupeKey ??
+      (ctx.retellCallId ? `call:${ctx.retellCallId}:${args.start_time}` : undefined),
+  });
+  if (internal) return internal;
+
   const integration = await getGhlIntegration(tenantId);
   if (!integration) return ghlNotConnected();
 
@@ -357,6 +401,9 @@ export async function cancelAppointment(
   tenantId: string,
   args: CancelAppointmentArgs,
 ): Promise<ToolResult> {
+  const internal = await agendaCancelAppointment(tenantId, args.appointment_id);
+  if (internal) return internal;
+
   const integration = await getGhlIntegration(tenantId);
   if (!integration) return ghlNotConnected();
 
@@ -388,15 +435,22 @@ export async function getPatientInfo(
   args: GetPatientInfoArgs,
   ctx: { retellCallId?: string } = {},
 ): Promise<ToolResult> {
+  // Lo que la agenda interna sabe de este teléfono: próxima cita, última
+  // visita y lo que dejó anotado el profesional. Sirve aunque no haya CRM.
+  const agenda = await agendaPatientSummary(tenantId, { phone: args.phone });
+
   const integration = await getGhlIntegration(tenantId);
-  if (!integration) return ghlNotConnected();
+  if (!integration) {
+    return agenda ? { result: agenda } : ghlNotConnected();
+  }
 
   try {
     const contact = await lookupContactByPhone(tenantId, args.phone);
     if (!contact) {
       return {
-        result:
-          'No encontré al paciente en el sistema. Es un paciente nuevo: pediles nombre y apellido y luego usá register_patient para crearlo antes de agendar.',
+        result: agenda
+          ? `${agenda} No está en el CRM: si hace falta, creálo con register_patient.`
+          : 'No encontré al paciente en el sistema. Es un paciente nuevo: pediles nombre y apellido y luego usá register_patient para crearlo antes de agendar.',
       };
     }
     const name = [contact.firstName, contact.lastName].filter(Boolean).join(' ') || 'Sin nombre';
@@ -409,7 +463,9 @@ export async function getPatientInfo(
     }
 
     return {
-      result: `Paciente encontrado: ${name}. contact_id=${contact.id}. Usá ese contact_id para agendar la cita.`,
+      result: `Paciente encontrado: ${name}. contact_id=${contact.id}. Usá ese contact_id para agendar la cita.${
+        agenda ? ` ${agenda}` : ''
+      }`,
     };
   } catch (err) {
     console.error('[get_patient_info]', err);
@@ -441,6 +497,21 @@ function priceRange(
 
 function normalize(s: string): string {
   return s.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '');
+}
+
+/**
+ * Quién pasa consulta en la clínica y qué hace cada uno.
+ *
+ * Sólo tiene sentido con la agenda interna encendida: sin ella la clínica no
+ * tiene profesionales cargados y el agente no debe inventarse ninguno.
+ */
+export async function listProfessionals(tenantId: string): Promise<ToolResult> {
+  const internal = await agendaListProfessionals(tenantId);
+  if (internal) return internal;
+  return {
+    result:
+      'Esta clínica todavía no tiene agendas de profesionales en la plataforma. No menciones nombres de profesionales: ofrecé cita sin especificar quién atiende.',
+  };
 }
 
 export async function listTreatments(tenantId: string): Promise<ToolResult> {
@@ -690,10 +761,15 @@ export type KnownToolName =
   | 'get_treatment_details'
   | 'search_faqs'
   | 'accept_waitlist_offer'
-  | 'decline_waitlist_offer';
+  | 'decline_waitlist_offer'
+  | 'list_professionals';
 
 export type ToolContext = {
   retellCallId?: string;
+  /** Canal del agente. Decide el `source` de la cita en la agenda interna. */
+  channel?: 'VOICE' | 'WHATSAPP';
+  /** Clave de idempotencia del canal (conversación de WhatsApp, por ejemplo). */
+  dedupeKey?: string;
 };
 
 export async function dispatchTool(
@@ -725,6 +801,8 @@ export async function dispatchTool(
       return acceptWaitlistOffer(tenantId, args as AcceptWaitlistOfferArgs);
     case 'decline_waitlist_offer':
       return declineWaitlistOffer(tenantId, args as DeclineWaitlistOfferArgs);
+    case 'list_professionals':
+      return listProfessionals(tenantId);
     default:
       return { result: `Tool desconocida: ${toolName}` };
   }

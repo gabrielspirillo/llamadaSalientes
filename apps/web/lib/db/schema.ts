@@ -1938,3 +1938,224 @@ export const imUserSettings = pgTable(
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const setCurrentTenant = sql`set local app.current_tenant`;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Módulo Agenda — profesionales, horarios, citas e historia clínica
+// (migración 0026_agenda_profesionales.sql)
+//
+// Los días de la semana son ISO (1 = lunes … 7 = domingo) y las horas de
+// trabajo son minutos desde medianoche en hora LOCAL de la clínica: "los
+// martes de 9 a 14" es una hora de pared, no un instante, y tiene que seguir
+// siendo las 9 después del cambio de horario. Las citas y los bloqueos sí son
+// instantes (timestamptz).
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const professionalPanelAccessEnum = pgEnum('professional_panel_access', [
+  'AGENDA_ONLY',
+  'FULL',
+]);
+
+export const agendaAppointmentStatusEnum = pgEnum('agenda_appointment_status', [
+  'SCHEDULED',
+  'CONFIRMED',
+  'ARRIVED',
+  'IN_PROGRESS',
+  'COMPLETED',
+  'CANCELLED',
+  'NO_SHOW',
+]);
+
+export const agendaAppointmentSourceEnum = pgEnum('agenda_appointment_source', [
+  'PANEL',
+  'VOICE_AGENT',
+  'WHATSAPP_AGENT',
+  'WAITLIST',
+  'IMPORT',
+]);
+
+export const agendaBlockKindEnum = pgEnum('agenda_block_kind', [
+  'TIME_OFF',
+  'HOLIDAY',
+  'BREAK',
+  'OTHER',
+]);
+
+export const professionals = pgTable(
+  'professionals',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    // Null = el profesional no entra al panel; la clínica lleva su agenda.
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+    fullName: text('full_name').notNull(),
+    email: text('email'),
+    phone: text('phone'),
+    specialty: text('specialty'),
+    licenseNumber: text('license_number'),
+    color: text('color').notNull().default('#37766a'),
+    active: boolean('active').notNull().default(true),
+    // El interruptor de "habilitar la agenda de este profesional".
+    agendaEnabled: boolean('agenda_enabled').notNull().default(false),
+    panelAccess: professionalPanelAccessEnum('panel_access').notNull().default('AGENDA_ONLY'),
+    // Null = hereda la de clinic_settings.
+    timezone: text('timezone'),
+    slotGranularityMinutes: integer('slot_granularity_minutes').notNull().default(15),
+    bufferMinutes: integer('buffer_minutes').notNull().default(0),
+    minNoticeHours: integer('min_notice_hours').notNull().default(2),
+    maxAdvanceDays: integer('max_advance_days').notNull().default(90),
+    // False = los agentes virtuales consultan la agenda pero no reservan en ella.
+    acceptsOnlineBooking: boolean('accepts_online_booking').notNull().default(true),
+    notes: text('notes'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantIdx: index('professionals_tenant_idx').on(t.tenantId, t.active),
+  }),
+);
+
+export const professionalTreatments = pgTable(
+  'professional_treatments',
+  {
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    professionalId: uuid('professional_id')
+      .references(() => professionals.id, { onDelete: 'cascade' })
+      .notNull(),
+    treatmentId: uuid('treatment_id')
+      .references(() => treatments.id, { onDelete: 'cascade' })
+      .notNull(),
+    // Un implante no dura lo mismo con el cirujano veterano que con el resto.
+    durationOverrideMinutes: integer('duration_override_minutes'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.professionalId, t.treatmentId] }),
+    tenantIdx: index('professional_treatments_tenant_idx').on(t.tenantId, t.treatmentId),
+  }),
+);
+
+export const professionalShifts = pgTable(
+  'professional_shifts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    professionalId: uuid('professional_id')
+      .references(() => professionals.id, { onDelete: 'cascade' })
+      .notNull(),
+    /** ISO: 1 = lunes … 7 = domingo. */
+    weekday: integer('weekday').notNull(),
+    startMinute: integer('start_minute').notNull(),
+    endMinute: integer('end_minute').notNull(),
+    validFrom: date('valid_from'),
+    validUntil: date('valid_until'),
+    active: boolean('active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    profIdx: index('professional_shifts_prof_idx').on(t.professionalId, t.weekday),
+    tenantIdx: index('professional_shifts_tenant_idx').on(t.tenantId),
+  }),
+);
+
+export const professionalTimeOff = pgTable(
+  'professional_time_off',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    professionalId: uuid('professional_id')
+      .references(() => professionals.id, { onDelete: 'cascade' })
+      .notNull(),
+    startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
+    endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+    allDay: boolean('all_day').notNull().default(false),
+    kind: agendaBlockKindEnum('kind').notNull().default('TIME_OFF'),
+    reason: text('reason'),
+    createdByUserId: uuid('created_by_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    profIdx: index('professional_time_off_prof_idx').on(t.professionalId, t.startsAt),
+    tenantIdx: index('professional_time_off_tenant_idx').on(t.tenantId, t.startsAt),
+  }),
+);
+
+export const agendaAppointments = pgTable(
+  'agenda_appointments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    professionalId: uuid('professional_id')
+      .references(() => professionals.id, { onDelete: 'cascade' })
+      .notNull(),
+    treatmentId: uuid('treatment_id').references(() => treatments.id, { onDelete: 'set null' }),
+    /** Identidad estable del paciente en el tenant: id del CRM o teléfono normalizado. */
+    patientKey: text('patient_key').notNull(),
+    patientName: text('patient_name').notNull(),
+    patientPhone: text('patient_phone'),
+    patientEmail: text('patient_email'),
+    ghlContactId: text('ghl_contact_id'),
+    startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
+    endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+    status: agendaAppointmentStatusEnum('status').notNull().default('SCHEDULED'),
+    source: agendaAppointmentSourceEnum('source').notNull().default('PANEL'),
+    title: text('title'),
+    notes: text('notes'),
+    cancelReason: text('cancel_reason'),
+    createdByUserId: uuid('created_by_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    /** Idempotencia de agentes virtuales y reintentos de cola. */
+    dedupeKey: text('dedupe_key'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    profIdx: index('agenda_appointments_prof_idx').on(t.professionalId, t.startsAt),
+    tenantIdx: index('agenda_appointments_tenant_idx').on(t.tenantId, t.startsAt),
+    patientIdx: index('agenda_appointments_patient_idx').on(t.tenantId, t.patientKey, t.startsAt),
+  }),
+);
+
+export const clinicalNotes = pgTable(
+  'clinical_notes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    professionalId: uuid('professional_id')
+      .references(() => professionals.id, { onDelete: 'cascade' })
+      .notNull(),
+    appointmentId: uuid('appointment_id').references(() => agendaAppointments.id, {
+      onDelete: 'set null',
+    }),
+    patientKey: text('patient_key').notNull(),
+    patientName: text('patient_name'),
+    summary: text('summary').notNull(),
+    treatmentPerformed: text('treatment_performed'),
+    observations: text('observations'),
+    nextSteps: text('next_steps'),
+    /** Privada = no se le enseña a los agentes virtuales ni al resto del equipo. */
+    private: boolean('private').notNull().default(false),
+    authorUserId: uuid('author_user_id').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    patientIdx: index('clinical_notes_patient_idx').on(t.tenantId, t.patientKey, t.createdAt),
+    profIdx: index('clinical_notes_prof_idx').on(t.professionalId, t.createdAt),
+    appointmentIdx: index('clinical_notes_appointment_idx').on(t.appointmentId),
+  }),
+);

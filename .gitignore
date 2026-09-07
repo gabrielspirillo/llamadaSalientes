@@ -42,3 +42,9 @@ next-env.d.ts
 
 # drizzle
 drizzle/
+
+# Clerk keyless (desarrollo local): claves temporales de la instancia de prueba.
+.clerk/
+
+# Estado local de las herramientas de agentes (ruflo/claude-flow).
+.claude-flow/

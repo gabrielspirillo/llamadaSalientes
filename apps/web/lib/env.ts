@@ -22,6 +22,16 @@ const appUrlSchema = z
   })
   .default('http://localhost:3000');
 
+/**
+ * Obligatoria en producción, opcional en desarrollo (cae a cadena vacía).
+ * El tipo resultante sigue siendo `string`, así que quien la use no cambia.
+ */
+function requiredInProduction(message: string) {
+  return process.env.NODE_ENV === 'production'
+    ? z.string().min(1, message)
+    : z.string().optional().default('');
+}
+
 const envSchema = z.object({
   // App
   NEXT_PUBLIC_APP_URL: appUrlSchema,
@@ -31,14 +41,19 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL es requerido (Supabase)'),
   DIRECT_URL: z.string().min(1, 'DIRECT_URL es requerido (Supabase direct)'),
 
-  // Auth Clerk — required desde Fase 1
-  CLERK_SECRET_KEY: z.string().min(1, 'CLERK_SECRET_KEY es requerido'),
-  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z
-    .string()
-    .min(1, 'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY es requerido'),
+  // Auth Clerk — obligatorio en producción.
+  //
+  // En desarrollo son opcionales A PROPÓSITO: sin claves, @clerk/nextjs
+  // arranca en modo keyless (crea una instancia temporal), que es la única
+  // forma de levantar el panel en local sin repartir las claves del entorno
+  // real. En producción se sigue cayendo al arrancar si falta alguna.
+  CLERK_SECRET_KEY: requiredInProduction('CLERK_SECRET_KEY es requerido'),
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: requiredInProduction(
+    'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY es requerido',
+  ),
   NEXT_PUBLIC_CLERK_SIGN_IN_URL: z.string().default('/sign-in'),
   NEXT_PUBLIC_CLERK_SIGN_UP_URL: z.string().default('/sign-up'),
-  CLERK_WEBHOOK_SIGNING_SECRET: z.string().min(1, 'CLERK_WEBHOOK_SIGNING_SECRET es requerido'),
+  CLERK_WEBHOOK_SIGNING_SECRET: requiredInProduction('CLERK_WEBHOOK_SIGNING_SECRET es requerido'),
 
   // Retell — Fase 4
   RETELL_API_KEY: z.string().optional(),

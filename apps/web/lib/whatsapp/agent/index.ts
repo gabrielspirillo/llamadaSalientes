@@ -91,6 +91,7 @@ export async function runWhatsappAgent(
     clinic: grounding.clinic,
     treatments: grounding.treatments,
     faqs: grounding.faqs,
+    professionals: grounding.professionals,
     now: formatNowInClinicZone(grounding.clinic.timezone, deps.now()),
     remindersResume: input.remindersResume ?? null,
     leadMemory,
@@ -174,6 +175,10 @@ export async function runWhatsappAgent(
         tenantId: input.tenantId,
         toolName: tc.name,
         rawArgs: tc.args,
+        // Le da idempotencia a las reservas en la agenda interna: dos vueltas
+        // del loop sobre la misma conversación y el mismo hueco no crean dos
+        // citas.
+        conversationId: input.conversationId,
       });
       toolsCalled.push(trace);
 

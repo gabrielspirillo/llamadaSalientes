@@ -1,4 +1,5 @@
 import 'server-only';
+import { describeAgendaForPrompt } from '@/lib/agenda/agent';
 import { getClinicSettings, getTenant } from '@/lib/data/clinic';
 import { getLeadMemory } from '@/lib/memory/lead-memory';
 import { speakWorkingHoursRange } from '@/lib/retell/time-speech';
@@ -48,12 +49,16 @@ export async function buildClinicContextVars(
   // Si hay teléfono del lead, cargamos su memoria cross-canal en paralelo
   // (best-effort: si falla, va vacío). Se inyecta como {{lead_memory}} para
   // que el agente de voz "recuerde" lo hablado por WhatsApp o llamadas previas.
-  const [clinic, tenant, leadMem] = await Promise.all([
+  const [clinic, tenant, leadMem, professionals] = await Promise.all([
     getClinicSettings(tenantId),
     getTenant(tenantId),
     opts?.leadPhoneE164
       ? getLeadMemory(tenantId, opts.leadPhoneE164).catch(() => null)
       : Promise.resolve(null),
+    // Profesionales con agenda en la plataforma. Vacío si la clínica no la usa
+    // —y entonces el agente no debe nombrar a nadie—; un fallo aquí no puede
+    // tumbar la llamada, por eso va con catch.
+    describeAgendaForPrompt(tenantId).catch(() => ''),
   ]);
   const phones = (clinic?.phones ?? []).filter(Boolean);
   return {
@@ -68,5 +73,8 @@ export async function buildClinicContextVars(
     // Vacío si no hay memoria. El prompt del agente Retell debe referenciar
     // {{lead_memory}} para usarlo (config en el dashboard de Retell).
     lead_memory: leadMem?.profileSummary?.trim() || '',
+    // Referenciable como {{professionals}} en el prompt del agente de Retell.
+    // Los huecos concretos siguen saliendo de check_availability.
+    professionals: professionals.trim(),
   };
 }

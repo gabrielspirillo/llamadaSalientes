@@ -60,6 +60,12 @@ Vars críticas y dónde se setean. Lista completa en `.env.example`.
 - `DATABASE_URL`, `DIRECT_URL`
 - `ENCRYPTION_KEY`
 
+**Clerk en local**: las claves de Clerk son obligatorias en producción y
+opcionales en desarrollo (`lib/env.ts`). Sin ellas, `@clerk/nextjs` arranca en
+modo *keyless* y crea una instancia temporal, que es lo que permite levantar el
+panel en local sin repartir las claves del entorno real. La instancia temporal
+queda en `apps/web/.clerk/` (ignorado por git).
+
 **Runtime env**: ver `.env.example`. Las que cambiaron respecto al setup viejo:
 - ❌ Eliminadas: `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_WHATSAPP_BUCKET`
 - ✅ Nuevas: `REDIS_URL`, `S3_ENDPOINT`, `S3_PUBLIC_BASE_URL`, `S3_REGION`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET_WHATSAPP`, `S3_FORCE_PATH_STYLE`
@@ -198,6 +204,80 @@ Sección `/dashboard/tasks` (label "Tareas"). Es transversal: no se contrata, vi
 **Roles**: `viewer` mira, `operator` crea/mueve/cierra, `admin` toca rutinas y automatizaciones (`lib/tasks/auth.ts`).
 
 **Auto-provisión**: la primera visita a la página siembra el catálogo de 16 rutinas dentales, las reglas de automatización y materializa lo del día. Idempotente.
+
+## Módulo Agenda (core, sin gate de `enabled_modules`)
+
+Sección `/dashboard/agenda` (label "Agenda"). La agenda de los profesionales
+pasa a ser de la plataforma: hasta aquí vivía en GoHighLevel y el panel sólo
+leía una réplica (`appointments_cache`).
+
+**Migración**: `supabase/migrations/0026_agenda_profesionales.sql`. Tablas
+`professionals`, `professional_treatments`, `professional_shifts`,
+`professional_time_off`, `agenda_appointments` y `clinical_notes`.
+
+**Convenciones que no se negocian**:
+- Días de la semana **ISO** (1 = lunes … 7 = domingo), igual que `lib/tasks/tz.ts`.
+- El horario de trabajo son **minutos desde medianoche en hora local** de la
+  clínica (`start_minute`/`end_minute`): "los martes de 9 a 14" es una hora de
+  pared y tiene que seguir siendo las 9 después del cambio de horario. Las citas
+  y los bloqueos sí son instantes (`timestamptz`).
+- El panel manda **día + minuto locales**, no un instante: convierte el servidor
+  con la timezone de la clínica (`resolveStart` en `lib/agenda/service.ts`). Si
+  convirtiera el navegador, quien agenda desde otra zona crearía la cita corrida.
+
+**Piezas**:
+
+| Fichero | Qué resuelve |
+|---|---|
+| `lib/agenda/availability.ts` | Motor de huecos. Puro: franjas + citas + bloqueos + rejilla, colchón, antelación mínima/máxima. Con tests unitarios (DST incluido). |
+| `lib/agenda/queries.ts` | Lecturas: profesionales, calendario por rango, disponibilidad, pacientes y ficha. |
+| `lib/agenda/service.ts` | Escrituras con validación: alta de profesional, horario, bloqueos, citas, notas. |
+| `lib/agenda/auth.ts` + `access.ts` | Quién puede qué. `access.ts` va aparte para que `lib/tasks/auth.ts` lo use sin ciclo. |
+| `lib/agenda/agent.ts` + `voice.ts` | Lo que ven y hacen los agentes virtuales. |
+| `lib/agenda/view.ts` | Modelo de vista del calendario (el servidor sitúa cada cita en su día y minuto locales). |
+
+**Roles**:
+- `admin` de la clínica y Futura: configuran profesionales, horarios,
+  tratamientos y bloqueos. Futura entra impersonando y `getCurrentTenant` ya
+  devuelve la clínica gestionada, así que puede tocar la agenda de cualquiera.
+- `operator` (recepción): ve todas las agendas y crea/mueve/cancela citas.
+- `viewer`: mira.
+- **Profesional con `panel_access = 'AGENDA_ONLY'`**: su agenda, sus pacientes y
+  sus notas. Nada más. El cierre es de servidor en tres capas: el layout del
+  panel redirige a `/dashboard/agenda` (el pathname llega por la cabecera
+  `x-pathname` que pone el middleware), `requireTaskRole` rechaza cualquier
+  escritura del resto del panel, y las acciones de agenda comprueban que el
+  profesional es suyo (`assertProfessionalInScope`).
+
+**El rol sale de Clerk cuando no hay fila local.** `tenant_memberships` es una
+caché que llena un webhook; si ese webhook no corrió, el administrador quedaba
+degradado a operador y no podía ni abrir la configuración de su propia agenda.
+
+**Solapamiento**: cada escritura de cita toma un `pg_advisory_xact_lock` por
+profesional. Sin él, la recepcionista y el agente de voz leen la agenda libre a
+la vez y el paciente se encuentra a otro en el sillón.
+
+**Los agentes virtuales ven la agenda.** `lib/retell/tools.ts` (voz, saliente y
+WhatsApp comparten dispatcher) consulta primero la agenda interna y sólo cae a
+GoHighLevel si la clínica no tiene ningún profesional con la agenda encendida:
+`agendaCheckAvailability`/`agendaBookAppointment` devuelven `null` y el flujo de
+siempre continúa. Novedades para el agente: `list_professionals`,
+`professional_name` en `check_availability` y `professional_id` en
+`book_appointment` (lo devuelve `check_availability` entre corchetes, igual que
+el `start_time`). El prompt de WhatsApp y las variables de Retell incluyen la
+lista de profesionales (`{{professionals}}`); si la clínica no usa la agenda
+interna va vacía, para que el agente no se invente nombres.
+
+**Idempotencia**: `agenda_appointments.dedupe_key` con único parcial por tenant.
+La voz usa `call:<retellCallId>:<start>` y WhatsApp `wa:<conversationId>:<start>`,
+así que un reintento de webhook no deja dos citas.
+
+**Historia clínica**: `clinical_notes`, atada a la cita cuando la hay y siempre
+al paciente (`patient_key`: id del CRM, o teléfono normalizado, o email). Una
+nota marcada como privada no la ven ni el resto del equipo ni los agentes.
+
+**Bloqueos**: un bloqueo NO cancela las citas que caigan dentro; se avisa de
+cuántas hay para que la clínica decida a quién llama.
 
 ## Marca por clínica (white-label)
 

@@ -22,7 +22,11 @@ export type AuditEntity =
   | 'phone_number'
   | 'ghl_integration'
   | 'membership'
-  | 'tenant_telephony';
+  | 'tenant_telephony'
+  // Módulo Agenda (migración 0026).
+  | 'professional'
+  | 'professional_schedule'
+  | 'agenda_appointment';
 
 export async function recordAudit(input: {
   tenantId: string;

@@ -4,13 +4,20 @@ import { ScrollReset } from '@/components/dashboard/scroll-reset';
 import { DashboardSidebar } from '@/components/dashboard/sidebar';
 import { DashboardTopbar } from '@/components/dashboard/topbar';
 import { MessagingProvider } from '@/components/messaging/MessagingProvider';
+import {
+  findProfessionalForClerkUser,
+  isAgendaOnly,
+  isAgendaOnlyAllowedPath,
+} from '@/lib/agenda/access';
 import type { Branding } from '@/lib/branding';
 import { unreadSummary } from '@/lib/messaging/queries';
 import { DEFAULT_ENABLED_MODULES, type EnabledModules } from '@/lib/modules';
+import { normalizeRole } from '@/lib/tasks/auth';
 import { getTenantTimezone } from '@/lib/tasks/materialize';
 import { countActionableTasks, internalUserIdFor } from '@/lib/tasks/queries';
 import { getCurrentTenantOrNull } from '@/lib/tenant';
 import { auth } from '@clerk/nextjs/server';
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -39,6 +46,25 @@ export default async function DashboardLayout({ children }: { children: React.Re
     !tenantCtx.impersonating
   ) {
     redirect('/onboarding/setup');
+  }
+
+  // Profesional con acceso restringido: el panel se le queda en su agenda.
+  // El enlace se mira SIEMPRE en el servidor y la redirección es de servidor;
+  // esconder ítems del menú no protegería nada (las escrituras del resto del
+  // panel las corta `requireTaskRole`).
+  let agendaOnly = false;
+  if (tenantCtx) {
+    const professional = await findProfessionalForClerkUser(tenantCtx.tenant.id, userId).catch(
+      () => null,
+    );
+    agendaOnly = isAgendaOnly(professional, {
+      role: normalizeRole(orgRole),
+      isSuperAdmin: tenantCtx.isSuperAdmin,
+    });
+    if (agendaOnly) {
+      const pathname = (await headers()).get('x-pathname') ?? '/dashboard';
+      if (!isAgendaOnlyAllowedPath(pathname)) redirect('/dashboard/agenda');
+    }
   }
 
   const enabledModules: EnabledModules =
@@ -92,6 +118,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           branding={branding}
           tasksBadge={tasksBadge}
           messagesBadge={messagesBadge}
+          agendaOnly={agendaOnly}
         />
         <div className="flex min-w-0 flex-1 flex-col">
           {tenantCtx?.impersonating && <ImpersonationBanner clinicName={tenantCtx.tenant.name} />}
@@ -102,6 +129,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             impersonatingClinic={tenantCtx?.impersonating ? tenantCtx.tenant.name : undefined}
             tasksBadge={tasksBadge}
             messagesBadge={messagesBadge}
+            agendaOnly={agendaOnly}
           />
           {/* La key por ruta re-dispara la animación de entrada en cada navegación. */}
           <main className="enter-page flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-9">

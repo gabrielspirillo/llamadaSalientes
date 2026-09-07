@@ -92,8 +92,16 @@ export async function fixtureLoadGrounding(): Promise<{
   clinic: ClinicGrounding;
   treatments: TreatmentLine[];
   faqs: FaqLine[];
+  professionals: string;
 }> {
-  return { clinic, treatments, faqs };
+  // La clínica del sandbox lleva su agenda en la plataforma: así los casos de
+  // evaluación ejercitan también el camino con profesionales.
+  const professionals = [
+    'Profesionales con agenda en la clínica:',
+    '- Dra. Marta Ruiz (Odontología general): Limpieza dental, Revisión',
+    '- Dr. Iván Soler (Ortodoncia): Ortodoncia, Revisión',
+  ].join('\n');
+  return { clinic, treatments, faqs, professionals };
 }
 
 /** Teléfonos que el mock reconoce como pacientes existentes. */

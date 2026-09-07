@@ -18,7 +18,7 @@ beforeEach(() => {
 });
 
 describe('getAgentToolDefinitions', () => {
-  it('expone las 8 tools de Retell + handoff (terminal) + flag_urgent (marcador)', () => {
+  it('expone las 9 tools de Retell + handoff (terminal) + flag_urgent (marcador)', () => {
     const defs = getAgentToolDefinitions();
     const names = defs.map((d) => d.name).sort();
     expect(names).toEqual(
@@ -29,6 +29,7 @@ describe('getAgentToolDefinitions', () => {
         'flag_urgent',
         'get_patient_info',
         'get_treatment_details',
+        'list_professionals',
         'list_treatments',
         'register_patient',
         'request_handoff',
@@ -119,6 +120,9 @@ describe('executeAgentTool', () => {
       'tenant-abc',
       'check_availability',
       expect.objectContaining({ treatment_name: 'Limpieza', preferred_date: '2026-05-22' }),
+      // El canal viaja hasta la agenda interna: decide el `source` de la cita
+      // y la clave de idempotencia de la reserva.
+      expect.objectContaining({ channel: 'WHATSAPP' }),
     );
   });
 

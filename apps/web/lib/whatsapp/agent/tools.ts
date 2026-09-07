@@ -37,6 +37,8 @@ const checkAvailabilityArgs = z.object({
   treatment_name: z.string().min(1),
   preferred_date: z.string().min(1),
   calendar_id: z.string().optional(),
+  // Agenda interna: el paciente puede pedir profesional concreto.
+  professional_name: z.string().optional(),
 });
 
 const bookAppointmentArgs = z.object({
@@ -45,6 +47,11 @@ const bookAppointmentArgs = z.object({
   calendar_id: z.string().optional(),
   start_time: z.string().min(1),
   treatment_name: z.string().min(1),
+  // Agenda interna: lo que devuelve check_availability entre corchetes.
+  professional_id: z.string().optional(),
+  professional_name: z.string().optional(),
+  patient_name: z.string().optional(),
+  email: z.string().optional(),
 });
 
 const cancelAppointmentArgs = z.object({
@@ -63,6 +70,8 @@ const registerPatientArgs = z.object({
 });
 
 const listTreatmentsArgs = z.object({}).strict();
+
+const listProfessionalsArgs = z.object({}).strict();
 
 const getTreatmentDetailsArgs = z.object({
   name: z.string().min(1),
@@ -87,6 +96,7 @@ const SCHEMAS = {
   get_patient_info: getPatientInfoArgs,
   register_patient: registerPatientArgs,
   list_treatments: listTreatmentsArgs,
+  list_professionals: listProfessionalsArgs,
   get_treatment_details: getTreatmentDetailsArgs,
   search_faqs: searchFaqsArgs,
   request_handoff: requestHandoffArgs,
@@ -144,6 +154,11 @@ export function getAgentToolDefinitions(): AgentToolDefinition[] {
             type: 'string',
             description: 'Opcional. ID del calendario GHL si ya lo conoces.',
           },
+          professional_name: {
+            type: 'string',
+            description:
+              'Opcional. Nombre del profesional si el paciente pide uno concreto ("con la doctora Ruiz"). Consúltalos con list_professionals.',
+          },
         },
         required: ['treatment_name', 'preferred_date'],
         additionalProperties: false,
@@ -179,6 +194,20 @@ export function getAgentToolDefinitions(): AgentToolDefinition[] {
             type: 'string',
             description: 'Opcional. ID del calendario GHL si ya lo conoces.',
           },
+          professional_id: {
+            type: 'string',
+            description:
+              'Cópialo EXACTAMENTE del corchete [professional_id=...] del hueco que eligió el paciente en check_availability. Es lo que decide en qué agenda entra la cita.',
+          },
+          professional_name: {
+            type: 'string',
+            description: 'Alternativa al id cuando el paciente pidió a alguien por su nombre.',
+          },
+          patient_name: {
+            type: 'string',
+            description: 'Nombre y apellidos del paciente, para dejar la cita a su nombre.',
+          },
+          email: { type: 'string', description: 'Opcional. Email del paciente.' },
         },
         required: ['start_time', 'treatment_name'],
         additionalProperties: false,
@@ -229,6 +258,17 @@ export function getAgentToolDefinitions(): AgentToolDefinition[] {
           email: { type: 'string' },
         },
         required: ['first_name', 'phone'],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: 'list_professionals',
+      description:
+        'Lista los profesionales de la clínica con agenda propia y qué tratamientos realiza cada uno. Úsala cuando el paciente pregunte por un profesional o quiera elegir con quién se atiende.',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: [],
         additionalProperties: false,
       },
     },
@@ -315,6 +355,8 @@ export interface ExecuteToolInput {
   tenantId: string;
   toolName: string;
   rawArgs: unknown;
+  /** Conversación de la que sale la llamada. Da idempotencia a las reservas. */
+  conversationId?: string;
 }
 
 /**
@@ -372,7 +414,15 @@ export async function executeAgentTool(input: ExecuteToolInput): Promise<ToolCal
   }
 
   try {
-    const result = await dispatchTool(input.tenantId, name as KnownToolName, args);
+    const result = await dispatchTool(input.tenantId, name as KnownToolName, args, {
+      channel: 'WHATSAPP',
+      // Dos mensajes seguidos del paciente pueden disparar dos veces la misma
+      // reserva; con esta clave la segunda devuelve la cita ya creada.
+      dedupeKey:
+        input.conversationId && typeof args.start_time === 'string'
+          ? `wa:${input.conversationId}:${args.start_time}`
+          : undefined,
+    });
     return {
       name,
       args,

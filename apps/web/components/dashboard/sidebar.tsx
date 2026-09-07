@@ -10,6 +10,7 @@ import {
   BellRing,
   Bot,
   Building2,
+  CalendarDays,
   ClipboardCheck,
   Contact,
   HelpCircle,
@@ -49,6 +50,7 @@ const GROUPS: readonly NavGroup[] = [
     title: null,
     items: [
       { href: '/dashboard', label: 'Panel', icon: Home, tone: 'brand' },
+      { href: '/dashboard/agenda', label: 'Agenda', icon: CalendarDays, tone: 'mint' },
       { href: '/dashboard/messages', label: 'Mensajes', icon: MessageSquare, tone: 'brand' },
       { href: '/dashboard/tasks', label: 'Tareas', icon: ClipboardCheck, tone: 'blossom' },
       { href: '/dashboard/analytics', label: 'Métricas', icon: BarChart3, tone: 'sky' },
@@ -84,6 +86,20 @@ const GROUPS: readonly NavGroup[] = [
       { href: '/dashboard/agent', label: 'Asistente', icon: Bot, tone: 'brand' },
       { href: '/dashboard/settings', label: 'Datos de la clínica', icon: Building2, tone: 'sky' },
     ],
+  },
+] as const;
+
+/**
+ * Menú de un profesional con acceso restringido: su agenda y nada más.
+ *
+ * Es sólo lo que se DIBUJA. El bloqueo de verdad está en el servidor — el
+ * layout redirige y `requireTaskRole` rechaza las escrituras del resto del
+ * panel—: esconder un enlace nunca ha protegido nada.
+ */
+const AGENDA_ONLY_GROUPS: readonly NavGroup[] = [
+  {
+    title: null,
+    items: [{ href: '/dashboard/agenda', label: 'Mi agenda', icon: CalendarDays, tone: 'mint' }],
   },
 ] as const;
 
@@ -211,10 +227,13 @@ function SidebarNav({
   anchorTour = false,
   tasksBadge = 0,
   messagesBadge = 0,
+  agendaOnly = false,
 }: {
   onNavigate?: () => void;
   enabledModules: EnabledModules;
   isSuperAdmin?: boolean;
+  /** Profesional que sólo tiene acceso a su agenda. */
+  agendaOnly?: boolean;
   /** Marca de la clínica activa. Sin logo se dibuja la de FUTURA. */
   branding?: Branding;
   anchorTour?: boolean;
@@ -265,7 +284,7 @@ function SidebarNav({
 
       {/* --- Navegación ----------------------------------------------------- */}
       <nav className="scrollbar-none flex-1 space-y-5 overflow-y-auto px-3 py-4">
-        {GROUPS.map((group) => (
+        {(agendaOnly ? AGENDA_ONLY_GROUPS : GROUPS).map((group) => (
           <div key={group.title ?? 'top'}>
             {group.title && (
               <p className="mb-1.5 px-3 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
@@ -320,13 +339,15 @@ function SidebarNav({
             onNavigate={onNavigate}
           />
         )}
-        <FooterLink
-          href="/dashboard/configuration"
-          label={isSuperAdmin ? 'Configuración' : 'Estado'}
-          icon={isSuperAdmin ? Settings : ShieldCheck}
-          active={pathname.startsWith('/dashboard/configuration')}
-          onNavigate={onNavigate}
-        />
+        {!agendaOnly && (
+          <FooterLink
+            href="/dashboard/configuration"
+            label={isSuperAdmin ? 'Configuración' : 'Estado'}
+            icon={isSuperAdmin ? Settings : ShieldCheck}
+            active={pathname.startsWith('/dashboard/configuration')}
+            onNavigate={onNavigate}
+          />
+        )}
         <button
           type="button"
           onClick={() => {
@@ -398,12 +419,14 @@ export function DashboardSidebar({
   branding,
   tasksBadge = 0,
   messagesBadge = 0,
+  agendaOnly = false,
 }: {
   enabledModules: EnabledModules;
   isSuperAdmin?: boolean;
   branding?: Branding;
   tasksBadge?: number;
   messagesBadge?: number;
+  agendaOnly?: boolean;
 }) {
   return (
     <aside
@@ -418,6 +441,7 @@ export function DashboardSidebar({
         branding={branding}
         tasksBadge={tasksBadge}
         messagesBadge={messagesBadge}
+        agendaOnly={agendaOnly}
         anchorTour
       />
     </aside>
@@ -432,6 +456,7 @@ export function DashboardSidebarMobile({
   branding,
   tasksBadge = 0,
   messagesBadge = 0,
+  agendaOnly = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -440,6 +465,7 @@ export function DashboardSidebarMobile({
   branding?: Branding;
   tasksBadge?: number;
   messagesBadge?: number;
+  agendaOnly?: boolean;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -484,6 +510,7 @@ export function DashboardSidebarMobile({
           branding={branding}
           tasksBadge={tasksBadge}
           messagesBadge={messagesBadge}
+          agendaOnly={agendaOnly}
         />
       </aside>
     </div>
