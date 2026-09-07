@@ -85,6 +85,11 @@ const envSchema = z.object({
   // Adjuntos de la mensajería interna. Bucket PRIVADO a propósito: un adjunto
   // del equipo puede ser una radiografía, así que se sirve firmado.
   S3_BUCKET_INTERNAL: z.string().default('internal-files'),
+  // Logos de las clínicas (white-label). Tienen que servirse SIN firmar: van en
+  // un <img> del panel en cada render. Si no se setea cae al bucket público de
+  // WhatsApp, que ya es de lectura pública; se deja configurable para poder
+  // separarlos en su propio bucket sin tocar código.
+  S3_BUCKET_BRANDING: z.string().optional(),
   S3_PUBLIC_BASE_URL: z.string().optional(),
   // Forzar path-style addressing (necesario para MinIO; R2 también lo acepta).
   S3_FORCE_PATH_STYLE: z

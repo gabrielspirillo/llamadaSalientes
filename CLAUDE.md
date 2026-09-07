@@ -199,6 +199,46 @@ Sección `/dashboard/tasks` (label "Tareas"). Es transversal: no se contrata, vi
 
 **Auto-provisión**: la primera visita a la página siembra el catálogo de 16 rutinas dentales, las reglas de automatización y materializa lo del día. Idempotente.
 
+## Marca por clínica (white-label)
+
+Futura (super-admin) le puede poner a cada clínica **su nombre y su logo**, y esa
+clínica ve esa marca en todo el panel. Se gestiona desde `/dashboard/futura`, en
+el botón **Marca** de cada ficha.
+
+**Migración**: `supabase/migrations/0025_tenant_branding.sql`. Columnas
+`tenants.logo_url` (lo que se pinta) y `tenants.logo_path` (la key en el bucket,
+necesaria para borrar el objeto anterior al reemplazarlo — sin ella cada cambio
+de logo deja un huérfano público para siempre).
+
+**Quién puede**: sólo `isSuperAdmin` (miembro del tenant de Futura). La clínica
+no toca su propia marca. El gate se comprueba en el servidor en las tres vías:
+`renameClinicAction`, `removeClinicLogoAction` y `POST /api/futura/branding/logo`.
+
+**El logo lo persiste el servidor, no el cliente.** El endpoint sube el archivo
+*y* escribe `logo_url`/`logo_path`; no devuelve la URL para que el navegador la
+mande en un guardado aparte. Si lo hiciera, cualquiera con sesión podría escribir
+una URL arbitraria en `logo_url` y el panel la pintaría.
+
+**Nada de SVG** (`lib/branding.ts`): es HTML ejecutable y el logo se sirve desde
+un bucket público y se pinta dentro del panel. Allowlist: PNG, JPG, WEBP, AVIF,
+GIF, hasta 2 MB.
+
+**La key lleva un UUID**, no un nombre fijo por clínica: los objetos se sirven con
+`Cache-Control: max-age=3600`, así que reescribir la misma key dejaría el logo
+viejo en el navegador hasta una hora después del cambio.
+
+**El nombre se escribe en los dos sitios**: `tenants.name` y la organización de
+Clerk (que es lo que dibuja el `OrganizationSwitcher` del sidebar). Primero la
+base, después Clerk; si Clerk falla el cambio no se pierde y la acción devuelve
+`warning` en vez de `error` — decir "error" ahí haría que se reintentara un
+cambio que ya está hecho.
+
+**Sin logo propio se dibuja la marca FUTURA**, no el nombre de la clínica: el
+producto sigue siendo Futura y el nombre ya se lee justo debajo, en el selector
+de organizaciones. Al cambiar la marca hay que invalidar el **layout**
+(`revalidatePath('/dashboard', 'layout')`), no sólo la página: el sidebar y el
+topbar viven ahí.
+
 ## Módulo Mensajes (core, sin gate de `enabled_modules`)
 
 Sección `/dashboard/messages` (label "Mensajes"). Chat interno del equipo. Transversal, como Tareas.

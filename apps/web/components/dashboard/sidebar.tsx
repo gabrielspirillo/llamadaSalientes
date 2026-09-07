@@ -1,6 +1,7 @@
 'use client';
 
 import { useMessaging } from '@/components/messaging/MessagingProvider';
+import type { Branding } from '@/lib/branding';
 import { cn } from '@/lib/cn';
 import { type EnabledModules, isModuleEnabled, moduleForRoute } from '@/lib/modules';
 import { OrganizationSwitcher } from '@clerk/nextjs';
@@ -99,8 +100,26 @@ function isActive(pathname: string, href: string) {
   return href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href);
 }
 
-/** Marca de FUTURA: nombre + punto verde, como siempre. */
-function BrandMark() {
+/**
+ * Marca del panel.
+ *
+ * Por defecto la de FUTURA: nombre + punto verde, como siempre. Si Futura le
+ * puso un logo propio a esta clínica, manda el suyo — es el white-label. Sin
+ * logo NO se sustituye por el nombre de la clínica: el producto sigue siendo
+ * Futura, y el nombre ya se lee justo debajo, en el selector de organizaciones.
+ */
+function BrandMark({ branding }: { branding?: Branding }) {
+  if (branding?.logoUrl) {
+    return (
+      // <img> a pelo: el dominio del bucket es configurable por entorno y
+      // next/image obligaría a declararlo en next.config.
+      <img
+        src={branding.logoUrl}
+        alt={branding.name}
+        className="h-9 w-auto max-w-[168px] object-contain object-left"
+      />
+    );
+  }
   return (
     <span className="flex items-center gap-1.5">
       <span className="text-[21px] font-extrabold leading-none tracking-tight text-[#0f1f2e]">
@@ -188,6 +207,7 @@ function SidebarNav({
   onNavigate,
   enabledModules,
   isSuperAdmin = false,
+  branding,
   anchorTour = false,
   tasksBadge = 0,
   messagesBadge = 0,
@@ -195,6 +215,8 @@ function SidebarNav({
   onNavigate?: () => void;
   enabledModules: EnabledModules;
   isSuperAdmin?: boolean;
+  /** Marca de la clínica activa. Sin logo se dibuja la de FUTURA. */
+  branding?: Branding;
   anchorTour?: boolean;
   /** Tareas mías vencidas o para hoy. 0 = no se muestra nada. */
   tasksBadge?: number;
@@ -210,8 +232,8 @@ function SidebarNav({
     <>
       {/* --- Marca ---------------------------------------------------------- */}
       <div className="flex h-[68px] items-center justify-between gap-2 px-5">
-        <Link href="/dashboard" onClick={onNavigate} aria-label="FUTURA">
-          <BrandMark />
+        <Link href="/dashboard" onClick={onNavigate} aria-label={branding?.name ?? 'FUTURA'}>
+          <BrandMark branding={branding} />
         </Link>
         {onNavigate && (
           <button
@@ -373,11 +395,13 @@ const SIDEBAR_SURFACE =
 export function DashboardSidebar({
   enabledModules,
   isSuperAdmin = false,
+  branding,
   tasksBadge = 0,
   messagesBadge = 0,
 }: {
   enabledModules: EnabledModules;
   isSuperAdmin?: boolean;
+  branding?: Branding;
   tasksBadge?: number;
   messagesBadge?: number;
 }) {
@@ -391,6 +415,7 @@ export function DashboardSidebar({
       <SidebarNav
         enabledModules={enabledModules}
         isSuperAdmin={isSuperAdmin}
+        branding={branding}
         tasksBadge={tasksBadge}
         messagesBadge={messagesBadge}
         anchorTour
@@ -404,6 +429,7 @@ export function DashboardSidebarMobile({
   onClose,
   enabledModules,
   isSuperAdmin = false,
+  branding,
   tasksBadge = 0,
   messagesBadge = 0,
 }: {
@@ -411,6 +437,7 @@ export function DashboardSidebarMobile({
   onClose: () => void;
   enabledModules: EnabledModules;
   isSuperAdmin?: boolean;
+  branding?: Branding;
   tasksBadge?: number;
   messagesBadge?: number;
 }) {
@@ -454,6 +481,7 @@ export function DashboardSidebarMobile({
           onNavigate={onClose}
           enabledModules={enabledModules}
           isSuperAdmin={isSuperAdmin}
+          branding={branding}
           tasksBadge={tasksBadge}
           messagesBadge={messagesBadge}
         />

@@ -32,6 +32,12 @@ export const tenants = pgTable('tenants', {
     .$type<{ whatsapp: boolean; outbound: boolean; inbound: boolean }>()
     .notNull()
     .default({ whatsapp: false, outbound: false, inbound: false }),
+  // Marca propia de la clínica (white-label). Las pone Futura desde su panel.
+  // `logoUrl` es lo que se pinta; `logoPath` es la key en el bucket, necesaria
+  // para borrar el objeto anterior cuando se reemplaza el logo. Nulas = sin
+  // logo propio, el panel cae a la marca FUTURA.
+  logoUrl: text('logo_url'),
+  logoPath: text('logo_path'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 

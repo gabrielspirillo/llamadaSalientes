@@ -4,6 +4,7 @@ import { ScrollReset } from '@/components/dashboard/scroll-reset';
 import { DashboardSidebar } from '@/components/dashboard/sidebar';
 import { DashboardTopbar } from '@/components/dashboard/topbar';
 import { MessagingProvider } from '@/components/messaging/MessagingProvider';
+import type { Branding } from '@/lib/branding';
 import { unreadSummary } from '@/lib/messaging/queries';
 import { DEFAULT_ENABLED_MODULES, type EnabledModules } from '@/lib/modules';
 import { getTenantTimezone } from '@/lib/tasks/materialize';
@@ -46,6 +47,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // Futura (super-admin) ve las conexiones técnicas; la clínica ve solo lectura.
   const isSuperAdmin = tenantCtx?.isSuperAdmin ?? false;
 
+  // Marca del panel. Si la clínica tiene logo propio (se lo pone Futura desde
+  // su panel) manda el suyo; si no, se dibuja la marca FUTURA de siempre.
+  // Cuando Futura está gestionando una clínica, `tenant` ya es esa clínica: se
+  // ve su marca, que es justo lo que la clínica ve.
+  const branding: Branding = {
+    name: tenantCtx?.tenant.name ?? 'FUTURA',
+    logoUrl: tenantCtx?.tenant.logoUrl ?? null,
+  };
+
   // Badge de Tareas: lo mío vencido o para hoy. Una query barata por render;
   // si falla (tenant recién creado, DB lenta) el sidebar se dibuja sin badge.
   let tasksBadge = 0;
@@ -79,6 +89,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <DashboardSidebar
           enabledModules={enabledModules}
           isSuperAdmin={isSuperAdmin}
+          branding={branding}
           tasksBadge={tasksBadge}
           messagesBadge={messagesBadge}
         />
@@ -87,6 +98,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <DashboardTopbar
             enabledModules={enabledModules}
             isSuperAdmin={isSuperAdmin}
+            branding={branding}
             impersonatingClinic={tenantCtx?.impersonating ? tenantCtx.tenant.name : undefined}
             tasksBadge={tasksBadge}
             messagesBadge={messagesBadge}
