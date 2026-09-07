@@ -29,7 +29,8 @@ export default function DashboardError({
           No pudimos cargar esta sección
         </p>
         <p className="max-w-sm text-sm text-zinc-500">
-          Fue un problema puntual al traer los datos. Inténtalo de nuevo; si sigue pasando, avísanos.
+          Fue un problema puntual al traer los datos. Inténtalo de nuevo; si sigue pasando,
+          avísanos.
         </p>
         <div className="mt-2 flex gap-2">
           <Button type="button" variant="secondary" size="sm" onClick={reset}>
