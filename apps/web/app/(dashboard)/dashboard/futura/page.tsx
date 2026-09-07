@@ -8,6 +8,7 @@ import { LayoutDashboard } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { ModuleToggle } from '../configuration/_panels/modules-panel-toggle';
 import { ActivateButton } from './activate-button';
+import { BrandingDialog } from './branding-dialog';
 import { EnterButton } from './enter-button';
 
 export const dynamic = 'force-dynamic';
@@ -65,6 +66,7 @@ export default async function FuturaPanelPage() {
       slug: tenants.slug,
       status: tenants.status,
       enabledModules: tenants.enabledModules,
+      logoUrl: tenants.logoUrl,
       createdAt: tenants.createdAt,
     })
     .from(tenants);
@@ -127,28 +129,40 @@ export default async function FuturaPanelPage() {
                 }`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-[16px] font-bold tracking-tight text-zinc-900">
-                        {c.name}
-                      </h3>
-                      <Badge tone={meta.tone}>{meta.label}</Badge>
-                      {isFutura && <Badge tone="success">Futura</Badge>}
+                  <div className="flex min-w-0 items-start gap-3">
+                    {c.logoUrl && (
+                      <img
+                        src={c.logoUrl}
+                        alt=""
+                        className="h-10 w-10 shrink-0 rounded-xl border border-[--color-border] bg-white object-contain p-1"
+                      />
+                    )}
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-[16px] font-bold tracking-tight text-zinc-900">
+                          {c.name}
+                        </h3>
+                        <Badge tone={meta.tone}>{meta.label}</Badge>
+                        {isFutura && <Badge tone="success">Futura</Badge>}
+                      </div>
+                      <p className="mt-0.5 text-xs text-zinc-500">
+                        {c.slug} · creada el {fmtDate(c.createdAt)}
+                      </p>
                     </div>
-                    <p className="mt-0.5 text-xs text-zinc-500">
-                      {c.slug} · creada el {fmtDate(c.createdAt)}
-                    </p>
                   </div>
-                  {!isFutura && (
-                    <div className="flex flex-wrap items-center justify-end gap-2">
-                      {impersonating && c.id === actingTenant.id ? (
-                        <Badge tone="accent">Gestionando ahora</Badge>
-                      ) : (
-                        <EnterButton tenantId={c.id} />
-                      )}
-                      <ActivateButton tenantId={c.id} active={c.status === 'active'} />
-                    </div>
-                  )}
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <BrandingDialog tenantId={c.id} name={c.name} logoUrl={c.logoUrl} />
+                    {!isFutura && (
+                      <>
+                        {impersonating && c.id === actingTenant.id ? (
+                          <Badge tone="accent">Gestionando ahora</Badge>
+                        ) : (
+                          <EnterButton tenantId={c.id} />
+                        )}
+                        <ActivateButton tenantId={c.id} active={c.status === 'active'} />
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {/* Módulos por clínica */}

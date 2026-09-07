@@ -7,6 +7,7 @@ import { MentionsInbox } from '@/components/messaging/dock/MentionsInbox';
 import { StatusDot } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/feedback';
 import { Avatar } from '@/components/ui/stat';
+import type { Branding } from '@/lib/branding';
 import { cn } from '@/lib/cn';
 import type { ImSearchHit } from '@/lib/messaging/types';
 import type { EnabledModules } from '@/lib/modules';
@@ -75,12 +76,15 @@ function greeting(): string {
 export function DashboardTopbar({
   enabledModules,
   isSuperAdmin = false,
+  branding,
   impersonatingClinic,
   tasksBadge = 0,
   messagesBadge = 0,
 }: {
   enabledModules: EnabledModules;
   isSuperAdmin?: boolean;
+  /** Marca de la clínica activa. Sin logo se dibuja la de FUTURA. */
+  branding?: Branding;
   impersonatingClinic?: string;
   tasksBadge?: number;
   messagesBadge?: number;
@@ -129,12 +133,25 @@ export function DashboardTopbar({
           <Link
             href="/dashboard"
             className="flex shrink-0 items-center gap-1.5 lg:hidden"
-            aria-label="FUTURA"
+            aria-label={branding?.name ?? 'FUTURA'}
           >
-            <span className="text-[18px] font-extrabold leading-none tracking-tight text-white">
-              FUTURA
-            </span>
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#bff0dd]" />
+            {branding?.logoUrl ? (
+              // El logo va sobre la franja verde del topbar. Se le da fondo
+              // blanco redondeado porque un logo oscuro con fondo transparente
+              // sería ilegible ahí — y no controlamos el logo que suban.
+              <img
+                src={branding.logoUrl}
+                alt={branding.name}
+                className="h-8 w-auto max-w-[132px] rounded-lg bg-white/95 object-contain px-1.5 py-1"
+              />
+            ) : (
+              <>
+                <span className="text-[18px] font-extrabold leading-none tracking-tight text-white">
+                  FUTURA
+                </span>
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#bff0dd]" />
+              </>
+            )}
           </Link>
 
           {/* Saludo — equivalente al "Welcome, …" de la referencia */}
@@ -202,6 +219,7 @@ export function DashboardTopbar({
         onClose={() => setMobileNavOpen(false)}
         enabledModules={enabledModules}
         isSuperAdmin={isSuperAdmin}
+        branding={branding}
         tasksBadge={tasksBadge}
         messagesBadge={messagesBadge}
       />

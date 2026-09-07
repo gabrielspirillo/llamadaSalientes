@@ -1,5 +1,10 @@
 import 'server-only';
-import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 import { env } from '@/lib/env';
@@ -88,6 +93,19 @@ export async function mediaSignedUrl(
   const expiresIn = options?.expiresInSeconds ?? 60 * 60 * 24; // 24h
   const client = getClient();
   return getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: path }), { expiresIn });
+}
+
+/**
+ * Borra un objeto. Pensado para reemplazos (cambiar el logo de una clínica):
+ * sin esto cada cambio deja el archivo anterior en el bucket para siempre.
+ *
+ * Quien lo llama debe tratarlo como best-effort: que no se pueda borrar el
+ * objeto viejo nunca es motivo para tumbar la operación que ya guardó el nuevo.
+ */
+export async function mediaDelete(path: string, options?: { bucket?: string }): Promise<void> {
+  const bucket = options?.bucket ?? env.S3_BUCKET_WHATSAPP;
+  const client = getClient();
+  await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: path }));
 }
 
 export function buildWhatsappMediaPath(
