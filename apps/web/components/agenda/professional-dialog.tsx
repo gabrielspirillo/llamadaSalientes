@@ -44,7 +44,8 @@ export interface ProfessionalFormValues {
   agendaEnabled: boolean;
   acceptsOnlineBooking: boolean;
   panelAccess: 'AGENDA_ONLY' | 'FULL';
-  slotGranularityMinutes: number;
+  /** Null = automático: las citas van una detrás de otra. */
+  slotGranularityMinutes: number | null;
   bufferMinutes: number;
   minNoticeHours: number;
   maxAdvanceDays: number;
@@ -61,7 +62,7 @@ const EMPTY: ProfessionalFormValues = {
   agendaEnabled: true,
   acceptsOnlineBooking: true,
   panelAccess: 'AGENDA_ONLY',
-  slotGranularityMinutes: 15,
+  slotGranularityMinutes: null,
   bufferMinutes: 0,
   minNoticeHours: 2,
   maxAdvanceDays: 90,
@@ -234,7 +235,10 @@ export function ProfessionalDialog({
       agendaEnabled: values.agendaEnabled,
       acceptsOnlineBooking: values.acceptsOnlineBooking,
       panelAccess: values.panelAccess,
-      slotGranularityMinutes: Number(values.slotGranularityMinutes),
+      // Null = automático. `Number(null)` es 0 y el servidor lo rechazaba por
+      // debajo del mínimo: la rejilla vacía tiene que viajar como null.
+      slotGranularityMinutes:
+        values.slotGranularityMinutes === null ? null : Number(values.slotGranularityMinutes),
       bufferMinutes: Number(values.bufferMinutes),
       minNoticeHours: Number(values.minNoticeHours),
       maxAdvanceDays: Number(values.maxAdvanceDays),
@@ -777,16 +781,27 @@ function PasoHuecos({
     <div className="grid gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-1.5">
-          <Label htmlFor="pf-gran">Rejilla de huecos (min)</Label>
-          <Input
+          <Label htmlFor="pf-gran">Las citas empiezan</Label>
+          <Select
             id="pf-gran"
-            type="number"
-            min={5}
-            max={120}
-            step={5}
-            value={values.slotGranularityMinutes}
-            onChange={(e) => set('slotGranularityMinutes', Number(e.target.value))}
-          />
+            value={
+              values.slotGranularityMinutes === null ? '' : String(values.slotGranularityMinutes)
+            }
+            onChange={(e) =>
+              set('slotGranularityMinutes', e.target.value === '' ? null : Number(e.target.value))
+            }
+          >
+            <option value="">Una detrás de otra</option>
+            <option value="15">Cada 15 min</option>
+            <option value="20">Cada 20 min</option>
+            <option value="30">Cada 30 min</option>
+            <option value="60">Cada hora en punto</option>
+          </Select>
+          <p className="text-[12px] text-zinc-500">
+            {values.slotGranularityMinutes === null
+              ? 'La duración la pone el tratamiento y cada cita empieza cuando acaba la anterior.'
+              : `Se ofrecen inicios cada ${values.slotGranularityMinutes} min, para encajar citas cortas en los huecos que dejan las largas.`}
+          </p>
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="pf-buffer">Descanso entre citas (min)</Label>
@@ -799,6 +814,9 @@ function PasoHuecos({
             value={values.bufferMinutes}
             onChange={(e) => set('bufferMinutes', Number(e.target.value))}
           />
+          <p className="text-[12px] text-zinc-500">
+            0 = sin descanso, una cita pegada a la siguiente.
+          </p>
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="pf-notice">Antelación mínima (horas)</Label>

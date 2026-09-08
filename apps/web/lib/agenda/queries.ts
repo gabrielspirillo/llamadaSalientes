@@ -410,7 +410,8 @@ export async function getAvailability(
   const options: SlotOptions = {
     timezone,
     durationMinutes: params.durationMinutes,
-    granularityMinutes: professional.slotGranularityMinutes,
+    // Null en base = automático; el motor lo recibe como 0.
+    granularityMinutes: professional.slotGranularityMinutes ?? 0,
     bufferMinutes: professional.bufferMinutes,
     minNoticeHours: professional.minNoticeHours,
     maxAdvanceDays: professional.maxAdvanceDays,

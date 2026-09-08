@@ -2001,7 +2001,8 @@ export const professionals = pgTable(
     panelAccess: professionalPanelAccessEnum('panel_access').notNull().default('AGENDA_ONLY'),
     // Null = hereda la de clinic_settings.
     timezone: text('timezone'),
-    slotGranularityMinutes: integer('slot_granularity_minutes').notNull().default(15),
+    /** Minutos entre inicios de cita. Null = automático: el paso es la duración. */
+    slotGranularityMinutes: integer('slot_granularity_minutes'),
     bufferMinutes: integer('buffer_minutes').notNull().default(0),
     minNoticeHours: integer('min_notice_hours').notNull().default(2),
     maxAdvanceDays: integer('max_advance_days').notNull().default(90),

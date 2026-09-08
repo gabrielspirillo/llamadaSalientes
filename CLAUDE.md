@@ -215,6 +215,15 @@ leía una réplica (`appointments_cache`).
 `professionals`, `professional_treatments`, `professional_shifts`,
 `professional_time_off`, `agenda_appointments` y `clinical_notes`.
 
+**La duración la pone el tratamiento; la rejilla, sólo dónde empieza la cita.**
+`professionals.slot_granularity_minutes` es NULL por defecto (migración 0027) y
+eso significa *automático*: el paso es la duración de la cita, así que el día se
+encadena solo (con 45 min: 9:00, 9:45, 10:30…). Un valor explícito (15, 20, 30,
+60) sólo sirve para lo único que aportaba: encajar citas cortas en los ratos que
+dejan las largas, a costa de ofrecer el doble de opciones por teléfono. El
+descanso entre citas (`buffer_minutes`) es cosa aparte y **0 es válido y es el
+defecto**: una cita pegada a la siguiente.
+
 **Convenciones que no se negocian**:
 - Días de la semana **ISO** (1 = lunes … 7 = domingo), igual que `lib/tasks/tz.ts`.
 - El horario de trabajo son **minutos desde medianoche en hora local** de la

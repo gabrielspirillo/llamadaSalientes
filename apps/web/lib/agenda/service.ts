@@ -50,10 +50,34 @@ export const professionalInputSchema = z.object({
   agendaEnabled: z.boolean().optional(),
   panelAccess: z.enum(['AGENDA_ONLY', 'FULL']).optional(),
   timezone: z.string().trim().max(60).optional().or(z.literal('')),
-  slotGranularityMinutes: z.number().int().min(5).max(120).optional(),
-  bufferMinutes: z.number().int().min(0).max(120).optional(),
-  minNoticeHours: z.number().int().min(0).max(720).optional(),
-  maxAdvanceDays: z.number().int().min(1).max(365).optional(),
+  // Null = automático (una cita detrás de otra). Un número, cada cuántos
+  // minutos puede empezar una cita.
+  slotGranularityMinutes: z
+    .number()
+    .int()
+    .min(5, 'Las citas no pueden empezar cada menos de 5 minutos.')
+    .max(120, 'Las citas no pueden empezar cada más de 2 horas.')
+    .nullable()
+    .optional(),
+  // 0 es válido y es el defecto: una cita pegada a la siguiente.
+  bufferMinutes: z
+    .number()
+    .int()
+    .min(0, 'El descanso entre citas no puede ser negativo.')
+    .max(120, 'El descanso entre citas no puede pasar de 2 horas.')
+    .optional(),
+  minNoticeHours: z
+    .number()
+    .int()
+    .min(0, 'La antelación mínima no puede ser negativa.')
+    .max(720, 'La antelación mínima no puede pasar de 30 días.')
+    .optional(),
+  maxAdvanceDays: z
+    .number()
+    .int()
+    .min(1, 'Se tiene que poder reservar al menos con un día.')
+    .max(365, 'No se puede reservar con más de un año.')
+    .optional(),
   acceptsOnlineBooking: z.boolean().optional(),
   notes: z.string().trim().max(2000).optional().or(z.literal('')),
   /** Email del usuario de la plataforma al que se vincula (o null para desvincular). */
@@ -207,7 +231,7 @@ export async function createProfessional(ctx: AgendaContext, raw: ProfessionalIn
       agendaEnabled: input.agendaEnabled ?? false,
       panelAccess: input.panelAccess ?? 'AGENDA_ONLY',
       timezone: emptyToNull(input.timezone),
-      slotGranularityMinutes: input.slotGranularityMinutes ?? 15,
+      slotGranularityMinutes: input.slotGranularityMinutes ?? null,
       bufferMinutes: input.bufferMinutes ?? 0,
       minNoticeHours: input.minNoticeHours ?? 2,
       maxAdvanceDays: input.maxAdvanceDays ?? 90,

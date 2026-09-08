@@ -22,7 +22,11 @@ export interface SlotOptions {
   timezone: string;
   /** Duración de la cita, en minutos. */
   durationMinutes: number;
-  /** Cada cuánto empieza un hueco (rejilla). */
+  /**
+   * Cada cuánto empieza un hueco. 0 (o menos) = automático: las citas van una
+   * detrás de otra, con el paso igual a la duración. Un valor explícito sirve
+   * para encajar citas cortas en los ratos que dejan las largas.
+   */
   granularityMinutes: number;
   /** Minutos muertos reservados DESPUÉS de cada cita. */
   bufferMinutes: number;
@@ -78,7 +82,7 @@ export function computeDaySlots(input: DayAvailabilityInput): SlotCandidate[] {
   } = options;
 
   if (durationMinutes <= 0) return [];
-  const step = granularityMinutes > 0 ? granularityMinutes : 15;
+  const step = granularityMinutes > 0 ? granularityMinutes : durationMinutes;
 
   const earliest = new Date(now.getTime() + minNoticeHours * 3_600_000);
   const latest = new Date(now.getTime() + maxAdvanceDays * 86_400_000);

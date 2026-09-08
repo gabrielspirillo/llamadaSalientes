@@ -132,8 +132,12 @@ export default async function ProfesionalDetailPage({
                 </dd>
               </div>
               <div className="flex items-center justify-between">
-                <dt className="text-zinc-500">Rejilla</dt>
-                <dd className="tabular-nums text-zinc-700">{p.slotGranularityMinutes} min</dd>
+                <dt className="text-zinc-500">Las citas empiezan</dt>
+                <dd className="tabular-nums text-zinc-700">
+                  {p.slotGranularityMinutes === null
+                    ? 'Una detrás de otra'
+                    : `Cada ${p.slotGranularityMinutes} min`}
+                </dd>
               </div>
               <div className="flex items-center justify-between">
                 <dt className="text-zinc-500">Descanso entre citas</dt>

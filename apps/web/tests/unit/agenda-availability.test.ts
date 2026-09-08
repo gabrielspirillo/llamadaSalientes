@@ -185,6 +185,51 @@ describe('computeDaySlots', () => {
     expect(shiftAppliesOn(shift, '2026-10-06')).toBe(false);
   });
 
+  it('sin rejilla, las citas van una detrás de otra', () => {
+    // Es el modo por defecto: la duración la pone el tratamiento y el paso es
+    // esa misma duración, así que el día se ordena solo.
+    const slots = computeDaySlots({
+      dateKey: '2026-09-08',
+      shifts: [{ weekday: 2, startMinute: 9 * 60, endMinute: 12 * 60 }],
+      appointments: [],
+      blocks: [],
+      options: { ...baseOptions, durationMinutes: 45, granularityMinutes: 0 },
+    });
+    expect(slots.map((s) => localHHMM(s.start, TZ))).toEqual(['09:00', '09:45', '10:30', '11:15']);
+  });
+
+  it('con rejilla, se ofrecen inicios intermedios para encajar citas cortas', () => {
+    const slots = computeDaySlots({
+      dateKey: '2026-09-08',
+      shifts: [{ weekday: 2, startMinute: 9 * 60, endMinute: 11 * 60 }],
+      appointments: [],
+      blocks: [],
+      options: { ...baseOptions, durationMinutes: 45, granularityMinutes: 15 },
+    });
+    expect(slots.map((s) => localHHMM(s.start, TZ))).toEqual([
+      '09:00',
+      '09:15',
+      '09:30',
+      '09:45',
+      '10:00',
+      '10:15',
+    ]);
+  });
+
+  it('con descanso 0 una cita queda pegada a la siguiente', () => {
+    const slots = computeDaySlots({
+      dateKey: '2026-09-08',
+      shifts: [{ weekday: 2, startMinute: 9 * 60, endMinute: 11 * 60 }],
+      appointments: [
+        { start: new Date('2026-09-08T07:00:00Z'), end: new Date('2026-09-08T07:30:00Z') }, // 09:00-09:30
+      ],
+      blocks: [],
+      options: { ...baseOptions, bufferMinutes: 0 },
+    });
+    // El hueco de las 09:30 se ofrece: sin descanso, empieza justo al acabar.
+    expect(slots.map((s) => localHHMM(s.start, TZ))).toEqual(['09:30', '10:00', '10:30']);
+  });
+
   it('dos franjas duplicadas no ofrecen el mismo hueco dos veces', () => {
     const slots = computeDaySlots({
       dateKey: '2026-09-08',

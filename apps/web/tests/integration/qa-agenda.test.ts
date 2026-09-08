@@ -155,6 +155,52 @@ describe('disponibilidad', () => {
   });
 });
 
+describe('rejilla y descanso', () => {
+  it('guarda la rejilla automática y el descanso en 0', async () => {
+    const ctx = ctxFor(tenantId, userA);
+    const p = await createProfessional(ctx, {
+      fullName: 'Dr. Sin Rejilla',
+      agendaEnabled: true,
+      minNoticeHours: 0,
+      bufferMinutes: 0,
+    });
+    await replaceShifts(ctx, p!.id, HORARIO);
+
+    // Sin pedir rejilla se guarda null: "una detrás de otra".
+    const [fila] = await raw<{ slot_granularity_minutes: number | null; buffer_minutes: number }[]>`
+      select slot_granularity_minutes, buffer_minutes from professionals where id = ${p!.id}`;
+    expect(fila?.slot_granularity_minutes).toBeNull();
+    expect(fila?.buffer_minutes).toBe(0);
+
+    // Y los huecos salen encadenados con la duración pedida.
+    const result = await getAvailability(tenantId, {
+      professionalId: p!.id,
+      fromDateKey: MARTES,
+      toDateKey: MARTES,
+      durationMinutes: 60,
+      now: new Date('2027-03-01T08:00:00Z'),
+    });
+    expect(result.slots.map((s) => s.start.toISOString())).toEqual([
+      '2027-03-09T08:00:00.000Z',
+      '2027-03-09T09:00:00.000Z',
+      '2027-03-09T10:00:00.000Z',
+      '2027-03-09T11:00:00.000Z',
+      '2027-03-09T12:00:00.000Z',
+    ]);
+
+    // Con rejilla explícita aparecen los inicios intermedios.
+    await updateProfessional(ctx, p!.id, { slotGranularityMinutes: 30 });
+    const conRejilla = await getAvailability(tenantId, {
+      professionalId: p!.id,
+      fromDateKey: MARTES,
+      toDateKey: MARTES,
+      durationMinutes: 60,
+      now: new Date('2027-03-01T08:00:00Z'),
+    });
+    expect(conRejilla.slots.length).toBe(9); // 9:00, 9:30, 10:00 … 13:00
+  });
+});
+
 describe('citas', () => {
   it('crea la cita, la deja fuera de los huecos y rechaza el solapamiento', async () => {
     const ctx = ctxFor(tenantId, userA);
@@ -275,8 +321,11 @@ describe('citas', () => {
 describe('agentes virtuales', () => {
   it('ven la agenda, reservan y no duplican al reintentar', async () => {
     const catalog = await listAgentProfessionals(tenantId);
-    expect(catalog.map((p) => p.fullName)).toContain('Dra. Marta Ruiz');
-    expect(catalog[0]!.treatments.map((t) => t.name)).toContain('Limpieza dental');
+    // Por nombre y no por posición: la lista va ordenada alfabéticamente y
+    // cualquier profesional que añada otro test la desplazaría.
+    const marta = catalog.find((p) => p.fullName === 'Dra. Marta Ruiz');
+    expect(marta).toBeDefined();
+    expect(marta!.treatments.map((t) => t.name)).toContain('Limpieza dental');
 
     const search = await findAgentSlots(tenantId, {
       treatmentName: 'limpieza',
