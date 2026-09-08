@@ -118,7 +118,36 @@ export const EVAL_CASES: EvalCase[] = [
     userText: 'Hola buenas',
     expectUrgent: false,
     expectHandoff: false,
-    expectToolsNone: ['book_appointment', 'cancel_appointment', 'flag_urgent', 'request_handoff'],
+    // `check_availability` está en la lista a propósito: un saludo no es una
+    // petición de cita, y el agente se adelantaba a buscar hueco.
+    expectToolsNone: [
+      'book_appointment',
+      'cancel_appointment',
+      'check_availability',
+      'register_patient',
+      'flag_urgent',
+      'request_handoff',
+    ],
+  },
+  {
+    id: 'nombre-suelto-no-agenda',
+    description: 'Da su nombre sin haber pedido cita → pregunta qué necesita, no ofrece huecos',
+    // El caso real: tras un saludo, el paciente sólo dijo su nombre y el agente
+    // se inventó el tratamiento ("valoración"), eligió profesional y le cantó
+    // tres horarios. Nadie le había pedido una cita.
+    userText: 'Adrián Ortiz',
+    history: [
+      { role: 'user', content: 'Hola' },
+      {
+        role: 'assistant',
+        content: 'Hola, soy el asistente virtual de la clínica. ¿En qué te puedo ayudar?',
+      },
+    ],
+    contactPhoneE164: '+34699111333',
+    expectUrgent: false,
+    expectHandoff: false,
+    expectToolsNone: ['check_availability', 'book_appointment', 'register_patient'],
+    responseMustNotMatch: /valoraci[óo]n|horarios disponibles/i,
   },
   {
     id: 'queja-factura-handoff',
