@@ -23,6 +23,8 @@ import {
   Lock,
   MessageCircle,
   MessageSquare,
+  PanelLeftClose,
+  PanelLeftOpen,
   PhoneCall,
   PhoneOutgoing,
   Settings,
@@ -77,6 +79,10 @@ const ENTRIES: readonly NavEntry[] = [
   },
   {
     kind: 'link',
+    item: { href: '/dashboard/whatsapp', label: 'WhatsApp', icon: MessageCircle, tone: 'mint' },
+  },
+  {
+    kind: 'link',
     item: { href: '/dashboard/messages', label: 'Mensajes', icon: MessageSquare, tone: 'brand' },
   },
   {
@@ -102,7 +108,6 @@ const ENTRIES: readonly NavEntry[] = [
           icon: PhoneOutgoing,
           tone: 'blossom',
         },
-        { href: '/dashboard/whatsapp', label: 'WhatsApp', icon: MessageCircle, tone: 'mint' },
         { href: '/dashboard/reminders', label: 'Recordatorios', icon: BellRing, tone: 'honey' },
         { href: '/dashboard/waitlist', label: 'Lista de espera', icon: ListChecks, tone: 'coral' },
       ],
@@ -222,6 +227,50 @@ function ActiveRail({ active }: { active: boolean }) {
 }
 
 /**
+ * Rótulo flotante del modo plegado.
+ *
+ * Con la barra encogida sólo se ve el icono, así que sin esto no hay forma de
+ * saber qué es cada fila. Los grupos no lo necesitan: al pasar por encima ya
+ * abren su menú, que va encabezado por el nombre del grupo.
+ *
+ * Es puramente visual (`aria-hidden`): el nombre accesible de la fila va en su
+ * `aria-label`, porque el rótulo de verdad lo borra el CSS con `display:none`.
+ */
+function HoverLabel({
+  text,
+  anchorRef,
+  show,
+}: {
+  text: string;
+  anchorRef: React.RefObject<HTMLElement | null>;
+  show: boolean;
+}) {
+  const [pos, setPos] = React.useState<{ top: number; left: number } | null>(null);
+
+  React.useLayoutEffect(() => {
+    if (!show) {
+      setPos(null);
+      return;
+    }
+    const el = anchorRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setPos({ top: Math.round(r.top + r.height / 2), left: Math.round(r.right + 12) });
+  }, [show, anchorRef]);
+
+  if (!show || !pos) return null;
+  return (
+    <span
+      aria-hidden
+      style={{ top: pos.top, left: pos.left }}
+      className="pointer-events-none fixed z-50 -translate-y-1/2 animate-zoom-in whitespace-nowrap rounded-xl border border-[#dfe4e2] bg-white px-3 py-1.5 text-[13px] font-medium text-zinc-800 shadow-[0_18px_40px_-20px_rgba(20,33,29,0.55)]"
+    >
+      {text}
+    </span>
+  );
+}
+
+/**
  * Memoizado: el sidebar se re-renderiza cada vez que cambia el contador de
  * Mensajes (que llega por SSE). Sin esto se rehacían todos los enlaces y el
  * OrganizationSwitcher de Clerk en cada evento, aunque sólo cambiara un número.
@@ -235,6 +284,7 @@ const NavLink = React.memo(function NavLink({
   badge = 0,
   badgeLabel,
   surface = 'rail',
+  collapsed = false,
 }: {
   item: NavItem;
   active: boolean;
@@ -247,29 +297,77 @@ const NavLink = React.memo(function NavLink({
   badgeLabel?: string;
   /** Dónde vive la fila: la barra lateral o el menú flotante. */
   surface?: Surface;
+  /** Barra plegada: sin rótulo a la vista, hace falta uno flotante. */
+  collapsed?: boolean;
 }) {
+  const ref = React.useRef<HTMLAnchorElement>(null);
+  const [hovered, setHovered] = React.useState(false);
+
+  // Los atributos del modo plegado sólo los lleva la fila que vive EN la barra.
+  // El menú flotante es descendiente del <aside> aunque se dibuje fuera, así
+  // que si sus enlaces los llevaran también, plegar la barra les borraría el
+  // rótulo y dejaría un panel de iconos sin nombre.
+  const enLaBarra = surface === 'rail';
+  const attrPlegado = enLaBarra ? '' : undefined;
+
+  // Plegada, el CSS borra rótulo, contador y candado con `display:none`, que
+  // también los saca del árbol de accesibilidad. El nombre va aquí para que la
+  // fila se anuncie igual en los dos estados.
+  const nombreAccesible = [
+    item.label,
+    badge > 0 ? (badgeLabel ?? `${badge} pendientes`) : null,
+    locked ? 'módulo no contratado' : null,
+  ]
+    .filter(Boolean)
+    .join('. ');
+
   return (
     <Link
+      ref={ref}
       href={item.href}
       data-tour={tourAnchor}
+      data-sidebar-row={attrPlegado}
       onClick={onNavigate}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={() => setHovered(true)}
+      onBlur={() => setHovered(false)}
       aria-current={active ? 'page' : undefined}
+      aria-label={nombreAccesible}
       className={cn(ROW_BASE, active ? ROW_ACTIVE : ROW_IDLE)}
     >
       {surface === 'rail' && <ActiveRail active={active} />}
-      <IconChip icon={item.icon} tone={item.tone} active={active} surface={surface} />
-      <span className="flex-1 truncate">{item.label}</span>
+      <span className="relative shrink-0">
+        <IconChip icon={item.icon} tone={item.tone} active={active} surface={surface} />
+        {/* Plegada no cabe el número: queda el punto. */}
+        {badge > 0 && (
+          <span
+            data-sidebar-only={attrPlegado}
+            aria-hidden
+            className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-brand-600 ring-2 ring-[#ecefee]"
+          />
+        )}
+      </span>
+      <span data-sidebar-hide={attrPlegado} className="flex-1 truncate">
+        {item.label}
+      </span>
       {badge > 0 && (
         <span
+          data-sidebar-hide={attrPlegado}
+          aria-hidden
           className="inline-flex min-w-[20px] shrink-0 items-center justify-center rounded-full bg-brand-600 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-white"
-          aria-label={badgeLabel ?? `${badge} pendientes en ${item.label}`}
         >
           {badge > 99 ? '99+' : badge}
         </span>
       )}
       {locked && (
-        <Lock className="h-3 w-3 shrink-0 text-zinc-400" aria-label="Módulo no contratado" />
+        <Lock
+          data-sidebar-hide={attrPlegado}
+          aria-hidden
+          className="h-3 w-3 shrink-0 text-zinc-400"
+        />
       )}
+      <HoverLabel text={item.label} anchorRef={ref} show={collapsed && hovered} />
     </Link>
   );
 });
@@ -416,14 +514,19 @@ function NavGroupRow({
         // El tutorial señala ítems por su href. Los que viven aquí dentro no
         // están en el DOM con el menú cerrado: que apunte al grupo que los tiene.
         data-tour-group={anchorTour ? itemsKey : undefined}
+        data-sidebar-row
         onClick={() => setOpen((v) => !v)}
+        aria-label={group.label}
         className={cn(ROW_BASE, hasActive || open ? ROW_ACTIVE : ROW_IDLE)}
       >
         <ActiveRail active={hasActive} />
         <IconChip icon={group.icon} tone={group.tone} active={hasActive || open} />
-        <span className="flex-1 truncate">{group.label}</span>
+        <span data-sidebar-hide className="flex-1 truncate">
+          {group.label}
+        </span>
         <ChevronRight
           aria-hidden
+          data-sidebar-hide
           className={cn(
             'h-4 w-4 shrink-0 text-zinc-400 transition-transform duration-300',
             mode === 'inline' && open && 'rotate-90',
@@ -498,6 +601,7 @@ function SidebarNav({
   messagesBadge = 0,
   agendaOnly = false,
   groupMode = 'flyout',
+  collapsible = false,
 }: {
   onNavigate?: () => void;
   enabledModules: EnabledModules;
@@ -513,19 +617,57 @@ function SidebarNav({
   messagesBadge?: number;
   /** Cómo se abren los grupos: flotante (escritorio) o desplegable (móvil). */
   groupMode?: 'flyout' | 'inline';
+  /** Sólo la barra fija del escritorio se pliega; el cajón del móvil no. */
+  collapsible?: boolean;
 }) {
   const pathname = usePathname();
   // El contador del server hidrata; después manda el stream del provider.
   const messaging = useMessaging();
   const liveMessages = messaging.ready ? messaging.totalUnread : messagesBadge;
 
+  // Plegado: la verdad vive en el atributo del <html> que puso el script en
+  // línea antes de pintar. React lo lee al montar y sólo lo usa para el icono
+  // del botón y para saber si hacen falta los rótulos flotantes; de la anchura
+  // y del texto se encarga el CSS, que ya está aplicado en el primer frame.
+  const [collapsed, setCollapsed] = React.useState(false);
+  React.useEffect(() => {
+    setCollapsed(document.documentElement.dataset.sidebar === 'collapsed');
+  }, []);
+  const toggleCollapsed = React.useCallback(() => {
+    const next = document.documentElement.dataset.sidebar !== 'collapsed';
+    document.documentElement.dataset.sidebar = next ? 'collapsed' : 'expanded';
+    try {
+      localStorage.setItem('futura:sidebar', next ? 'collapsed' : 'expanded');
+    } catch {
+      // Navegador sin almacenamiento: se pliega igual, no se recuerda.
+    }
+    setCollapsed(next);
+  }, []);
+
   return (
     <>
       {/* --- Marca ---------------------------------------------------------- */}
-      <div className="flex h-[68px] items-center justify-between gap-2 px-5">
-        <Link href="/dashboard" onClick={onNavigate} aria-label={branding?.name ?? 'FUTURA'}>
+      <div data-sidebar-header className="flex h-[68px] items-center justify-between gap-2 px-5">
+        <Link
+          data-sidebar-hide
+          href="/dashboard"
+          onClick={onNavigate}
+          aria-label={branding?.name ?? 'FUTURA'}
+        >
           <BrandMark branding={branding} />
         </Link>
+        {collapsible && (
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? 'Desplegar el menú' : 'Plegar el menú'}
+            aria-pressed={collapsed}
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-zinc-500 transition-all duration-300 hover:bg-white hover:text-zinc-900"
+          >
+            <PanelLeftClose data-sidebar-hide aria-hidden className="h-[18px] w-[18px]" />
+            <PanelLeftOpen data-sidebar-only aria-hidden className="h-[18px] w-[18px]" />
+          </button>
+        )}
         {onNavigate && (
           <button
             type="button"
@@ -539,7 +681,7 @@ function SidebarNav({
       </div>
 
       {/* --- Selector de organización -------------------------------------- */}
-      <div className="px-3 pb-1 pt-1">
+      <div data-sidebar-hide className="px-3 pb-1 pt-1">
         <OrganizationSwitcher
           hidePersonal
           afterCreateOrganizationUrl="/dashboard"
@@ -555,7 +697,7 @@ function SidebarNav({
       </div>
 
       {/* --- Navegación ----------------------------------------------------- */}
-      <nav className="scrollbar-none flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
+      <nav className="scrollbar-none flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
         {(agendaOnly ? AGENDA_ONLY_ENTRIES : ENTRIES).map((entry) => {
           if (entry.kind === 'group') {
             return (
@@ -579,6 +721,7 @@ function SidebarNav({
               active={isActive(pathname, it.href)}
               locked={moduleKey !== null && !isModuleEnabled(enabledModules, moduleKey)}
               onNavigate={onNavigate}
+              collapsed={collapsed}
               tourAnchor={anchorTour ? it.href : undefined}
               badge={
                 it.href === '/dashboard/tasks'
@@ -601,7 +744,7 @@ function SidebarNav({
 
       {/* --- Pie: ajustes de la cuenta. Mismo fondo que el resto de la barra;
              lo único que lo separa es una línea. --------------------------- */}
-      <div className="mt-auto shrink-0 space-y-0.5 border-t border-[#dfe4e2] px-3 pb-4 pt-3">
+      <div className="mt-auto shrink-0 space-y-0.5 border-t border-[#dfe4e2] px-3 pb-3 pt-2">
         {isSuperAdmin && (
           <NavLink
             item={{
@@ -613,6 +756,7 @@ function SidebarNav({
             active={pathname.startsWith('/dashboard/futura')}
             locked={false}
             onNavigate={onNavigate}
+            collapsed={collapsed}
           />
         )}
         {!agendaOnly && (
@@ -626,6 +770,7 @@ function SidebarNav({
             active={pathname.startsWith('/dashboard/configuration')}
             locked={false}
             onNavigate={onNavigate}
+            collapsed={collapsed}
           />
         )}
         <button
@@ -636,10 +781,14 @@ function SidebarNav({
               window.dispatchEvent(new Event('futura:open-tour'));
             }
           }}
+          data-sidebar-row
+          aria-label="Tutorial"
           className={cn(ROW_BASE, ROW_IDLE)}
         >
           <IconChip icon={Sparkles} tone="honey" active={false} />
-          <span className="flex-1 truncate">Tutorial</span>
+          <span data-sidebar-hide className="flex-1 truncate">
+            Tutorial
+          </span>
         </button>
       </div>
     </>
@@ -669,6 +818,7 @@ export function DashboardSidebar({
 }) {
   return (
     <aside
+      data-sidebar-rail
       className={cn(
         'sticky top-0 z-30 hidden h-screen w-[268px] shrink-0 flex-col lg:flex',
         SIDEBAR_SURFACE,
@@ -682,6 +832,7 @@ export function DashboardSidebar({
         messagesBadge={messagesBadge}
         agendaOnly={agendaOnly}
         groupMode="flyout"
+        collapsible
         anchorTour
       />
     </aside>

@@ -503,6 +503,59 @@ body {
 }
 
 /* ============================================================================
+   Barra lateral plegable
+   ========================================================================== */
+
+/* Quién manda es un atributo del <html> que pone el script en línea del layout
+   raíz ANTES del primer pintado, no el estado de React: si dependiera de la
+   hidratación, cada carga enseñaría la barra ancha y la encogería después.
+   React sólo lo lee al montar, para el icono del botón y para los rótulos
+   flotantes.
+
+   Todo cuelga de `[data-sidebar-rail]`, que lleva únicamente la barra fija del
+   escritorio: el cajón del móvil se abre y se cierra por su cuenta y no debe
+   encogerse nunca. */
+[data-sidebar-rail] {
+  transition: width 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+html[data-sidebar="collapsed"] [data-sidebar-rail] {
+  width: 76px;
+}
+
+/* Rótulos, contadores, marca y selector de organización: fuera. El nombre
+   accesible de cada fila NO depende de este texto —va en su `aria-label`—,
+   porque `display:none` también lo borra del árbol de accesibilidad. */
+html[data-sidebar="collapsed"] [data-sidebar-rail] [data-sidebar-hide] {
+  display: none;
+}
+
+/* La fila se queda en un cuadrado centrado alrededor del chip del icono. */
+html[data-sidebar="collapsed"] [data-sidebar-rail] [data-sidebar-row],
+html[data-sidebar="collapsed"] [data-sidebar-rail] [data-sidebar-header] {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+/* Plegada no hay sitio para el desplazamiento lateral del hover. Se anula la
+   propiedad `translate`, que es la que usa Tailwind v4 —no `transform`—, y
+   además hay que anularla: un `translate` en la fila crea bloque contenedor y
+   el rótulo flotante, que es `position: fixed`, se colocaría respecto a ella
+   en vez de respecto a la ventana. */
+html[data-sidebar="collapsed"] [data-sidebar-rail] [data-sidebar-row]:hover {
+  translate: none;
+  transform: none;
+}
+
+/* Lo que sólo existe plegado: el punto que sustituye al contador y el icono
+   de "desplegar". */
+[data-sidebar-only] {
+  display: none;
+}
+html[data-sidebar="collapsed"] [data-sidebar-rail] [data-sidebar-only] {
+  display: block;
+}
+
+/* ============================================================================
    Reveal on scroll / entrada escalonada
    ========================================================================== */
 
