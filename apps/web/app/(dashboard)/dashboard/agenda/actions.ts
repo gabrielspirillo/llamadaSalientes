@@ -12,6 +12,7 @@ import { getAppointment } from '@/lib/agenda/queries';
 import {
   AgendaValidationError,
   type AppointmentInput,
+  type ProfessionalDeletionPreview,
   type ProfessionalInput,
   type ShiftInput,
   addTimeOff,
@@ -19,6 +20,9 @@ import {
   createAppointment,
   createProfessional,
   deactivateProfessional,
+  deleteProfessional,
+  previewProfessionalDeletion,
+  reactivateProfessional,
   removeTimeOff,
   replaceShifts,
   rescheduleAppointment,
@@ -27,7 +31,9 @@ import {
   updateAppointment,
   updateProfessional,
 } from '@/lib/agenda/service';
+import { type TeamCandidate, listTeamCandidates } from '@/lib/agenda/team';
 import { recordAudit } from '@/lib/audit';
+import { createTreatment, listTreatmentsForTenant } from '@/lib/data/treatments';
 
 export type ActionResult<T = undefined> =
   | ({ ok: true } & (T extends undefined ? { data?: undefined } : { data: T }))
@@ -53,6 +59,106 @@ function fail(err: unknown): { ok: false; error: string } {
 function revalidateAgenda() {
   revalidatePath('/dashboard/agenda');
   revalidatePath('/dashboard/agenda/profesionales');
+}
+
+// ─── Alta guiada del profesional ─────────────────────────────────────────────
+
+/**
+ * El equipo que ya está invitado al panel, para no volver a teclear a nadie.
+ *
+ * Va como acción y no como prop de la página porque tira de Clerk: cargarlo en
+ * cada render de la lista de profesionales pagaría esa llamada siempre, y sólo
+ * hace falta cuando alguien abre el alta.
+ */
+export async function listTeamCandidatesAction(): Promise<ActionResult<TeamCandidate[]>> {
+  try {
+    const ctx = await requireAgendaManager();
+    const data = await listTeamCandidates(ctx.tenantId, ctx.clerkOrganizationId);
+    return { ok: true, data };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+export interface TreatmentOptionData {
+  id: string;
+  name: string;
+  durationMinutes: number;
+  active: boolean | null;
+}
+
+/** Catálogo de tratamientos de la clínica, para el paso de "qué hace". */
+export async function listTreatmentOptionsAction(): Promise<ActionResult<TreatmentOptionData[]>> {
+  try {
+    const ctx = await requireAgendaManager();
+    const rows = await listTreatmentsForTenant(ctx.tenantId);
+    return {
+      ok: true,
+      data: rows.map((t) => ({
+        id: t.id,
+        name: t.name,
+        durationMinutes: t.durationMinutes,
+        active: t.active,
+      })),
+    };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+/**
+ * Alta rápida de tratamiento desde el asistente del profesional.
+ *
+ * Una clínica que aún no cargó el catálogo se quedaba bloqueada: tenía que
+ * salirse a Tratamientos, cargarlo y volver a empezar el alta. Es el mismo
+ * `createTreatment` de la sección de Tratamientos, sin el calendario de GHL —
+ * eso sigue siendo cosa de aquella pantalla.
+ */
+export async function createTreatmentQuickAction(input: {
+  name: string;
+  durationMinutes: number;
+}): Promise<ActionResult<TreatmentOptionData>> {
+  try {
+    const ctx = await requireAgendaManager();
+    const name = input.name?.trim() ?? '';
+    if (name.length < 2) {
+      return { ok: false, error: 'El nombre del tratamiento es demasiado corto.' };
+    }
+    const duracion = Number(input.durationMinutes);
+    if (!Number.isFinite(duracion) || duracion < 5 || duracion > 480) {
+      return { ok: false, error: 'La duración tiene que estar entre 5 y 480 minutos.' };
+    }
+
+    const row = await createTreatment({
+      tenantId: ctx.tenantId,
+      name,
+      durationMinutes: Math.round(duracion),
+    });
+    if (!row) return { ok: false, error: 'No se pudo crear el tratamiento.' };
+
+    await recordAudit({
+      tenantId: ctx.tenantId,
+      action: 'create',
+      entity: 'treatment',
+      entityId: row.id,
+      after: { name: row.name, durationMinutes: row.durationMinutes },
+    }).catch(() => undefined);
+
+    revalidatePath('/dashboard/treatments');
+    revalidateAgenda();
+
+    return {
+      ok: true,
+      data: {
+        id: row.id,
+        name: row.name,
+        durationMinutes: row.durationMinutes,
+        active: row.active,
+      },
+    };
+  } catch (err) {
+    return fail(err);
+  }
 }
 
 // ─── Profesionales ───────────────────────────────────────────────────────────
@@ -114,6 +220,56 @@ export async function deactivateProfessionalAction(professionalId: string): Prom
     const ctx = await requireAgendaManager();
     await assertProfessionalInScope(ctx, professionalId);
     await deactivateProfessional(ctx, professionalId);
+    revalidateAgenda();
+    return { ok: true };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+export async function reactivateProfessionalAction(professionalId: string): Promise<ActionResult> {
+  try {
+    const ctx = await requireAgendaManager();
+    await assertProfessionalInScope(ctx, professionalId);
+    await reactivateProfessional(ctx, professionalId);
+    revalidateAgenda();
+    return { ok: true };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+/**
+ * Qué arrastra el profesional antes de decidir si se borra o se da de baja.
+ * Se pregunta ANTES de enseñar el botón definitivo: el diálogo tiene que decir
+ * exactamente qué va a pasar.
+ */
+export async function professionalDeletionPreviewAction(
+  professionalId: string,
+): Promise<ActionResult<ProfessionalDeletionPreview>> {
+  try {
+    const ctx = await requireAgendaManager();
+    await assertProfessionalInScope(ctx, professionalId);
+    const data = await previewProfessionalDeletion(ctx, professionalId);
+    return { ok: true, data };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+/** Borrado de verdad. El servicio lo rechaza si el profesional tiene historia. */
+export async function deleteProfessionalAction(professionalId: string): Promise<ActionResult> {
+  try {
+    const ctx = await requireAgendaManager();
+    await assertProfessionalInScope(ctx, professionalId);
+    const row = await deleteProfessional(ctx, professionalId);
+    await recordAudit({
+      tenantId: ctx.tenantId,
+      action: 'delete',
+      entity: 'professional',
+      entityId: professionalId,
+      before: { fullName: row.fullName },
+    }).catch(() => undefined);
     revalidateAgenda();
     return { ok: true };
   } catch (err) {

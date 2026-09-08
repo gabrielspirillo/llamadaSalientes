@@ -1,4 +1,5 @@
 import { AgendaEnabledToggle } from '@/components/agenda/agenda-toggle';
+import { DeleteProfessionalButton } from '@/components/agenda/professional-delete-button';
 import { ProfessionalDialog } from '@/components/agenda/professional-dialog';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -151,9 +152,16 @@ export default async function ProfesionalesPage() {
                         />
                       </TD>
                       <TD className="text-right">
-                        <Button asChild variant="ghost" size="sm">
-                          <Link href={`/dashboard/agenda/profesionales/${p.id}`}>Configurar</Link>
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button asChild variant="ghost" size="sm">
+                            <Link href={`/dashboard/agenda/profesionales/${p.id}`}>Configurar</Link>
+                          </Button>
+                          <DeleteProfessionalButton
+                            professionalId={p.id}
+                            fullName={p.fullName}
+                            active={p.active}
+                          />
+                        </div>
                       </TD>
                     </TR>
                   ))}

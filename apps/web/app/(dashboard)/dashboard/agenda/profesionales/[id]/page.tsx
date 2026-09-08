@@ -1,4 +1,5 @@
 import { AgendaEnabledToggle } from '@/components/agenda/agenda-toggle';
+import { DeleteProfessionalButton } from '@/components/agenda/professional-delete-button';
 import { ProfessionalDialog } from '@/components/agenda/professional-dialog';
 import { ScheduleEditor } from '@/components/agenda/schedule-editor';
 import { TimeOffEditor } from '@/components/agenda/time-off-editor';
@@ -93,6 +94,11 @@ export default async function ProfesionalDetailPage({
                   Editar datos
                 </Button>
               }
+            />
+            <DeleteProfessionalButton
+              professionalId={p.id}
+              fullName={p.fullName}
+              active={p.active}
             />
           </div>
         }

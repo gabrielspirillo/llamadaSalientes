@@ -266,6 +266,95 @@ export async function deactivateProfessional(ctx: AgendaContext, professionalId:
   return updateProfessional(ctx, professionalId, { active: false, agendaEnabled: false });
 }
 
+/** Vuelve a dar de alta a quien estaba de baja. La agenda queda apagada. */
+export async function reactivateProfessional(ctx: AgendaContext, professionalId: string) {
+  return updateProfessional(ctx, professionalId, { active: true });
+}
+
+export interface ProfessionalDeletionPreview {
+  fullName: string;
+  appointments: number;
+  notes: number;
+  /** Sin nada colgando se puede borrar de verdad; con historia, no. */
+  canDelete: boolean;
+}
+
+/**
+ * Qué pasaría si se borrara este profesional.
+ *
+ * `agenda_appointments` y `clinical_notes` cuelgan de `professionals` con
+ * ON DELETE CASCADE, así que borrar a alguien con historial se llevaría por
+ * delante la historia clínica de sus pacientes. Eso no puede quedar a un clic:
+ * si tiene algo, la salida es darlo de baja.
+ */
+export async function previewProfessionalDeletion(
+  ctx: AgendaContext,
+  professionalId: string,
+): Promise<ProfessionalDeletionPreview> {
+  const professional = await getProfessional(ctx.tenantId, professionalId);
+  if (!professional) throw new AgendaValidationError('Ese profesional no existe en esta clínica.');
+
+  const [citas, notas] = await Promise.all([
+    db
+      .select({ n: sql<number>`count(*)` })
+      .from(agendaAppointments)
+      .where(
+        and(
+          eq(agendaAppointments.tenantId, ctx.tenantId),
+          eq(agendaAppointments.professionalId, professionalId),
+        ),
+      ),
+    db
+      .select({ n: sql<number>`count(*)` })
+      .from(clinicalNotes)
+      .where(
+        and(
+          eq(clinicalNotes.tenantId, ctx.tenantId),
+          eq(clinicalNotes.professionalId, professionalId),
+        ),
+      ),
+  ]);
+
+  const appointments = Number(citas[0]?.n ?? 0);
+  const notes = Number(notas[0]?.n ?? 0);
+
+  return {
+    fullName: professional.fullName,
+    appointments,
+    notes,
+    canDelete: appointments === 0 && notes === 0,
+  };
+}
+
+/**
+ * Borra al profesional, pero sólo si no arrastra historia.
+ *
+ * Un alta equivocada se deshace; una carrera de tres años no se borra con un
+ * botón. Quien tenga citas o notas se da de baja (`deactivateProfessional`):
+ * desaparece de la agenda y de lo que ofrecen los agentes, y su historia sigue
+ * en la ficha de cada paciente.
+ */
+export async function deleteProfessional(ctx: AgendaContext, professionalId: string) {
+  const preview = await previewProfessionalDeletion(ctx, professionalId);
+  if (!preview.canDelete) {
+    const partes = [
+      preview.appointments > 0 ? `${preview.appointments} cita(s)` : null,
+      preview.notes > 0 ? `${preview.notes} nota(s) clínica(s)` : null,
+    ].filter(Boolean);
+    throw new AgendaValidationError(
+      `${preview.fullName} tiene ${partes.join(' y ')} en la clínica. No se borra para no perder la historia clínica: dale de baja y dejará de aparecer en la agenda.`,
+    );
+  }
+
+  const [row] = await db
+    .delete(professionals)
+    .where(and(eq(professionals.tenantId, ctx.tenantId), eq(professionals.id, professionalId)))
+    .returning({ id: professionals.id, fullName: professionals.fullName });
+
+  if (!row) throw new AgendaValidationError('Ese profesional ya no existe.');
+  return row;
+}
+
 export async function setProfessionalTreatments(
   ctx: AgendaContext,
   professionalId: string,

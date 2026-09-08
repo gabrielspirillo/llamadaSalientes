@@ -17,6 +17,10 @@ import {
   cancelAppointment,
   createAppointment,
   createProfessional,
+  deactivateProfessional,
+  deleteProfessional,
+  previewProfessionalDeletion,
+  reactivateProfessional,
   replaceShifts,
   saveClinicalNote,
   setProfessionalTreatments,
@@ -420,6 +424,69 @@ describe('pacientes e historia clínica', () => {
         summary: 'Nota que no debería poder colgarse aquí',
       }),
     ).rejects.toThrow(/no es de este profesional/i);
+  });
+});
+
+describe('quitar a un profesional', () => {
+  it('borra al que no arrastra nada', async () => {
+    const ctx = ctxFor(tenantId, userA);
+    const nuevo = await createProfessional(ctx, { fullName: 'Dr. Alta Equivocada' });
+
+    const preview = await previewProfessionalDeletion(ctx, nuevo!.id);
+    expect(preview).toMatchObject({ appointments: 0, notes: 0, canDelete: true });
+
+    await deleteProfessional(ctx, nuevo!.id);
+    const filas = await raw<{ n: number }[]>`
+      select count(*)::int as n from professionals where id = ${nuevo!.id}`;
+    expect(filas[0]?.n).toBe(0);
+  });
+
+  it('al que tiene historia no lo borra: lo da de baja', async () => {
+    const ctx = ctxFor(tenantId, userA);
+    const conHistoria = await createProfessional(ctx, {
+      fullName: 'Dr. Con Historia',
+      agendaEnabled: true,
+    });
+    await replaceShifts(ctx, conHistoria!.id, HORARIO);
+    const { appointment } = await createAppointment(ctx, {
+      professionalId: conHistoria!.id,
+      patientName: 'Paciente Antiguo',
+      patientPhone: '+34600999888',
+      startDateKey: MARTES,
+      startMinute: 12 * 60,
+      durationMinutes: 30,
+    });
+    await saveClinicalNote(ctx, {
+      professionalId: conHistoria!.id,
+      appointmentId: appointment.id,
+      patientKey: 'tel:+34600999888',
+      summary: 'Revisión anual',
+    });
+
+    const preview = await previewProfessionalDeletion(ctx, conHistoria!.id);
+    expect(preview.canDelete).toBe(false);
+    expect(preview.appointments).toBe(1);
+    expect(preview.notes).toBe(1);
+
+    // El borrado se rechaza con un motivo que se puede leer en pantalla.
+    await expect(deleteProfessional(ctx, conHistoria!.id)).rejects.toThrow(/historia clínica/i);
+
+    // La baja sí: desaparece de la agenda pero la historia sigue ahí.
+    await deactivateProfessional(ctx, conHistoria!.id);
+    const [fila] = await raw<{ active: boolean; agenda_enabled: boolean }[]>`
+      select active, agenda_enabled from professionals where id = ${conHistoria!.id}`;
+    expect(fila?.active).toBe(false);
+    expect(fila?.agenda_enabled).toBe(false);
+
+    const notas = await raw<{ n: number }[]>`
+      select count(*)::int as n from clinical_notes where professional_id = ${conHistoria!.id}`;
+    expect(notas[0]?.n).toBe(1);
+
+    // Y se puede volver a dar de alta.
+    await reactivateProfessional(ctx, conHistoria!.id);
+    const [reactivado] = await raw<{ active: boolean }[]>`
+      select active from professionals where id = ${conHistoria!.id}`;
+    expect(reactivado?.active).toBe(true);
   });
 });
 

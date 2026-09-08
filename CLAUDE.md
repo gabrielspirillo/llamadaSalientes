@@ -236,6 +236,33 @@ leía una réplica (`appointments_cache`).
 | `lib/agenda/agent.ts` + `voice.ts` | Lo que ven y hacen los agentes virtuales. |
 | `lib/agenda/view.ts` | Modelo de vista del calendario (el servidor sitúa cada cita en su día y minuto locales). |
 
+**Alta del profesional: asistente por pasos** (`components/agenda/professional-dialog.tsx`).
+Cinco pantallas cortas en vez de un formulario de dieciséis campos con scroll:
+quién · acceso · qué hace · horario · huecos. Al **editar** sólo salen tres
+(quién, acceso, huecos): los tratamientos y el horario tienen su propio editor
+en la ficha, y repetirlos daría dos sitios donde cambiar lo mismo.
+- **Del equipo, no a mano**: un desplegable trae a los miembros del panel con
+  nombre, email y teléfono (`lib/agenda/team.ts`, que cruza Clerk con la app).
+  Elegir a alguien rellena la ficha *y* vincula su usuario — que es lo que hace
+  que luego vea su propia agenda. A quien ya es profesional se le marca y no se
+  puede elegir dos veces.
+- **Tratamientos desde el propio modal**: se marcan los del catálogo y, si la
+  clínica no tiene ninguno, se dan de alta ahí mismo con su duración
+  (`createTreatmentQuickAction`). Quedan en el catálogo de la clínica, así que
+  los agentes virtuales pasan a conocerlos.
+- El profesional se crea primero y después se le aplican tratamientos y
+  horario. Si algo de eso falla no se tira el alta: se avisa de qué quedó
+  pendiente para rematarlo en su ficha.
+
+**Quitar a un profesional** (`deleteProfessional` / `previewProfessionalDeletion`):
+`agenda_appointments` y `clinical_notes` cuelgan con ON DELETE CASCADE, así que
+borrar a alguien con historial se llevaría por delante la historia clínica de
+sus pacientes. Por eso el diálogo pregunta primero qué arrastra:
+- Sin citas ni notas (un alta equivocada) → se borra y no queda rastro.
+- Con historia → **baja lógica**: desaparece del calendario y de lo que ofrecen
+  los agentes, su historia sigue en la ficha de cada paciente, y se puede
+  reactivar. El borrado duro se rechaza en el servicio, no sólo en la UI.
+
 **Roles**:
 - `admin` de la clínica y Futura: configuran profesionales, horarios,
   tratamientos y bloqueos. Futura entra impersonando y `getCurrentTenant` ya
