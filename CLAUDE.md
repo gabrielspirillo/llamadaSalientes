@@ -344,6 +344,30 @@ nota marcada como privada no la ven ni el resto del equipo ni los agentes.
 **Bloqueos**: un bloqueo NO cancela las citas que caigan dentro; se avisa de
 cuántas hay para que la clínica decida a quién llama.
 
+## Banco de pruebas de los asistentes
+
+`/dashboard/agent` ("Probar el asistente"), con una pestaña por canal
+(`?canal=entrante|saliente|whatsapp`). Se prueba lo que atiende al paciente, no
+una maqueta.
+
+- **Entrantes** y **salientes** son llamadas web (WebRTC) contra Retell. Van
+  separadas a propósito: **son agentes distintos y prompts distintos**
+  (`resolveRetellAgentId(tenantId, role)`), así que probar el entrante no dice
+  nada del saliente. El saliente además pide el nombre del paciente, que es el
+  `{{patient_name}}` de su saludo, y le pasa `use_case`/`campaign_name`: sin eso
+  arranca sin saber a qué llama.
+- **WhatsApp** llama a `runWhatsappAgent`, el MISMO orquestador que atiende a los
+  pacientes: mismo prompt, mismo modelo y las mismas tools. El orquestador no
+  escribe en la base (de eso se encarga el job), así que la prueba no deja runs
+  ni mensajes; las **tools sí son reales** y una cita reservada en la prueba
+  queda en la agenda. La conversación simulada lleva `conversationId` con
+  prefijo `sim-` para que su `dedupe_key` nunca choque con una real.
+- La respuesta muestra la **traza**: intent y confianza, si deriva a una
+  persona, y qué consultó antes de contestar. Es lo que distingue "acertó" de
+  "se lo inventó".
+- Los dos endpoints (`/api/retell/web-call`, `/api/agent/whatsapp-test`) exigen
+  rol `operator`: cada prueba gasta minutos de Retell o tokens del LLM.
+
 ## Marca por clínica (white-label)
 
 Futura (super-admin) le puede poner a cada clínica **su nombre y su logo**, y esa

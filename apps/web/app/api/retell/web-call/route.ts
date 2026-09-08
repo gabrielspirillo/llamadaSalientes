@@ -1,9 +1,11 @@
+import { denyUnlessRole } from '@/lib/auth/api-guard';
 import { resolveRetellAgentId } from '@/lib/data/agent-config';
 import { getRetellClient } from '@/lib/retell/client';
 import { buildClinicContextVars } from '@/lib/retell/clinic-context';
 import { describeRetellError } from '@/lib/retell/errors';
 import { getCurrentTenant } from '@/lib/tenant';
 import { type NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,10 +15,22 @@ export const dynamic = 'force-dynamic';
  * pueda probar el agente en vivo desde el dashboard. Retorna el access_token
  * que el SDK del cliente usa para conectarse vía WebRTC.
  *
- * Pasa dynamic variables al prompt para que `{{clinic_name}}`, `{{current_date}}`,
- * `{{direction}}`, `{{patient_name}}` queden sustituidos también en pruebas.
+ * Sirve para los DOS sentidos, porque no son el mismo agente ni el mismo
+ * prompt: el entrante atiende a quien llama a la clínica y el saliente llama
+ * al paciente. Probar el entrante y dar por bueno el saliente era la forma
+ * fácil de desplegar un agente saliente que nadie había oído nunca.
  */
-export async function POST(_req: NextRequest) {
+const bodySchema = z.object({
+  role: z.enum(['inbound', 'outbound']).default('inbound'),
+  /** Con quién cree el agente que habla. Sólo lo usa el saliente. */
+  patientName: z.string().trim().max(120).optional(),
+});
+
+export async function POST(req: NextRequest) {
+  // Una llamada de prueba gasta minutos de Retell: no la lanza quien sólo mira.
+  const denied = await denyUnlessRole('operator');
+  if (denied) return denied;
+
   let tenantId: string;
   try {
     const ctx = await getCurrentTenant();
@@ -25,12 +39,23 @@ export async function POST(_req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const agentId = await resolveRetellAgentId(tenantId);
+  // El body es opcional: sin él se prueba el entrante, que es como se
+  // comportaba este endpoint antes de existir la pestaña de salientes.
+  const parsed = bodySchema.safeParse(await req.json().catch(() => ({})));
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Parámetros inválidos' }, { status: 400 });
+  }
+  const { role } = parsed.data;
+  const patientName = parsed.data.patientName || 'paciente';
+
+  const agentId = await resolveRetellAgentId(tenantId, role);
   if (!agentId) {
     return NextResponse.json(
       {
         error:
-          'No hay ningún agente de voz configurado para esta clínica. Ve a Asistente y guarda el Agent ID.',
+          role === 'outbound'
+            ? 'No hay ningún agente de llamadas salientes configurado para esta clínica.'
+            : 'No hay ningún agente de voz configurado para esta clínica. Ve a Asistente y guarda el Agent ID.',
       },
       { status: 400 },
     );
@@ -54,14 +79,19 @@ export async function POST(_req: NextRequest) {
       metadata: {
         tenant_id: tenantId,
         source: 'dashboard-test',
-        direction: 'inbound',
+        direction: role,
       },
       retell_llm_dynamic_variables: {
         ...clinicVars,
-        patient_name: 'paciente',
+        patient_name: patientName,
         current_date: new Date().toISOString().slice(0, 10),
-        direction: 'inbound',
+        direction: role,
         lead_source: 'dashboard-test',
+        // El prompt saliente se apoya en el motivo de la llamada; sin esto el
+        // agente arranca sin saber a qué llama y se inventa uno.
+        ...(role === 'outbound'
+          ? { use_case: 'prueba', campaign_name: 'Prueba desde el panel' }
+          : {}),
       },
     });
 
@@ -75,6 +105,7 @@ export async function POST(_req: NextRequest) {
     console.error('[retell:web-call] fallo al crear la llamada de prueba', {
       tenantId,
       agentId,
+      role,
       status,
       detail,
     });

@@ -3,6 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input, Label } from '@/components/ui/input';
 import { Mic, MicOff, Phone, PhoneOff, User } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -14,8 +15,20 @@ type Turn = {
 
 type CallState = 'idle' | 'connecting' | 'live' | 'ended' | 'error';
 
-export function AgentTester() {
+/** Sentido de la llamada que se prueba. No se llama `role` a propósito: en un
+ *  componente de React esa prop se confunde con el atributo ARIA. */
+export type TesterDireccion = 'inbound' | 'outbound';
+
+/**
+ * Probador de voz. El `role` decide QUÉ agente se prueba: el que atiende a
+ * quien llama a la clínica, o el que llama al paciente. Son agentes distintos
+ * en Retell y prompts distintos, así que compartir pantalla sin distinguirlos
+ * daba por probado uno mientras se probaba el otro.
+ */
+export function AgentTester({ direccion = 'inbound' }: { direccion?: TesterDireccion }) {
+  const esSaliente = direccion === 'outbound';
   const [state, setState] = useState<CallState>('idle');
+  const [patientName, setPatientName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<Turn[]>([]);
   const [muted, setMuted] = useState(false);
@@ -67,7 +80,14 @@ export function AgentTester() {
 
     try {
       // Pedir access_token al backend
-      const res = await fetch('/api/retell/web-call', { method: 'POST' });
+      const res = await fetch('/api/retell/web-call', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          role: direccion,
+          patientName: patientName.trim() || undefined,
+        }),
+      });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error ?? `Error ${res.status}`);
@@ -172,7 +192,7 @@ export function AgentTester() {
           </div>
 
           <h3 className="mt-5 text-[21px] font-extrabold tracking-tight text-zinc-900">
-            {state === 'idle' && 'Probar el asistente'}
+            {state === 'idle' && (esSaliente ? 'Probar el saliente' : 'Probar el entrante')}
             {state === 'connecting' && 'Conectando…'}
             {state === 'live' && 'En llamada'}
             {state === 'ended' && 'Llamada finalizada'}
@@ -186,13 +206,32 @@ export function AgentTester() {
           )}
           {state === 'idle' && (
             <p className="text-sm text-zinc-500 mt-2 max-w-xs">
-              Habla con el asistente desde tu navegador. No consume minutos de tu plan.
+              {esSaliente
+                ? 'El asistente te llama a ti: hablas como si fueras el paciente que recibe la llamada.'
+                : 'Hablas como si fueras el paciente que llama a la clínica.'}
             </p>
           )}
 
           {error && (
             <div className="mt-4 w-full animate-fade-up rounded-2xl border border-rose-100 bg-rose-50/80 px-3.5 py-2.5 text-left text-[13px] text-rose-700">
               {error}
+            </div>
+          )}
+
+          {esSaliente && (state === 'idle' || state === 'ended' || state === 'error') && (
+            <div className="mt-5 w-full text-left">
+              <Label htmlFor="tester-nombre">A quién llama</Label>
+              <Input
+                id="tester-nombre"
+                value={patientName}
+                onChange={(e) => setPatientName(e.target.value)}
+                placeholder="Nombre del paciente"
+                autoComplete="off"
+              />
+              <p className="mt-1.5 text-xs text-zinc-500">
+                Es el <code>{'{{patient_name}}'}</code> del saludo. Si lo dejas vacío dirá
+                &quot;paciente&quot;.
+              </p>
             </div>
           )}
 
