@@ -1,55 +1,30 @@
 import 'server-only';
-import { and, eq } from 'drizzle-orm';
 
-import { db } from '@/lib/db/client';
-import { tenantMemberships, users } from '@/lib/db/schema';
-import { normalizeRole } from '@/lib/tasks/auth';
-import { getCurrentTenant } from '@/lib/tenant';
+import { type TenantRole, resolveTenantRole, roleSatisfies } from '@/lib/auth/tenant-role';
 
-export type ReminderRole = 'admin' | 'operator' | 'viewer';
-
-const ORDER: Record<ReminderRole, number> = { viewer: 0, operator: 1, admin: 2 };
+export type ReminderRole = TenantRole;
 
 // Devuelve { tenantId, userId (uuid interno), role } si el usuario tiene al
 // menos el rol requerido. Si no, lanza ReminderForbiddenError (403) o deja
 // que el error de auth/tenant burbujee (401).
 //
-// Nota: getCurrentTenant devuelve el `userId` de Clerk (string), no el uuid
-// interno. Acá hacemos JOIN a `users` por clerk_user_id para obtener el
-// users.id que es lo que tenant_memberships, audit_logs y FK referencian.
+// El rol y el `users.id` interno salen de `resolveTenantRole()`, la misma
+// fuente que el resto de gates: es lo que hace que Futura, que gestiona las
+// clínicas sin ser miembro, sea admin aquí también.
 export async function requireReminderRole(min: ReminderRole): Promise<{
   tenantId: string;
   userId: string;
   role: ReminderRole;
 }> {
-  const { tenant, userId: clerkUserId } = await getCurrentTenant();
+  const ctx = await resolveTenantRole();
 
-  const [m] = await db
-    .select({
-      role: tenantMemberships.role,
-      internalUserId: users.id,
-    })
-    .from(tenantMemberships)
-    .innerJoin(users, eq(users.id, tenantMemberships.userId))
-    .where(and(eq(tenantMemberships.tenantId, tenant.id), eq(users.clerkUserId, clerkUserId)))
-    .limit(1);
+  // Sin membresía en este tenant (puede pasar si el webhook de Clerk
+  // organization.membership.created no se disparó) se trata como viewer para
+  // que la verificación de rol decida.
+  if (ctx.role === null) throw new ReminderForbiddenError('viewer', min);
+  if (!roleSatisfies(ctx.role, min)) throw new ReminderForbiddenError(ctx.role, min);
 
-  if (!m) {
-    // El usuario no tiene membership en este tenant (puede pasar si el
-    // webhook de Clerk organization.membership.created no se disparó). Lo
-    // tratamos como viewer para que la verificación de rol decida.
-    throw new ReminderForbiddenError('viewer', min);
-  }
-
-  // Ver nota en lib/waitlist/auth.ts: los roles crudos de Clerk (`member`,
-  // `org:admin`) no están en ORDER y la comparación con undefined siempre da
-  // false, dejando pasar el gate. Hay que normalizar antes de comparar.
-  const role = normalizeRole(m.role);
-  if (ORDER[role] < ORDER[min]) {
-    throw new ReminderForbiddenError(role, min);
-  }
-
-  return { tenantId: tenant.id, userId: m.internalUserId, role };
+  return { tenantId: ctx.tenantId, userId: ctx.internalUserId, role: ctx.role };
 }
 
 export class ReminderForbiddenError extends Error {

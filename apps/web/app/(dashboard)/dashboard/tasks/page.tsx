@@ -2,13 +2,10 @@ import { PageHeader } from '@/components/dashboard/page-header';
 import { TasksWorkspace } from '@/components/tasks/TasksWorkspace';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/feedback';
-import { db } from '@/lib/db/client';
-import { tenantMemberships, users } from '@/lib/db/schema';
-import { normalizeRole } from '@/lib/tasks/auth';
+import { resolveTenantRole } from '@/lib/auth/tenant-role';
 import { ensureAutomationRules } from '@/lib/tasks/automation';
 import { getTenantTimezone, materializeRoutinesForTenant } from '@/lib/tasks/materialize';
 import {
-  internalUserIdFor,
   loadAutomationRules,
   loadBoardTasks,
   loadTaskMembers,
@@ -17,7 +14,6 @@ import {
 } from '@/lib/tasks/queries';
 import { hasSystemTemplates, seedSystemTemplates } from '@/lib/tasks/templates';
 import { getCurrentTenant } from '@/lib/tenant';
-import { and, eq } from 'drizzle-orm';
 import { ClipboardCheck, DatabaseZap } from 'lucide-react';
 import { after } from 'next/server';
 
@@ -32,7 +28,7 @@ export const dynamic = 'force-dynamic';
  * idempotente, así que en las visitas siguientes no hace prácticamente nada.
  */
 export default async function TasksPage() {
-  const { tenant, userId: clerkUserId } = await getCurrentTenant();
+  const { tenant } = await getCurrentTenant();
 
   try {
     // La auto-provisión bloquea el render SÓLO la primera vez, que es cuando
@@ -54,18 +50,12 @@ export default async function TasksPage() {
       await provision();
     }
 
-    const currentUserId = await internalUserIdFor(clerkUserId);
-
-    const [membershipRow] = currentUserId
-      ? await db
-          .select({ role: tenantMemberships.role })
-          .from(tenantMemberships)
-          .innerJoin(users, eq(users.id, tenantMemberships.userId))
-          .where(and(eq(tenantMemberships.tenantId, tenant.id), eq(users.clerkUserId, clerkUserId)))
-          .limit(1)
-      : [];
-
-    const role = normalizeRole(membershipRow?.role);
+    // Rol y `users.id` interno de una vez: Futura es admin en cualquier
+    // clínica que gestione; el resto, lo que diga su membresía. Sin membresía
+    // se pinta la UI de operador (los gates del servidor son los que deciden).
+    const access = await resolveTenantRole();
+    const currentUserId = access.internalUserId;
+    const role = access.role ?? 'operator';
 
     // loadTaskStats necesita el tablero, pero el resto no: iba fuera del
     // Promise.all y agregaba un round-trip de más.

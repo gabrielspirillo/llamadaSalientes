@@ -6,10 +6,9 @@ import {
   findProfessionalForClerkUser,
   isAgendaOnly,
 } from '@/lib/agenda/access';
+import { type TenantRole, normalizeRole, resolveTenantRole } from '@/lib/auth/tenant-role';
 import { db } from '@/lib/db/client';
-import { professionals, tenantMemberships, users } from '@/lib/db/schema';
-import { type TaskRole, normalizeRole } from '@/lib/tasks/auth';
-import { getCurrentTenant } from '@/lib/tenant';
+import { professionals } from '@/lib/db/schema';
 import { auth } from '@clerk/nextjs/server';
 
 export class AgendaForbiddenError extends Error {
@@ -25,7 +24,7 @@ export interface AgendaContext {
   /** users.id interno — el que referencian las citas y las notas. */
   userId: string | null;
   clerkUserId: string;
-  role: TaskRole;
+  role: TenantRole;
   isSuperAdmin: boolean;
   impersonating: boolean;
   /** Ficha de profesional del usuario, si la tiene. */
@@ -56,44 +55,31 @@ export interface AgendaContext {
  *     escribe la historia clínica de lo que atiende.
  */
 export async function getAgendaContext(): Promise<AgendaContext> {
-  const { tenant, userId: clerkUserId, isSuperAdmin, impersonating } = await getCurrentTenant();
+  const [ctx, session] = await Promise.all([resolveTenantRole(), auth()]);
 
-  const [[membership], session] = await Promise.all([
-    db
-      .select({ role: tenantMemberships.role, internalUserId: users.id })
-      .from(tenantMemberships)
-      .innerJoin(users, eq(users.id, tenantMemberships.userId))
-      .where(and(eq(tenantMemberships.tenantId, tenant.id), eq(users.clerkUserId, clerkUserId)))
-      .limit(1),
-    auth(),
-  ]);
+  // El rol sale de `resolveTenantRole()` (Futura = admin en cualquier clínica;
+  // el resto, su fila de `tenant_memberships`) y, si no hay fila, del rol de
+  // la organización de Clerk. La tabla local es una caché que llena un
+  // webhook: si ese webhook no corrió (clínica creada antes, endpoint mal
+  // configurado), el administrador se quedaba degradado a operador y no podía
+  // configurar ni su propia agenda. Clerk es la fuente de verdad de los roles.
+  const role: TenantRole = ctx.role ?? normalizeRole(session.orgRole);
+  const professional = await findProfessionalForClerkUser(ctx.tenantId, ctx.clerkUserId);
+  const agendaOnly = isAgendaOnly(professional, { role, isSuperAdmin: ctx.isSuperAdmin });
 
-  // El rol sale de la fila local y, si no la hay, del rol de la organización de
-  // Clerk. La tabla `tenant_memberships` es una caché que llena un webhook: si
-  // ese webhook no corrió (clínica creada antes, endpoint mal configurado), el
-  // administrador se quedaba degradado a operador y no podía configurar ni su
-  // propia agenda. Clerk es la fuente de verdad de los roles.
-  //
-  // Futura entra impersonando: no es miembro de la clínica y aun así manda.
-  const role: TaskRole = isSuperAdmin
-    ? 'admin'
-    : normalizeRole(membership?.role ?? session.orgRole);
-  const professional = await findProfessionalForClerkUser(tenant.id, clerkUserId);
-  const agendaOnly = isAgendaOnly(professional, { role, isSuperAdmin });
-
-  const canManageProfessionals = role === 'admin' || isSuperAdmin;
+  const canManageProfessionals = role === 'admin' || ctx.isSuperAdmin;
   const canWriteAppointments =
     canManageProfessionals || role === 'operator' || (agendaOnly && Boolean(professional));
   const canWriteClinicalNotes = canWriteAppointments;
 
   return {
-    tenantId: tenant.id,
-    clerkOrganizationId: tenant.clerkOrganizationId,
-    userId: membership?.internalUserId ?? null,
-    clerkUserId,
+    tenantId: ctx.tenantId,
+    clerkOrganizationId: ctx.clerkOrganizationId,
+    userId: ctx.internalUserId,
+    clerkUserId: ctx.clerkUserId,
     role,
-    isSuperAdmin,
-    impersonating,
+    isSuperAdmin: ctx.isSuperAdmin,
+    impersonating: ctx.impersonating,
     professional,
     scope: agendaOnly ? 'OWN' : 'ALL',
     canManageProfessionals,

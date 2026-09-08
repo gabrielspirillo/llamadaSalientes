@@ -1,13 +1,10 @@
 import { PageHeader } from '@/components/dashboard/page-header';
 import { MessagesWorkspace } from '@/components/messaging/MessagesWorkspace';
-import { db } from '@/lib/db/client';
-import { tenantMemberships, users } from '@/lib/db/schema';
-import { internalUserIdFor, loadRail } from '@/lib/messaging/queries';
+import { resolveTenantRole } from '@/lib/auth/tenant-role';
+import { loadRail } from '@/lib/messaging/queries';
 import { hasSeededChannels, seedMessagingForTenant } from '@/lib/messaging/seed';
 import type { ImRailDTO } from '@/lib/messaging/types';
-import { normalizeRole } from '@/lib/tasks/auth';
 import { getCurrentTenant } from '@/lib/tenant';
-import { and, eq } from 'drizzle-orm';
 import { MessageSquare } from 'lucide-react';
 import { after } from 'next/server';
 
@@ -23,7 +20,7 @@ export const dynamic = 'force-dynamic';
  * dibuja igual con el rail vacío en vez de reventar.
  */
 export default async function MessagesPage() {
-  const { tenant, userId: clerkUserId } = await getCurrentTenant();
+  const { tenant } = await getCurrentTenant();
 
   // El seed sincroniza miembros contra la API de Clerk y recorre los canales
   // base uno por uno: cientos de ms en CADA entrada a Mensajes, para no hacer
@@ -40,12 +37,16 @@ export default async function MessagesPage() {
     await seed();
   }
 
-  let currentUserId: string | null = null;
+  // Rol y `users.id` interno de una vez: Futura es admin en cualquier clínica
+  // que gestione; el resto, lo que diga su membresía. Si falla, la página se
+  // dibuja igual con el rail vacío y la UI de operador.
+  let access: Awaited<ReturnType<typeof resolveTenantRole>> | null = null;
   try {
-    currentUserId = await internalUserIdFor(clerkUserId);
+    access = await resolveTenantRole();
   } catch {
-    currentUserId = null;
+    access = null;
   }
+  const currentUserId = access?.internalUserId ?? null;
 
   const emptyRail: ImRailDTO = {
     channels: [],
@@ -65,15 +66,9 @@ export default async function MessagesPage() {
     }
   }
 
-  // Mismo criterio de roles que Tareas: `viewer` mira, el resto escribe.
-  const [membershipRow] = await db
-    .select({ role: tenantMemberships.role })
-    .from(tenantMemberships)
-    .innerJoin(users, eq(users.id, tenantMemberships.userId))
-    .where(and(eq(tenantMemberships.tenantId, tenant.id), eq(users.clerkUserId, clerkUserId)))
-    .limit(1);
-
-  const role = normalizeRole(membershipRow?.role);
+  // Mismo criterio de roles que Tareas: `viewer` mira, el resto escribe. Sin
+  // membresía se pinta la UI de operador; los gates del servidor deciden.
+  const role = access?.role ?? 'operator';
 
   return (
     <>

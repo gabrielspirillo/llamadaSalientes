@@ -1,35 +1,23 @@
 import 'server-only';
-import { and, eq } from 'drizzle-orm';
 
-import { db } from '@/lib/db/client';
-import { tenantMemberships, users } from '@/lib/db/schema';
-import { normalizeRole } from '@/lib/tasks/auth';
-import { getCurrentTenant } from '@/lib/tenant';
+import { type TenantRole, resolveTenantRole, roleSatisfies } from '@/lib/auth/tenant-role';
 
-export type WaitlistRole = 'admin' | 'operator' | 'viewer';
-const ORDER: Record<WaitlistRole, number> = { viewer: 0, operator: 1, admin: 2 };
+export type WaitlistRole = TenantRole;
 
+// El rol sale de `resolveTenantRole()`, que ya normaliza los roles crudos de
+// Clerk (`member`, `org:admin`) y trata a Futura como admin en cualquier
+// clínica que gestione.
 export async function requireWaitlistRole(min: WaitlistRole): Promise<{
   tenantId: string;
   userId: string;
   role: WaitlistRole;
 }> {
-  const { tenant, userId: clerkUserId } = await getCurrentTenant();
+  const ctx = await resolveTenantRole();
 
-  const [m] = await db
-    .select({ role: tenantMemberships.role, internalUserId: users.id })
-    .from(tenantMemberships)
-    .innerJoin(users, eq(users.id, tenantMemberships.userId))
-    .where(and(eq(tenantMemberships.tenantId, tenant.id), eq(users.clerkUserId, clerkUserId)))
-    .limit(1);
+  if (ctx.role === null) throw new WaitlistForbiddenError('viewer', min);
+  if (!roleSatisfies(ctx.role, min)) throw new WaitlistForbiddenError(ctx.role, min);
 
-  if (!m) throw new WaitlistForbiddenError('viewer', min);
-  // Clerk guarda `member` / `org:admin`, no nuestros tres roles: sin
-  // normalizar, ORDER[role] es undefined y `undefined < 2` da false, con lo
-  // que el gate deja pasar a cualquiera. normalizeRole() cierra ese agujero.
-  const role = normalizeRole(m.role);
-  if (ORDER[role] < ORDER[min]) throw new WaitlistForbiddenError(role, min);
-  return { tenantId: tenant.id, userId: m.internalUserId, role };
+  return { tenantId: ctx.tenantId, userId: ctx.internalUserId, role: ctx.role };
 }
 
 export class WaitlistForbiddenError extends Error {

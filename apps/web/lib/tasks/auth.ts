@@ -1,14 +1,13 @@
 import 'server-only';
-import { and, eq } from 'drizzle-orm';
 
 import { findProfessionalForClerkUser, isAgendaOnly } from '@/lib/agenda/access';
-import { db } from '@/lib/db/client';
-import { tenantMemberships, users } from '@/lib/db/schema';
-import { getCurrentTenant } from '@/lib/tenant';
+import { type TenantRole, resolveTenantRole, roleSatisfies } from '@/lib/auth/tenant-role';
 
-export type TaskRole = 'admin' | 'operator' | 'viewer';
+export type TaskRole = TenantRole;
 
-const ORDER: Record<TaskRole, number> = { viewer: 0, operator: 1, admin: 2 };
+// Medio panel importa `normalizeRole` de aquí desde antes de que existiera
+// `lib/auth/tenant-role.ts`; se reexporta para no tocarlo todo.
+export { normalizeRole } from '@/lib/auth/tenant-role';
 
 export class TaskForbiddenError extends Error {
   constructor(
@@ -30,49 +29,36 @@ export interface TaskAuthContext {
 }
 
 /**
- * Gate de rol del módulo Tareas.
+ * Gate de rol del módulo Tareas y, a través de `denyUnlessRole`, del resto
+ * del panel.
  *
  * Criterio: `viewer` mira el tablero, `operator` crea/mueve/cierra tareas
  * (es la recepcionista y el resto del equipo), `admin` toca rutinas y
  * automatizaciones — ahí es donde se define el estándar de la clínica.
+ *
+ * El rol sale de `resolveTenantRole()`: Futura es admin en cualquier clínica
+ * que gestione, aunque no sea miembro.
  */
 export async function requireTaskRole(min: TaskRole): Promise<TaskAuthContext> {
-  const { tenant, userId: clerkUserId } = await getCurrentTenant();
+  const ctx = await resolveTenantRole();
 
-  const [m] = await db
-    .select({ role: tenantMemberships.role, internalUserId: users.id })
-    .from(tenantMemberships)
-    .innerJoin(users, eq(users.id, tenantMemberships.userId))
-    .where(and(eq(tenantMemberships.tenantId, tenant.id), eq(users.clerkUserId, clerkUserId)))
-    .limit(1);
-
-  if (!m) throw new TaskForbiddenError('viewer', min);
-
-  const role = normalizeRole(m.role);
-  if (ORDER[role] < ORDER[min]) throw new TaskForbiddenError(role, min);
+  if (ctx.role === null) throw new TaskForbiddenError('viewer', min);
+  if (!roleSatisfies(ctx.role, min)) throw new TaskForbiddenError(ctx.role, min);
 
   // Un profesional con acceso restringido a su agenda no escribe en el resto
   // del panel. Este es el gate de rol por el que pasan las Server Actions y los
   // route handlers (`denyUnlessRole`), así que aquí se cierra de verdad: la
   // agenda usa su propio contexto (`lib/agenda/auth.ts`) y no pasa por acá.
-  const professional = await findProfessionalForClerkUser(tenant.id, clerkUserId);
-  if (isAgendaOnly(professional, { role, isSuperAdmin: false })) {
-    throw new TaskForbiddenError(role, min);
+  const professional = await findProfessionalForClerkUser(ctx.tenantId, ctx.clerkUserId);
+  if (isAgendaOnly(professional, { role: ctx.role, isSuperAdmin: ctx.isSuperAdmin })) {
+    throw new TaskForbiddenError(ctx.role, min);
   }
 
   return {
-    tenantId: tenant.id,
-    clerkOrganizationId: tenant.clerkOrganizationId,
-    userId: m.internalUserId,
-    clerkUserId,
-    role,
+    tenantId: ctx.tenantId,
+    clerkOrganizationId: ctx.clerkOrganizationId,
+    userId: ctx.internalUserId,
+    clerkUserId: ctx.clerkUserId,
+    role: ctx.role,
   };
-}
-
-export function normalizeRole(raw: string | null | undefined): TaskRole {
-  const v = (raw ?? '').replace(/^org:/, '');
-  if (v === 'admin') return 'admin';
-  if (v === 'viewer') return 'viewer';
-  // basic_member / member / operator y cualquier otro rol de Clerk operan.
-  return 'operator';
 }

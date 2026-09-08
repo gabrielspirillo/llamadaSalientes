@@ -1,22 +1,19 @@
 import 'server-only';
 import { and, eq, isNull } from 'drizzle-orm';
 
+import { type TenantRole, resolveTenantRole, roleSatisfies } from '@/lib/auth/tenant-role';
 import { db } from '@/lib/db/client';
-import { imChannelMembers, imChannels, tenantMemberships, users } from '@/lib/db/schema';
-import { type TaskRole, normalizeRole } from '@/lib/tasks/auth';
-import { getCurrentTenant } from '@/lib/tenant';
+import { imChannelMembers, imChannels } from '@/lib/db/schema';
 
 /**
- * Gate de rol del módulo Mensajes. Reutiliza `tenant_memberships` y el
- * `normalizeRole()` de Tareas para no tener dos tablas de permisos.
+ * Gate de rol del módulo Mensajes. Reutiliza `resolveTenantRole()`, la misma
+ * fuente que Tareas, para no tener dos tablas de permisos.
  *
  * Criterio: `viewer` lee canales públicos y escribe en sus DM (es el perfil de
  * quien mira números sin operar); `operator` escribe en canales y convierte
  * mensajes en tareas; `admin` crea canales públicos, archiva y expulsa.
  */
-export type MessagingRole = TaskRole;
-
-const ORDER: Record<MessagingRole, number> = { viewer: 0, operator: 1, admin: 2 };
+export type MessagingRole = TenantRole;
 
 export class MessagingForbiddenError extends Error {
   constructor(
@@ -54,26 +51,17 @@ export interface MessagingAuthContext {
 export async function requireMessagingRole(
   min: MessagingRole = 'viewer',
 ): Promise<MessagingAuthContext> {
-  const { tenant, userId: clerkUserId } = await getCurrentTenant();
+  const ctx = await resolveTenantRole();
 
-  const [m] = await db
-    .select({ role: tenantMemberships.role, internalUserId: users.id })
-    .from(tenantMemberships)
-    .innerJoin(users, eq(users.id, tenantMemberships.userId))
-    .where(and(eq(tenantMemberships.tenantId, tenant.id), eq(users.clerkUserId, clerkUserId)))
-    .limit(1);
-
-  if (!m) throw new MessagingForbiddenError('viewer', min);
-
-  const role = normalizeRole(m.role);
-  if (ORDER[role] < ORDER[min]) throw new MessagingForbiddenError(role, min);
+  if (ctx.role === null) throw new MessagingForbiddenError('viewer', min);
+  if (!roleSatisfies(ctx.role, min)) throw new MessagingForbiddenError(ctx.role, min);
 
   return {
-    tenantId: tenant.id,
-    clerkOrganizationId: tenant.clerkOrganizationId,
-    userId: m.internalUserId,
-    clerkUserId,
-    role,
+    tenantId: ctx.tenantId,
+    clerkOrganizationId: ctx.clerkOrganizationId,
+    userId: ctx.internalUserId,
+    clerkUserId: ctx.clerkUserId,
+    role: ctx.role,
   };
 }
 
