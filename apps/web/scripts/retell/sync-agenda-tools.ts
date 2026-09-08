@@ -88,6 +88,21 @@ interface Resultado {
   faltaba: string[];
 }
 
+/** El LLM que hay detrás de un agente. Retell los guarda por separado. */
+async function llmDeAgente(apiKey: string, agentId: string): Promise<string | null> {
+  const res = await fetch(`${RETELL_API}/get-agent/${agentId}`, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+  if (!res.ok) {
+    console.error(`[retell] get-agent ${agentId}: ${res.status}`);
+    return null;
+  }
+  const agent = (await res.json()) as {
+    response_engine?: { llm_id?: string; type?: string };
+  };
+  return agent.response_engine?.llm_id ?? null;
+}
+
 async function getLlm(apiKey: string, llmId: string): Promise<{ general_tools?: RetellTool[] }> {
   const res = await fetch(`${RETELL_API}/get-retell-llm/${llmId}`, {
     headers: { Authorization: `Bearer ${apiKey}` },
@@ -134,24 +149,51 @@ async function main() {
   const filas = await db
     .select({
       llmId: agentConfigs.retellLlmId,
+      agentId: agentConfigs.retellAgentId,
       role: agentConfigs.role,
       clinica: tenants.name,
     })
     .from(agentConfigs)
-    .innerJoin(tenants, eq(tenants.id, agentConfigs.tenantId))
-    .where(isNotNull(agentConfigs.retellLlmId));
+    .innerJoin(tenants, eq(tenants.id, agentConfigs.tenantId));
 
   const porLlm = new Map<string, string[]>();
+  const anota = (llmId: string, quien: string) => {
+    const lista = porLlm.get(llmId) ?? [];
+    lista.push(quien);
+    porLlm.set(llmId, lista);
+  };
+
   for (const f of filas) {
-    if (!f.llmId) continue;
-    const lista = porLlm.get(f.llmId) ?? [];
-    lista.push(`${f.clinica} (${f.role})`);
-    porLlm.set(f.llmId, lista);
+    const quien = `${f.clinica} (${f.role})`;
+    if (f.llmId) {
+      anota(f.llmId, quien);
+      continue;
+    }
+    // La clínica puede tener sólo el agente: el LLM se resuelve en Retell.
+    if (f.agentId) {
+      const llmId = await llmDeAgente(apiKey, f.agentId);
+      if (llmId) anota(llmId, quien);
+    }
+  }
+
+  // Las clínicas que no tienen agente propio caen a los agentes por defecto de
+  // env (ver `resolveRetellAgentId`). Son los que hoy atienden a todo el mundo,
+  // así que también tienen que conocer la agenda.
+  const porDefecto: [string, string | undefined][] = [
+    ['agente por defecto (inbound)', process.env.RETELL_DEFAULT_AGENT_ID],
+    ['agente por defecto (outbound)', process.env.RETELL_OUTBOUND_DEFAULT_AGENT_ID],
+    ['agente de la demo', process.env.FUTURA_DEMO_RETELL_AGENT_ID],
+  ];
+  for (const [etiqueta, agentId] of porDefecto) {
+    if (!agentId) continue;
+    const llmId = await llmDeAgente(apiKey, agentId);
+    if (llmId) anota(llmId, etiqueta);
   }
 
   if (porLlm.size === 0) {
-    console.log('[retell] ninguna clínica tiene LLM de Retell configurado; nada que hacer');
-    process.exit(0);
+    console.log('[retell] no hay ningún agente de voz configurado; nada que hacer');
+    // En --check eso NO es un éxito: significa que no se pudo comprobar nada.
+    process.exit(soloComprobar ? 3 : 0);
   }
 
   const resultados: Resultado[] = [];
