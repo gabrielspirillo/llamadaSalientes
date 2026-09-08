@@ -70,6 +70,31 @@ export function describePatientKey(key: string): string {
   return 'Sin datos de contacto';
 }
 
+/**
+ * Todas las identidades con las que una cita puede referirse a este contacto.
+ *
+ * Una cita de GoHighLevel guarda el id del CRM tal cual; una de la agenda
+ * propia guarda su `patient_key`. Las fichas del panel tienen que encontrar
+ * las dos, así que preguntan por todas a la vez en lugar de por una sola.
+ */
+export function contactRefsFor(contact: {
+  ghlContactId?: string | null;
+  phone?: string | null;
+  email?: string | null;
+}): string[] {
+  const refs = new Set<string>();
+  const ghl = contact.ghlContactId?.trim();
+  if (ghl) {
+    refs.add(ghl);
+    refs.add(`ghl:${ghl}`);
+  }
+  const phone = normalizePatientPhone(contact.phone);
+  if (phone) refs.add(`tel:${phone}`);
+  const email = contact.email?.trim().toLowerCase();
+  if (email?.includes('@')) refs.add(`email:${email}`);
+  return [...refs];
+}
+
 export function patientKeyIsPhone(key: string): boolean {
   return key.startsWith('tel:');
 }

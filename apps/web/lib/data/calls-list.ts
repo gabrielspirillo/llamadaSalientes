@@ -155,8 +155,20 @@ export async function getUpcomingAppointments(
   tenantId: string,
   limit = 5,
 ): Promise<UpcomingAppointment[]> {
-  // Source of truth: GHL appointments. Si falla / no hay GHL, fallback a
-  // los appointments registrados en customData de calls (creados por el agente).
+  // Primero la agenda de la plataforma: es la única fuente que tiene el nombre
+  // y el teléfono del paciente de primera mano, y la única que existe en una
+  // clínica sin CRM. Antes el panel iba directo a GoHighLevel, así que una cita
+  // creada desde la propia agenda no aparecía en "Próximas citas".
+  try {
+    const { upcomingAgendaAppointments } = await import('@/lib/agenda/queries');
+    const own = await upcomingAgendaAppointments(tenantId, limit);
+    if (own.length > 0) return own;
+  } catch (err) {
+    console.error('[getUpcomingAppointments] agenda propia falló:', err);
+  }
+
+  // Después GHL. Si falla o no hay CRM, quedan los appointments registrados en
+  // customData de calls (creados por el agente de voz).
   try {
     const { listUpcomingAppointments } = await import('@/lib/ghl/calendars');
     const ghlItems = await listUpcomingAppointments(tenantId, 14);

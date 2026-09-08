@@ -408,6 +408,68 @@ de organizaciones. Al cambiar la marca hay que invalidar el **layout**
 (`revalidatePath('/dashboard', 'layout')`), no sólo la página: el sidebar y el
 topbar viven ahí.
 
+## Funcionar sin CRM: la agenda propia es la fuente
+
+GoHighLevel es **opcional**. Una clínica sin CRM conectado tiene que poder dar
+de alta pacientes, agendar, recordar, recuperar huecos y ver sus métricas. Hasta
+la migración de 2026-09-08 no era así: la agenda de la plataforma era una
+**isla**, y todo lo demás colgaba de un único disparador, el webhook de citas de
+GoHighLevel.
+
+**El seguro que hay que respetar**: cada vez que se toque una cita de
+`agenda_appointments`, los efectos los propaga `syncAppointmentEffects()`
+(`lib/agenda/sync.ts`). Es el equivalente, para las citas propias, del webhook
+`/api/webhooks/ghl/appointment`: espejo en la caché, recordatorios, tareas
+automáticas, avisos en `#agenda`, hueco cancelado, oferta de lista de espera y
+atribución de recuperación. Se llama desde `createAppointment`,
+`rescheduleAppointment` y `updateAppointment`, **fuera de la transacción** (los
+efectos leen por otra conexión y necesitan ver el commit). Nunca lanza.
+
+- **Se dispara por TRANSICIÓN, no por estado.** `updateAppointment` lee el
+  estado anterior antes de escribir. Sin eso, guardar una nota en una cita ya
+  cancelada repetiría la tarjeta del chat y reabriría la oferta al paciente.
+- **Un id de cita puede ser de dos orígenes.** Las columnas `ghl_appointment_id`
+  de `appointment_reminders`, `cancelled_slots`, `waitlist_entries` y
+  compañía guardan el id venga de donde venga: los de GoHighLevel son
+  alfanuméricos de ~20 caracteres y los propios son UUID. `isInternalAppointmentId`
+  (`lib/agenda/appointment-ref.ts`) es el ÚNICO sitio donde se decide cuál es
+  cuál. El nombre de las columnas se dejó por lo que costaría renombrarlas en
+  las seis tablas que las referencian; es deuda consciente.
+- **La agenda de cada profesional hace de calendario**: `prof:<professionalId>`.
+  `cancelled_slots` y la atribución emparejan hueco liberado con cita nueva por
+  (calendario, hora), y sin esto la métrica de recuperación era cero.
+- **Estados**: la caché se escribe con `completed` / `no_show` / `cancelled` /
+  `confirmed`. Son las únicas palabras que satisfacen a la vez a las métricas
+  (`lib/data/analytics/global.ts`) y a los ayudantes del webhook.
+
+**El paciente de la plataforma** vive en `whatsapp_contacts`, que pese al nombre
+es la libreta de contactos: única por (tenant, teléfono), con nombre, correo y
+el id del CRM cuando lo hay. `lib/patients/registry.ts` es la puerta. No se creó
+una tabla `patients` aparte para no tener dos libretas que se separan al día
+siguiente. La identidad CLÍNICA es otra cosa: la `patient_key` de la agenda
+(`lib/agenda/patients.ts`), con prioridad `ghl:` > `tel:` > `email:` > `anon:`.
+`contactRefsFor()` devuelve todas las identidades de un contacto, que es como
+las fichas del panel encuentran citas de los dos orígenes.
+
+⚠️ `patients_cache` **no la escribe nadie**. Cuatro sitios la leían y salían
+vacíos incluso con CRM: los dos barridos diarios de Tareas (presupuesto sin
+cita, paciente inactivo) no creaban una sola tarea. Ahora salen de la agenda
+(`lib/agenda/sweeps.ts`) y los nombres de `resolveContactNames()`.
+
+**Las tools de los agentes no necesitan CRM** (`lib/retell/tools.ts`):
+`register_patient` da de alta en la plataforma, `get_patient_info` responde con
+la ficha local más el resumen de la agenda y `set_lead_email` guarda el correo
+en la ficha. Ninguna dice ya "el CRM no está conectado": ese mensaje hacía que
+el agente considerara la herramienta fallida y derivara a recepción. El único
+mensaje que queda para ese caso es "la clínica no tiene su agenda configurada",
+y sólo se llega a él sin agenda **y** sin CRM.
+
+**El teléfono del paciente no depende del LLM.** `ToolContext.patientPhone` lo
+lleva desde el canal. En voz sale de `metadata.direction`: en una saliente el
+paciente es `to_number`, en una entrante es `from_number` — antes se cogía
+siempre `to_number` y una llamada entrante daba de alta al paciente con el
+número de la propia clínica.
+
 ## Módulo Mensajes (core, sin gate de `enabled_modules`)
 
 Sección `/dashboard/messages` (label "Mensajes"). Chat interno del equipo. Transversal, como Tareas.

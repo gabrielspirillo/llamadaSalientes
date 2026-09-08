@@ -54,6 +54,68 @@ export async function upsertAppointmentCache(input: {
     });
 }
 
+/**
+ * Espejo de una cita de la agenda propia en `appointments_cache`.
+ *
+ * La tabla nació como réplica de GoHighLevel, pero es el sitio del que leen
+ * los recordatorios, las métricas, la lista de espera y las fichas del panel.
+ * Mientras la agenda propia no escribiera aquí, una cita creada en la
+ * plataforma era invisible para todo eso.
+ *
+ * Convención de ids: `ghl_appointment_id` guarda el id de la cita venga de
+ * donde venga. Los de GoHighLevel son alfanuméricos de ~20 caracteres y los
+ * propios son UUID, así que se distinguen por la forma (ver
+ * `isInternalAppointmentId`). El nombre de la columna se queda por lo que
+ * costaría renombrarla en las seis tablas que la referencian.
+ *
+ * A diferencia del upsert de GHL, aquí el tratamiento NO se adivina por el
+ * título: lo sabemos con exactitud.
+ */
+export async function upsertInternalAppointmentCache(input: {
+  tenantId: string;
+  appointmentId: string;
+  /** Identidad del paciente: id del CRM si lo hay, si no su `patient_key`. */
+  contactRef: string | null;
+  /** La agenda de un profesional hace de calendario. */
+  calendarRef: string | null;
+  treatmentId: string | null;
+  professionalId: string;
+  title: string | null;
+  startTime: Date;
+  endTime: Date | null;
+  status: string;
+}): Promise<void> {
+  const values = {
+    tenantId: input.tenantId,
+    ghlAppointmentId: input.appointmentId,
+    contactId: input.contactRef,
+    calendarId: input.calendarRef,
+    treatmentId: input.treatmentId,
+    startTime: input.startTime,
+    endTime: input.endTime,
+    status: input.status,
+    assignedUserId: input.professionalId,
+    syncedAt: new Date(),
+  };
+
+  await db
+    .insert(appointmentsCache)
+    .values(values)
+    .onConflictDoUpdate({
+      target: [appointmentsCache.tenantId, appointmentsCache.ghlAppointmentId],
+      set: {
+        contactId: values.contactId,
+        calendarId: values.calendarId,
+        treatmentId: values.treatmentId,
+        startTime: values.startTime,
+        endTime: values.endTime,
+        status: values.status,
+        assignedUserId: values.assignedUserId,
+        syncedAt: values.syncedAt,
+      },
+    });
+}
+
 export async function upsertAppointmentCacheMany(input: {
   tenantId: string;
   appts: GhlAppointment[];

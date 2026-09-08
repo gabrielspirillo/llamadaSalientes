@@ -1,6 +1,7 @@
 import 'server-only';
 import { and, eq, gt, isNotNull, lt, sql } from 'drizzle-orm';
 
+import { inactivePatients, patientsWithPendingFollowUp } from '@/lib/agenda/sweeps';
 import { db } from '@/lib/db/client';
 import {
   appointmentsCache,
@@ -164,6 +165,15 @@ export async function runDailySweepsForTenant(
     )
     .limit(500);
 
+  // Los mismos pacientes, vistos desde la agenda de la plataforma: lo que el
+  // profesional dejó anotado como siguiente paso en la historia clínica. Es la
+  // única fuente para una clínica sin CRM, y en la práctica también para las
+  // que lo tienen: `patients_cache` no la rellena nadie.
+  const pendingOwn = await patientsWithPendingFollowUp(tenantId).catch((err) => {
+    console.warn('[tasks-sweep] seguimientos pendientes de la agenda', err);
+    return [];
+  });
+
   let pendingCreated = 0;
   for (const p of pending) {
     if (hasFuture.has(p.ghlContactId)) continue;
@@ -177,6 +187,23 @@ export async function runDailySweepsForTenant(
         date: p.lastVisitAt ? formatDate(p.lastVisitAt, tz) : null,
         patientGhlContactId: p.ghlContactId,
         dedupeSuffix: `${p.ghlContactId}:${monthKey}`,
+      },
+    });
+    if (r.created) pendingCreated += 1;
+  }
+
+  for (const p of pendingOwn) {
+    if (hasFuture.has(p.patientKey)) continue;
+    const r = await runTaskAutomation({
+      tenantId,
+      trigger: 'PENDING_TREATMENT_UNSCHEDULED',
+      context: {
+        patientName: p.name,
+        phone: p.phone,
+        treatment: p.pending,
+        date: p.lastVisitAt ? formatDate(p.lastVisitAt, tz) : null,
+        patientGhlContactId: p.patientKey,
+        dedupeSuffix: `${p.patientKey}:${monthKey}`,
       },
     });
     if (r.created) pendingCreated += 1;
@@ -205,6 +232,11 @@ export async function runDailySweepsForTenant(
     )
     .limit(200);
 
+  const inactiveOwn = await inactivePatients(tenantId, cutoff).catch((err) => {
+    console.warn('[tasks-sweep] pacientes inactivos de la agenda', err);
+    return [];
+  });
+
   let inactiveCreated = 0;
   for (const p of inactive) {
     if (hasFuture.has(p.ghlContactId)) continue;
@@ -217,6 +249,22 @@ export async function runDailySweepsForTenant(
         date: p.lastVisitAt ? formatDate(p.lastVisitAt, tz) : null,
         patientGhlContactId: p.ghlContactId,
         dedupeSuffix: `${p.ghlContactId}:${monthKey}`,
+      },
+    });
+    if (r.created) inactiveCreated += 1;
+  }
+
+  for (const p of inactiveOwn) {
+    if (hasFuture.has(p.patientKey)) continue;
+    const r = await runTaskAutomation({
+      tenantId,
+      trigger: 'PATIENT_INACTIVE',
+      context: {
+        patientName: p.name,
+        phone: p.phone,
+        date: p.lastVisitAt ? formatDate(p.lastVisitAt, tz) : null,
+        patientGhlContactId: p.patientKey,
+        dedupeSuffix: `${p.patientKey}:${monthKey}`,
       },
     });
     if (r.created) inactiveCreated += 1;

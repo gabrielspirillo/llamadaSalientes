@@ -15,24 +15,35 @@ export default async function ContactsPage() {
   const { tenant } = await getCurrentTenant();
   const integration = await getGhlIntegration(tenant.id);
 
+  // Sin CRM, esta pantalla decía "conecta GoHighLevel primero" y ahí acababa
+  // todo, como si la clínica no tuviera pacientes. Los tiene: los que ha dado
+  // de alta el asistente y los que han pasado por consulta viven en la
+  // plataforma, con su historia clínica, en la ficha de pacientes de Agenda.
   if (!integration) {
     return (
       <>
         <PageHeader
-          eyebrow="CRM"
+          eyebrow="Clínica"
           title="Pacientes"
-          description="Pacientes registrados en tu CRM."
+          description="Los pacientes de la clínica, con su historia clínica, viven en la plataforma."
           icon={<Contact className="h-5 w-5" />}
         />
         <Card>
           <EmptyState
-            icon={<PlugZap className="h-5 w-5" />}
-            title="Conecta GoHighLevel primero"
-            description="Para ver tus contactos, antes tienes que configurar la integración con GoHighLevel."
+            icon={<Contact className="h-5 w-5" />}
+            title="Tus pacientes están en Agenda"
+            description="Quién ha pasado por consulta, cuándo vuelve, sus notas y los que ha dado de alta el asistente. Esta pantalla es sólo el listado del CRM externo, que no hace falta para trabajar."
             action={
-              <Button asChild size="sm">
-                <Link href="/dashboard/configuration?tab=integrations">Ir a configuración</Link>
-              </Button>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <Button asChild size="sm">
+                  <Link href="/dashboard/agenda/pacientes">Ver mis pacientes</Link>
+                </Button>
+                <Button asChild size="sm" variant="ghost">
+                  <Link href="/dashboard/configuration?tab=integrations">
+                    <PlugZap className="h-4 w-4" /> Conectar un CRM
+                  </Link>
+                </Button>
+              </div>
             }
           />
         </Card>

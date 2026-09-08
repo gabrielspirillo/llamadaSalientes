@@ -2,6 +2,7 @@ import 'server-only';
 import { and, asc, desc, eq, gte, inArray, lt, lte, ne, or, sql } from 'drizzle-orm';
 
 import { type SlotOptions, computeRangeSlots } from '@/lib/agenda/availability';
+import { patientKeyFor } from '@/lib/agenda/patients';
 import { BUSY_STATUSES, type ShiftRule, type SlotCandidate } from '@/lib/agenda/shared';
 import { db } from '@/lib/db/client';
 import {
@@ -14,6 +15,7 @@ import {
   professionals,
   treatments,
   users,
+  whatsappContacts,
 } from '@/lib/db/schema';
 import { addDaysToKey, localDateKey } from '@/lib/tasks/tz';
 
@@ -236,6 +238,54 @@ export async function getProfessionalDetail(
 }
 
 /** ¿La clínica ya usa la agenda interna? Es lo que decide si los agentes la consultan. */
+/**
+ * Las próximas citas de la clínica, para el panel principal.
+ *
+ * Vive aquí y no en el módulo de llamadas porque es la agenda quien las tiene:
+ * con nombre y teléfono del paciente en la propia fila, sin depender de
+ * ninguna ficha externa ni de que el CRM conteste.
+ */
+export async function upcomingAgendaAppointments(
+  tenantId: string,
+  limit = 5,
+): Promise<
+  Array<{
+    callId: string;
+    patientName: string | null;
+    phone: string | null;
+    treatmentName: string | null;
+    startTime: Date;
+  }>
+> {
+  const rows = await db
+    .select({
+      id: agendaAppointments.id,
+      patientName: agendaAppointments.patientName,
+      patientPhone: agendaAppointments.patientPhone,
+      startsAt: agendaAppointments.startsAt,
+      treatmentName: treatments.name,
+    })
+    .from(agendaAppointments)
+    .leftJoin(treatments, eq(treatments.id, agendaAppointments.treatmentId))
+    .where(
+      and(
+        eq(agendaAppointments.tenantId, tenantId),
+        gte(agendaAppointments.startsAt, new Date()),
+        inArray(agendaAppointments.status, BUSY_STATUSES),
+      ),
+    )
+    .orderBy(asc(agendaAppointments.startsAt))
+    .limit(limit);
+
+  return rows.map((r) => ({
+    callId: r.id,
+    patientName: r.patientName,
+    phone: r.patientPhone,
+    treatmentName: r.treatmentName,
+    startTime: r.startsAt,
+  }));
+}
+
 export async function tenantHasAgenda(tenantId: string): Promise<boolean> {
   const rows = await db
     .select({ id: professionals.id })
@@ -544,7 +594,7 @@ export async function listAgendaPatients(
     .groupBy(clinicalNotes.patientKey);
   const noteMap = new Map(noteCounts.map((n) => [n.patientKey, Number(n.n)]));
 
-  return rows.map((r) => ({
+  const conCitas = rows.map((r) => ({
     patientKey: r.patientKey,
     patientName: r.patientName,
     patientPhone: r.patientPhone,
@@ -556,6 +606,84 @@ export async function listAgendaPatients(
     noteCount: noteMap.get(r.patientKey) ?? 0,
     professionalIds: r.professionalIds ?? [],
   }));
+
+  // Filtrar por profesional es preguntar "quién pasa por SU consulta", y eso
+  // sólo lo contestan las citas.
+  if (opts.professionalId) return conCitas;
+
+  const sinCitas = await patientsWithoutAppointments(
+    tenantId,
+    new Set(conCitas.map((p) => p.patientKey)),
+    opts,
+  );
+  return [...conCitas, ...sinCitas];
+}
+
+/**
+ * Pacientes de la libreta de la plataforma que todavía no tienen ninguna cita.
+ *
+ * Es el paciente que el agente acaba de dar de alta por teléfono o por
+ * WhatsApp y con el que todavía no se ha cerrado día y hora. Sin esto
+ * desaparecía de la vista hasta que alguien le agendara algo, que es
+ * justamente cuando hace falta llamarle.
+ */
+async function patientsWithoutAppointments(
+  tenantId: string,
+  yaListados: Set<string>,
+  opts: { search?: string; limit?: number },
+): Promise<PatientSummary[]> {
+  const where = [eq(whatsappContacts.tenantId, tenantId)];
+  if (opts.search?.trim()) {
+    const q = `%${opts.search.trim().toLowerCase()}%`;
+    const filter = or(
+      sql`lower(coalesce(${whatsappContacts.name}, '')) like ${q}`,
+      sql`lower(${whatsappContacts.phoneE164}) like ${q}`,
+      sql`lower(coalesce(${whatsappContacts.email}, '')) like ${q}`,
+    );
+    if (filter) where.push(filter);
+  }
+
+  const rows = await db
+    .select({
+      phoneE164: whatsappContacts.phoneE164,
+      name: whatsappContacts.name,
+      firstName: whatsappContacts.firstName,
+      lastName: whatsappContacts.lastName,
+      email: whatsappContacts.email,
+      ghlContactId: whatsappContacts.ghlContactId,
+    })
+    .from(whatsappContacts)
+    .where(and(...where))
+    .orderBy(desc(whatsappContacts.updatedAt))
+    .limit(opts.limit ?? 200);
+
+  const out: PatientSummary[] = [];
+  for (const r of rows) {
+    // La identidad se calcula igual que en la agenda, para que el mismo
+    // paciente no salga dos veces con dos claves distintas.
+    const patientKey = patientKeyFor({
+      ghlContactId: r.ghlContactId,
+      phone: r.phoneE164,
+      email: r.email,
+      name: r.name,
+    });
+    if (yaListados.has(patientKey)) continue;
+    yaListados.add(patientKey);
+    out.push({
+      patientKey,
+      patientName:
+        r.name?.trim() || [r.firstName, r.lastName].filter(Boolean).join(' ').trim() || r.phoneE164,
+      patientPhone: r.phoneE164,
+      patientEmail: r.email,
+      ghlContactId: r.ghlContactId,
+      totalAppointments: 0,
+      lastVisitAt: null,
+      nextVisitAt: null,
+      noteCount: 0,
+      professionalIds: [],
+    });
+  }
+  return out;
 }
 
 export interface PatientDossier {

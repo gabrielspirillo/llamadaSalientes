@@ -19,9 +19,23 @@ type RetellToolCallBody = {
     call_id: string;
     to_number?: string;
     from_number?: string;
-    metadata?: { tenant_id?: string; source?: string };
+    metadata?: { tenant_id?: string; source?: string; direction?: string };
   };
 };
+
+/**
+ * El número DEL PACIENTE en esta llamada.
+ *
+ * En una saliente la marcamos nosotros, así que el paciente es `to_number`. En
+ * una entrante es al revés: `to_number` es el número de la clínica (de hecho es
+ * por el que resolvemos de qué clínica se trata) y el paciente es `from_number`.
+ * Tomarlo siempre de `to_number`, como se hacía antes, daba de alta al paciente
+ * con el teléfono de la propia clínica en cuanto entraba una llamada.
+ */
+function patientPhoneOf(call: RetellToolCallBody['call']): string | null {
+  const outbound = call.metadata?.direction === 'outbound';
+  return (outbound ? call.to_number : call.from_number) ?? null;
+}
 
 export async function POST(req: NextRequest) {
   const rawBody = Buffer.from(await req.arrayBuffer());
@@ -58,8 +72,9 @@ export async function POST(req: NextRequest) {
   // llamar). Completamos desde body.call para que las tools de agenda no fallen.
   const looksUnresolved = (v: unknown): boolean =>
     typeof v === 'string' && (v.includes('{{') || v.trim() === '' || v.trim() === '+');
-  if (looksUnresolved(toolArgs.phone) && body.call.to_number) {
-    toolArgs.phone = body.call.to_number;
+  const patientPhone = patientPhoneOf(body.call);
+  if (looksUnresolved(toolArgs.phone) && patientPhone) {
+    toolArgs.phone = patientPhone;
   }
   const metaContactId = (body.call.metadata as { ghl_contact_id?: string } | undefined)
     ?.ghl_contact_id;
@@ -67,7 +82,10 @@ export async function POST(req: NextRequest) {
     if (metaContactId) toolArgs.contact_id = metaContactId;
   }
 
-  const ctx = { retellCallId: body.call.call_id };
+  // `patientPhone` va también en el contexto: cuando el LLM ni siquiera manda
+  // el campo (que es lo habitual), el fallback de arriba no se dispara y las
+  // tools lo cogen de aquí.
+  const ctx = { retellCallId: body.call.call_id, channel: 'VOICE' as const, patientPhone };
 
   // Override GHL para el flow demo de la landing: si la llamada vino disparada
   // por /api/public/demo-call (metadata.source='landing_demo') y las env vars

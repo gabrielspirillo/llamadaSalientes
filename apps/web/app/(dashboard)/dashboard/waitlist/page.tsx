@@ -18,6 +18,7 @@ import {
   waitlistEntries,
   waitlistOffers,
 } from '@/lib/db/schema';
+import { resolveContactNames } from '@/lib/patients/registry';
 import { getCurrentTenant } from '@/lib/tenant';
 import { getOrCreateWaitlistSettings } from '@/lib/waitlist/settings';
 import { ListChecks, Settings2 } from 'lucide-react';
@@ -152,24 +153,11 @@ export default async function WaitlistPage() {
     string,
     { firstName: string | null; lastName: string | null; phone: string | null }
   >();
+  // El nombre y el teléfono salen de donde estén: la réplica del CRM, la
+  // libreta de la plataforma o el propio teléfono de la identidad de la agenda.
   if (contactIds.length > 0) {
-    const pts = await db
-      .select({
-        ghlContactId: patientsCache.ghlContactId,
-        firstName: patientsCache.firstName,
-        lastName: patientsCache.lastName,
-        phone: patientsCache.phone,
-      })
-      .from(patientsCache)
-      .where(
-        and(eq(patientsCache.tenantId, tenant.id), inArray(patientsCache.ghlContactId, contactIds)),
-      );
-    for (const p of pts) {
-      contactMap.set(p.ghlContactId, {
-        firstName: p.firstName,
-        lastName: p.lastName,
-        phone: p.phone,
-      });
+    for (const [ref, info] of await resolveContactNames(tenant.id, contactIds)) {
+      contactMap.set(ref, info);
     }
   }
 
@@ -209,20 +197,9 @@ export default async function WaitlistPage() {
   }
   const missingContactIds = offerContactIds.filter((id) => !contactMap.has(id));
   if (missingContactIds.length > 0) {
-    const pts = await db
-      .select({
-        ghlContactId: patientsCache.ghlContactId,
-        firstName: patientsCache.firstName,
-        lastName: patientsCache.lastName,
-        phone: patientsCache.phone,
-      })
-      .from(patientsCache)
-      .where(
-        and(
-          eq(patientsCache.tenantId, tenant.id),
-          inArray(patientsCache.ghlContactId, missingContactIds),
-        ),
-      );
+    const pts = [...(await resolveContactNames(tenant.id, missingContactIds))].map(
+      ([ghlContactId, info]) => ({ ghlContactId, ...info }),
+    );
     for (const p of pts) {
       contactMap.set(p.ghlContactId, {
         firstName: p.firstName,

@@ -54,13 +54,17 @@ beforeAll(() => {
 });
 
 describe('dispatchTool', () => {
-  it('devuelve mensaje de GHL no conectado si no hay integración', async () => {
+  it('sin agenda propia ni CRM, dice qué hacer en vez de hablar del CRM', async () => {
+    // El mensaje ya no menciona el CRM: la clínica que lleva su agenda en la
+    // plataforma funciona sin él, así que aquí sólo se llega cuando no hay
+    // NINGUNA de las dos cosas. Al agente se le dice qué hacer.
     mockGetGhlIntegration.mockResolvedValue(null);
     const result = await dispatchTool('tenant-1', 'check_availability', {
       treatment_name: 'limpieza',
       preferred_date: '2025-06-01',
     });
-    expect(result.result).toContain('CRM no está conectado');
+    expect(result.result).toContain('no tiene su agenda configurada');
+    expect(result.result).not.toContain('CRM no está conectado');
   });
 
   it('retorna mensaje para tool desconocida', async () => {

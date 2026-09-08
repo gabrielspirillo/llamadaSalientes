@@ -12,6 +12,7 @@ import {
   toShiftRule,
 } from '@/lib/agenda/queries';
 import { BUSY_STATUSES, PROFESSIONAL_COLORS } from '@/lib/agenda/shared';
+import { syncAppointmentEffects } from '@/lib/agenda/sync';
 import { db } from '@/lib/db/client';
 import {
   agendaAppointments,
@@ -655,7 +656,7 @@ export async function createAppointment(
     name: input.patientName,
   });
 
-  return withProfessionalLock(professional.id, async (tx) => {
+  const created = await withProfessionalLock(professional.id, async (tx) => {
     if (input.dedupeKey) {
       const existing = await tx
         .select()
@@ -748,6 +749,15 @@ export async function createAppointment(
 
     return { appointment: row, deduped: false as const };
   });
+
+  // Fuera de la transacción a propósito: los efectos leen la cita por otra
+  // conexión (los recordatorios la buscan en la caché), así que tienen que
+  // ver el commit hecho. Una cita deduplicada ya los disparó en su día.
+  if (!created.deduped) {
+    await syncAppointmentEffects({ appointment: created.appointment, change: 'created' });
+  }
+
+  return created;
 }
 
 export async function rescheduleAppointment(
@@ -782,7 +792,7 @@ export async function rescheduleAppointment(
     Math.round((current.endsAt.getTime() - current.startsAt.getTime()) / 60_000);
   const endsAt = new Date(startsAt.getTime() + duration * 60_000);
 
-  return withProfessionalLock(professionalId, async (tx) => {
+  const moved = await withProfessionalLock(professionalId, async (tx) => {
     const busy = await tx
       .select({ startsAt: agendaAppointments.startsAt, endsAt: agendaAppointments.endsAt })
       .from(agendaAppointments)
@@ -849,6 +859,18 @@ export async function rescheduleAppointment(
       .returning();
     return row;
   });
+
+  // Mover una cita reprograma sus recordatorios: si no, el paciente recibe el
+  // aviso de la hora vieja.
+  if (moved) {
+    await syncAppointmentEffects({
+      appointment: moved,
+      previousStatus: current.status,
+      change: 'rescheduled',
+    });
+  }
+
+  return moved;
 }
 
 export async function updateAppointment(
@@ -893,6 +915,17 @@ export async function updateAppointment(
     values.treatmentId = patch.treatmentId;
   }
 
+  // El estado ANTERIOR: los efectos se disparan por transición, no por estado.
+  // Sin esto, guardar una nota en una cita ya cancelada volvería a anunciarla
+  // en el chat del equipo y a reabrir la oferta de la lista de espera.
+  const [before] = await db
+    .select({ status: agendaAppointments.status })
+    .from(agendaAppointments)
+    .where(
+      and(eq(agendaAppointments.tenantId, ctx.tenantId), eq(agendaAppointments.id, appointmentId)),
+    )
+    .limit(1);
+
   const [row] = await db
     .update(agendaAppointments)
     .set(values)
@@ -901,6 +934,13 @@ export async function updateAppointment(
     )
     .returning();
   if (!row) throw new AgendaValidationError('Esa cita ya no existe.');
+
+  await syncAppointmentEffects({
+    appointment: row,
+    previousStatus: before?.status ?? null,
+    change: 'updated',
+  });
+
   return row;
 }
 

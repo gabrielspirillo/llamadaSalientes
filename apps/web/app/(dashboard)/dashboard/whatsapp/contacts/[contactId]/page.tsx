@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import { contactRefsFor } from '@/lib/agenda/patients';
 import { db } from '@/lib/db/client';
 import {
   appointmentsCache,
@@ -129,18 +130,27 @@ export default async function ContactDetailPage({ params }: Props) {
     for (const u of senders) noteAuthorMap.set(u.id, u.email);
   }
 
-  const appointmentRows = contact.ghlContactId
-    ? await db
-        .select()
-        .from(appointmentsCache)
-        .where(
-          and(
-            eq(appointmentsCache.tenantId, tenant.id),
-            eq(appointmentsCache.contactId, contact.ghlContactId),
-          ),
-        )
-        .orderBy(asc(appointmentsCache.startTime))
-    : [];
+  // Todas las identidades del contacto: el id del CRM y su teléfono. Una cita
+  // de la agenda propia se guarda bajo el teléfono, así que buscar sólo por el
+  // id del CRM dejaba la ficha sin ninguna cita en las clínicas sin CRM.
+  const contactRefs = contactRefsFor({
+    ghlContactId: contact.ghlContactId,
+    phone: contact.phoneE164,
+    email: contact.email,
+  });
+  const appointmentRows =
+    contactRefs.length > 0
+      ? await db
+          .select()
+          .from(appointmentsCache)
+          .where(
+            and(
+              eq(appointmentsCache.tenantId, tenant.id),
+              inArray(appointmentsCache.contactId, contactRefs),
+            ),
+          )
+          .orderBy(asc(appointmentsCache.startTime))
+      : [];
 
   const treatmentMap = new Map(treatmentRows.map((t) => [t.id, t.label]));
 

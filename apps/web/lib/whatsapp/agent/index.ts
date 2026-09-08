@@ -179,6 +179,9 @@ export async function runWhatsappAgent(
         // del loop sobre la misma conversación y el mismo hueco no crean dos
         // citas.
         conversationId: input.conversationId,
+        // Su WhatsApp es su teléfono: las tools lo usan para la ficha del
+        // paciente y para la cita sin depender de que el modelo lo pase.
+        contactPhoneE164: input.contactPhoneE164,
       });
       toolsCalled.push(trace);
 

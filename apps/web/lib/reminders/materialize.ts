@@ -1,8 +1,11 @@
 import 'server-only';
 import { and, asc, desc, eq } from 'drizzle-orm';
 
+import { isInternalAppointmentId } from '@/lib/agenda/appointment-ref';
+import { phoneFromPatientKey } from '@/lib/agenda/patients';
 import { db } from '@/lib/db/client';
 import {
+  agendaAppointments,
   agentConfigs,
   appointmentReminders,
   appointmentsCache,
@@ -157,25 +160,8 @@ export async function materializeReminders(args: {
     return { ...result, skipped: [...result.skipped, { reason: 'no_rules' }] };
   }
 
-  // Resolver phone del contacto: GHL API primero, fallback whatsapp_contacts.
-  let ghlContact: GhlContact | null = null;
-  if (appt.contactId) {
-    ghlContact = await getContact(tenantId, appt.contactId);
-  }
-  let phoneE164 = ghlContact?.phone?.trim() || null;
-  if (!phoneE164 && appt.contactId) {
-    const [wac] = await db
-      .select()
-      .from(whatsappContacts)
-      .where(
-        and(
-          eq(whatsappContacts.tenantId, tenantId),
-          eq(whatsappContacts.ghlContactId, appt.contactId),
-        ),
-      )
-      .limit(1);
-    phoneE164 = wac?.phoneE164 ?? null;
-  }
+  const contact = await resolveReminderContact(tenantId, ghlAppointmentId, appt.contactId);
+  const phoneE164 = contact.phoneE164;
 
   if (!phoneE164) {
     await logReminderSkip({
@@ -212,8 +198,8 @@ export async function materializeReminders(args: {
     appointmentStartTime: appt.startTime,
     appointmentDurationMinutes: treatment?.durationMinutes ?? null,
     treatmentName: treatment?.name ?? null,
-    contactFirstName: ghlContact?.firstName ?? null,
-    contactLastName: ghlContact?.lastName ?? null,
+    contactFirstName: contact.firstName,
+    contactLastName: contact.lastName,
     contactPhoneE164: phoneE164,
     clinicName: tenant.name,
     clinicAddress: clinic?.address ?? null,
@@ -394,4 +380,89 @@ export async function materializeReminders(args: {
   }
 
   return result;
+}
+
+/**
+ * A quién y a qué número se le manda el recordatorio.
+ *
+ * Tres orígenes, en orden de fiabilidad:
+ *   1. La cita de la agenda de la plataforma, que guarda nombre y teléfono del
+ *      paciente en la propia fila. Es el dato con el que se reservó.
+ *   2. El contacto del CRM.
+ *   3. La libreta de contactos de la plataforma, por id de CRM o por teléfono.
+ *
+ * Antes sólo existían el 2 y el 3, y el 3 buscaba únicamente por id de CRM: sin
+ * CRM no había ningún camino que terminara en un teléfono, así que todos los
+ * recordatorios se descartaban con el motivo `no_phone`.
+ */
+async function resolveReminderContact(
+  tenantId: string,
+  appointmentId: string,
+  contactId: string | null,
+): Promise<{ phoneE164: string | null; firstName: string | null; lastName: string | null }> {
+  if (isInternalAppointmentId(appointmentId)) {
+    const [own] = await db
+      .select({
+        phone: agendaAppointments.patientPhone,
+        name: agendaAppointments.patientName,
+      })
+      .from(agendaAppointments)
+      .where(
+        and(eq(agendaAppointments.tenantId, tenantId), eq(agendaAppointments.id, appointmentId)),
+      )
+      .limit(1);
+    if (own?.phone) {
+      const [first, ...rest] = own.name.trim().split(/\s+/).filter(Boolean);
+      return {
+        phoneE164: own.phone,
+        firstName: first ?? null,
+        lastName: rest.length > 0 ? rest.join(' ') : null,
+      };
+    }
+  }
+
+  let ghlContact: GhlContact | null = null;
+  if (contactId) {
+    ghlContact = await getContact(tenantId, contactId);
+  }
+  if (ghlContact?.phone?.trim()) {
+    return {
+      phoneE164: ghlContact.phone.trim(),
+      firstName: ghlContact.firstName ?? null,
+      lastName: ghlContact.lastName ?? null,
+    };
+  }
+
+  if (contactId) {
+    // El `contact_id` de una cita propia sin CRM es su `patient_key`
+    // (`tel:+34…`), así que de ahí sale el teléfono directamente.
+    const fromKey = phoneFromPatientKey(contactId);
+    const [wac] = await db
+      .select({
+        phoneE164: whatsappContacts.phoneE164,
+        firstName: whatsappContacts.firstName,
+        lastName: whatsappContacts.lastName,
+        name: whatsappContacts.name,
+      })
+      .from(whatsappContacts)
+      .where(
+        and(
+          eq(whatsappContacts.tenantId, tenantId),
+          fromKey
+            ? eq(whatsappContacts.phoneE164, fromKey)
+            : eq(whatsappContacts.ghlContactId, contactId),
+        ),
+      )
+      .limit(1);
+    if (wac?.phoneE164 || fromKey) {
+      const [first, ...rest] = (wac?.name ?? '').trim().split(/\s+/).filter(Boolean);
+      return {
+        phoneE164: wac?.phoneE164 ?? fromKey,
+        firstName: wac?.firstName ?? first ?? null,
+        lastName: wac?.lastName ?? (rest.length > 0 ? rest.join(' ') : null),
+      };
+    }
+  }
+
+  return { phoneE164: null, firstName: null, lastName: null };
 }

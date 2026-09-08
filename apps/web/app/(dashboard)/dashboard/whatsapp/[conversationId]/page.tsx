@@ -6,6 +6,7 @@ import { notFound } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/stat';
 
+import { contactRefsFor } from '@/lib/agenda/patients';
 import { db } from '@/lib/db/client';
 import {
   appointmentsCache,
@@ -65,28 +66,38 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
   // Memoria del lead (cross-canal) para mostrar en el sidebar. Best-effort.
   const leadMem = await getLeadMemory(tenant.id, row.contact.phoneE164).catch(() => null);
 
-  // Citas del contacto: lectura optimista del cache local. Si el contact aún
-  // no tiene ghl_contact_id (sync GHL no corrió todavía) devolvemos []
-  // sin tocar la BD.
-  const apptsPromise = row.contact.ghlContactId
-    ? db
-        .select({
-          appt: appointmentsCache,
-          treatmentName: treatments.name,
-        })
-        .from(appointmentsCache)
-        .leftJoin(treatments, eq(appointmentsCache.treatmentId, treatments.id))
-        .where(
-          and(
-            eq(appointmentsCache.tenantId, tenant.id),
-            eq(appointmentsCache.contactId, row.contact.ghlContactId),
-          ),
-        )
-        .orderBy(asc(appointmentsCache.startTime))
-        .limit(10)
-    : Promise.resolve(
-        [] as Array<{ appt: typeof appointmentsCache.$inferSelect; treatmentName: string | null }>,
-      );
+  // Citas del contacto: lectura optimista de la caché local. Se busca por todas
+  // sus identidades —el id del CRM y su teléfono— porque una cita de la agenda
+  // propia se guarda bajo el teléfono. Antes sólo se miraba el id del CRM, así
+  // que un contacto sin CRM nunca enseñaba ninguna cita.
+  const contactRefs = contactRefsFor({
+    ghlContactId: row.contact.ghlContactId,
+    phone: row.contact.phoneE164,
+    email: row.contact.email,
+  });
+  const apptsPromise =
+    contactRefs.length > 0
+      ? db
+          .select({
+            appt: appointmentsCache,
+            treatmentName: treatments.name,
+          })
+          .from(appointmentsCache)
+          .leftJoin(treatments, eq(appointmentsCache.treatmentId, treatments.id))
+          .where(
+            and(
+              eq(appointmentsCache.tenantId, tenant.id),
+              inArray(appointmentsCache.contactId, contactRefs),
+            ),
+          )
+          .orderBy(asc(appointmentsCache.startTime))
+          .limit(10)
+      : Promise.resolve(
+          [] as Array<{
+            appt: typeof appointmentsCache.$inferSelect;
+            treatmentName: string | null;
+          }>,
+        );
 
   const [messages, allTags, convTagRows, membersRows, apptRows] = await Promise.all([
     db

@@ -1,6 +1,7 @@
 import 'server-only';
 import { and, asc, desc, eq, inArray, ne, or, sql } from 'drizzle-orm';
 
+import { professionalFromCalendarRef } from '@/lib/agenda/appointment-ref';
 import { db } from '@/lib/db/client';
 import {
   appointmentsCache,
@@ -571,12 +572,24 @@ export async function markOfferAccepted(args: {
 
   // Import lazy para evitar ciclo (retell/tools toca calls que tocan workers).
   const { bookAppointment, cancelAppointment } = await import('@/lib/retell/tools');
+  const { resolvePatient } = await import('@/lib/tasks/hooks');
+  const patient = await resolvePatient(offer.tenantId, { ghlContactId: entry.ghlContactId });
+
+  // El hueco que se liberó era de un profesional concreto; su agenda es el
+  // calendario. Sin pasar ese id, la reserva en la agenda propia sólo salía
+  // bien en clínicas con UN profesional: con dos o más, la herramienta
+  // respondía "necesito saber con qué profesional" y la oferta que el paciente
+  // ya había aceptado se perdía.
+  const professionalId = professionalFromCalendarRef(slot.calendarId);
 
   const bookRes = await bookAppointment(offer.tenantId, {
     contact_id: entry.ghlContactId,
     calendar_id: slot.calendarId ?? '',
     start_time: slot.startTime.toISOString(),
     treatment_name: tx?.name ?? 'cita',
+    professional_id: professionalId ?? undefined,
+    patient_name: patient.name,
+    phone: patient.phone ?? undefined,
   });
   // bookAppointment devuelve un texto humano — éxito implícito si no contiene
   // "no puedo" / "error". Para una señal exacta lo ideal sería refactorizarla;
@@ -599,11 +612,7 @@ export async function markOfferAccepted(args: {
     // Mensajes: además de la tarea, un grito en #urgencias con mención al
     // equipo. Best-effort: nunca cambia el resultado de la aceptación.
     try {
-      const { resolvePatient } = await import('@/lib/tasks/hooks');
       const { postWaitlistBookFailed } = await import('@/lib/messaging/bot');
-      const patient = await resolvePatient(offer.tenantId, {
-        ghlContactId: entry.ghlContactId,
-      });
       await postWaitlistBookFailed({
         tenantId: offer.tenantId,
         entryId: entry.id,
@@ -768,6 +777,23 @@ export async function buildVarsForOffer(offerId: string) {
     )
     .limit(1);
 
+  // `patients_cache` es la réplica del CRM y en la práctica está vacía. Sin
+  // este respaldo la oferta salía sin nombre y, peor, sin teléfono al que
+  // mandarla: la llamaba "hola" y no llegaba a nadie.
+  let firstName = pt?.firstName ?? null;
+  let lastName = pt?.lastName ?? null;
+  let contactPhone = pt?.phone ?? null;
+  if (!contactPhone || !firstName) {
+    const { resolvePatient } = await import('@/lib/tasks/hooks');
+    const fallback = await resolvePatient(offer.tenantId, { ghlContactId: entry.ghlContactId });
+    contactPhone = contactPhone ?? fallback.phone;
+    if (!firstName) {
+      const parts = fallback.name.trim().split(/\s+/).filter(Boolean);
+      firstName = parts[0] ?? null;
+      lastName = parts.length > 1 ? parts.slice(1).join(' ') : lastName;
+    }
+  }
+
   const [tx] = entry.treatmentId
     ? await db
         .select({ name: treatments.name, durationMinutes: treatments.durationMinutes })
@@ -791,9 +817,9 @@ export async function buildVarsForOffer(offerId: string) {
     newSlotStartTime: slot.startTime,
     newSlotDurationMinutes: tx?.durationMinutes ?? null,
     treatmentName: tx?.name ?? null,
-    contactFirstName: pt?.firstName ?? null,
-    contactLastName: pt?.lastName ?? null,
-    contactPhoneE164: pt?.phone ?? null,
+    contactFirstName: firstName,
+    contactLastName: lastName,
+    contactPhoneE164: contactPhone,
     clinicName: '', // Se rellena por tenant.name si hace falta en sender
     clinicAddress: clinic?.address ?? null,
     clinicPhone: (clinic?.phones as string[] | null)?.[0] ?? null,

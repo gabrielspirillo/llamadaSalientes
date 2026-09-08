@@ -167,14 +167,14 @@ export function getAgentToolDefinitions(): AgentToolDefinition[] {
     {
       name: 'book_appointment',
       description:
-        'Reserva una cita en el calendario tras haber confirmado horario, tratamiento y contact_id real del paciente.',
+        'Reserva la cita una vez el paciente ha elegido horario y tratamiento. Con el nombre del paciente y el hueco elegido basta: NO necesitas ningún id de CRM.',
       parameters: {
         type: 'object',
         properties: {
           contact_id: {
             type: 'string',
             description:
-              'ID GHL del paciente (alfanumérico ~20 chars). OBLIGATORIO en la práctica — obtenlo con get_patient_info o register_patient.',
+              'Opcional. Id del paciente en el CRM externo, sólo si get_patient_info o register_patient te devolvió uno. La clínica puede no tener CRM: no lo inventes ni esperes a tenerlo para reservar.',
           },
           phone: {
             type: 'string',
@@ -205,7 +205,8 @@ export function getAgentToolDefinitions(): AgentToolDefinition[] {
           },
           patient_name: {
             type: 'string',
-            description: 'Nombre y apellidos del paciente, para dejar la cita a su nombre.',
+            description:
+              'Nombre y apellidos del paciente: la cita se deja a su nombre. Pásalo siempre que lo sepas.',
           },
           email: { type: 'string', description: 'Opcional. Email del paciente.' },
         },
@@ -232,7 +233,7 @@ export function getAgentToolDefinitions(): AgentToolDefinition[] {
     {
       name: 'get_patient_info',
       description:
-        'Busca un paciente en GHL por su teléfono. Devuelve contact_id + nombre si existe. Úsala antes de book_appointment o cancel_appointment.',
+        'Busca al paciente por su teléfono. Devuelve su nombre, su próxima cita y lo que quedó pendiente de la última visita. Úsala antes de book_appointment o cancel_appointment.',
       parameters: {
         type: 'object',
         properties: {
@@ -248,7 +249,7 @@ export function getAgentToolDefinitions(): AgentToolDefinition[] {
     {
       name: 'register_patient',
       description:
-        'Crea un nuevo paciente en GHL si get_patient_info no lo encontró. Devuelve el contact_id recién creado para usarlo en book_appointment.',
+        'Da de alta al paciente en la clínica cuando get_patient_info no lo encontró. Funciona siempre, haya CRM o no. Después reserva con book_appointment usando su nombre; sólo pásale contact_id si esta herramienta te devuelve uno.',
       parameters: {
         type: 'object',
         properties: {
@@ -357,6 +358,11 @@ export interface ExecuteToolInput {
   rawArgs: unknown;
   /** Conversación de la que sale la llamada. Da idempotencia a las reservas. */
   conversationId?: string;
+  /**
+   * WhatsApp del paciente. Es su teléfono y lo sabemos siempre, así que las
+   * tools no dependen de que el modelo se acuerde de pasarlo.
+   */
+  contactPhoneE164?: string | null;
 }
 
 /**
@@ -416,6 +422,7 @@ export async function executeAgentTool(input: ExecuteToolInput): Promise<ToolCal
   try {
     const result = await dispatchTool(input.tenantId, name as KnownToolName, args, {
       channel: 'WHATSAPP',
+      patientPhone: input.contactPhoneE164 ?? null,
       // Dos mensajes seguidos del paciente pueden disparar dos veces la misma
       // reserva; con esta clave la segunda devuelve la cita ya creada.
       dedupeKey:

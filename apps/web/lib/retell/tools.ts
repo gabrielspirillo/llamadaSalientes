@@ -1,4 +1,5 @@
 import 'server-only';
+import { normalizePatientPhone } from '@/lib/agenda/patients';
 import {
   agendaBookAppointment,
   agendaCancelAppointment,
@@ -15,6 +16,12 @@ import { getFreeSlots, resolveCalendarId } from '@/lib/ghl/calendars';
 import { GhlApiError, ghlFetch } from '@/lib/ghl/client';
 import { createContact, lookupContactByPhone, updateContact } from '@/lib/ghl/contacts-mutations';
 import { embedText } from '@/lib/openai/client';
+import {
+  describePatient,
+  findPatientByPhone,
+  setPatientEmail,
+  upsertPatientRecord,
+} from '@/lib/patients/registry';
 import { cosineSimilarity } from '@/lib/rag/cosine';
 import { clockArticle, speakClockTime } from '@/lib/retell/time-speech';
 
@@ -95,11 +102,26 @@ function looksLikeGhlId(s: string | undefined | null): boolean {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function ghlNotConnected(): ToolResult {
+/**
+ * Ni agenda propia ni CRM: no hay dónde mirar horarios ni dónde escribir la
+ * cita.
+ *
+ * No es lo mismo que "no hay CRM", que es lo que decía antes este mensaje. Una
+ * clínica sin CRM pero con la agenda de la plataforma encendida funciona
+ * entera; aquí sólo se llega cuando no tiene ninguna de las dos, que es un
+ * problema de configuración y no algo que el paciente deba oír. Al agente se le
+ * dice qué hacer en su lugar.
+ */
+function noAgendaBackend(): ToolResult {
   return {
     result:
-      'El CRM no está conectado aún. Tomá nota del nombre y teléfono del paciente para que recepción lo contacte.',
+      'La clínica todavía no tiene su agenda configurada en la plataforma, así que no puedo consultar horarios ni reservar. Tomá el nombre y el teléfono del paciente y decile que recepción le confirma la cita.',
   };
+}
+
+/** El teléfono del paciente: el que diga el agente y, si no, el que sabe el canal. */
+function resolvePatientPhone(raw: string | null | undefined, ctx: ToolContext): string | null {
+  return normalizePatientPhone(raw) ?? normalizePatientPhone(ctx.patientPhone) ?? null;
 }
 
 function formatSlots(slots: GhlSlot[]): string {
@@ -140,7 +162,7 @@ export async function checkAvailability(
   if (internal) return internal;
 
   const integration = await getGhlIntegration(tenantId);
-  if (!integration) return ghlNotConnected();
+  if (!integration) return noAgendaBackend();
 
   try {
     const resolved = await resolveCalendarId(tenantId, {
@@ -223,24 +245,52 @@ export async function bookAppointment(
   // Idem: si la clínica lleva su agenda en la plataforma, la cita se crea ahí.
   // El dedupe_key sale de la llamada: un reintento del webhook no puede dejar
   // dos citas al mismo paciente.
+  // El LLM omite el teléfono a menudo aunque lo tenga delante. Lo sabemos por
+  // el canal (quien llama, o el WhatsApp desde el que escribe), y sin él la
+  // cita se guardaría sin identidad de paciente y sin destino al que mandarle
+  // el recordatorio.
+  const phone = resolvePatientPhone(args.phone, ctx);
+  const crmContactId = looksLikeGhlId(args.contact_id) ? args.contact_id : undefined;
+
+  // La agenda deja la cita a nombre del paciente y lo exige. Si el modelo no
+  // lo pasa, se coge de su ficha en vez de rechazar la reserva: el nombre
+  // guardado es más fiable que uno que el modelo se invente para salir del
+  // paso.
+  let patientName = args.patient_name?.trim() || '';
+  if (!patientName && phone) {
+    const known = await findPatientByPhone(tenantId, phone).catch(() => null);
+    if (known) patientName = describePatient(known);
+  }
+
   const internal = await agendaBookAppointment(tenantId, {
     start_time: args.start_time,
     professional_id: args.professional_id,
     professional_name: args.professional_name,
     treatment_name: args.treatment_name,
-    patient_name: args.patient_name,
-    phone: args.phone,
+    patient_name: patientName || undefined,
+    phone: phone ?? undefined,
     email: args.email,
-    contact_id: args.contact_id,
+    contact_id: crmContactId,
     source: ctx.channel === 'WHATSAPP' ? 'WHATSAPP_AGENT' : 'VOICE_AGENT',
     dedupe_key:
       ctx.dedupeKey ??
       (ctx.retellCallId ? `call:${ctx.retellCallId}:${args.start_time}` : undefined),
   });
-  if (internal) return internal;
+  if (internal) {
+    // La cita ya está hecha: que el paciente quede además en la libreta es
+    // best-effort y nunca tumba una reserva confirmada.
+    await upsertPatientRecord({
+      tenantId,
+      phone,
+      fullName: patientName || null,
+      email: args.email,
+      ghlContactId: crmContactId,
+    }).catch((err) => console.warn('[book_appointment] ficha del paciente', err));
+    return internal;
+  }
 
   const integration = await getGhlIntegration(tenantId);
-  if (!integration) return ghlNotConnected();
+  if (!integration) return noAgendaBackend();
 
   console.log('[book_appointment] args:', {
     contact_id: args.contact_id,
@@ -347,22 +397,76 @@ export async function bookAppointment(
   }
 }
 
+/**
+ * Da de alta al paciente.
+ *
+ * La ficha se crea SIEMPRE en la plataforma, haya CRM o no. Antes esta era la
+ * única tool del conjunto sin camino propio: iba directa al CRM y, sin él,
+ * respondía "el CRM no está conectado". El agente lo leía como herramienta
+ * fallida y, por la regla de honestidad del prompt, derivaba a recepción — con
+ * lo que una clínica que tiene su agenda en la plataforma no podía dar una
+ * cita a un paciente nuevo.
+ */
 export async function registerPatient(
   tenantId: string,
   args: RegisterPatientArgs,
-  ctx: { retellCallId?: string } = {},
+  ctx: ToolContext = {},
 ): Promise<ToolResult> {
-  const integration = await getGhlIntegration(tenantId);
-  if (!integration) return ghlNotConnected();
+  if (!args.first_name?.trim()) {
+    return { result: 'Para registrar al paciente necesito al menos su nombre.' };
+  }
+  const phone = resolvePatientPhone(args.phone, ctx);
+  if (!phone) {
+    return {
+      result:
+        'Para registrar al paciente necesito su teléfono en formato internacional, por ejemplo +34600111222.',
+    };
+  }
+  const fullName = [args.first_name, args.last_name]
+    .map((p) => p?.trim())
+    .filter(Boolean)
+    .join(' ');
 
-  if (!args.first_name || !args.phone) {
-    return { result: 'Para registrar necesito al menos first_name y phone.' };
+  const record = await upsertPatientRecord({
+    tenantId,
+    phone,
+    firstName: args.first_name,
+    lastName: args.last_name,
+    email: args.email,
+  }).catch((err) => {
+    console.error('[register_patient] no se pudo guardar la ficha', err);
+    return null;
+  });
+
+  if (ctx.retellCallId && fullName) {
+    await patchCallCustomData(ctx.retellCallId, { patient_name: fullName }).catch(() => undefined);
+  }
+
+  const integration = await getGhlIntegration(tenantId);
+  if (!integration) {
+    if (!record) {
+      return {
+        result:
+          'No pude guardar la ficha del paciente. Tomá su nombre y teléfono y decile que recepción le confirma.',
+      };
+    }
+    // Sin CRM no hay contact_id que devolver, y la agenda de la plataforma no
+    // lo necesita. Decírselo explícito evita que el agente se quede esperando
+    // un id que no va a llegar.
+    return {
+      result: `Paciente ${fullName} dado de alta en la clínica con el teléfono ${phone}. No hace falta contact_id: para reservar llamá a book_appointment con patient_name y el professional_id del hueco elegido.`,
+    };
   }
 
   // Si ya existe, devolver el contact_id existente
-  const existing = await lookupContactByPhone(tenantId, args.phone);
+  const existing = await lookupContactByPhone(tenantId, phone);
   if (existing) {
     const name = [existing.firstName, existing.lastName].filter(Boolean).join(' ');
+    // Enlazar la ficha local con el CRM: es lo que hace que las citas de los
+    // dos orígenes queden bajo la misma identidad de paciente.
+    await upsertPatientRecord({ tenantId, phone, ghlContactId: existing.id }).catch(
+      () => undefined,
+    );
     if (ctx.retellCallId) {
       await setCallGhlContact(ctx.retellCallId, existing.id, name || args.first_name).catch(
         () => undefined,
@@ -376,19 +480,23 @@ export async function registerPatient(
   const created = await createContact(tenantId, {
     firstName: args.first_name,
     lastName: args.last_name,
-    phone: args.phone,
+    phone,
     email: args.email,
   });
   if (!created) {
+    // El CRM falló, pero la ficha de la plataforma ya está guardada y la
+    // agenda propia no necesita el id: la cita se puede dar igual.
     return {
-      result:
-        'No pude crear al paciente en el sistema. Tomá nombre y teléfono — recepción confirma manualmente.',
+      result: record
+        ? `Paciente ${fullName} dado de alta en la clínica. No pude crearlo en el CRM, así que reservá con book_appointment usando patient_name y el professional_id del hueco, sin contact_id.`
+        : 'No pude crear al paciente. Tomá nombre y teléfono y decile que recepción le confirma.',
     };
   }
 
+  await upsertPatientRecord({ tenantId, phone, ghlContactId: created.id }).catch(() => undefined);
+
   // Enriquecer la fila de la llamada
   if (ctx.retellCallId) {
-    const fullName = [args.first_name, args.last_name].filter(Boolean).join(' ');
     await setCallGhlContact(ctx.retellCallId, created.id, fullName).catch(() => undefined);
   }
 
@@ -405,7 +513,7 @@ export async function cancelAppointment(
   if (internal) return internal;
 
   const integration = await getGhlIntegration(tenantId);
-  if (!integration) return ghlNotConnected();
+  if (!integration) return noAgendaBackend();
 
   try {
     await ghlFetch({
@@ -433,19 +541,44 @@ export async function cancelAppointment(
 export async function getPatientInfo(
   tenantId: string,
   args: GetPatientInfoArgs,
-  ctx: { retellCallId?: string } = {},
+  ctx: ToolContext = {},
 ): Promise<ToolResult> {
+  const phone = resolvePatientPhone(args.phone, ctx);
+  if (!phone) {
+    return {
+      result:
+        'Necesito el teléfono del paciente en formato internacional (por ejemplo +34600111222) para buscar su ficha.',
+    };
+  }
+
   // Lo que la agenda interna sabe de este teléfono: próxima cita, última
   // visita y lo que dejó anotado el profesional. Sirve aunque no haya CRM.
-  const agenda = await agendaPatientSummary(tenantId, { phone: args.phone });
+  const agenda = await agendaPatientSummary(tenantId, { phone });
+  const record = await findPatientByPhone(tenantId, phone).catch((err) => {
+    console.warn('[get_patient_info] ficha local', err);
+    return null;
+  });
 
   const integration = await getGhlIntegration(tenantId);
   if (!integration) {
-    return agenda ? { result: agenda } : ghlNotConnected();
+    // Sin CRM la ficha de la plataforma es la única fuente, y basta: la agenda
+    // reserva con el nombre del paciente, no con un id del CRM. Antes esto
+    // devolvía "el CRM no está conectado" y el agente derivaba a recepción.
+    const partes: string[] = [];
+    partes.push(
+      record
+        ? `Paciente conocido: ${describePatient(record)}.`
+        : 'No tengo ficha de ese teléfono, así que es un paciente nuevo: pedile nombre y apellido y registralo con register_patient.',
+    );
+    if (agenda) partes.push(agenda);
+    partes.push(
+      'Para reservar NO hace falta contact_id: llamá a book_appointment con patient_name y el professional_id del hueco que elija.',
+    );
+    return { result: partes.join(' ') };
   }
 
   try {
-    const contact = await lookupContactByPhone(tenantId, args.phone);
+    const contact = await lookupContactByPhone(tenantId, phone);
     if (!contact) {
       return {
         result: agenda
@@ -454,6 +587,17 @@ export async function getPatientInfo(
       };
     }
     const name = [contact.firstName, contact.lastName].filter(Boolean).join(' ') || 'Sin nombre';
+
+    // El paciente del CRM también entra en la libreta de la plataforma: es lo
+    // que enlaza su ficha local con el CRM y lo que deja el historial completo
+    // si mañana se desconecta.
+    await upsertPatientRecord({
+      tenantId,
+      phone,
+      firstName: contact.firstName,
+      lastName: contact.lastName,
+      ghlContactId: contact.id,
+    }).catch(() => undefined);
 
     // Enriquecer la fila de la llamada con info del contacto encontrado
     if (ctx.retellCallId) {
@@ -658,51 +802,66 @@ export type SetLeadEmailArgs = {
 export async function setLeadEmail(
   tenantId: string,
   args: SetLeadEmailArgs,
-  ctx: { retellCallId?: string } = {},
+  ctx: ToolContext = {},
 ): Promise<ToolResult> {
-  const integration = await getGhlIntegration(tenantId);
-  if (!integration) return ghlNotConnected();
-
-  if (!args.email?.trim()) {
+  const email = args.email?.trim();
+  if (!email) {
     return { result: 'Necesito el correo electrónico del lead.' };
   }
-
-  const phone = args.phone?.trim();
+  const phone = resolvePatientPhone(args.phone, ctx);
   if (!phone) {
-    return { result: 'Necesito el teléfono del lead para buscarlo en el CRM.' };
+    return { result: 'Necesito el teléfono del lead para saber en qué ficha guardar el correo.' };
+  }
+
+  // El correo se guarda SIEMPRE en la ficha de la plataforma. Sin esto, una
+  // clínica sin CRM le pedía el correo al paciente, le decía que lo guardaba y
+  // no quedaba en ningún sitio.
+  const record = await setPatientEmail(tenantId, phone, email).catch((err) => {
+    console.error('[set_lead_email] no se pudo guardar en la ficha', err);
+    return null;
+  });
+
+  if (ctx.retellCallId) {
+    await patchCallCustomData(ctx.retellCallId, { lead_email: email }).catch(() => undefined);
+  }
+
+  const integration = await getGhlIntegration(tenantId);
+  if (!integration) {
+    return {
+      result: record
+        ? `Correo ${email} guardado en la ficha del paciente.`
+        : 'No pude guardar el correo. Tomá nota para cargarlo a mano.',
+    };
   }
 
   try {
     const contact = await lookupContactByPhone(tenantId, phone);
     if (!contact) {
       return {
-        result:
-          'No encontré al contacto en el CRM. Usá register_patient primero con first_name, phone y email.',
+        result: record
+          ? `Correo ${email} guardado en la ficha del paciente. Todavía no está en el CRM: si hace falta, creálo con register_patient.`
+          : 'No encontré al contacto. Usá register_patient primero con first_name, phone y email.',
       };
     }
 
-    const updated = await updateContact(tenantId, contact.id, { email: args.email.trim() });
+    const updated = await updateContact(tenantId, contact.id, { email });
     if (!updated) {
       return {
-        result:
-          'No pude actualizar el email en el CRM. Tomá nota del correo para cargarlo manualmente.',
+        result: record
+          ? `Correo ${email} guardado en la ficha del paciente. No pude copiarlo al CRM; recepción lo revisa.`
+          : 'No pude guardar el correo. Tomá nota para cargarlo a mano.',
       };
     }
 
-    console.log('[set_lead_email] ok:', { contactId: contact.id, email: args.email });
-
-    if (ctx.retellCallId) {
-      await patchCallCustomData(ctx.retellCallId, { lead_email: args.email.trim() }).catch(
-        () => undefined,
-      );
-    }
-
-    return { result: `Email ${args.email} guardado correctamente en el CRM.` };
+    console.log('[set_lead_email] ok:', { contactId: contact.id });
+    return { result: `Correo ${email} guardado correctamente.` };
   } catch (err) {
     console.error('[set_lead_email]', err);
     if (err instanceof GhlApiError) {
       return {
-        result: `No pude guardar el email (error ${err.status}). Tomá nota para cargarlo después.`,
+        result: record
+          ? `Correo ${email} guardado en la ficha del paciente. El CRM dio error ${err.status}; recepción lo revisa.`
+          : `No pude guardar el correo (error ${err.status}). Tomá nota para cargarlo después.`,
       };
     }
     throw err;
@@ -770,6 +929,16 @@ export type ToolContext = {
   channel?: 'VOICE' | 'WHATSAPP';
   /** Clave de idempotencia del canal (conversación de WhatsApp, por ejemplo). */
   dedupeKey?: string;
+  /**
+   * Teléfono del paciente, ya normalizado, tal como lo sabe el canal: el
+   * número desde el que llama o el WhatsApp desde el que escribe.
+   *
+   * El LLM se olvida de pasarlo la mitad de las veces, y sin teléfono la cita
+   * queda sin forma de identificar al paciente (`patient_key` cae a su nombre)
+   * y sin destino al que mandarle el recordatorio. Con esto ya no depende de
+   * que el modelo se acuerde.
+   */
+  patientPhone?: string | null;
 };
 
 export async function dispatchTool(

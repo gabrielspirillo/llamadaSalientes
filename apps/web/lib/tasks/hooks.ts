@@ -1,6 +1,7 @@
 import 'server-only';
 import { and, eq, gt } from 'drizzle-orm';
 
+import { phoneFromPatientKey } from '@/lib/agenda/patients';
 import { db } from '@/lib/db/client';
 import {
   appointmentReminders,
@@ -29,11 +30,27 @@ interface PatientInfo {
   ghlContactId: string | null;
 }
 
-/** Resuelve nombre y teléfono mirando la caché de pacientes y los contactos de WhatsApp. */
+/**
+ * Resuelve nombre y teléfono del paciente.
+ *
+ * Mira, por este orden, la caché de pacientes del CRM y la libreta de
+ * contactos de la plataforma.
+ *
+ * El identificador que llega puede ser el id del CRM o la `patient_key` de la
+ * agenda propia (`tel:+34…`). En el segundo caso el teléfono está dentro de la
+ * propia clave, así que se extrae: sin esto, toda cita de una clínica sin CRM
+ * acababa como "Paciente sin identificar" en las tareas y en los avisos del
+ * chat interno.
+ */
 export async function resolvePatient(
   tenantId: string,
   args: { ghlContactId?: string | null; phone?: string | null },
 ): Promise<PatientInfo> {
+  const phoneFromKey = phoneFromPatientKey(args.ghlContactId ?? '');
+  if (phoneFromKey) {
+    return resolvePatient(tenantId, { ghlContactId: null, phone: args.phone ?? phoneFromKey });
+  }
+
   if (args.ghlContactId) {
     const [p] = await db
       .select({
