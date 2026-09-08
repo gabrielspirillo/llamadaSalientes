@@ -241,6 +241,21 @@ const IMPACT_TONE: Record<NonNullable<Step['impact']>['tone'], { wrap: string; i
 
 type Rect = { top: number; left: number; width: number; height: number };
 
+/**
+ * Busca en el menú el ítem que señala un paso.
+ *
+ * Varios ítems ya no son fila propia del sidebar: viven dentro de un menú
+ * flotante y con él cerrado no están en el DOM. En ese caso señalamos la fila
+ * del grupo que los contiene, que sí está siempre.
+ */
+function findTourTarget(selector: string): HTMLElement | null {
+  const direct = document.querySelector<HTMLElement>(selector);
+  if (direct) return direct;
+  const href = selector.match(/^\[data-tour="([^"]+)"\]$/)?.[1];
+  if (!href) return null;
+  return document.querySelector<HTMLElement>(`[data-tour-group~="${href}"]`);
+}
+
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
 export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
@@ -306,7 +321,7 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
       setRect(null);
       return;
     }
-    const el = document.querySelector<HTMLElement>(selector);
+    const el = findTourTarget(selector);
     if (!el) {
       setRect(null);
       return;
@@ -314,7 +329,7 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
     el.scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
 
     function measure() {
-      const node = document.querySelector<HTMLElement>(selector as string);
+      const node = findTourTarget(selector as string);
       if (!node) {
         setRect(null);
         return;
