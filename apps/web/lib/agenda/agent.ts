@@ -2,6 +2,7 @@ import 'server-only';
 import { and, asc, desc, eq, gte, inArray, ne } from 'drizzle-orm';
 
 import type { AgendaContext } from '@/lib/agenda/auth';
+import { describeAbsences, describeWeeklySchedule } from '@/lib/agenda/describe';
 import { patientKeyFor } from '@/lib/agenda/patients';
 import { type AvailabilityResult, getAvailability, getClinicTimezone } from '@/lib/agenda/queries';
 import { type AppointmentInput, createAppointment } from '@/lib/agenda/service';
@@ -10,6 +11,8 @@ import { db } from '@/lib/db/client';
 import {
   agendaAppointments,
   clinicalNotes,
+  professionalShifts,
+  professionalTimeOff,
   professionalTreatments,
   professionals,
   treatments,
@@ -99,11 +102,16 @@ export interface AgentProfessional {
   specialty: string | null;
   acceptsOnlineBooking: boolean;
   treatments: { id: string; name: string; durationMinutes: number }[];
+  /** Horario semanal ya contado con palabras: "lunes a viernes de 09:00 a 14:00". */
+  schedule: string;
+  /** Ausencias próximas, sin motivo: "del 10 al 14 de marzo". Vacío si no hay. */
+  absences: string;
 }
 
 /**
- * Profesionales con agenda encendida y lo que hace cada uno. Es la foto que
- * necesitan todos los agentes virtuales para hablar de la agenda con criterio.
+ * Profesionales con agenda encendida: qué hace cada uno, cuándo trabaja y
+ * cuándo no está. Es la foto que necesitan todos los agentes virtuales para
+ * responder "¿la doctora Ruiz atiende los martes?" sin inventarse la respuesta.
  */
 export async function listAgentProfessionals(tenantId: string): Promise<AgentProfessional[]> {
   const rows = await db
@@ -125,31 +133,73 @@ export async function listAgentProfessionals(tenantId: string): Promise<AgentPro
 
   if (rows.length === 0) return [];
 
-  const links = await db
-    .select({
-      professionalId: professionalTreatments.professionalId,
-      id: treatments.id,
-      name: treatments.name,
-      base: treatments.durationMinutes,
-      override: professionalTreatments.durationOverrideMinutes,
-    })
-    .from(professionalTreatments)
-    .innerJoin(treatments, eq(treatments.id, professionalTreatments.treatmentId))
-    .where(
-      and(
-        eq(professionalTreatments.tenantId, tenantId),
-        inArray(
-          professionalTreatments.professionalId,
-          rows.map((r) => r.id),
+  const ids = rows.map((r) => r.id);
+  const ahora = new Date();
+
+  // Tres consultas por lote, no una por profesional: esto se llama en cada
+  // llamada de voz y en cada conversación de WhatsApp.
+  const [links, turnos, ausencias, timezone] = await Promise.all([
+    db
+      .select({
+        professionalId: professionalTreatments.professionalId,
+        id: treatments.id,
+        name: treatments.name,
+        base: treatments.durationMinutes,
+        override: professionalTreatments.durationOverrideMinutes,
+      })
+      .from(professionalTreatments)
+      .innerJoin(treatments, eq(treatments.id, professionalTreatments.treatmentId))
+      .where(
+        and(
+          eq(professionalTreatments.tenantId, tenantId),
+          inArray(professionalTreatments.professionalId, ids),
         ),
       ),
-    );
+    db
+      .select({
+        professionalId: professionalShifts.professionalId,
+        weekday: professionalShifts.weekday,
+        startMinute: professionalShifts.startMinute,
+        endMinute: professionalShifts.endMinute,
+      })
+      .from(professionalShifts)
+      .where(
+        and(
+          eq(professionalShifts.tenantId, tenantId),
+          eq(professionalShifts.active, true),
+          inArray(professionalShifts.professionalId, ids),
+        ),
+      ),
+    db
+      .select({
+        professionalId: professionalTimeOff.professionalId,
+        startsAt: professionalTimeOff.startsAt,
+        endsAt: professionalTimeOff.endsAt,
+        allDay: professionalTimeOff.allDay,
+        reason: professionalTimeOff.reason,
+      })
+      .from(professionalTimeOff)
+      .where(
+        and(
+          eq(professionalTimeOff.tenantId, tenantId),
+          inArray(professionalTimeOff.professionalId, ids),
+          gte(professionalTimeOff.endsAt, ahora),
+        ),
+      ),
+    getClinicTimezone(tenantId),
+  ]);
 
   return rows.map((r) => ({
     ...r,
     treatments: links
       .filter((l) => l.professionalId === r.id)
       .map((l) => ({ id: l.id, name: l.name, durationMinutes: l.override ?? l.base })),
+    schedule: describeWeeklySchedule(turnos.filter((t) => t.professionalId === r.id)),
+    absences: describeAbsences(
+      ausencias.filter((a) => a.professionalId === r.id),
+      timezone,
+      ahora,
+    ),
   }));
 }
 
@@ -431,20 +481,39 @@ export async function getAgentPatientContext(
   };
 }
 
-/** Texto compacto de la agenda para meterlo en el prompt de un agente. */
+/**
+ * La agenda de la clínica contada para el prompt de un agente.
+ *
+ * Lleva horario y ausencias además de los tratamientos: sin eso, a "¿la
+ * doctora Ruiz trabaja los martes?" el agente sólo podía contestar pidiendo
+ * fecha y llamando a check_availability, que es dar un rodeo para algo que la
+ * clínica ya tiene escrito.
+ */
 export async function describeAgendaForPrompt(tenantId: string): Promise<string> {
   const catalog = await listAgentProfessionals(tenantId);
   if (catalog.length === 0) return '';
-  const lines = catalog.map((p) => {
+
+  const lines = catalog.flatMap((p) => {
     const what =
       p.treatments.length > 0
         ? p.treatments
             .map((t) => t.name)
             .slice(0, 8)
             .join(', ')
-        : 'todos los tratamientos';
-    const booking = p.acceptsOnlineBooking ? '' : ' (no reservar: sólo recepción)';
-    return `- ${p.fullName}${p.specialty ? ` (${p.specialty})` : ''}: ${what}${booking}`;
+        : 'todos los tratamientos del catálogo';
+    const cabecera = `- ${p.fullName}${p.specialty ? ` (${p.specialty})` : ''}`;
+    const detalle = [
+      `  · hace: ${what}`,
+      `  · horario: ${p.schedule}`,
+      p.absences ? `  · no está: ${p.absences}` : null,
+      p.acceptsOnlineBooking ? null : '  · no se le reserva automáticamente: pasa a recepción',
+    ].filter(Boolean);
+    return [cabecera, ...(detalle as string[])];
   });
-  return `Profesionales con agenda en la clínica:\n${lines.join('\n')}`;
+
+  return [
+    'Profesionales con agenda en la clínica:',
+    ...lines,
+    'El horario es el habitual; los huecos concretos salen SIEMPRE de check_availability.',
+  ].join('\n');
 }

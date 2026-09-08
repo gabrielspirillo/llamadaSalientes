@@ -8,7 +8,12 @@
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { findAgentSlots, getAgentPatientContext, listAgentProfessionals } from '@/lib/agenda/agent';
+import {
+  describeAgendaForPrompt,
+  findAgentSlots,
+  getAgentPatientContext,
+  listAgentProfessionals,
+} from '@/lib/agenda/agent';
 import type { AgendaContext } from '@/lib/agenda/auth';
 import { getAvailability, getPatientDossier, listAgendaPatients } from '@/lib/agenda/queries';
 import {
@@ -437,6 +442,43 @@ describe('tools de los agentes virtuales', () => {
       preferred_date: dia,
     });
     expect(despues.result).not.toContain(`start_time=${start}`);
+  });
+
+  it('el agente ve el horario y las ausencias de cada profesional', async () => {
+    const ctx = ctxFor(tenantId, userA);
+    // Una ausencia futura: el agente tiene que poder decir que no está.
+    const dentroDeUnMes = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
+    const { block } = await addTimeOff(ctx, professionalId, {
+      startDateKey: dentroDeUnMes,
+      startMinute: 0,
+      endDateKey: dentroDeUnMes,
+      endMinute: 1440,
+      allDay: true,
+      kind: 'TIME_OFF',
+      reason: 'Congreso',
+    });
+
+    const catalogo = await listAgentProfessionals(tenantId);
+    const marta = catalogo.find((p) => p.fullName === 'Dra. Marta Ruiz');
+    expect(marta?.schedule).toBe('lunes a viernes de 09:00 a 14:00');
+    expect(marta?.absences).not.toBe('');
+
+    // La tool que llaman los tres agentes lo devuelve escrito.
+    const tool = await dispatchTool(tenantId, 'list_professionals', {});
+    expect(tool.result).toContain('Dra. Marta Ruiz');
+    expect(tool.result).toContain('lunes a viernes de 09:00 a 14:00');
+    expect(tool.result).toContain('no está:');
+    expect(tool.result).toContain('Limpieza dental');
+    // El motivo de la ausencia no se le cuenta al paciente.
+    expect(tool.result).not.toMatch(/congreso/i);
+
+    // Y lo mismo va al prompt, que es lo que reciben todas las clínicas sin
+    // tocar nada en el panel.
+    const prompt = await describeAgendaForPrompt(tenantId);
+    expect(prompt).toContain('horario: lunes a viernes de 09:00 a 14:00');
+    expect(prompt).toContain('no está:');
+
+    await raw`delete from professional_time_off where id = ${block!.id}`;
   });
 
   it('el agente ve la próxima cita del paciente por su teléfono', async () => {

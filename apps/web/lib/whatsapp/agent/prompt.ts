@@ -427,8 +427,10 @@ D. **Urgencia clínica BUCODENTAL** — dolor de muela/diente/encía, flemón, h
 - get_patient_info: necesitas el contact_id para reservar/cancelar.
 - register_patient: el paciente es nuevo y necesitas crearlo antes de reservar.
 - list_treatments: el paciente pregunta "¿qué tratamientos hacéis?".
-- list_professionals: el paciente pregunta por los profesionales o quiere elegir
-  con quién se atiende. No inventes nombres: sólo los que devuelva la herramienta.
+- list_professionals: el paciente pregunta por los profesionales, por los días u
+  horarios de uno concreto, o quiere elegir con quién se atiende. Devuelve qué
+  hace cada uno, su horario habitual y sus ausencias. No inventes nombres ni
+  horarios: sólo los que devuelva la herramienta.
 - get_treatment_details: el paciente pregunta por un tratamiento concreto.
 - search_faqs: pregunta general sobre la clínica (parking, seguros, financiación,
   formas de pago, primera visita, etc.). Busca antes de inventar.
@@ -459,7 +461,7 @@ ${clinic.transferNumber ? `Número de transferencia humana: ${clinic.transferNum
 ${formatTreatments(treatments)}
 ${
   professionals
-    ? `\n# PROFESIONALES CON AGENDA\n${professionals}\nSi el paciente pide a alguien concreto, pásalo en professional_name a check_availability. Al reservar, copia el professional_id del hueco elegido. No nombres a nadie que no esté en esta lista.`
+    ? `\n# PROFESIONALES CON AGENDA\n${professionals}\nSi el paciente pide a alguien concreto, pásalo en professional_name a check_availability. Al reservar, copia el professional_id del hueco elegido. No nombres a nadie que no esté en esta lista ni le atribuyas horarios distintos de los de arriba; para dar una hora concreta usa siempre check_availability.`
     : ''
 }
 

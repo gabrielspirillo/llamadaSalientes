@@ -245,7 +245,13 @@ export async function agendaPatientSummary(
   }
 }
 
-/** Quién pasa consulta y qué hace cada uno. */
+/**
+ * Quién pasa consulta, qué hace cada uno, cuándo trabaja y cuándo no está.
+ *
+ * Es lo que le permite al agente responder "la doctora Ruiz atiende de lunes a
+ * viernes por la mañana, pero la semana que viene no está" sin tener que pedir
+ * una fecha y consultar huecos para averiguarlo.
+ */
 export async function agendaListProfessionals(tenantId: string): Promise<AgendaToolResult> {
   if (!(await usesInternalAgenda(tenantId))) return null;
 
@@ -261,12 +267,19 @@ export async function agendaListProfessionals(tenantId: string): Promise<AgendaT
               .slice(0, 6)
               .join(', ')
           : 'todos los tratamientos del catálogo';
-      const reserva = p.acceptsOnlineBooking ? '' : ' — no se le puede reservar automáticamente';
-      return `- ${p.fullName}${p.specialty ? ` (${p.specialty})` : ''}: ${what}${reserva}`;
+      const partes = [
+        `- ${p.fullName}${p.specialty ? ` (${p.specialty})` : ''}`,
+        `hace: ${what}`,
+        `horario: ${p.schedule}`,
+      ];
+      if (p.absences) partes.push(`no está: ${p.absences}`);
+      if (!p.acceptsOnlineBooking)
+        partes.push('no se le reserva automáticamente: pasa a recepción');
+      return partes.join(' | ');
     });
 
     return {
-      result: `Profesionales de la clínica:\n${lines.join('\n')}\nPara ver sus huecos usá check_availability con professional_name.`,
+      result: `Profesionales de la clínica:\n${lines.join('\n')}\nEse horario es el habitual: para dar una hora concreta usá SIEMPRE check_availability con professional_name, que ya descuenta citas y ausencias.`,
     };
   } catch (err) {
     console.error('[agenda-voice] list_professionals', err);

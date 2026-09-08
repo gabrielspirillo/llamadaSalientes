@@ -264,7 +264,7 @@ export function getAgentToolDefinitions(): AgentToolDefinition[] {
     {
       name: 'list_professionals',
       description:
-        'Lista los profesionales de la clínica con agenda propia y qué tratamientos realiza cada uno. Úsala cuando el paciente pregunte por un profesional o quiera elegir con quién se atiende.',
+        'Los profesionales de la clínica: qué tratamientos hace cada uno, en qué días y horas atiende y si tiene alguna ausencia próxima. Úsala cuando el paciente pregunte por un profesional concreto ("¿está la doctora Ruiz?", "¿qué días atiende?"), cuando quiera elegir con quién se atiende, o cuando pregunte quién hace un tratamiento. No inventes nombres: sólo los que devuelva esta tool.',
       parameters: {
         type: 'object',
         properties: {},
