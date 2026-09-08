@@ -39,6 +39,9 @@ COPY --chown=worker:nodejs apps/web/package.json ./apps/web/
 COPY --chown=worker:nodejs apps/web/tsconfig.json ./apps/web/
 COPY --chown=worker:nodejs apps/web/lib ./apps/web/lib
 COPY --chown=worker:nodejs apps/web/worker ./apps/web/worker
+# Scripts de operación que se corren dentro del contenedor (p. ej. dejar las
+# tools de Retell al día con la agenda: scripts/retell/sync-agenda-tools.ts).
+COPY --chown=worker:nodejs apps/web/scripts ./apps/web/scripts
 COPY --chown=worker:nodejs packages ./packages
 # Las migraciones SQL: el worker las aplica al arrancar (lib/db/migrate.ts).
 COPY --chown=worker:nodejs supabase/migrations ./supabase/migrations

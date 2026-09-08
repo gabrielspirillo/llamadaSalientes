@@ -304,6 +304,35 @@ el `start_time`). El prompt de WhatsApp y las variables de Retell incluyen la
 lista de profesionales (`{{professionals}}`); si la clínica no usa la agenda
 interna va vacía, para que el agente no se invente nombres.
 
+**Las tools de Retell NO están en este repo: viven en el LLM de cada agente,
+dentro de Retell.** Que la app sepa responder `list_professionals` no sirve de
+nada si el LLM no la tiene declarada — nunca la va a llamar. Por eso hay un
+script que las reconcilia contra la API de Retell:
+
+```
+tsx --import ./worker/preload.ts scripts/retell/sync-agenda-tools.ts          # aplica
+tsx --import ./worker/preload.ts scripts/retell/sync-agenda-tools.ts --check  # sólo comprueba (código 1 si falta algo)
+```
+
+Es idempotente y hay que volver a correrlo **cada vez que se da de alta una
+clínica con agente propio**. Resuelve los LLM por tres vías: `retell_llm_id` de
+`agent_configs`, `retell_agent_id` (preguntándole a Retell cuál es su LLM) y los
+agentes por defecto de env (`RETELL_DEFAULT_AGENT_ID`,
+`RETELL_OUTBOUND_DEFAULT_AGENT_ID`, `FUTURA_DEMO_RETELL_AGENT_ID`).
+
+⚠️ **Hoy (2026-09-08) ninguna clínica tiene agente propio en la base**: las filas
+de `agent_configs` no traen `retell_agent_id` ni `retell_llm_id`, así que todas
+caen a los agentes por defecto de env y en producción sólo hay **dos** LLM
+atendiendo a todo el mundo (`llm_daa9e8aee1f24a30f0bfff908ed9` para el inbound y
+el outbound por defecto, `llm_340dc20dc9c2dd9ec11273b5a430` para la demo). Los
+dos quedaron sincronizados. Si el script te dice que revisó dos LLM y no tres o
+diez, no está roto: es que sigue sin haber agentes por clínica.
+
+Las variables de los agentes por defecto (`RETELL_*_AGENT_ID`) están sólo en el
+env de `cliniq-web`, no en el del worker, así que correr el script dentro del
+contenedor del worker sin pasárselas revisa únicamente los agentes que sí estén
+en la base.
+
 **Idempotencia**: `agenda_appointments.dedupe_key` con único parcial por tenant.
 La voz usa `call:<retellCallId>:<start>` y WhatsApp `wa:<conversationId>:<start>`,
 así que un reintento de webhook no deja dos citas.
