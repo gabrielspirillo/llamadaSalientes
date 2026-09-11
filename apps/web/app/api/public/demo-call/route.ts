@@ -1,3 +1,8 @@
+import {
+  describeAllowedCountries,
+  isDestinationAllowed,
+  parseAllowedCountryCodes,
+} from '@/lib/calls/destination-allowlist';
 import { triggerCallback } from '@/lib/calls/trigger-callback';
 import { db } from '@/lib/db/client';
 import { calls } from '@/lib/db/schema';
@@ -57,7 +62,11 @@ export async function OPTIONS(req: NextRequest) {
  *
  * Seguridad:
  *  - CORS restringido a FUTURA_DEMO_ALLOWED_ORIGINS.
- *  - Rate-limit: 1 llamada / RATE_LIMIT_SECONDS por número (vía tabla calls).
+ *  - Lista blanca de países de destino (FUTURA_DEMO_ALLOWED_COUNTRY_CODES).
+ *    Es lo único que frena el fraude IRSF: en septiembre de 2026 una ráfaga
+ *    de llamadas a Serbia, Kenia, Israel… vació el saldo de Zadarma.
+ *  - Rate-limit por IP, tope global diario y 1 llamada / RATE_LIMIT_SECONDS
+ *    por número (vía tabla calls).
  *  - Validación E.164 a través de triggerCallback.
  *  - Sin auth: este endpoint existe específicamente para la landing pública.
  */
@@ -97,10 +106,29 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const ip = clientIp(req);
+
+  // Lista blanca de países, ANTES de gastar nada (ni Redis ni telefonía).
+  // Rechazar aquí no cuesta y es lo que corta el fraude a números de
+  // tarificación especial, que el rate-limit por IP no frena.
+  const allowedCodes = parseAllowedCountryCodes(env.FUTURA_DEMO_ALLOWED_COUNTRY_CODES);
+  if (!isDestinationAllowed(phone, allowedCodes)) {
+    console.warn('[demo-call] destino fuera de la lista blanca de países', {
+      ip,
+      prefix: phone.slice(0, 5),
+    });
+    return NextResponse.json(
+      {
+        error: `Por ahora la demo sólo puede llamar a números de ${describeAllowedCountries(allowedCodes)}. Si querés verla con otro país, escribinos y te la mostramos en directo.`,
+        reason: 'destination_not_allowed',
+      },
+      { status: 422, headers },
+    );
+  }
+
   // Rate-limit por IP y tope diario global. El límite por número no alcanza:
   // rotando números se vacía el saldo de telefonía y se usa la demo para
   // llamar a terceros con nuestro caller ID.
-  const ip = clientIp(req);
   const [perIp, perDay] = await Promise.all([
     consumeRateLimit(`demo-call:ip:${ip}`, DEMO_CALLS_PER_IP_PER_HOUR, 3600),
     consumeRateLimit('demo-call:global', DEMO_CALLS_PER_DAY, 86400),

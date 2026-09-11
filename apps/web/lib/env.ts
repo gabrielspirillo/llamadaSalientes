@@ -149,6 +149,11 @@ const envSchema = z.object({
   // Origen permitido para CORS del endpoint /api/public/demo-call.
   // Acepta lista separada por comas. Ej: "https://cliniq.futuradigital.es,https://www.cliniq.futuradigital.es"
   FUTURA_DEMO_ALLOWED_ORIGINS: z.string().optional(),
+  // Países a los que la demo puede marcar: indicativos E.164 sin "+", separados
+  // por comas (ej: "34,54,598"). Sin la variable rige el defecto de
+  // lib/calls/destination-allowlist.ts. No hay valor "todos": un valor vacío
+  // o inválido cae al defecto. Es la defensa contra el fraude IRSF.
+  FUTURA_DEMO_ALLOWED_COUNTRY_CODES: z.string().optional(),
   // Retell agent_id que atiende las llamadas demo (Manuel — FUTURA Demo Outbound).
   // Se pasa como override en /api/public/demo-call para no interferir con el
   // agente outbound configurado por tenant en agent_configs (que es lo que
