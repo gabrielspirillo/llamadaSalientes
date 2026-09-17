@@ -5,6 +5,7 @@ import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
+import { resolveTenantRole, roleSatisfies } from '@/lib/auth/tenant-role';
 import { db } from '@/lib/db/client';
 import {
   auditLogs,
@@ -256,6 +257,36 @@ export async function closeConversation(input: unknown): Promise<ActionResult<nu
       ),
     );
   revalidatePath(`/dashboard/whatsapp/${parsed.data.conversationId}`);
+  revalidatePath('/dashboard/whatsapp');
+  return ok(null);
+}
+
+/**
+ * Borra una conversación y, en cascada, sus mensajes, runs del agente y
+ * etiquetas (las FKs de esas tablas son ON DELETE CASCADE). El contacto se
+ * conserva. Es destructivo e irreversible, así que exige rol operador o admin.
+ */
+export async function deleteConversation(input: unknown): Promise<ActionResult<null>> {
+  const parsed = conversationIdSchema.safeParse(input);
+  if (!parsed.success) return fail('Datos inválidos');
+  const { tenant } = await getCurrentTenant();
+
+  const access = await resolveTenantRole().catch(() => null);
+  if (!access || access.role === null || !roleSatisfies(access.role, 'operator')) {
+    return fail('No tenés permiso para eliminar conversaciones.');
+  }
+
+  const [deleted] = await db
+    .delete(whatsappConversations)
+    .where(
+      and(
+        eq(whatsappConversations.id, parsed.data.conversationId),
+        eq(whatsappConversations.tenantId, tenant.id),
+      ),
+    )
+    .returning({ id: whatsappConversations.id });
+  if (!deleted) return fail('Conversación no encontrada');
+
   revalidatePath('/dashboard/whatsapp');
   return ok(null);
 }
