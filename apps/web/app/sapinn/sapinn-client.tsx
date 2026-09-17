@@ -98,27 +98,6 @@ export function SapinnDemo() {
     setWebStatus('ended');
   }
 
-  // Revelado por scroll con IntersectionObserver: sin dependencias de
-  // animación. Si no hay JS o el usuario prefiere menos movimiento, el CSS
-  // deja todo visible igual.
-  useEffect(() => {
-    const els = rootRef.current?.querySelectorAll('[data-reveal]');
-    if (!els?.length) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) {
-            e.target.classList.add('sp-in');
-            io.unobserve(e.target);
-          }
-        }
-      },
-      { threshold: 0.16 },
-    );
-    for (const el of els) io.observe(el);
-    return () => io.disconnect();
-  }, []);
-
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (status === 'loading') return;
@@ -575,13 +554,13 @@ export function SapinnDemo() {
         {/* ── Cierre ── */}
         <section className="sp-cta-final" data-reveal>
           <h2>¿Querés oírlo?</h2>
-          <p>Subí, dejá tu número y en menos de un minuto lo tenés al teléfono.</p>
+          <p>Subí, tocá el botón y hablá con el agente ahora mismo.</p>
           <button
             type="button"
             className="sp-btn"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           >
-            <PhoneIcon /> Que me llame ahora
+            <MicIcon /> Hablar con el agente
           </button>
         </section>
 
@@ -763,8 +742,8 @@ const CSS = `
 @media(min-width:560px){.sp-bar{grid-template-columns:11rem 1fr 2.2rem;}}
 .sp-bar .k{font-size:.84rem;color:var(--text);}
 .sp-bar .t{height:9px;background:#101714;border-radius:4px;overflow:hidden;}
-.sp-bar .t i{display:block;height:100%;background:linear-gradient(90deg,var(--lime-deep),var(--lime));border-radius:4px;transform:scaleX(0);transform-origin:left;transition:transform 1s cubic-bezier(.2,.7,.2,1);}
-.sp-in .sp-bar .t i{transform:scaleX(1);}
+.sp-bar .t i{display:block;height:100%;background:linear-gradient(90deg,var(--lime-deep),var(--lime));border-radius:4px;transform-origin:left;animation:sp-grow 1s cubic-bezier(.2,.7,.2,1) both;}
+@keyframes sp-grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .sp-bar .n{text-align:right;color:var(--white);font-weight:700;font-size:.85rem;font-variant-numeric:tabular-nums;}
 @media(max-width:559px){.sp-bar .t{grid-column:1/-1;}}
 .sp-rec-foot{margin:16px 0 0;padding-top:14px;border-top:1px solid var(--line);font-size:.85rem;color:var(--dim);max-width:60ch;}
@@ -777,10 +756,10 @@ const CSS = `
 .sp-foot{margin-top:clamp(56px,10vw,90px);padding-top:18px;border-top:1px solid rgba(139,216,53,.1);display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:space-between;font-size:.7rem;color:var(--faint);letter-spacing:.04em;}
 .sp-foot span:first-child{color:var(--white);font-weight:700;letter-spacing:.1em;text-transform:uppercase;}
 
-[data-reveal]{opacity:0;transform:translateY(22px);transition:opacity .7s ease,transform .7s ease;}
-[data-reveal].sp-in{opacity:1;transform:none;}
-.sp-microsteps [data-reveal]{transition-delay:.05s;}
-.sp-microsteps [data-reveal]:nth-child(2){transition-delay:.13s;}
+/* Visible por defecto: el contenido NUNCA depende del JS para verse. La
+   entrada suave la da una animación CSS de una sola vez, no el observer, así
+   que si la hidratación falla o el navegador no lo soporta, todo se ve igual. */
+[data-reveal]{animation:sp-rise .7s ease both;}
 .sp-microsteps [data-reveal]:nth-child(3){transition-delay:.21s;}
 
 @keyframes sp-fade{from{opacity:0}to{opacity:1}}
@@ -788,8 +767,7 @@ const CSS = `
 
 @media(prefers-reduced-motion:reduce){
   .sp-orb,.sp-dot,.sp-phone-core,.sp-ring,.sp-wave span,.sp-live-eq span{animation:none!important;}
-  .sp-h1,.sp-lead,.sp-card,.sp-eyebrow{animation:none!important;}
-  .sp-bar .t i{transform:none!important;transition:none!important;}
-  [data-reveal]{opacity:1!important;transform:none!important;}
+  .sp-h1,.sp-lead,.sp-card,.sp-eyebrow,[data-reveal]{animation:none!important;opacity:1!important;transform:none!important;}
+  .sp-bar .t i{animation:none!important;transform:none!important;}
 }
 `;
