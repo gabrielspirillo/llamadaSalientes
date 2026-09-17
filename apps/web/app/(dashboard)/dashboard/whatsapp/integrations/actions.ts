@@ -357,6 +357,21 @@ export async function connectEvolution(): Promise<
     apiKey: cfg.adminApiKey,
   });
   if (existing.ok) {
+    // Reaseguramos el webhook TAMBIÉN sobre la instancia ya existente. Sin esto,
+    // "Reconectar" sobre una instancia viva re-pedía el QR pero nunca volvía a
+    // registrar el webhook, así que una instancia con el webhook mal (sin token)
+    // quedaba rota para siempre: la única salida era borrarla y recrearla. Usa
+    // la admin key, que autoriza /webhook/set aunque no tengamos el hash local.
+    const whResult = await setEvolutionWebhook(
+      cfg.baseUrl,
+      instanceName,
+      cfg.adminApiKey,
+      tenant.id,
+    );
+    if (!whResult.ok) {
+      console.warn('[connectEvolution] /webhook/set (instancia existente) falló:', whResult.error);
+    }
+
     const status: 'CONNECTED' | 'PENDING' = existing.state === 'open' ? 'CONNECTED' : 'PENDING';
     await db
       .insert(whatsappConnections)
