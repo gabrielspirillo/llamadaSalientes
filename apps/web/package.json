@@ -9,6 +9,7 @@
     "worker": "tsx worker/index.ts",
     "worker:dev": "tsx watch worker/index.ts",
     "eval:agent": "tsx --import ./worker/preload.ts lib/whatsapp/agent/eval/run.ts",
+    "eval:sim": "tsx --import ./worker/preload.ts lib/whatsapp/agent/eval/sim.ts",
     "rag:backfill": "tsx --import ./worker/preload.ts lib/rag/backfill-run.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
