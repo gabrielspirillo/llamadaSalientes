@@ -250,10 +250,31 @@ function evolutionWebhookUrl(tenantId: string): string {
   return `${appUrl}/api/webhooks/whatsapp/evolution?token=${webhookToken('evolution', tenantId)}`;
 }
 
+/**
+ * Config del webhook para Evolution v2 (formato anidado `webhook`).
+ *
+ * El token viaja por DOS vías: el query `?token=` de la URL y el header
+ * `x-webhook-token`. El header es el que sostiene la autenticación: se comprobó
+ * en producción que al registrar por `/instance/create` el query string se
+ * perdía y el webhook quedaba sin token, así que la ruta rechazaba (401) cada
+ * inbound y no llegaba nada al panel. El header lo lee `readWebhookToken` antes
+ * que el query, así que aunque Evolution recorte la URL, la firma llega igual.
+ */
+function evolutionWebhookConfig(tenantId: string) {
+  return {
+    enabled: true,
+    url: evolutionWebhookUrl(tenantId),
+    headers: { 'x-webhook-token': webhookToken('evolution', tenantId) },
+    byEvents: false,
+    base64: false,
+    events: [...EVOLUTION_WEBHOOK_EVENTS],
+  };
+}
+
 function evolutionCreateBody(instanceName: string, tenantId: string): string {
   // v2 admite anidar la config del webhook en /instance/create. Lo hacemos
-  // para que la creación + alta de webhook sea atómica. Si Evolution (alguna
-  // versión) ignora el campo `webhook`, hacemos un /webhook/set best-effort.
+  // para que la creación + alta de webhook sea atómica. Igual reaseguramos con
+  // /webhook/set porque en esta versión el create no persiste bien el token.
   return JSON.stringify({
     instanceName,
     qrcode: true,
@@ -263,12 +284,7 @@ function evolutionCreateBody(instanceName: string, tenantId: string): string {
     alwaysOnline: false,
     readMessages: false,
     readStatus: false,
-    webhook: {
-      url: evolutionWebhookUrl(tenantId),
-      byEvents: false,
-      base64: false,
-      events: [...EVOLUTION_WEBHOOK_EVENTS],
-    },
+    webhook: evolutionWebhookConfig(tenantId),
   });
 }
 
@@ -291,19 +307,14 @@ async function setEvolutionWebhook(
   apiKey: string,
   tenantId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  // v2 flat body (camelCase). Ver
-  // https://doc.evolution-api.com/v2/api-reference/webhook/set
+  // v2 exige el body ANIDADO `{ webhook: {...} }`. El body plano que se usaba
+  // antes devolvía 400 en esta versión, así que este paso —el que aplica el
+  // token— fallaba en silencio y el webhook quedaba sin autenticar.
   try {
     const res = await fetch(`${baseUrl}/webhook/set/${encodeURIComponent(instanceName)}`, {
       method: 'POST',
       headers: { apikey: apiKey, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        enabled: true,
-        url: evolutionWebhookUrl(tenantId),
-        webhookByEvents: false,
-        webhookBase64: false,
-        events: [...EVOLUTION_WEBHOOK_EVENTS],
-      }),
+      body: JSON.stringify({ webhook: evolutionWebhookConfig(tenantId) }),
     });
     if (!res.ok) {
       const body = await res.text().catch(() => '');
