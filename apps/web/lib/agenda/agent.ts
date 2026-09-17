@@ -397,27 +397,29 @@ export async function findAgentSlots(
 }
 
 /**
- * Reordena los huecos para que se vea variedad de profesionales: primero el
- * más próximo de cada profesional (en orden de hora), y después se rellena con
- * el resto. Así, si tres especialistas atienden el tratamiento, el paciente ve
- * uno de cada uno en vez de tres del mismo.
+ * Elige los huecos a ofrecer priorizando SIEMPRE los más cercanos (incluidos
+ * varios del mismo día/profesional). La variedad de profesionales es sólo un
+ * desempate: si los `limit` más próximos son todos del mismo profesional y hay
+ * huecos de otro, se cambia el ÚLTIMO (el más lejano de los elegidos) por el más
+ * próximo de otro profesional. Así el paciente ve primero lo antes posible y, de
+ * paso, sabe que hay más de un profesional.
  */
 export function diversifyByProfessional(
   options: AgentSlotOption[],
   limit: number,
 ): AgentSlotOption[] {
   const byTime = [...options].sort((a, b) => a.start.getTime() - b.start.getTime());
-  const seen = new Set<string>();
-  const firstEach: AgentSlotOption[] = [];
-  const rest: AgentSlotOption[] = [];
-  for (const o of byTime) {
-    if (seen.has(o.professionalId)) rest.push(o);
-    else {
-      seen.add(o.professionalId);
-      firstEach.push(o);
-    }
+  if (byTime.length <= limit) return byTime;
+
+  const picked = byTime.slice(0, limit);
+  const distinct = new Set(picked.map((o) => o.professionalId));
+  if (distinct.size === 1) {
+    const other = byTime.find((o) => o.professionalId !== picked[0]?.professionalId);
+    // Reemplaza el último elegido (el más lejano) por el más próximo de otro
+    // profesional, sin tocar los primeros —que son los más cercanos—.
+    if (other) picked[picked.length - 1] = other;
   }
-  return [...firstEach, ...rest].slice(0, limit);
+  return picked;
 }
 
 function dedupeTreatments(

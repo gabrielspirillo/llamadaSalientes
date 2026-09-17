@@ -165,6 +165,12 @@ export function MessagesWorkspace({
   const refreshRail = useCallback(async () => {
     try {
       const res = await fetch('/api/messages/rail', { cache: 'no-store' });
+      // 4xx (sin acceso / sin sesión activa en esta clínica): se conserva el rail
+      // que ya había y no se pinta banner. No es algo roto que el operador deba ver.
+      if (res.status === 401 || res.status === 403 || res.status === 404) {
+        setError(null);
+        return;
+      }
       const data = (await res.json()) as { rail?: ImRailDTO; error?: string };
       if (!res.ok || !data.rail) throw new Error(data.error ?? 'No se pudo cargar el rail');
       setRail(data.rail);
@@ -215,6 +221,19 @@ export function MessagesWorkspace({
         const res = await fetch(`/api/messages/channels/${channelId}/messages?${params}`, {
           cache: 'no-store',
         });
+        // Canal inaccesible (no soy miembro, o selección vieja de otra clínica al
+        // impersonar): no es un error que mostrar en rojo. Se limpia la selección
+        // en silencio y se deja el "Elige un canal", en vez del banner "No
+        // encontrado". Sin esto, entrar a Mensajes gestionando otra clínica
+        // pintaba un error aunque no hubiera nada roto.
+        if (res.status === 404 || res.status === 403) {
+          setThreads((prev) => {
+            const cur = prev[channelId] ?? EMPTY_THREAD;
+            return { ...prev, [channelId]: { ...cur, loading: false, loadingMore: false } };
+          });
+          setActiveId((cur) => (cur === channelId ? null : cur));
+          return;
+        }
         const data = (await res.json()) as {
           page?: { messages: ImMessageDTO[]; nextCursor: string | null; hasMore: boolean };
           messages?: ImMessageDTO[];
