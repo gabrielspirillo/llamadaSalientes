@@ -6,9 +6,42 @@ import { db } from '@/lib/db/client';
 import {
   agendaAppointments,
   professionals,
+  tenants,
   whatsappContacts,
   whatsappConversations,
 } from '@/lib/db/schema';
+
+/**
+ * La derivación al especialista está limitada a los tenants de esta lista: el
+ * resto sigue exactamente como antes (el handoff no asigna ni menciona a nadie).
+ * Se identifican por `slug` o por `clerk_organization_id`. La lista por defecto
+ * es la única clínica que la pidió; se puede ampliar por env sin tocar código.
+ */
+const DEFAULT_SPECIALIST_ROUTING_TENANTS = ['juanfran-s-organization-1788202447676614548'];
+
+function specialistRoutingAllowlist(): Set<string> {
+  const raw = process.env.SPECIALIST_ROUTING_TENANTS;
+  const list = raw
+    ? raw
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : DEFAULT_SPECIALIST_ROUTING_TENANTS;
+  return new Set(list);
+}
+
+/** ¿Este tenant tiene activada la derivación al especialista? */
+async function specialistRoutingEnabled(tenantId: string): Promise<boolean> {
+  const allow = specialistRoutingAllowlist();
+  if (allow.size === 0) return false;
+  const [t] = await db
+    .select({ slug: tenants.slug, clerkOrganizationId: tenants.clerkOrganizationId })
+    .from(tenants)
+    .where(eq(tenants.id, tenantId))
+    .limit(1);
+  if (!t) return false;
+  return allow.has(t.slug) || allow.has(t.clerkOrganizationId);
+}
 
 /**
  * El especialista al que le corresponde un contacto.
@@ -45,6 +78,7 @@ export async function resolveContactSpecialists(
   tenantId: string,
   contact: { ghlContactId?: string | null; phone?: string | null; email?: string | null },
 ): Promise<ContactSpecialist[]> {
+  if (!(await specialistRoutingEnabled(tenantId))) return [];
   const refs = contactRefsFor(contact);
   if (refs.length === 0) return [];
 
@@ -93,6 +127,7 @@ export async function resolveConversationSpecialists(
   tenantId: string,
   conversationId: string,
 ): Promise<ContactSpecialist[]> {
+  if (!(await specialistRoutingEnabled(tenantId))) return [];
   const [contact] = await db
     .select({
       phone: whatsappContacts.phoneE164,
