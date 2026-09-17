@@ -7,6 +7,7 @@ const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/onboarding/clinica(.*)', // wizard público de alta de clínicas (valida su propia key firmada)
+  '/sapinn(.*)', // landing privada por enlace para la consulta SPN-2026-VOZ-01 (Sapinn)
   '/api/health',
   '/api/webhooks/(.*)', // clerk, retell, ghl, stripe — verifican firma propia
   '/api/retell/(.*)',
