@@ -46,3 +46,13 @@ export type WhatsappRealtimeEvent =
 export function conversationChannel(conversationId: string): string {
   return `wa:conv:${conversationId}`;
 }
+
+// Canal a nivel tenant: avisa al buzón (la LISTA de conversaciones) de que algo
+// cambió, para que se refresque al instante en vez de esperar al poll. No lleva
+// el mensaje entero: sólo dispara un refresh del server component, que ya trae
+// el orden, los no leídos y el último texto con el aislamiento por tenant.
+export type WhatsappInboxEvent = { kind: 'inbox'; conversationId: string };
+
+export function tenantInboxChannel(tenantId: string): string {
+  return `wa:inbox:${tenantId}`;
+}

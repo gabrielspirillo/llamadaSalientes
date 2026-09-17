@@ -1,10 +1,12 @@
 import 'server-only';
 
 import {
+  type WhatsappInboxEvent,
   type WhatsappMessageRow,
   type WhatsappRealtimeEvent,
   conversationChannel,
   serializeMessage,
+  tenantInboxChannel,
 } from './events';
 
 // Publicación de eventos de conversación al canal Redis correspondiente.
@@ -19,7 +21,10 @@ import {
 // persistencia. Por eso siempre logueamos y tragamos el error. El import del
 // módulo `queue/connection` es dinámico para no arrastrar la validación de
 // `lib/env.ts` en archivos que se cargan desde tests sin vars completas.
-async function publish(channel: string, event: WhatsappRealtimeEvent): Promise<void> {
+async function publish(
+  channel: string,
+  event: WhatsappRealtimeEvent | WhatsappInboxEvent,
+): Promise<void> {
   if (!process.env.REDIS_URL) return;
   try {
     const { getRedis } = await import('@/lib/queue/connection');
@@ -33,6 +38,11 @@ async function publish(channel: string, event: WhatsappRealtimeEvent): Promise<v
   }
 }
 
+/** Avisa al buzón del tenant de que una conversación cambió. Best-effort. */
+export async function publishInboxEvent(tenantId: string, conversationId: string): Promise<void> {
+  await publish(tenantInboxChannel(tenantId), { kind: 'inbox', conversationId });
+}
+
 export async function publishMessageEvent(row: WhatsappMessageRow): Promise<void> {
   // Catch wide: la realtime no debe romper el flujo principal de persistencia
   // si hay un row malformado (ej. fixture de tests sin createdAt).
@@ -41,6 +51,9 @@ export async function publishMessageEvent(row: WhatsappMessageRow): Promise<void
       kind: 'message',
       message: serializeMessage(row),
     });
+    // Mismo evento, además, al canal del buzón: cualquier mensaje (entrante o
+    // saliente) refresca la lista de conversaciones al instante.
+    await publishInboxEvent(row.tenantId, row.conversationId);
   } catch (err) {
     console.warn('[wa-realtime] publishMessageEvent failed', {
       messageId: row.id,

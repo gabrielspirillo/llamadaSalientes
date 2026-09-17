@@ -141,7 +141,7 @@ export default async function WhatsappConversationsPage() {
           recargar a mano (la página es server-render). A 8s cada refresco
           re-ejecutaba las queries del listado completo: es un intervalo de
           polling, no de tiempo real — para eso está el SSE del hilo. */}
-      <AutoRefresh intervalMs={30000} />
+      <AutoRefresh />
 
       <PageHeader
         eyebrow="Bandeja de entrada"

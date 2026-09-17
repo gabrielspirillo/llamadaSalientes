@@ -230,6 +230,13 @@ export interface AgentSlotSearchResult {
   options: AgentSlotOption[];
   matchedTreatment: { id: string; name: string } | null;
   matchedProfessional: { id: string; fullName: string } | null;
+  /**
+   * Todos los profesionales que atienden el tratamiento buscado (o toda la
+   * agenda si no se pidió tratamiento), tengan o no hueco cercano. Con esto el
+   * agente sabe que hay MÁS de un especialista y puede ofrecer elegir, en vez de
+   * agendar con el primero que apareció.
+   */
+  offeredBy: { id: string; fullName: string }[];
   /** Por qué no hay opciones, cuando la causa es de configuración. */
   reason: 'OK' | 'NO_AGENDA' | 'NO_PROFESSIONAL_FOR_TREATMENT' | 'NO_SLOTS';
 }
@@ -263,6 +270,7 @@ export async function findAgentSlots(
       options: [],
       matchedTreatment: null,
       matchedProfessional: null,
+      offeredBy: [],
       reason: 'NO_AGENDA',
     };
   }
@@ -311,9 +319,12 @@ export async function findAgentSlots(
       matchedProfessional: matchedProfessional
         ? { id: matchedProfessional.id, fullName: matchedProfessional.fullName }
         : null,
+      offeredBy: [],
       reason: 'NO_PROFESSIONAL_FOR_TREATMENT',
     };
   }
+
+  const offeredBy = bookable.map((p) => ({ id: p.id, fullName: p.fullName }));
 
   const perProfessional = params.limitPerProfessional ?? 4;
   const results = await Promise.all(
@@ -353,8 +364,33 @@ export async function findAgentSlots(
     matchedProfessional: matchedProfessional
       ? { id: matchedProfessional.id, fullName: matchedProfessional.fullName }
       : null,
+    offeredBy,
     reason: options.length > 0 ? 'OK' : 'NO_SLOTS',
   };
+}
+
+/**
+ * Reordena los huecos para que se vea variedad de profesionales: primero el
+ * más próximo de cada profesional (en orden de hora), y después se rellena con
+ * el resto. Así, si tres especialistas atienden el tratamiento, el paciente ve
+ * uno de cada uno en vez de tres del mismo.
+ */
+export function diversifyByProfessional(
+  options: AgentSlotOption[],
+  limit: number,
+): AgentSlotOption[] {
+  const byTime = [...options].sort((a, b) => a.start.getTime() - b.start.getTime());
+  const seen = new Set<string>();
+  const firstEach: AgentSlotOption[] = [];
+  const rest: AgentSlotOption[] = [];
+  for (const o of byTime) {
+    if (seen.has(o.professionalId)) rest.push(o);
+    else {
+      seen.add(o.professionalId);
+      firstEach.push(o);
+    }
+  }
+  return [...firstEach, ...rest].slice(0, limit);
 }
 
 function dedupeTreatments(

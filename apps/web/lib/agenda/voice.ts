@@ -2,6 +2,7 @@ import 'server-only';
 
 import {
   type AgentSlotOption,
+  diversifyByProfessional,
   findAgentSlots,
   getAgentPatientContext,
   listAgentProfessionals,
@@ -94,12 +95,26 @@ export async function agendaCheckAvailability(
       };
     }
 
-    // Se ofrecen pocas: por teléfono, más de tres opciones no se retienen.
-    const spoken = search.options.slice(0, 3).map((o) => speakOption(o, search.timezone));
+    // Se ofrecen pocas: por teléfono/chat, más de tres opciones no se retienen.
+    // Diversificamos por profesional para no ofrecer sólo la agenda del primero
+    // cuando hay varios especialistas que hacen el tratamiento.
+    const picked = diversifyByProfessional(search.options, 3);
+    const spoken = picked.map((o) => speakOption(o, search.timezone));
     const tratamiento = search.matchedTreatment ? ` para ${search.matchedTreatment.name}` : '';
 
+    // Aviso de que hay varios especialistas: el agente tiene que ofrecer elegir,
+    // no dar por hecho el primero. Sólo si el paciente no pidió uno concreto.
+    const varios =
+      !search.matchedProfessional && search.offeredBy.length > 1
+        ? ` Varios profesionales atienden este tratamiento: ${search.offeredBy
+            .map((p) => p.fullName)
+            .join(
+              ', ',
+            )}. Si el paciente no dijo con quién, preguntale si tiene preferencia antes de reservar; si le da igual, ofrecele el hueco más próximo.`
+        : '';
+
     return {
-      result: `Huecos libres${tratamiento}: ${spoken.join('; ')}. Para reservar, pasá a book_appointment el start_time y el professional_id EXACTOS del hueco que elija el paciente, tal cual aparecen entre corchetes. Al paciente decile sólo el día, la hora y el nombre del profesional.`,
+      result: `Huecos libres${tratamiento}: ${spoken.join('; ')}.${varios} Para reservar, el paciente tiene que ELEGIR un hueco concreto (día, hora Y profesional). Un "sí" o "dale" ambiguo NO es una elección: preguntale cuál de los horarios prefiere. Luego pasá a book_appointment el start_time y el professional_id EXACTOS de ESE hueco, tal cual aparecen entre corchetes. Al paciente decile sólo el día, la hora y el nombre del profesional.`,
     };
   } catch (err) {
     console.error('[agenda-voice] check_availability', err);
