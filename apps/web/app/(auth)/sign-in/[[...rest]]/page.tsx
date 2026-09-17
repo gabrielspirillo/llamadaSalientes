@@ -8,7 +8,7 @@ export default function SignInPage() {
       <div className="relative flex flex-col justify-center px-4 py-10 sm:px-8 sm:py-12">
         <AuthBrand />
         <div className="flex flex-1 items-center justify-center">
-          <div className="w-full animate-fade-up">
+          <div className="flex w-full animate-fade-up justify-center">
             <SignIn />
           </div>
         </div>

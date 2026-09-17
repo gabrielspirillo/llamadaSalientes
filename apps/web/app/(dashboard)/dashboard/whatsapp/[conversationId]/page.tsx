@@ -150,11 +150,7 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
             >
               <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
             </Link>
-            <Avatar
-              name={row.contact.name ?? row.contact.phoneE164}
-              src={row.contact.avatarUrl}
-              size={40}
-            />
+            <Avatar name={row.contact.name ?? row.contact.phoneE164} size={40} />
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="truncate text-[17px] font-bold tracking-tight text-zinc-900">

@@ -431,6 +431,17 @@ export async function onWhatsappHandoff(args: {
       .limit(1);
     if (!conv) return;
 
+    // Derivación al especialista: el profesional al que le corresponde el
+    // paciente (por su agenda) recibe la tarea, así entra o queda enterado.
+    const { resolveContactSpecialists } = await import('@/lib/agenda/specialist');
+    const specialists = await resolveContactSpecialists(args.tenantId, {
+      ghlContactId: conv.ghlContactId,
+      phone: conv.phone,
+    }).catch(() => []);
+    const assigneeUserIds = specialists
+      .map((s) => s.userId)
+      .filter((id): id is string => Boolean(id));
+
     // Una tarea por conversación y por día: si el chat sigue caliente mañana,
     // vuelve a aparecer; no una tarea por cada mensaje.
     const dayKey = new Date().toISOString().slice(0, 10);
@@ -442,6 +453,8 @@ export async function onWhatsappHandoff(args: {
         phone: conv.phone,
         patientGhlContactId: conv.ghlContactId ?? null,
         whatsappConversationId: conv.id,
+        assigneeUserIds,
+        specialistName: specialists[0]?.fullName ?? null,
         dedupeSuffix: `${conv.id}:${dayKey}`,
       },
     });

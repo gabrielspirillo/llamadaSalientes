@@ -264,6 +264,10 @@ async function runWhatsappJob(
       await step.run('publish-handoff-event', async () => {
         try {
           const { postWhatsappHandoff } = await import('@/lib/messaging/bot');
+          const { resolveConversationSpecialists } = await import('@/lib/agenda/specialist');
+          const specialists = await resolveConversationSpecialists(tenantId, conversationId).catch(
+            () => [],
+          );
           await postWhatsappHandoff({
             tenantId,
             conversationId,
@@ -272,6 +276,10 @@ async function runWhatsappJob(
             lastLines: [agentInput.userText, agentOutput.responseText]
               .filter((l): l is string => Boolean(l?.trim()))
               .map((l) => l.trim().slice(0, 200)),
+            specialistNames: specialists.map((s) => s.fullName),
+            mentionUserIds: specialists
+              .map((s) => s.userId)
+              .filter((id): id is string => Boolean(id)),
           });
         } catch (err) {
           console.warn('[wa-process] publish-handoff-event falló', (err as Error).message);

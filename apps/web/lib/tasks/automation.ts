@@ -203,6 +203,15 @@ export interface AutomationContext {
   ghlAppointmentId?: string | null;
   reminderId?: string | null;
   waitlistEntryId?: string | null;
+  /**
+   * Personas a las que derivar la tarea además del asignado fijo de la regla.
+   * Lo usa la derivación de WhatsApp para mandarle la tarea al especialista que
+   * le corresponde al paciente. Los que no sean miembros del tenant los descarta
+   * `createTask`, así que un id colgado no rompe nada.
+   */
+  assigneeUserIds?: string[];
+  /** Nombre del especialista al que se deriva, para dejarlo escrito en la tarea. */
+  specialistName?: string | null;
   /** Sufijo de la clave de dedupe. Sin esto la regla puede duplicar. */
   dedupeSuffix: string;
 }
@@ -318,12 +327,23 @@ export async function runTaskAutomation(args: {
         ? `auto:${args.trigger}:${args.context.dedupeSuffix}`
         : `auto:${args.trigger}:${rule.id}:${args.context.dedupeSuffix}`;
 
+      const baseDescription = rule.descriptionTemplate
+        ? renderTemplate(rule.descriptionTemplate, args.context)
+        : null;
+      // El asignado fijo de la regla + los derivados del evento (el especialista
+      // del paciente en WhatsApp). Deduplicado; `createTask` filtra por tenant.
+      const assigneeUserIds = [
+        ...new Set(
+          [rule.assigneeUserId, ...(args.context.assigneeUserIds ?? [])].filter(
+            (id): id is string => Boolean(id),
+          ),
+        ),
+      ];
+
       const res = await createTask({
         tenantId: args.tenantId,
         title: renderTemplate(rule.titleTemplate, args.context),
-        description: rule.descriptionTemplate
-          ? renderTemplate(rule.descriptionTemplate, args.context)
-          : null,
+        description: appendSpecialist(baseDescription, args.context.specialistName),
         category: rule.category,
         priority: rule.priority,
         dueAt: new Date(Date.now() + rule.dueOffsetMinutes * 60_000),
@@ -331,7 +351,7 @@ export async function runTaskAutomation(args: {
         automationTrigger: args.trigger,
         dedupeKey,
         requiresEvidence: rule.requiresEvidence,
-        assigneeUserIds: rule.assigneeUserId ? [rule.assigneeUserId] : [],
+        assigneeUserIds,
         checklist: (rule.checklist ?? []).filter((c) => c.trim().length > 0),
         patientGhlContactId: args.context.patientGhlContactId ?? null,
         patientName: args.context.patientName ?? null,
@@ -358,6 +378,21 @@ export async function runTaskAutomation(args: {
     });
     return { created: false, reason: 'error' };
   }
+}
+
+/**
+ * Añade la línea del especialista a la descripción. Se hace en tiempo de
+ * ejecución (no en la plantilla guardada) para que las reglas ya sembradas en
+ * tenants existentes también lo muestren sin re-seed.
+ */
+function appendSpecialist(
+  description: string | null,
+  specialistName?: string | null,
+): string | null {
+  const name = specialistName?.trim();
+  if (!name) return description;
+  const line = `Especialista asignado: ${name}.`;
+  return description ? `${description}\n${line}` : line;
 }
 
 export function isAutomationTrigger(v: unknown): v is TaskAutomationTrigger {

@@ -294,13 +294,22 @@ export async function postWhatsappHandoff(args: {
   phone: string | null;
   /** Últimas líneas del chat, ya recortadas por el call site. */
   lastLines?: string[];
+  /** Especialista(s) del paciente para dejar por escrito a quién se deriva. */
+  specialistNames?: string[];
+  /** Ids de esos especialistas con panel: se les menciona para que se enteren. */
+  mentionUserIds?: string[];
 }): Promise<void> {
   const excerpt = (args.lastLines ?? []).slice(-3).join('\n').slice(0, 500);
+  const specialists = (args.specialistNames ?? []).filter((n) => n.trim().length > 0);
   await postSystemEvent({
     tenantId: args.tenantId,
     event: 'wa.handoff',
     title: `WhatsApp pide humano — ${args.patientName}`,
-    body: joinLines([line('Teléfono', args.phone), excerpt || null]),
+    body: joinLines([
+      line('Teléfono', args.phone),
+      specialists.length > 0 ? line('Derivar a', specialists.join(', ')) : null,
+      excerpt || null,
+    ]),
     context: {
       type: 'WA_CONVERSATION',
       id: args.conversationId,
@@ -308,6 +317,7 @@ export async function postWhatsappHandoff(args: {
         whatsappConversationId: args.conversationId,
         patientName: args.patientName,
         patientPhone: args.phone,
+        specialists,
         excerpt,
       },
     },
@@ -320,6 +330,7 @@ export async function postWhatsappHandoff(args: {
       },
       TO_TASK_ACTION,
     ],
+    mentionUserIds: args.mentionUserIds,
     // Una tarjeta por conversación y por día: si sigue caliente mañana, vuelve.
     dedupeKey: `evt:wa.handoff:${args.conversationId}:${dayKey()}`,
   });

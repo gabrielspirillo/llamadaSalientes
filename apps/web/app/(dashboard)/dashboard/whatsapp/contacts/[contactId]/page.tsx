@@ -189,7 +189,7 @@ export default async function ContactDetailPage({ params }: Props) {
         {/* Hero card fija. No scrollea. */}
         <div className="shrink-0 px-6 pt-4">
           <div className="flex items-center gap-4 rounded-2xl border border-[--color-border] bg-white p-5">
-            <Avatar avatarUrl={contact.avatarUrl} initials={initials} size={64} />
+            <Avatar initials={initials} size={64} />
             <div className="min-w-0">
               <h1 className="truncate text-xl font-semibold text-zinc-900">{fullName}</h1>
               <p className="text-sm text-zinc-500">{contact.phoneE164}</p>
@@ -261,27 +261,12 @@ export default async function ContactDetailPage({ params }: Props) {
 }
 
 function Avatar({
-  avatarUrl,
   initials,
   size,
 }: {
-  avatarUrl: string | null;
   initials: string;
   size: number;
 }) {
-  if (avatarUrl) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={avatarUrl}
-        alt="avatar"
-        width={size}
-        height={size}
-        className="rounded-full object-cover"
-        style={{ width: size, height: size }}
-      />
-    );
-  }
   return (
     <div
       className="flex items-center justify-center rounded-full bg-emerald-100 font-semibold text-emerald-700"

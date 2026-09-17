@@ -195,18 +195,9 @@ export function ContactSidebar({
       {/* Contacto */}
       <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-4">
         <div className="flex items-center gap-3">
-          {contact.avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={contact.avatarUrl}
-              alt="avatar"
-              className="h-12 w-12 rounded-full object-cover"
-            />
-          ) : (
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[linear-gradient(135deg,#a7f3d0,#6ee7b7)] text-[16px] font-bold text-emerald-800 ring-2 ring-white">
-              {(contact.name ?? contact.phoneE164).slice(0, 2).toUpperCase()}
-            </div>
-          )}
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[linear-gradient(135deg,#a7f3d0,#6ee7b7)] text-[16px] font-bold text-emerald-800 ring-2 ring-white">
+            {(contact.name ?? contact.phoneE164).slice(0, 2).toUpperCase()}
+          </div>
           <div className="min-w-0">
             <p className="truncate text-[16px] font-bold text-zinc-900">
               {contact.name ?? 'Sin nombre'}
