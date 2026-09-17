@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, eq, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import { whatsappContacts, whatsappConversations, whatsappMessages } from '@/lib/db/schema';
@@ -39,15 +39,18 @@ export async function upsertWhatsappContact(input: {
 }
 
 /**
- * Busca la conversación abierta para un contact+channel. Si no hay
- * (o la última está CLOSED), crea una nueva.
+ * Una conversación por (contacto, canal): cada número tiene SIEMPRE el mismo
+ * hilo. Se reusa la conversación más reciente del contacto; si estaba cerrada,
+ * se reabre (vuelve a ACTIVE, con el agente encendido) en vez de abrir una nueva.
+ * Sólo se crea si el contacto no tenía ninguna. Antes, cerrar una conversación y
+ * que el paciente volviera a escribir generaba un hilo nuevo cada vez.
  */
 export async function getOrCreateOpenConversation(input: {
   tenantId: string;
   contactId: string;
   channel: 'WHATSAPP_CLOUD' | 'WHATSAPP_EVOLUTION' | 'WHATSAPP_TWILIO';
 }) {
-  const open = await db
+  const existing = await db
     .select()
     .from(whatsappConversations)
     .where(
@@ -55,11 +58,23 @@ export async function getOrCreateOpenConversation(input: {
         eq(whatsappConversations.tenantId, input.tenantId),
         eq(whatsappConversations.contactId, input.contactId),
         eq(whatsappConversations.channel, input.channel),
-        ne(whatsappConversations.status, 'CLOSED'),
       ),
     )
+    .orderBy(desc(whatsappConversations.createdAt))
     .limit(1);
-  if (open[0]) return open[0];
+
+  const last = existing[0];
+  if (last) {
+    if (last.status !== 'CLOSED') return last;
+    // Reabrir el mismo hilo: el paciente volvió a escribir. Se reactiva el agente
+    // y se limpia cualquier ventana de takeover vencida.
+    const [reopened] = await db
+      .update(whatsappConversations)
+      .set({ status: 'ACTIVE', aiEnabled: true, humanTakeoverUntil: null, updatedAt: new Date() })
+      .where(eq(whatsappConversations.id, last.id))
+      .returning();
+    return reopened ?? last;
+  }
 
   const [created] = await db
     .insert(whatsappConversations)
