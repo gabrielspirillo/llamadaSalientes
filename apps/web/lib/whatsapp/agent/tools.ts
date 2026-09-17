@@ -148,7 +148,7 @@ export function getAgentToolDefinitions(): AgentToolDefinition[] {
           preferred_date: {
             type: 'string',
             description:
-              'Fecha que pide el paciente en formato YYYY-MM-DD. Si dice "mañana" calcúlala tú a partir de la fecha actual del system prompt.',
+              'Inicio de la ventana de búsqueda, en formato YYYY-MM-DD. Calcúlala SIEMPRE a partir de "Ahora es …" del system prompt. "Mañana" = día siguiente. Para un RANGO usa su PRIMER día: "la semana que viene"/"la próxima semana" = el LUNES de esa semana; "este finde" = el sábado. Nunca pases una fecha pasada ni de otro año; si no estás seguro, pregúntale al paciente en vez de adivinar.',
           },
           calendar_id: {
             type: 'string',

@@ -297,15 +297,37 @@ export async function findAgentSlots(
     ? matchByName(params.professionalName, catalog, (p) => p.fullName)
     : null;
 
+  // ¿La clínica asignó tratamientos a sus profesionales? Si nadie tiene ninguno,
+  // está sin configurar y se ofrece con todos (no se esconde la agenda). Pero si
+  // SÍ hay asignaciones, un tratamiento sin nadie asignado es un tratamiento que
+  // la clínica NO realiza con esos profesionales: no se ofrece con cualquiera.
+  const hasAnyAssignment = catalog.some((p) => p.treatments.length > 0);
+
   let pool = catalog;
+  // Marca de que el pool es el fallback permisivo (clínica sin asignar), no
+  // profesionales que realmente realicen el tratamiento. Evita afirmar luego
+  // "estos profesionales atienden el tratamiento".
+  let unassignedFallback = false;
   if (matchedProfessional) {
     pool = [matchedProfessional];
   } else if (matchedTreatment) {
     const doIt = catalog.filter((p) => p.treatments.some((t) => t.id === matchedTreatment.id));
-    // Si nadie lo tiene asignado explícitamente, no se esconde la agenda: se
-    // ofrece con todos. Una clínica que aún no asignó tratamientos seguiría
-    // pudiendo dar cita, que es lo que le importa.
-    pool = doIt.length > 0 ? doIt : catalog;
+    if (doIt.length > 0) {
+      pool = doIt;
+    } else if (hasAnyAssignment) {
+      // Nadie realiza este tratamiento y la clínica sí asigna: no lo ofrecemos.
+      return {
+        timezone,
+        options: [],
+        matchedTreatment: { id: matchedTreatment.id, name: matchedTreatment.name },
+        matchedProfessional: null,
+        offeredBy: [],
+        reason: 'NO_PROFESSIONAL_FOR_TREATMENT',
+      };
+    } else {
+      pool = catalog;
+      unassignedFallback = true;
+    }
   }
 
   const bookable = pool.filter((p) => p.acceptsOnlineBooking);
@@ -324,7 +346,12 @@ export async function findAgentSlots(
     };
   }
 
-  const offeredBy = bookable.map((p) => ({ id: p.id, fullName: p.fullName }));
+  // offeredBy nombra a quienes REALMENTE realizan el tratamiento. En el fallback
+  // permisivo (nadie asignado) no se atribuye a nadie: son toda la agenda, no
+  // especialistas del tratamiento.
+  const offeredBy = unassignedFallback
+    ? []
+    : bookable.map((p) => ({ id: p.id, fullName: p.fullName }));
 
   const perProfessional = params.limitPerProfessional ?? 4;
   const results = await Promise.all(
@@ -536,7 +563,7 @@ export async function describeAgendaForPrompt(tenantId: string): Promise<string>
             .map((t) => t.name)
             .slice(0, 8)
             .join(', ')
-        : 'todos los tratamientos del catálogo';
+        : 'sin tratamientos asignados (consultá disponibilidad por tratamiento; no le atribuyas tratamientos que no tenga a su nombre)';
     const cabecera = `- ${p.fullName}${p.specialty ? ` (${p.specialty})` : ''}`;
     const detalle = [
       `  · hace: ${what}`,

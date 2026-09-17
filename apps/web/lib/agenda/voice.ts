@@ -69,6 +69,32 @@ function speakOption(option: AgentSlotOption, timezone: string): string {
   return `${weekday} ${day} ${clockArticle(time)} ${time} con ${option.professionalName} [start_time=${option.start.toISOString()} professional_id=${option.professionalId}]`;
 }
 
+/**
+ * Qué profesional(es) realiza cada tratamiento, según la agenda interna.
+ * Devuelve `null` si la clínica no usa la agenda interna (ahí no hay forma de
+ * saber quién hace qué y no se debe atribuir a nadie). Clave: id del tratamiento.
+ */
+export async function agendaTreatmentProfessionals(
+  tenantId: string,
+): Promise<Map<string, string[]> | null> {
+  if (!(await usesInternalAgenda(tenantId))) return null;
+  try {
+    const catalog = await listAgentProfessionals(tenantId);
+    const map = new Map<string, string[]>();
+    for (const p of catalog) {
+      for (const t of p.treatments) {
+        const arr = map.get(t.id) ?? [];
+        if (!arr.includes(p.fullName)) arr.push(p.fullName);
+        map.set(t.id, arr);
+      }
+    }
+    return map;
+  } catch (err) {
+    console.error('[agenda-voice] treatment_professionals', err);
+    return null;
+  }
+}
+
 export async function agendaCheckAvailability(
   tenantId: string,
   args: AgendaAvailabilityArgs,
@@ -85,6 +111,14 @@ export async function agendaCheckAvailability(
     });
 
     if (search.reason === 'NO_AGENDA') return null;
+
+    // El tratamiento existe pero ningún profesional lo realiza: no se ofrece con
+    // cualquiera. El agente tiene que decir que no lo hacen y pasar a recepción.
+    if (search.reason === 'NO_PROFESSIONAL_FOR_TREATMENT' && search.matchedTreatment) {
+      return {
+        result: `Ningún profesional de la clínica realiza ${search.matchedTreatment.name} con la agenda online. NO lo agendes con otro profesional: decile al paciente que ese servicio no está disponible para reserva automática y ofrecele pasar con recepción o elegir otro tratamiento.`,
+      };
+    }
 
     if (search.options.length === 0) {
       const quien = search.matchedProfessional
@@ -167,6 +201,17 @@ export async function agendaBookAppointment(
     const treatment = args.treatment_name
       ? matchByName(args.treatment_name, professional.treatments, (t) => t.name)
       : null;
+
+    // Invariante: un profesional sólo recibe citas de los tratamientos que tiene
+    // asignados. Si el paciente pidió un tratamiento que ESTE profesional no hace
+    // (y el profesional sí tiene lista de tratamientos), no se reserva: antes
+    // caía a treatmentId=null con 30 min por defecto, agendando p.ej. un implante
+    // con quien no lo realiza y solapando la agenda.
+    if (args.treatment_name && !treatment && professional.treatments.length > 0) {
+      return {
+        result: `${professional.fullName} no realiza "${args.treatment_name}". NO reserves ese tratamiento con ${professional.fullName}. Llamá a check_availability con el tratamiento para ver qué profesional lo hace, o pasá con recepción.`,
+      };
+    }
 
     const { appointment, deduped } = await createAppointment(systemAgendaContext(tenantId), {
       professionalId: professional.id,
@@ -281,7 +326,7 @@ export async function agendaListProfessionals(tenantId: string): Promise<AgendaT
               .map((t) => t.name)
               .slice(0, 6)
               .join(', ')
-          : 'todos los tratamientos del catálogo';
+          : 'sin tratamientos asignados (no le atribuyas tratamientos que no tenga a su nombre)';
       const partes = [
         `- ${p.fullName}${p.specialty ? ` (${p.specialty})` : ''}`,
         `hace: ${what}`,

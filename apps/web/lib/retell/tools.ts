@@ -6,6 +6,7 @@ import {
   agendaCheckAvailability,
   agendaListProfessionals,
   agendaPatientSummary,
+  agendaTreatmentProfessionals,
 } from '@/lib/agenda/voice';
 import { upsertAppointmentCache } from '@/lib/appointments/cache';
 import { patchCallCustomData, setCallGhlContact } from '@/lib/data/calls';
@@ -664,14 +665,26 @@ export async function listTreatments(tenantId: string): Promise<ToolResult> {
   if (active.length === 0) {
     return { result: 'No hay tratamientos cargados en el catálogo de la clínica.' };
   }
-  const lines = active
-    .slice(0, 30)
-    .map(
-      (t) =>
-        `- ${t.name} (${t.durationMinutes} min, ${priceRange(t.priceMin, t.priceMax, t.currency)})`,
-    );
+
+  // Con agenda interna sabemos qué profesional hace cada tratamiento. Lo
+  // anexamos para que el agente NO atribuya a un profesional tratamientos que
+  // no realiza (el bug de "¿pedir cita con Juanfran?" para todo el catálogo).
+  const byTreatment = await agendaTreatmentProfessionals(tenantId);
+
+  const lines = active.slice(0, 30).map((t) => {
+    const base = `- ${t.name} (${t.durationMinutes} min, ${priceRange(t.priceMin, t.priceMax, t.currency)})`;
+    if (!byTreatment) return base;
+    const who = byTreatment.get(t.id);
+    if (who && who.length > 0) return `${base} — lo realiza: ${who.join(', ')}`;
+    return `${base} — sin profesional asignado en la agenda`;
+  });
+
+  const nota = byTreatment
+    ? ' Ofrece cada tratamiento SÓLO con el/los profesional(es) que lo realizan; no atribuyas a un profesional un tratamiento que no está a su nombre. Si un tratamiento no tiene profesional asignado, no lo agendes: pasá con recepción.'
+    : '';
+
   return {
-    result: `Tratamientos disponibles:\n${lines.join('\n')}`,
+    result: `Tratamientos disponibles:\n${lines.join('\n')}.${nota}`,
   };
 }
 
