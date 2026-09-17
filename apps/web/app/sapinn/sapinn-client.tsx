@@ -16,14 +16,87 @@ const PREFIXES = [
 ];
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
+type WebStatus = 'idle' | 'connecting' | 'live' | 'ended' | 'error';
 
 export function SapinnDemo() {
+  // 'web' = hablar con el agente por el navegador (WebRTC, sin telefonía).
+  // 'phone' = que el agente llame a un teléfono (depende de la línea saliente).
+  const [mode, setMode] = useState<'web' | 'phone'>('web');
   const [prefix, setPrefix] = useState('+34');
   const [number, setNumber] = useState('');
   const [name, setName] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [message, setMessage] = useState('');
+  const [webStatus, setWebStatus] = useState<WebStatus>('idle');
+  const [webMsg, setWebMsg] = useState('');
+  const clientRef = useRef<{ stopCall?: () => void } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+
+  // Corta la llamada web si el usuario se va de la página con ella activa.
+  useEffect(() => {
+    return () => clientRef.current?.stopCall?.();
+  }, []);
+
+  async function startWebCall() {
+    if (webStatus === 'connecting' || webStatus === 'live') return;
+    setWebStatus('connecting');
+    setWebMsg('');
+    try {
+      const res = await fetch('/api/public/demo-web-call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim() || undefined }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        accessToken?: string;
+        error?: string;
+      };
+      if (!res.ok || !data.accessToken) {
+        setWebStatus('error');
+        setWebMsg(data.error ?? 'No pudimos iniciar la prueba. Probá de nuevo en un momento.');
+        return;
+      }
+
+      const { RetellWebClient } = await import('retell-client-js-sdk');
+      const client = new RetellWebClient();
+      clientRef.current = client;
+
+      client.on('call_ready', () => {
+        const c = clientRef.current as { startAudioPlayback?: () => Promise<void> } | null;
+        c?.startAudioPlayback?.().catch(() => {});
+      });
+      client.on('call_started', () => setWebStatus('live'));
+      client.on('call_ended', () => setWebStatus('ended'));
+      client.on('error', () => {
+        setWebStatus('error');
+        setWebMsg('Se cortó la llamada. Probá otra vez.');
+        clientRef.current?.stopCall?.();
+      });
+
+      // startCall pide permiso de micrófono internamente.
+      await (
+        client as { startCall: (o: { accessToken: string; sampleRate?: number }) => Promise<void> }
+      ).startCall({
+        accessToken: data.accessToken,
+        sampleRate: 24000,
+      });
+    } catch (err) {
+      setWebStatus('error');
+      const denied =
+        err instanceof DOMException &&
+        (err.name === 'NotAllowedError' || err.name === 'NotFoundError');
+      setWebMsg(
+        denied
+          ? 'Necesitamos permiso del micrófono para que hables con el agente.'
+          : 'No pudimos conectar. Revisá tu conexión y probá otra vez.',
+      );
+    }
+  }
+
+  function endWebCall() {
+    clientRef.current?.stopCall?.();
+    setWebStatus('ended');
+  }
 
   // Revelado por scroll con IntersectionObserver: sin dependencias de
   // animación. Si no hay JS o el usuario prefiere menos movimiento, el CSS
@@ -117,110 +190,182 @@ export function SapinnDemo() {
             <span className="sp-dot" /> Prueba en vivo · español de España
           </div>
           <h1 className="sp-h1">
-            Poné tu número.
+            Hablá con el agente.
             <br />
-            El agente <em>te llama</em>.
+            <em>Ahora mismo</em>.
           </h1>
           <p className="sp-lead">
-            En menos de un minuto suena tu teléfono. Se presenta como sistema de IA, habla en
-            castellano y hace el guion de la propuesta. Interrumpilo, ponele pegas y colgá cuando
-            quieras: eso es lo que ningún audio grabado te muestra.
+            Le hablás desde el navegador, con tu micrófono, como si fueras la farmacia que atiende.
+            Se presenta como sistema de IA, habla en castellano y hace el guion de la propuesta.
+            Interrumpilo, ponele pegas y cortá cuando quieras.
           </p>
 
-          {/* ── Tarjeta de llamada ── */}
-          <div className={`sp-card sp-card-${status}`}>
-            {status !== 'success' ? (
-              <form onSubmit={submit} className="sp-form">
-                <div className="sp-field-row">
-                  <label className="sp-field sp-field-prefix">
-                    <span className="sp-lbl">País</span>
-                    <select
-                      value={prefix}
-                      onChange={(ev) => setPrefix(ev.target.value)}
-                      className="sp-select"
-                      disabled={status === 'loading'}
-                    >
-                      {PREFIXES.map((p) => (
-                        <option key={p.code} value={p.code}>
-                          {p.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="sp-field sp-field-num">
-                    <span className="sp-lbl">Tu número</span>
+          {/* ── Tarjeta de prueba ── */}
+          {mode === 'web' ? (
+            <div className={`sp-card sp-card-web-${webStatus}`}>
+              {webStatus === 'live' ? (
+                <div className="sp-success">
+                  <div className="sp-live-eq" aria-hidden="true">
+                    {[0, 1, 2, 3, 4].map((i) => (
+                      <span key={`eq-${i}`} style={{ animationDelay: `${i * 0.12}s` }} />
+                    ))}
+                  </div>
+                  <h2 className="sp-success-h">Estás hablando con el agente</h2>
+                  <p className="sp-success-p">Hablá con normalidad. Podés interrumpirle.</p>
+                  <button type="button" className="sp-btn sp-btn-danger" onClick={endWebCall}>
+                    Cortar
+                  </button>
+                </div>
+              ) : webStatus === 'ended' ? (
+                <div className="sp-success">
+                  <div className="sp-phone" aria-hidden="true">
+                    <span className="sp-phone-core sp-phone-still">
+                      <PhoneIcon />
+                    </span>
+                  </div>
+                  <h2 className="sp-success-h">Llamada terminada</h2>
+                  <p className="sp-success-p">¿Le preguntás otra cosa?</p>
+                  <button
+                    type="button"
+                    className="sp-btn"
+                    onClick={() => {
+                      setWebStatus('idle');
+                      setWebMsg('');
+                    }}
+                  >
+                    <MicIcon /> Hablar otra vez
+                  </button>
+                </div>
+              ) : (
+                <div className="sp-form">
+                  <label className="sp-field">
+                    <span className="sp-lbl">
+                      Tu nombre <em>opcional</em>
+                    </span>
                     <input
-                      inputMode="tel"
-                      autoComplete="tel-national"
-                      placeholder="600 000 000"
-                      value={number}
-                      onChange={(ev) => setNumber(ev.target.value)}
+                      autoComplete="name"
+                      placeholder="Para que el agente te salude"
+                      value={name}
+                      onChange={(ev) => setName(ev.target.value)}
                       className="sp-input"
-                      disabled={status === 'loading'}
+                      disabled={webStatus === 'connecting'}
                     />
                   </label>
-                </div>
+                  <button
+                    type="button"
+                    className="sp-btn"
+                    onClick={startWebCall}
+                    disabled={webStatus === 'connecting'}
+                  >
+                    {webStatus === 'connecting' ? (
+                      <>
+                        <span className="sp-spinner" /> Conectando...
+                      </>
+                    ) : (
+                      <>
+                        <MicIcon /> Hablar con el agente
+                      </>
+                    )}
+                  </button>
 
-                <label className="sp-field">
-                  <span className="sp-lbl">
-                    Tu nombre <em>opcional</em>
-                  </span>
-                  <input
-                    autoComplete="name"
-                    placeholder="Para que el agente te salude"
-                    value={name}
-                    onChange={(ev) => setName(ev.target.value)}
-                    className="sp-input"
-                    disabled={status === 'loading'}
-                  />
-                </label>
-
-                <button type="submit" className="sp-btn" disabled={status === 'loading'}>
-                  {status === 'loading' ? (
-                    <>
-                      <span className="sp-spinner" /> Llamando...
-                    </>
-                  ) : (
-                    <>
-                      <PhoneIcon /> Que me llame ahora
-                    </>
+                  {webStatus === 'connecting' && (
+                    <p className="sp-fineprint">
+                      Permití el micrófono cuando el navegador lo pida.
+                    </p>
                   )}
-                </button>
+                  {webStatus === 'error' && <p className="sp-msg sp-msg-err">{webMsg}</p>}
+                  {webStatus === 'idle' && (
+                    <p className="sp-fineprint">
+                      Necesita micrófono. Sin registro y sin coste para vos.
+                    </p>
+                  )}
 
-                {status === 'error' && <p className="sp-msg sp-msg-err">{message}</p>}
-
-                <p className="sp-fineprint">
-                  Sin registro y sin coste para vos. Usamos tu número solo para esta llamada de
-                  prueba.
-                </p>
-              </form>
-            ) : (
-              <div className="sp-success">
-                <div className="sp-phone" aria-hidden="true">
-                  <span className="sp-ring sp-ring-1" />
-                  <span className="sp-ring sp-ring-2" />
-                  <span className="sp-phone-core">
-                    <PhoneIcon />
-                  </span>
+                  <button type="button" className="sp-switch" onClick={() => setMode('phone')}>
+                    ¿Preferís que te llame al teléfono?
+                  </button>
                 </div>
-                <h2 className="sp-success-h">Te estamos llamando</h2>
-                <p className="sp-success-p">{message}</p>
-                <button type="button" className="sp-btn sp-btn-ghost" onClick={reset}>
-                  Probar con otro número
-                </button>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          ) : (
+            <div className={`sp-card sp-card-${status}`}>
+              {status !== 'success' ? (
+                <form onSubmit={submit} className="sp-form">
+                  <div className="sp-field-row">
+                    <label className="sp-field sp-field-prefix">
+                      <span className="sp-lbl">País</span>
+                      <select
+                        value={prefix}
+                        onChange={(ev) => setPrefix(ev.target.value)}
+                        className="sp-select"
+                        disabled={status === 'loading'}
+                      >
+                        {PREFIXES.map((p) => (
+                          <option key={p.code} value={p.code}>
+                            {p.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="sp-field sp-field-num">
+                      <span className="sp-lbl">Tu número</span>
+                      <input
+                        inputMode="tel"
+                        autoComplete="tel-national"
+                        placeholder="600 000 000"
+                        value={number}
+                        onChange={(ev) => setNumber(ev.target.value)}
+                        className="sp-input"
+                        disabled={status === 'loading'}
+                      />
+                    </label>
+                  </div>
+
+                  <button type="submit" className="sp-btn" disabled={status === 'loading'}>
+                    {status === 'loading' ? (
+                      <>
+                        <span className="sp-spinner" /> Llamando...
+                      </>
+                    ) : (
+                      <>
+                        <PhoneIcon /> Que me llame ahora
+                      </>
+                    )}
+                  </button>
+
+                  {status === 'error' && <p className="sp-msg sp-msg-err">{message}</p>}
+
+                  <button type="button" className="sp-switch" onClick={() => setMode('web')}>
+                    Mejor hablar ahora desde el navegador
+                  </button>
+                </form>
+              ) : (
+                <div className="sp-success">
+                  <div className="sp-phone" aria-hidden="true">
+                    <span className="sp-ring sp-ring-1" />
+                    <span className="sp-ring sp-ring-2" />
+                    <span className="sp-phone-core">
+                      <PhoneIcon />
+                    </span>
+                  </div>
+                  <h2 className="sp-success-h">Te estamos llamando</h2>
+                  <p className="sp-success-p">{message}</p>
+                  <button type="button" className="sp-btn sp-btn-ghost" onClick={reset}>
+                    Probar con otro número
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="sp-microsteps">
             <div data-reveal>
-              <span className="sp-num">1</span> Ponés tu número
+              <span className="sp-num">1</span> Tocás el botón
             </div>
             <div data-reveal>
-              <span className="sp-num">2</span> Suena en menos de 1 min
+              <span className="sp-num">2</span> Permitís el micrófono
             </div>
             <div data-reveal>
-              <span className="sp-num">3</span> Hablás y colgás
+              <span className="sp-num">3</span> Hablás y cortás
             </div>
           </div>
         </section>
@@ -467,6 +612,26 @@ function PhoneIcon() {
   );
 }
 
+function MicIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="9" y="2" width="6" height="12" rx="3" />
+      <path d="M5 10a7 7 0 0 0 14 0" />
+      <line x1="12" y1="17" x2="12" y2="21" />
+    </svg>
+  );
+}
+
 const WAVE = [30, 62, 45, 80, 40, 70, 34, 90, 50, 66, 38, 78, 44, 60, 30, 84, 48, 72, 36, 58];
 
 const CSS = `
@@ -520,6 +685,15 @@ const CSS = `
 .sp-btn:disabled{cursor:default;opacity:.85;}
 .sp-btn-ghost{background:transparent;color:var(--lime);border:1px solid rgba(139,216,53,.4);box-shadow:none;}
 .sp-btn-ghost:hover:not(:disabled){background:rgba(139,216,53,.08);filter:none;}
+.sp-btn-danger{background:#ff6f5e;color:#180806;box-shadow:0 12px 30px -10px rgba(255,111,94,.5);}
+.sp-btn-danger:hover:not(:disabled){filter:brightness(1.05);box-shadow:0 16px 40px -12px rgba(255,111,94,.6);}
+
+.sp-switch{margin-top:4px;background:none;border:none;color:var(--dim);font-family:inherit;font-size:.82rem;cursor:pointer;text-decoration:underline;text-underline-offset:3px;text-decoration-color:rgba(124,138,133,.4);transition:color .18s;padding:4px;}
+.sp-switch:hover{color:var(--lime);text-decoration-color:var(--lime);}
+
+.sp-live-eq{display:flex;align-items:center;justify-content:center;gap:5px;height:64px;margin-bottom:8px;}
+.sp-live-eq span{display:block;width:6px;height:100%;border-radius:4px;background:linear-gradient(180deg,var(--lime),var(--lime-deep));animation:sp-eq 0.9s ease-in-out infinite;transform-origin:center;}
+.sp-phone-still{animation:none!important;}
 
 .sp-spinner{width:16px;height:16px;border:2px solid rgba(6,18,10,.35);border-top-color:#06120a;border-radius:50%;animation:sp-spin .7s linear infinite;}
 @keyframes sp-spin{to{transform:rotate(360deg)}}
@@ -613,7 +787,7 @@ const CSS = `
 @keyframes sp-rise{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
 
 @media(prefers-reduced-motion:reduce){
-  .sp-orb,.sp-dot,.sp-phone-core,.sp-ring,.sp-wave span{animation:none!important;}
+  .sp-orb,.sp-dot,.sp-phone-core,.sp-ring,.sp-wave span,.sp-live-eq span{animation:none!important;}
   .sp-h1,.sp-lead,.sp-card,.sp-eyebrow{animation:none!important;}
   .sp-bar .t i{transform:none!important;transition:none!important;}
   [data-reveal]{opacity:1!important;transform:none!important;}
