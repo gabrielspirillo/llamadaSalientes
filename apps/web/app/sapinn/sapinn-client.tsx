@@ -277,6 +277,169 @@ export function SapinnDemo() {
           </div>
         </section>
 
+        {/* ── Cómo trabaja ── */}
+        <section className="sp-section" data-reveal>
+          <div className="sp-tag">Cómo trabaja</div>
+          <h2 className="sp-h2">
+            Cuatro movimientos en <em>una sola llamada</em>.
+          </h2>
+          <div className="sp-steps4">
+            <article>
+              <span className="sp-step-n">01</span>
+              <h3>Se identifica</h3>
+              <p>Dice que es un sistema de IA y de parte de quién llama.</p>
+            </article>
+            <article>
+              <span className="sp-step-n">02</span>
+              <h3>Sitúa el motivo</h3>
+              <p>Una frase que se entienda con un cliente delante del mostrador.</p>
+            </article>
+            <article>
+              <span className="sp-step-n">03</span>
+              <h3>Propone</h3>
+              <p>Agenda con el comercial, catálogo por correo o visita del delegado.</p>
+            </article>
+            <article>
+              <span className="sp-step-n">04</span>
+              <h3>Cierra y anota</h3>
+              <p>Confirma en voz y deja el resultado tipificado en el registro.</p>
+            </article>
+          </div>
+        </section>
+
+        {/* ── Fases ── */}
+        <section className="sp-section" data-reveal>
+          <div className="sp-tag">Del piloto al despliegue</div>
+          <h2 className="sp-h2">
+            Cinco fases, con un <em>freno de verdad</em> en la segunda.
+          </h2>
+          <ol className="sp-timeline">
+            <li>
+              <span className="sp-tl-dot" />
+              <div>
+                <div className="sp-tl-top">
+                  <b>Descubrimiento</b>
+                  <span>1–2 sem</span>
+                </div>
+                <p>
+                  Qué sistemas hay, dónde vive la agenda del comercial y qué base jurídica ampara la
+                  campaña.
+                </p>
+              </div>
+            </li>
+            <li>
+              <span className="sp-tl-dot" />
+              <div>
+                <div className="sp-tl-top">
+                  <b>Prueba de voz</b>
+                  <span>2–3 sem</span>
+                </div>
+                <p>
+                  Llamadas reales a números de prueba. Si la voz no aguanta una conversación de
+                  mostrador, el proyecto para aquí.
+                </p>
+              </div>
+            </li>
+            <li>
+              <span className="sp-tl-dot" />
+              <div>
+                <div className="sp-tl-top">
+                  <b>Piloto medido</b>
+                  <span>6–8 sem</span>
+                </div>
+                <p>
+                  Entre 300 y 500 farmacias de Castilla y León, con panel de resultados y mejora del
+                  guion.
+                </p>
+              </div>
+            </li>
+            <li>
+              <span className="sp-tl-dot" />
+              <div>
+                <div className="sp-tl-top">
+                  <b>Despliegue</b>
+                  <span>8–10 sem</span>
+                </div>
+                <p>
+                  Castilla y León completa, y después las cuatro comunidades que hoy se cubren a
+                  mano.
+                </p>
+              </div>
+            </li>
+            <li>
+              <span className="sp-tl-dot" />
+              <div>
+                <div className="sp-tl-top">
+                  <b>Operación</b>
+                  <span>mensual</span>
+                </div>
+                <p>Escuchar llamadas, ajustar guion y objeciones, y vigilar la numeración.</p>
+              </div>
+            </li>
+          </ol>
+        </section>
+
+        {/* ── El registro ── */}
+        <section className="sp-section" data-reveal>
+          <div className="sp-tag">Lo que queda de cada llamada</div>
+          <h2 className="sp-h2">
+            No una transcripción. Un <em>registro que se puede leer</em>.
+          </h2>
+          <div className="sp-record">
+            <p className="sp-rec-lead">
+              Cuando la farmacia dice que no, el agente pide el motivo y lo clasifica. Así se ve,
+              sobre un piloto de ejemplo, por qué dijeron que no:
+            </p>
+            <div className="sp-bars">
+              <div className="sp-bar">
+                <span className="k">Ya trabajan la marca</span>
+                <span className="t">
+                  <i style={{ width: '100%' }} />
+                </span>
+                <span className="n">61</span>
+              </div>
+              <div className="sp-bar">
+                <span className="k">Sin hueco de lineal</span>
+                <span className="t">
+                  <i style={{ width: '72%' }} />
+                </span>
+                <span className="n">44</span>
+              </div>
+              <div className="sp-bar">
+                <span className="k">Compran por cooperativa</span>
+                <span className="t">
+                  <i style={{ width: '62%' }} />
+                </span>
+                <span className="n">38</span>
+              </div>
+              <div className="sp-bar">
+                <span className="k">Prefieren al delegado</span>
+                <span className="t">
+                  <i style={{ width: '43%' }} />
+                </span>
+                <span className="n">26</span>
+              </div>
+            </div>
+            <p className="sp-rec-foot">
+              Saber que 38 farmacias compran por cooperativa no es una métrica: es información
+              comercial que cambia dónde poner al próximo delegado.
+            </p>
+          </div>
+        </section>
+
+        {/* ── Cierre ── */}
+        <section className="sp-cta-final" data-reveal>
+          <h2>¿Querés oírlo?</h2>
+          <p>Subí, dejá tu número y en menos de un minuto lo tenés al teléfono.</p>
+          <button
+            type="button"
+            className="sp-btn"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          >
+            <PhoneIcon /> Que me llame ahora
+          </button>
+        </section>
+
         <footer className="sp-foot">
           <span>Futura Solutions</span>
           <span>Respuesta a la consulta SPN-2026-VOZ-01 · Confidencial</span>
@@ -402,6 +565,41 @@ const CSS = `
 .sp-checks li::before{content:"";position:absolute;left:0;top:.36em;width:14px;height:14px;border-radius:50%;background:rgba(139,216,53,.15);}
 .sp-checks li::after{content:"";position:absolute;left:5px;top:calc(.36em + 3px);width:4px;height:7px;border-right:2px solid var(--lime);border-bottom:2px solid var(--lime);transform:rotate(42deg);}
 
+.sp-steps4{display:grid;gap:12px;margin-top:24px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));}
+.sp-steps4 article{background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:20px;transition:transform .2s,border-color .2s;}
+.sp-steps4 article:hover{transform:translateY(-3px);border-color:rgba(139,216,53,.3);}
+.sp-step-n{color:var(--lime);font-weight:800;font-size:.8rem;letter-spacing:.1em;}
+.sp-steps4 h3{margin:10px 0 6px;color:var(--white);font-size:1rem;font-weight:700;}
+.sp-steps4 p{margin:0;font-size:.86rem;line-height:1.5;color:var(--dim);}
+
+.sp-timeline{list-style:none;margin:26px 0 0;padding:0;position:relative;}
+.sp-timeline::before{content:"";position:absolute;left:6px;top:8px;bottom:8px;width:2px;background:linear-gradient(var(--lime),var(--lime-deep));}
+.sp-timeline li{position:relative;padding:0 0 22px 30px;}
+.sp-timeline li:last-child{padding-bottom:0;}
+.sp-tl-dot{position:absolute;left:0;top:4px;width:14px;height:14px;border-radius:50%;background:var(--base);border:2px solid var(--lime);box-shadow:0 0 0 4px rgba(139,216,53,.08);}
+.sp-tl-top{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline;}
+.sp-tl-top b{color:var(--white);font-size:.98rem;font-weight:700;}
+.sp-tl-top span{font-size:.7rem;color:var(--lime);font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
+.sp-timeline p{margin:5px 0 0;font-size:.86rem;line-height:1.5;color:var(--dim);max-width:58ch;}
+
+.sp-record{margin-top:22px;background:var(--surf);border:1px solid var(--line);border-radius:16px;padding:22px;}
+.sp-rec-lead{margin:0 0 16px;font-size:.92rem;color:var(--text);max-width:60ch;}
+.sp-bars{display:flex;flex-direction:column;gap:11px;}
+.sp-bar{display:grid;grid-template-columns:1fr 2.2rem;gap:6px 14px;align-items:center;}
+@media(min-width:560px){.sp-bar{grid-template-columns:11rem 1fr 2.2rem;}}
+.sp-bar .k{font-size:.84rem;color:var(--text);}
+.sp-bar .t{height:9px;background:#101714;border-radius:4px;overflow:hidden;}
+.sp-bar .t i{display:block;height:100%;background:linear-gradient(90deg,var(--lime-deep),var(--lime));border-radius:4px;transform:scaleX(0);transform-origin:left;transition:transform 1s cubic-bezier(.2,.7,.2,1);}
+.sp-in .sp-bar .t i{transform:scaleX(1);}
+.sp-bar .n{text-align:right;color:var(--white);font-weight:700;font-size:.85rem;font-variant-numeric:tabular-nums;}
+@media(max-width:559px){.sp-bar .t{grid-column:1/-1;}}
+.sp-rec-foot{margin:16px 0 0;padding-top:14px;border-top:1px solid var(--line);font-size:.85rem;color:var(--dim);max-width:60ch;}
+
+.sp-cta-final{margin-top:clamp(56px,10vw,90px);text-align:center;border:1px solid rgba(139,216,53,.22);border-radius:20px;padding:44px 24px;background:radial-gradient(130% 110% at 50% 0%,rgba(139,216,53,.09),transparent 68%);}
+.sp-cta-final h2{margin:0;color:var(--white);font-size:clamp(1.5rem,4vw,2.1rem);font-weight:800;letter-spacing:-.022em;}
+.sp-cta-final p{margin:12px auto 22px;max-width:42ch;color:var(--text);}
+.sp-cta-final .sp-btn{display:inline-flex;}
+
 .sp-foot{margin-top:clamp(56px,10vw,90px);padding-top:18px;border-top:1px solid rgba(139,216,53,.1);display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:space-between;font-size:.7rem;color:var(--faint);letter-spacing:.04em;}
 .sp-foot span:first-child{color:var(--white);font-weight:700;letter-spacing:.1em;text-transform:uppercase;}
 
@@ -417,6 +615,7 @@ const CSS = `
 @media(prefers-reduced-motion:reduce){
   .sp-orb,.sp-dot,.sp-phone-core,.sp-ring,.sp-wave span{animation:none!important;}
   .sp-h1,.sp-lead,.sp-card,.sp-eyebrow{animation:none!important;}
+  .sp-bar .t i{transform:none!important;transition:none!important;}
   [data-reveal]{opacity:1!important;transform:none!important;}
 }
 `;
