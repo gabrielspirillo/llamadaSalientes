@@ -1,4 +1,3 @@
-import { resolveRetellAgentId } from '@/lib/data/agent-config';
 import { env } from '@/lib/env';
 import { clientIp, consumeRateLimit } from '@/lib/queue/rate-limit';
 import { getRetellClient } from '@/lib/retell/client';
@@ -95,16 +94,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // El agente saliente de demo: el mismo que usa /api/public/demo-call. Si no
-  // está el override en env, cae al agente outbound del tenant demo.
-  const agentId =
-    env.FUTURA_DEMO_RETELL_AGENT_ID ?? (await resolveRetellAgentId(tenantId, 'outbound'));
-  if (!agentId) {
-    return NextResponse.json(
-      { error: 'No hay agente de demo configurado.', reason: 'no_agent' },
-      { status: 503, headers },
-    );
-  }
+  // Agente DEDICADO de la demo de Sapinn (marca de alimentación infantil que
+  // llama a farmacias, español de España). Es un agente propio en Retell,
+  // aislado de los de Futura: se creó aparte y no comparte prompt ni LLM con
+  // el agente de demo de Futura, así que ajustarlo no afecta al resto del
+  // dashboard. Se puede sobreescribir por env sin tocar el código.
+  const SAPINN_DEMO_AGENT_ID = 'agent_e8d27609a342f597ba3e5ef329';
+  const agentId = env.SAPINN_RETELL_AGENT_ID || SAPINN_DEMO_AGENT_ID;
 
   try {
     const clinicVars = await buildClinicContextVars(tenantId);

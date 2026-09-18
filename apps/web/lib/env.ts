@@ -159,6 +159,9 @@ const envSchema = z.object({
   // agente outbound configurado por tenant en agent_configs (que es lo que
   // muestra /dashboard/outbound).
   FUTURA_DEMO_RETELL_AGENT_ID: z.string().optional(),
+  // Agente Retell DEDICADO de la landing de Sapinn (/sapinn). Aislado de los
+  // de Futura. Si no se setea, el endpoint usa su id por defecto hardcodeado.
+  SAPINN_RETELL_AGENT_ID: z.string().optional(),
   // Override de GHL para el flow de la landing demo. Cuando estos 3 están
   // seteados, las llamadas con metadata.source='landing_demo' usan estas
   // credenciales en vez de la integración GHL del tenant. Permite que la

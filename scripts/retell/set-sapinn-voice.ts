@@ -52,10 +52,14 @@ async function main() {
   const args = process.argv.slice(2);
   const check = args.includes('--check');
   const agentArgIdx = args.indexOf('--agent');
+  // Por defecto, el agente DEDICADO de la demo de Sapinn (aislado de Futura).
+  const SAPINN_DEMO_AGENT_ID = 'agent_e8d27609a342f597ba3e5ef329';
   const agentId =
-    agentArgIdx !== -1 ? args[agentArgIdx + 1] : process.env.FUTURA_DEMO_RETELL_AGENT_ID;
+    agentArgIdx !== -1
+      ? args[agentArgIdx + 1]
+      : (process.env.SAPINN_RETELL_AGENT_ID ?? SAPINN_DEMO_AGENT_ID);
   if (!agentId) {
-    throw new Error('No hay agente: pasá --agent <id> o seteá FUTURA_DEMO_RETELL_AGENT_ID.');
+    throw new Error('No hay agente: pasá --agent <id> o seteá SAPINN_RETELL_AGENT_ID.');
   }
 
   const client = new Retell({ apiKey });
