@@ -107,14 +107,15 @@ export async function POST(req: NextRequest) {
   try {
     const clinicVars = await buildClinicContextVars(tenantId);
     const retell = getRetellClient();
-    // El saludo del agente puede referirse al nombre por distintas variables
-    // ({{patient_name}}, {{name}}, {{lead_name}}). Sin la que use, Retell la
-    // deja literal y el agente dice "name". Rellenamos todas con el mismo
-    // valor para que salude bien lo llame como lo llame el prompt.
+    // Marca de la demo (placeholder profesional; se cambia aquí en un sitio).
+    const BRAND = 'Nutrialia';
+    // El saludo lo componemos NOSOTROS y lo inyectamos en begin_message
+    // ({{greeting}}) del agente. Así la agente habla primero, usa el nombre si
+    // lo hay y NO lo vuelve a preguntar; si no hay nombre, lo pregunta ella.
     const displayName = parsed.data.name?.trim() || '';
-    const nameVars = displayName
-      ? { patient_name: displayName, name: displayName, lead_name: displayName }
-      : { patient_name: '', name: '', lead_name: '' };
+    const greeting = displayName
+      ? `Buenos días, ${displayName}. Soy Lucía, un asistente de voz con inteligencia artificial de ${BRAND}, nutrición infantil. ¿Le viene bien un momento?`
+      : `Buenos días. Soy Lucía, un asistente de voz con inteligencia artificial de ${BRAND}, nutrición infantil. ¿Con quién tengo el gusto?`;
     const webCall = await retell.call.createWebCall({
       agent_id: agentId,
       metadata: {
@@ -124,16 +125,16 @@ export async function POST(req: NextRequest) {
       },
       retell_llm_dynamic_variables: {
         ...clinicVars,
-        ...nameVars,
+        greeting,
+        brand: BRAND,
+        lead_name: displayName,
+        name: displayName,
+        patient_name: displayName,
         current_date: new Date().toISOString().slice(0, 10),
         direction: 'outbound',
         lead_source: 'sapinn-landing',
         use_case: 'prueba',
         campaign_name: 'Prueba desde la propuesta',
-        // Español de España: refuerzo por variable. El dialecto real lo fija
-        // el prompt del agente en Retell; esto solo ayuda si el prompt lo lee.
-        locale: 'es-ES',
-        idioma: 'español de España (usa tú y vosotros, nunca voseo)',
         demo_flow: 'sapinn_web',
       },
     });
