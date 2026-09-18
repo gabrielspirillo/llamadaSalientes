@@ -181,6 +181,19 @@ export function SapinnDemo() {
 
         {mode === 'web' ? (
           <div className="sp-console sp-enter" style={{ animationDelay: '.32s' }}>
+            {(webStatus === 'idle' || webStatus === 'ended') && (
+              <label className="sp-name sp-glass">
+                <input
+                  autoComplete="given-name"
+                  placeholder="Tu nombre, para que te salude"
+                  value={name}
+                  onChange={(ev) => setName(ev.target.value)}
+                  className="sp-name-input"
+                  aria-label="Tu nombre (opcional)"
+                  maxLength={40}
+                />
+              </label>
+            )}
             <button
               type="button"
               className={`sp-orb sp-orb-${orbState}`}
@@ -400,6 +413,13 @@ const CSS = `
 
 /* ── Consola ── */
 .sp-console{margin-top:clamp(30px,5vh,52px);display:flex;flex-direction:column;align-items:center;}
+
+/* ── Campo de nombre ── */
+.sp-name{display:block;width:min(300px,84vw);margin-bottom:clamp(22px,4vh,34px);border-radius:999px;transition:border-color .3s var(--out),box-shadow .3s var(--out);}
+.sp-name-input{width:100%;background:transparent;border:none;color:var(--hi);font-family:inherit;font-size:.98rem;letter-spacing:-.005em;text-align:center;padding:13px 18px;}
+.sp-name-input::placeholder{color:var(--dim);}
+.sp-name-input:focus{outline:none;}
+.sp-name:focus-within{border-color:rgba(139,216,53,.5);box-shadow:0 0 0 3px rgba(139,216,53,.14);}
 
 /* ── Orbe ── */
 .sp-orb{position:relative;width:clamp(184px,42vw,236px);height:clamp(184px,42vw,236px);border-radius:50%;border:none;background:none;padding:0;cursor:pointer;
