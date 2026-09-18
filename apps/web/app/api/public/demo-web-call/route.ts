@@ -16,8 +16,10 @@ const bodySchema = z.object({
 // Una llamada web gasta minutos de Retell (voz + LLM mientras dure la
 // conversación), así que topamos por IP y con un techo global diario. No hace
 // falta allowlist de países: no hay telefonía, es WebRTC navegador → Retell.
-const WEB_CALLS_PER_IP_PER_HOUR = 4;
-const WEB_CALLS_PER_DAY = 150;
+// Límites holgados: es una demo que se prueba y se enseña en vivo (cada
+// persona es una IP distinta), pero el tope global corta cualquier abuso.
+const WEB_CALLS_PER_IP_PER_HOUR = 25;
+const WEB_CALLS_PER_DAY = 400;
 
 function resolveAllowedOrigin(req: NextRequest): string {
   const origin = req.headers.get('origin') ?? '';
