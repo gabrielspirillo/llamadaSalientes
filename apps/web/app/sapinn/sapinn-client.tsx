@@ -163,7 +163,6 @@ export function SapinnDemo() {
         <div className="sp-lockup">
           Futura <span>×</span> Sapinn
         </div>
-        <div className="sp-ref">SPN-2026-VOZ-01</div>
       </header>
 
       <main className="sp-stage">
@@ -173,11 +172,11 @@ export function SapinnDemo() {
         <h1 className="sp-title sp-enter" style={{ animationDelay: '.14s' }}>
           Hablá con el agente.
         </h1>
-        <p className="sp-sub sp-enter" style={{ animationDelay: '.22s' }}>
-          {mode === 'web'
-            ? 'Le hablás con tu voz, aquí mismo. Se presenta, entiende y responde en tiempo real. Interrumpilo cuando quieras.'
-            : 'Dejá tu número y el agente te llama en menos de un minuto.'}
-        </p>
+        {mode === 'phone' && (
+          <p className="sp-sub sp-enter" style={{ animationDelay: '.22s' }}>
+            Dejá tu número y el agente te llama en menos de un minuto.
+          </p>
+        )}
 
         {mode === 'web' ? (
           <div className="sp-console sp-enter" style={{ animationDelay: '.32s' }}>
@@ -327,7 +326,11 @@ export function SapinnDemo() {
         )}
       </main>
 
-      <footer className="sp-foot">Futura Solutions · Respuesta a la consulta · Confidencial</footer>
+      <footer className="sp-foot">
+        <strong>Demostración.</strong> El asistente no tiene cargados el catálogo, la agenda ni la
+        información real del cliente, así que puede improvisar datos. La voz, la dicción y el guion
+        se ajustan a medida en la versión final.
+      </footer>
     </div>
   );
 }
@@ -507,7 +510,8 @@ const CSS = `
 .sp-phone-ok{display:flex;flex-direction:column;align-items:center;}
 
 /* ── Pie ── */
-.sp-foot{position:relative;z-index:2;text-align:center;padding:20px;font-size:.68rem;letter-spacing:.04em;color:var(--dim);}
+.sp-foot{position:relative;z-index:2;text-align:center;max-width:56ch;margin:0 auto;padding:20px 20px 28px;font-size:.74rem;line-height:1.6;letter-spacing:.01em;color:var(--dim);}
+.sp-foot strong{color:var(--tx);font-weight:600;}
 
 /* ── Entrada orquestada (materializa: blur+scale+fade) ── */
 .sp-enter{opacity:0;animation:sp-materialize .9s var(--out) both;}
