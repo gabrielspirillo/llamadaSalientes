@@ -113,9 +113,11 @@ export async function POST(req: NextRequest) {
     // ({{greeting}}) del agente. Así la agente habla primero, usa el nombre si
     // lo hay y NO lo vuelve a preguntar; si no hay nombre, lo pregunta ella.
     const displayName = parsed.data.name?.trim() || '';
-    const greeting = displayName
-      ? `Buenos días, ${displayName}. Soy Lucía, un asistente de voz con inteligencia artificial de ${BRAND}, nutrición infantil. ¿Le viene bien un momento?`
-      : `Buenos días. Soy Lucía, un asistente de voz con inteligencia artificial de ${BRAND}, nutrición infantil. ¿Con quién tengo el gusto?`;
+    // Saludo: declara IA en la 1ª frase (pliego), dice marca y sector, acota el
+    // tiempo (respeta el mostrador con cliente delante) y VERIFICA el rol
+    // (quién lleva las compras) en vez de un sí/no que invita al no.
+    const hello = displayName ? `Buenos días, ${displayName}.` : 'Buenos días.';
+    const greeting = `${hello} Soy Lucía, un asistente de voz con inteligencia artificial de ${BRAND}, nutrición infantil. Serán treinta segundos: ¿hablo con quien lleva las compras, o mejor le llamo en otro momento?`;
     const webCall = await retell.call.createWebCall({
       agent_id: agentId,
       metadata: {
