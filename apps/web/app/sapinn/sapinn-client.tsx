@@ -24,7 +24,6 @@ export function SapinnDemo() {
   const [mode, setMode] = useState<'web' | 'phone'>('web');
   const [prefix, setPrefix] = useState('+34');
   const [number, setNumber] = useState('');
-  const [name, setName] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [message, setMessage] = useState('');
   const [webStatus, setWebStatus] = useState<WebStatus>('idle');
@@ -44,7 +43,7 @@ export function SapinnDemo() {
       const res = await fetch('/api/public/demo-web-call', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim() || undefined }),
+        body: JSON.stringify({}),
       });
       const data = (await res.json().catch(() => ({}))) as {
         accessToken?: string;
@@ -109,7 +108,7 @@ export function SapinnDemo() {
       const res = await fetch('/api/public/demo-call', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: `${prefix}${digits}`, name: name.trim() || undefined }),
+        body: JSON.stringify({ phone: `${prefix}${digits}` }),
       });
       const data = (await res.json().catch(() => ({}))) as {
         ok?: boolean;
@@ -170,29 +169,21 @@ export function SapinnDemo() {
           <span className="sp-eye-dot" /> Asistente de voz · Español de España
         </p>
         <h1 className="sp-title sp-enter" style={{ animationDelay: '.14s' }}>
-          Hablá con el agente.
+          Hablá con <span className="sp-title-hl">el agente</span>.
         </h1>
+        <p className="sp-demo-note sp-enter" style={{ animationDelay: '.22s' }}>
+          <strong>Demostración.</strong> El asistente no tiene cargados el catálogo, la agenda ni la
+          información real del cliente, así que puede improvisar datos. La voz, la dicción y el guion
+          se ajustan a medida en la versión final.
+        </p>
         {mode === 'phone' && (
-          <p className="sp-sub sp-enter" style={{ animationDelay: '.22s' }}>
+          <p className="sp-sub sp-enter" style={{ animationDelay: '.28s' }}>
             Dejá tu número y el agente te llama en menos de un minuto.
           </p>
         )}
 
         {mode === 'web' ? (
-          <div className="sp-console sp-enter" style={{ animationDelay: '.32s' }}>
-            {(webStatus === 'idle' || webStatus === 'ended') && (
-              <label className="sp-name sp-glass">
-                <input
-                  autoComplete="given-name"
-                  placeholder="Tu nombre, para que te salude"
-                  value={name}
-                  onChange={(ev) => setName(ev.target.value)}
-                  className="sp-name-input"
-                  aria-label="Tu nombre (opcional)"
-                  maxLength={40}
-                />
-              </label>
-            )}
+          <div className="sp-console sp-enter" style={{ animationDelay: '.36s' }}>
             <button
               type="button"
               className={`sp-orb sp-orb-${orbState}`}
@@ -248,7 +239,7 @@ export function SapinnDemo() {
             )}
           </div>
         ) : (
-          <div className="sp-console sp-enter" style={{ animationDelay: '.32s' }}>
+          <div className="sp-console sp-enter" style={{ animationDelay: '.36s' }}>
             {status !== 'success' ? (
               <form onSubmit={submit} className="sp-phoneform">
                 <div className="sp-glass sp-field-row">
@@ -325,12 +316,6 @@ export function SapinnDemo() {
           </div>
         )}
       </main>
-
-      <footer className="sp-foot">
-        <strong>Demostración.</strong> El asistente no tiene cargados el catálogo, la agenda ni la
-        información real del cliente, así que puede improvisar datos. La voz, la dicción y el guion
-        se ajustan a medida en la versión final.
-      </footer>
     </div>
   );
 }
@@ -411,18 +396,16 @@ const CSS = `
 .sp-eye-dot{width:6px;height:6px;border-radius:50%;background:var(--lime);box-shadow:0 0 12px var(--lime);animation:sp-blink 2.4s ease-in-out infinite;}
 @keyframes sp-blink{0%,100%{opacity:1}50%{opacity:.35}}
 
-.sp-title{margin:0;color:var(--hi);font-size:clamp(2.6rem,7vw,4.6rem);font-weight:640;line-height:1.02;letter-spacing:-.035em;font-optical-sizing:auto;}
+.sp-title{margin:0;color:var(--hi);font-size:clamp(3rem,8.6vw,5.7rem);font-weight:680;line-height:1;letter-spacing:-.04em;font-optical-sizing:auto;text-shadow:0 1px 40px rgba(139,216,53,.14);}
+.sp-title-hl{background:linear-gradient(180deg,var(--lime-br) 0%,var(--lime) 55%,var(--lime-dp) 130%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;}
 .sp-sub{margin:20px auto 0;max-width:46ch;color:var(--tx);font-size:clamp(1rem,1.7vw,1.14rem);line-height:1.55;font-weight:420;letter-spacing:-.006em;}
+
+/* Copy de demostración, justo bajo el título */
+.sp-demo-note{margin:22px auto 0;max-width:56ch;color:var(--dim);font-size:clamp(.82rem,1.4vw,.92rem);line-height:1.6;letter-spacing:.002em;font-weight:420;}
+.sp-demo-note strong{color:var(--tx);font-weight:600;}
 
 /* ── Consola ── */
 .sp-console{margin-top:clamp(30px,5vh,52px);display:flex;flex-direction:column;align-items:center;}
-
-/* ── Campo de nombre ── */
-.sp-name{display:block;width:min(300px,84vw);margin-bottom:clamp(22px,4vh,34px);border-radius:999px;transition:border-color .3s var(--out),box-shadow .3s var(--out);}
-.sp-name-input{width:100%;background:transparent;border:none;color:var(--hi);font-family:inherit;font-size:.98rem;letter-spacing:-.005em;text-align:center;padding:13px 18px;}
-.sp-name-input::placeholder{color:var(--dim);}
-.sp-name-input:focus{outline:none;}
-.sp-name:focus-within{border-color:rgba(139,216,53,.5);box-shadow:0 0 0 3px rgba(139,216,53,.14);}
 
 /* ── Orbe ── */
 .sp-orb{position:relative;width:clamp(184px,42vw,236px);height:clamp(184px,42vw,236px);border-radius:50%;border:none;background:none;padding:0;cursor:pointer;
@@ -508,10 +491,6 @@ const CSS = `
 .sp-phoneform .sp-btn-primary{width:100%;padding:15px;}
 .sp-mini-spin{width:15px;height:15px;border-radius:50%;border:2px solid rgba(6,18,10,.35);border-top-color:#06120a;animation:sp-spin .7s linear infinite;}
 .sp-phone-ok{display:flex;flex-direction:column;align-items:center;}
-
-/* ── Pie ── */
-.sp-foot{position:relative;z-index:2;text-align:center;max-width:56ch;margin:0 auto;padding:20px 20px 28px;font-size:.74rem;line-height:1.6;letter-spacing:.01em;color:var(--dim);}
-.sp-foot strong{color:var(--tx);font-weight:600;}
 
 /* ── Entrada orquestada (materializa: blur+scale+fade) ── */
 .sp-enter{opacity:0;animation:sp-materialize .9s var(--out) both;}

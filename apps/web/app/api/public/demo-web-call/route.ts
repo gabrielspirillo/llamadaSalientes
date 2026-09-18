@@ -116,8 +116,13 @@ export async function POST(req: NextRequest) {
     // Saludo simple y profesional: declara IA en la 1ª frase (pliego), dice
     // marca y sector, y una sola pregunta. La verificación de rol y el respeto
     // al mostrador ocupado los lleva el guion, no el saludo.
+    // Sin nombre (caso normal en la landing) la agente lo pregunta; si llegara
+    // uno, saluda por él y no lo vuelve a pedir.
     const hello = displayName ? `Buenos días, ${displayName}.` : 'Buenos días.';
-    const greeting = `${hello} Soy Lucía, un asistente de voz con inteligencia artificial de ${BRAND}, nutrición infantil. ¿Tiene un momento para hablar?`;
+    const ask = displayName
+      ? '¿Tiene un momento para hablar?'
+      : '¿Con quién tengo el gusto de hablar?';
+    const greeting = `${hello} Soy Lucía, un asistente de voz con inteligencia artificial de ${BRAND}, nutrición infantil. ${ask}`;
     const webCall = await retell.call.createWebCall({
       agent_id: agentId,
       metadata: {
