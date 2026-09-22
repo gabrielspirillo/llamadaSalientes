@@ -2,17 +2,29 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-// Prefijos ofrecidos en el selector. El backend (allowlist) es la autoridad;
-// esto es solo comodidad de UI. España primero por ser el mercado del piloto.
+// Prefijos del selector. La autoridad es la lista blanca del backend; esto es
+// comodidad de UI. Sólo los dos territorios del cliente: España es el mercado
+// del piloto y Portugal el otro país donde tiene delegados. Ofrecer media
+// Latinoamérica en una demo para una farmacéutica española era ruido.
 const PREFIXES = [
   { code: '+34', label: 'España +34' },
   { code: '+351', label: 'Portugal +351' },
-  { code: '+54', label: 'Argentina +54' },
-  { code: '+52', label: 'México +52' },
-  { code: '+57', label: 'Colombia +57' },
-  { code: '+56', label: 'Chile +56' },
-  { code: '+51', label: 'Perú +51' },
-  { code: '+598', label: 'Uruguay +598' },
+];
+
+// Lo que el pliego pide que no se negocie, y que la demo demuestra en vivo.
+const FACTS = [
+  { k: 'Se identifica', v: 'Declara que es IA en la primera frase' },
+  { k: 'Español de España', v: 'Voz y guion peninsulares' },
+  { k: 'Interrumpible', v: 'Se le puede cortar a media frase' },
+  { k: 'Latencia medida', v: '1,1 s de mediana, extremo a extremo' },
+];
+
+// Lo que va a pasar en la llamada. Saberlo de antemano es lo que convierte
+// "una demo" en "una prueba": el evaluador sabe contra qué medir.
+const STEPS = [
+  'Se presenta, dice la marca y el sector, y pide permiso para seguir.',
+  'Pregunta si la farmacia trabaja la categoría y quién lleva las compras.',
+  'Si hay encaje, propone una cita con el equipo comercial o enviar catálogo.',
 ];
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
@@ -30,7 +42,7 @@ export function SapinnDemo() {
   const [webMsg, setWebMsg] = useState('');
   const clientRef = useRef<{ stopCall?: () => void } | null>(null);
 
-  // Corta la llamada web si el usuario se va de la página con ella activa.
+  // Corta la llamada web si el visitante se va de la página con ella activa.
   useEffect(() => {
     return () => clientRef.current?.stopCall?.();
   }, []);
@@ -51,7 +63,7 @@ export function SapinnDemo() {
       };
       if (!res.ok || !data.accessToken) {
         setWebStatus('error');
-        setWebMsg(data.error ?? 'No pudimos iniciar la prueba. Probá de nuevo en un momento.');
+        setWebMsg(data.error ?? 'No hemos podido iniciar la prueba. Inténtalo en un momento.');
         return;
       }
 
@@ -67,7 +79,7 @@ export function SapinnDemo() {
       client.on('call_ended', () => setWebStatus('ended'));
       client.on('error', () => {
         setWebStatus('error');
-        setWebMsg('Se cortó la llamada. Probá otra vez.');
+        setWebMsg('La llamada se ha cortado. Inténtalo de nuevo.');
         clientRef.current?.stopCall?.();
       });
 
@@ -82,8 +94,8 @@ export function SapinnDemo() {
         (err.name === 'NotAllowedError' || err.name === 'NotFoundError');
       setWebMsg(
         denied
-          ? 'Necesitamos permiso del micrófono para que hables con el agente.'
-          : 'No pudimos conectar. Revisá tu conexión y probá otra vez.',
+          ? 'Necesitamos permiso del micrófono para que puedas hablar con el agente.'
+          : 'No hemos podido conectar. Revisa tu conexión e inténtalo de nuevo.',
       );
     }
   }
@@ -99,13 +111,15 @@ export function SapinnDemo() {
     const digits = number.replace(/[^\d]/g, '');
     if (digits.length < 6) {
       setStatus('error');
-      setMessage('Escribí tu número sin el prefijo del país, solo los dígitos.');
+      setMessage('Escribe el número sin el prefijo del país, sólo los dígitos.');
       return;
     }
     setStatus('loading');
     setMessage('');
     try {
-      const res = await fetch('/api/public/demo-call', {
+      // Endpoint propio de Sapinn: llama con el agente de farmacia. El de
+      // Futura (/api/public/demo-call) dispara el agente de clínicas.
+      const res = await fetch('/api/public/sapinn-call', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: `${prefix}${digits}` }),
@@ -117,14 +131,14 @@ export function SapinnDemo() {
       };
       if (res.ok && data.ok) {
         setStatus('success');
-        setMessage(data.message ?? 'Te estamos llamando ahora. Atendé tu teléfono.');
+        setMessage(data.message ?? 'Te estamos llamando. Descuelga el teléfono.');
       } else {
         setStatus('error');
-        setMessage(data.error ?? 'No pudimos disparar la llamada. Probá de nuevo en un momento.');
+        setMessage(data.error ?? 'No hemos podido lanzar la llamada. Inténtalo en un momento.');
       }
     } catch {
       setStatus('error');
-      setMessage('No pudimos conectar. Revisá tu conexión y probá otra vez.');
+      setMessage('No hemos podido conectar. Revisa tu conexión e inténtalo de nuevo.');
     }
   }
 
@@ -141,10 +155,20 @@ export function SapinnDemo() {
     webStatus === 'connecting'
       ? 'Conectando…'
       : webStatus === 'live'
-        ? 'Te escucho — hablá con normalidad'
+        ? 'Te escucha. Habla con normalidad.'
         : webStatus === 'ended'
-          ? 'Llamada terminada'
-          : 'Tocá para hablar';
+          ? 'Llamada finalizada'
+          : 'Pulsa para hablar';
+
+  function switchMode(next: 'web' | 'phone') {
+    if (next === mode) return;
+    clientRef.current?.stopCall?.();
+    setWebStatus('idle');
+    setWebMsg('');
+    setStatus('idle');
+    setMessage('');
+    setMode(next);
+  }
 
   return (
     <div className="sp-root">
@@ -152,169 +176,219 @@ export function SapinnDemo() {
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
       <div className="sp-bg" aria-hidden="true">
-        <div className="sp-aurora sp-aurora-a" />
-        <div className="sp-aurora sp-aurora-b" />
+        <div className="sp-aurora" />
         <div className="sp-grid" />
         <div className="sp-vignette" />
       </div>
 
       <header className="sp-bar">
         <div className="sp-lockup">
-          Futura <span>×</span> Sapinn
+          Futura Solutions <i>×</i> Sapinn Consulting
+        </div>
+        <div className="sp-badge">
+          <span className="sp-badge-dot" /> Demostración en directo
         </div>
       </header>
 
-      <main className="sp-stage">
-        <p className="sp-eyebrow sp-enter" style={{ animationDelay: '.05s' }}>
-          <span className="sp-eye-dot" /> Asistente de voz · Español de España
-        </p>
-        <h1 className="sp-title sp-enter" style={{ animationDelay: '.14s' }}>
-          Hablá con <span className="sp-title-hl">el agente</span>.
-        </h1>
-        <p className="sp-demo-note sp-enter" style={{ animationDelay: '.22s' }}>
-          <strong>Demostración.</strong> El asistente no tiene cargados el catálogo, la agenda ni la
-          información real del cliente, así que puede improvisar datos. La voz, la dicción y el
-          guion se ajustan a medida en la versión final.
-        </p>
-        {mode === 'phone' && (
-          <p className="sp-sub sp-enter" style={{ animationDelay: '.28s' }}>
-            Dejá tu número y el agente te llama en menos de un minuto.
-          </p>
-        )}
+      <main className="sp-main">
+        <div className="sp-split">
+          {/* ── Titular ── */}
+          <section className="sp-intro sp-enter">
+            <p className="sp-eyebrow">Agente de voz saliente para oficina de farmacia</p>
+            <h1 className="sp-title">
+              Escúchalo antes de <span className="sp-title-hl">decidir</span>.
+            </h1>
+            <p className="sp-lead">
+              Es el sistema que llamaría a las farmacias del territorio sin cubrir. No es una
+              maqueta: responde en tiempo real y se le puede interrumpir.
+            </p>
+          </section>
 
-        {mode === 'web' ? (
-          <div className="sp-console sp-enter" style={{ animationDelay: '.36s' }}>
-            <button
-              type="button"
-              className={`sp-orb sp-orb-${orbState}`}
-              onClick={webStatus === 'live' ? endWebCall : startWebCall}
-              aria-label={webStatus === 'live' ? 'Cortar la llamada' : 'Hablar con el agente'}
-            >
-              <span className="sp-orb-ring sp-orb-ring-1" />
-              <span className="sp-orb-ring sp-orb-ring-2" />
-              <span className="sp-orb-ring sp-orb-ring-3" />
-              <span className="sp-orb-core">
-                {webStatus === 'live' ? (
-                  <span className="sp-orb-eq" aria-hidden="true">
-                    {[0, 1, 2, 3].map((i) => (
-                      <span key={`b-${i}`} style={{ animationDelay: `${i * 0.14}s` }} />
-                    ))}
-                  </span>
-                ) : webStatus === 'connecting' ? (
-                  <span className="sp-orb-spin" aria-hidden="true" />
-                ) : (
-                  <MicIcon />
-                )}
-              </span>
-            </button>
+          {/* ── Garantías y letra pequeña. En móvil van DESPUÉS de la consola:
+                 el visitante viene a pulsar el botón, no a leer. ── */}
+          <section className="sp-support sp-enter" style={{ animationDelay: '.14s' }}>
+            <dl className="sp-facts">
+              {FACTS.map((f) => (
+                <div key={f.k} className="sp-fact">
+                  <dt>{f.k}</dt>
+                  <dd>{f.v}</dd>
+                </div>
+              ))}
+            </dl>
 
-            <p className={`sp-orb-label sp-orb-label-${orbState}`}>{orbLabel}</p>
+            <p className="sp-note">
+              <strong>Es una demostración.</strong> El asistente no tiene cargados el catálogo, la
+              agenda ni los datos reales del cliente, así que puede improvisar información. La voz,
+              la dicción y el guion se ajustan a medida en la versión definitiva.
+            </p>
+          </section>
 
-            <div className="sp-actions">
-              {webStatus === 'live' && (
-                <button type="button" className="sp-btn sp-btn-hang" onClick={endWebCall}>
-                  Cortar
-                </button>
-              )}
-              {(webStatus === 'ended' || webStatus === 'error') && (
-                <button
-                  type="button"
-                  className="sp-btn sp-btn-primary"
-                  onClick={() => {
-                    setWebStatus('idle');
-                    setWebMsg('');
-                  }}
-                >
-                  Hablar otra vez
-                </button>
-              )}
+          {/* ── Columna derecha: la consola ── */}
+          <section className="sp-panel sp-enter" style={{ animationDelay: '.1s' }}>
+            <div className="sp-seg" role="tablist" aria-label="Cómo quieres probarlo">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === 'web'}
+                className={`sp-seg-btn ${mode === 'web' ? 'is-on' : ''}`}
+                onClick={() => switchMode('web')}
+              >
+                Por el navegador
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === 'phone'}
+                className={`sp-seg-btn ${mode === 'phone' ? 'is-on' : ''}`}
+                onClick={() => switchMode('phone')}
+              >
+                Recibir una llamada
+              </button>
             </div>
 
-            {webStatus === 'error' && <p className="sp-err">{webMsg}</p>}
-
-            {(webStatus === 'idle' || webStatus === 'ended') && (
-              <button type="button" className="sp-switch" onClick={() => setMode('phone')}>
-                o que te llame al teléfono
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="sp-console sp-enter" style={{ animationDelay: '.36s' }}>
-            {status !== 'success' ? (
-              <form onSubmit={submit} className="sp-phoneform">
-                <div className="sp-glass sp-field-row">
-                  <select
-                    value={prefix}
-                    onChange={(ev) => setPrefix(ev.target.value)}
-                    className="sp-select"
-                    disabled={status === 'loading'}
-                    aria-label="País"
-                  >
-                    {PREFIXES.map((p) => (
-                      <option key={p.code} value={p.code}>
-                        {p.label}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    inputMode="tel"
-                    autoComplete="tel-national"
-                    placeholder="600 000 000"
-                    value={number}
-                    onChange={(ev) => setNumber(ev.target.value)}
-                    className="sp-input"
-                    disabled={status === 'loading'}
-                    aria-label="Tu número"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="sp-btn sp-btn-primary"
-                  disabled={status === 'loading'}
-                >
-                  {status === 'loading' ? (
-                    <>
-                      <span className="sp-mini-spin" /> Llamando…
-                    </>
-                  ) : (
-                    <>
-                      <PhoneIcon /> Que me llame
-                    </>
-                  )}
-                </button>
-                {status === 'error' && <p className="sp-err">{message}</p>}
-                <button type="button" className="sp-switch" onClick={() => setMode('web')}>
-                  mejor hablar ahora con mi voz
-                </button>
-              </form>
-            ) : (
-              <div className="sp-phone-ok">
-                <div className="sp-orb sp-orb-live" aria-hidden="true">
-                  <span className="sp-orb-ring sp-orb-ring-1" />
-                  <span className="sp-orb-ring sp-orb-ring-2" />
-                  <span className="sp-orb-core">
-                    <PhoneIcon />
-                  </span>
-                </div>
-                <p className="sp-orb-label sp-orb-label-live">Te estamos llamando</p>
-                <p className="sp-sub" style={{ marginTop: 0 }}>
-                  {message}
+            {mode === 'web' ? (
+              <div className="sp-console">
+                <p className="sp-console-hint">
+                  Hablas con el agente desde este navegador. Necesita permiso del micrófono.
                 </p>
                 <button
                   type="button"
-                  className="sp-switch"
-                  onClick={() => {
-                    setStatus('idle');
-                    setMessage('');
-                    setNumber('');
-                  }}
+                  className={`sp-orb sp-orb-${orbState}`}
+                  onClick={webStatus === 'live' ? endWebCall : startWebCall}
+                  aria-label={webStatus === 'live' ? 'Colgar la llamada' : 'Hablar con el agente'}
                 >
-                  probar con otro número
+                  <span className="sp-orb-ring" />
+                  <span className="sp-orb-core">
+                    {webStatus === 'live' ? (
+                      <span className="sp-eq" aria-hidden="true">
+                        {[0, 1, 2, 3].map((i) => (
+                          <span key={`b-${i}`} style={{ animationDelay: `${i * 0.13}s` }} />
+                        ))}
+                      </span>
+                    ) : webStatus === 'connecting' ? (
+                      <span className="sp-spin" aria-hidden="true" />
+                    ) : (
+                      <MicIcon />
+                    )}
+                  </span>
                 </button>
+
+                <p className={`sp-state sp-state-${orbState}`}>{orbLabel}</p>
+
+                {/* Sólo se monta cuando hay botón: si no, dejaba un hueco
+                    muerto bajo el estado y el panel parecía sin terminar. */}
+                {webStatus === 'live' && (
+                  <div className="sp-actions">
+                    <button type="button" className="sp-btn sp-btn-ghost" onClick={endWebCall}>
+                      Colgar
+                    </button>
+                  </div>
+                )}
+                {(webStatus === 'ended' || webStatus === 'error') && (
+                  <div className="sp-actions">
+                    <button
+                      type="button"
+                      className="sp-btn sp-btn-primary"
+                      onClick={() => {
+                        setWebStatus('idle');
+                        setWebMsg('');
+                      }}
+                    >
+                      Hablar otra vez
+                    </button>
+                  </div>
+                )}
+
+                {webStatus === 'error' && <p className="sp-err">{webMsg}</p>}
+              </div>
+            ) : (
+              <div className="sp-console">
+                {status !== 'success' ? (
+                  <form onSubmit={submit} className="sp-form">
+                    <p className="sp-console-hint">
+                      El agente marca tu número y te habla como hablaría a una farmacia.
+                    </p>
+                    <div className="sp-field">
+                      <select
+                        value={prefix}
+                        onChange={(ev) => setPrefix(ev.target.value)}
+                        className="sp-select"
+                        disabled={status === 'loading'}
+                        aria-label="Prefijo del país"
+                      >
+                        {PREFIXES.map((p) => (
+                          <option key={p.code} value={p.code}>
+                            {p.label}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        inputMode="tel"
+                        autoComplete="tel-national"
+                        placeholder="600 000 000"
+                        value={number}
+                        onChange={(ev) => setNumber(ev.target.value)}
+                        className="sp-input"
+                        disabled={status === 'loading'}
+                        aria-label="Tu número de teléfono"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="sp-btn sp-btn-primary sp-btn-wide"
+                      disabled={status === 'loading'}
+                    >
+                      {status === 'loading' ? (
+                        <>
+                          <span className="sp-spin sp-spin-sm" /> Lanzando la llamada…
+                        </>
+                      ) : (
+                        <>
+                          <PhoneIcon /> Que me llame
+                        </>
+                      )}
+                    </button>
+                    {status === 'error' && <p className="sp-err">{message}</p>}
+                    <p className="sp-fine">
+                      Usamos tu número sólo para esta llamada de prueba. No queda en ninguna lista.
+                    </p>
+                  </form>
+                ) : (
+                  <div className="sp-ok">
+                    <div className="sp-ok-mark" aria-hidden="true">
+                      <PhoneIcon />
+                    </div>
+                    <p className="sp-state sp-state-live">{message}</p>
+                    <button
+                      type="button"
+                      className="sp-btn sp-btn-ghost"
+                      onClick={() => {
+                        setStatus('idle');
+                        setMessage('');
+                        setNumber('');
+                      }}
+                    >
+                      Probar con otro número
+                    </button>
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
+          </section>
+        </div>
+
+        {/* ── Qué va a pasar en la llamada ── */}
+        <section className="sp-steps sp-enter" style={{ animationDelay: '.18s' }}>
+          <h2 className="sp-steps-h">Qué vas a escuchar</h2>
+          <ol className="sp-steps-list">
+            {STEPS.map((s, i) => (
+              <li key={s}>
+                <span className="sp-step-n">{String(i + 1).padStart(2, '0')}</span>
+                <span>{s}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
       </main>
     </div>
   );
@@ -323,8 +397,8 @@ export function SapinnDemo() {
 function MicIcon() {
   return (
     <svg
-      width="30"
-      height="30"
+      width="26"
+      height="26"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -360,149 +434,177 @@ function PhoneIcon() {
 
 const CSS = `
 .sp-root{
-  --bg:#05080b;--bg2:#080c10;--line:rgba(255,255,255,.08);
+  --bg:#05080b;--panel:rgba(255,255,255,.028);--line:rgba(255,255,255,.09);
   --lime:#8bd835;--lime-br:#a8ec5c;--lime-dp:#3f6b1e;
-  --hi:#f3f7f2;--tx:#9aa8a2;--dim:#5f6d67;
-  --spring:cubic-bezier(.34,1.4,.64,1);--out:cubic-bezier(.22,1,.36,1);
+  --hi:#f2f6f1;--tx:#96a49e;--dim:#606d67;
+  --out:cubic-bezier(.22,1,.36,1);
   position:relative;min-height:100svh;background:var(--bg);color:var(--tx);
-  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Segoe UI",system-ui,sans-serif;
-  -webkit-font-smoothing:antialiased;overflow-x:hidden;
-  display:flex;flex-direction:column;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;display:flex;flex-direction:column;
 }
 .sp-root *{box-sizing:border-box;}
 
-/* ── Fondo ── */
-.sp-bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;background:radial-gradient(120% 80% at 50% -10%,#0a1310 0%,var(--bg) 55%);}
-.sp-aurora{position:absolute;border-radius:50%;filter:blur(90px);opacity:.55;mix-blend-mode:screen;}
-.sp-aurora-a{width:60vw;height:60vw;max-width:720px;max-height:720px;background:radial-gradient(circle,rgba(139,216,53,.5),transparent 62%);top:-14%;left:50%;transform:translateX(-50%);animation:sp-drift-a 22s ease-in-out infinite;}
-.sp-aurora-b{width:52vw;height:52vw;max-width:640px;max-height:640px;background:radial-gradient(circle,rgba(63,120,40,.55),transparent 60%);bottom:-22%;left:24%;animation:sp-drift-b 28s ease-in-out infinite;}
-@keyframes sp-drift-a{0%,100%{transform:translateX(-50%) translateY(0) scale(1)}50%{transform:translateX(-46%) translateY(28px) scale(1.06)}}
-@keyframes sp-drift-b{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(40px,-24px) scale(1.08)}}
-.sp-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:64px 64px;mask-image:radial-gradient(90% 70% at 50% 30%,#000 20%,transparent 75%);}
-.sp-vignette{position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 40%,transparent 55%,rgba(0,0,0,.55));}
+/* ── Fondo: sobrio, una sola aurora y muy contenida ── */
+.sp-bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;background:radial-gradient(110% 70% at 50% -15%,#0a1210 0%,var(--bg) 58%);}
+.sp-aurora{position:absolute;width:70vw;height:70vw;max-width:820px;max-height:820px;border-radius:50%;
+  background:radial-gradient(circle,rgba(139,216,53,.30),transparent 64%);filter:blur(100px);
+  top:-26%;left:50%;transform:translateX(-50%);}
+.sp-grid{position:absolute;inset:0;
+  background-image:linear-gradient(rgba(255,255,255,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.028) 1px,transparent 1px);
+  background-size:72px 72px;mask-image:radial-gradient(85% 65% at 50% 25%,#000 15%,transparent 78%);}
+.sp-vignette{position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 40%,transparent 52%,rgba(0,0,0,.6));}
 
-/* ── Barra superior (material translúcido) ── */
-.sp-bar{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:center;gap:12px;
-  padding:16px clamp(18px,4vw,40px);}
-.sp-lockup{font-size:.8rem;font-weight:600;letter-spacing:.01em;color:var(--hi);}
-.sp-lockup span{color:var(--lime);margin:0 5px;font-weight:500;}
-.sp-ref{font-size:.62rem;font-weight:600;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;}
+/* ── Barra ── */
+.sp-bar{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:center;gap:16px;
+  padding:20px clamp(18px,4vw,44px);border-bottom:1px solid rgba(255,255,255,.055);}
+.sp-lockup{font-size:.82rem;font-weight:600;letter-spacing:-.005em;color:var(--hi);}
+.sp-lockup i{color:var(--lime);margin:0 6px;font-style:normal;font-weight:500;}
+.sp-badge{display:inline-flex;align-items:center;gap:8px;font-size:.68rem;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--tx);border:1px solid var(--line);border-radius:999px;padding:7px 14px;background:var(--panel);}
+.sp-badge-dot{width:6px;height:6px;border-radius:50%;background:var(--lime);box-shadow:0 0 10px var(--lime);animation:sp-blink 2.6s ease-in-out infinite;}
+@keyframes sp-blink{0%,100%{opacity:1}50%{opacity:.3}}
 
-/* ── Escenario centrado ── */
-.sp-stage{position:relative;z-index:2;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
-  padding:clamp(20px,5vh,56px) 20px;gap:0;}
+/* ── Layout ── */
+.sp-main{position:relative;z-index:2;flex:1;width:100%;max-width:1160px;margin:0 auto;
+  padding:clamp(34px,6vh,70px) clamp(18px,4vw,44px) clamp(40px,7vh,72px);}
+/* Dos filas a la izquierda (titular y garantías) y la consola ocupando las dos
+   a la derecha. En una columna el orden cambia: titular · consola · garantías. */
+.sp-split{display:grid;grid-template-columns:1.06fr .94fr;
+  grid-template-areas:"intro panel" "support panel";
+  column-gap:clamp(30px,5vw,66px);row-gap:32px;align-items:start;}
+.sp-intro{grid-area:intro;}
+.sp-support{grid-area:support;}
+.sp-panel{grid-area:panel;}
+@media(max-width:940px){
+  .sp-split{grid-template-columns:1fr;grid-template-areas:"intro" "panel" "support";row-gap:30px;}
+}
 
-.sp-eyebrow{display:inline-flex;align-items:center;gap:9px;margin:0 0 22px;font-size:.72rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--lime);}
-.sp-eye-dot{width:6px;height:6px;border-radius:50%;background:var(--lime);box-shadow:0 0 12px var(--lime);animation:sp-blink 2.4s ease-in-out infinite;}
-@keyframes sp-blink{0%,100%{opacity:1}50%{opacity:.35}}
+/* ── Columna de texto ── */
+.sp-eyebrow{margin:0 0 18px;font-size:.7rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--lime);}
+.sp-title{margin:0;color:var(--hi);font-size:clamp(2.2rem,4.5vw,3.5rem);font-weight:660;line-height:1.05;letter-spacing:-.032em;}
+/* El padding/margin compensados ensanchan la caja que pinta el degradado sin
+   mover el texto: sin ellos, background-clip:text recorta el último glifo. */
+.sp-title-hl{background:linear-gradient(180deg,var(--lime-br),var(--lime) 60%,var(--lime-dp) 135%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
+  padding-right:.08em;margin-right:-.08em;}
+.sp-lead{margin:20px 0 0;max-width:46ch;font-size:clamp(.98rem,1.5vw,1.08rem);line-height:1.6;color:var(--tx);font-weight:420;}
 
-.sp-title{margin:0;color:var(--hi);font-size:clamp(3rem,8.6vw,5.7rem);font-weight:680;line-height:1;letter-spacing:-.04em;font-optical-sizing:auto;text-shadow:0 1px 40px rgba(139,216,53,.14);}
-.sp-title-hl{background:linear-gradient(180deg,var(--lime-br) 0%,var(--lime) 55%,var(--lime-dp) 130%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;}
-.sp-sub{margin:20px auto 0;max-width:46ch;color:var(--tx);font-size:clamp(1rem,1.7vw,1.14rem);line-height:1.55;font-weight:420;letter-spacing:-.006em;}
+/* Hechos: rejilla de datos, no bullets de marketing */
+.sp-facts{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin:0;padding:1px;
+  background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden;}
+@media(max-width:440px){.sp-facts{grid-template-columns:1fr;}}
+.sp-fact{background:#070b0e;padding:15px 16px;}
+.sp-fact dt{margin:0 0 5px;font-size:.66rem;font-weight:660;letter-spacing:.11em;text-transform:uppercase;color:var(--lime);}
+.sp-fact dd{margin:0;font-size:.85rem;line-height:1.45;color:var(--hi);font-weight:430;}
 
-/* Copy de demostración, justo bajo el título */
-.sp-demo-note{margin:22px auto 0;max-width:56ch;color:var(--dim);font-size:clamp(.82rem,1.4vw,.92rem);line-height:1.6;letter-spacing:.002em;font-weight:420;}
-.sp-demo-note strong{color:var(--tx);font-weight:600;}
+.sp-note{margin:24px 0 0;max-width:58ch;font-size:.78rem;line-height:1.65;color:var(--dim);
+  border-left:2px solid rgba(139,216,53,.34);padding-left:14px;}
+.sp-note strong{color:var(--tx);font-weight:600;}
 
-/* ── Consola ── */
-.sp-console{margin-top:clamp(30px,5vh,52px);display:flex;flex-direction:column;align-items:center;}
+/* ── Panel de la consola ── */
+.sp-panel{border:1px solid var(--line);border-radius:20px;background:
+  linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.012));
+  backdrop-filter:blur(16px) saturate(140%);padding:14px;position:sticky;top:24px;}
+@media(max-width:940px){.sp-panel{position:static;}}
 
-/* ── Orbe ── */
-.sp-orb{position:relative;width:clamp(184px,42vw,236px);height:clamp(184px,42vw,236px);border-radius:50%;border:none;background:none;padding:0;cursor:pointer;
-  display:grid;place-items:center;-webkit-tap-highlight-color:transparent;
-  animation:sp-breathe 6s ease-in-out infinite;transition:transform .5s var(--spring),filter .5s var(--out);}
-.sp-orb:focus-visible{outline:2px solid var(--lime);outline-offset:10px;border-radius:50%;}
-.sp-orb:hover{transform:scale(1.035);}
-.sp-orb:active{transform:scale(.965);transition:transform .12s ease-out;}
-@keyframes sp-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.028)}}
+.sp-seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:13px;
+  background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.055);}
+.sp-seg-btn{appearance:none;border:none;background:transparent;color:var(--tx);font-family:inherit;
+  font-size:.84rem;font-weight:560;letter-spacing:-.005em;padding:10px 8px;border-radius:10px;cursor:pointer;
+  transition:background .25s var(--out),color .25s var(--out);}
+.sp-seg-btn:hover{color:var(--hi);}
+.sp-seg-btn.is-on{background:rgba(139,216,53,.14);color:var(--lime-br);box-shadow:inset 0 0 0 1px rgba(139,216,53,.3);}
 
-.sp-orb-core{position:relative;z-index:3;width:70%;height:70%;border-radius:50%;display:grid;place-items:center;color:#06120a;
-  background:
-    radial-gradient(120% 120% at 32% 26%,rgba(255,255,255,.9),rgba(255,255,255,0) 42%),
-    radial-gradient(120% 120% at 50% 42%,var(--lime-br),var(--lime) 46%,var(--lime-dp) 96%);
-  box-shadow:
-    inset 0 2px 10px rgba(255,255,255,.55),
-    inset 0 -16px 30px rgba(6,18,10,.55),
-    0 20px 50px -14px rgba(139,216,53,.6),
-    0 0 0 1px rgba(139,216,53,.35);
-  transition:box-shadow .5s var(--out),transform .5s var(--spring);}
-.sp-orb-core::after{content:"";position:absolute;inset:0;border-radius:50%;
-  background:conic-gradient(from 0deg,transparent,rgba(255,255,255,.5),transparent 40%);
-  mix-blend-mode:overlay;opacity:.6;animation:sp-sheen 5s linear infinite;}
-@keyframes sp-sheen{to{transform:rotate(360deg)}}
+.sp-console{display:flex;flex-direction:column;align-items:center;padding:26px 14px 18px;}
+.sp-console-hint{margin:0 0 24px;max-width:34ch;text-align:center;font-size:.82rem;line-height:1.5;color:var(--dim);}
 
-.sp-orb-ring{position:absolute;inset:0;border-radius:50%;border:1px solid rgba(139,216,53,.4);opacity:0;}
-.sp-orb-idle .sp-orb-ring,.sp-orb-ended .sp-orb-ring{animation:sp-halo 3.4s ease-out infinite;}
-.sp-orb-idle .sp-orb-ring-2,.sp-orb-ended .sp-orb-ring-2{animation-delay:1.1s;}
-.sp-orb-idle .sp-orb-ring-3,.sp-orb-ended .sp-orb-ring-3{animation-delay:2.2s;}
-@keyframes sp-halo{0%{transform:scale(.82);opacity:.6}100%{transform:scale(1.5);opacity:0}}
+/* ── Botón de llamada: contenido, sin pulso permanente ── */
+.sp-orb{position:relative;width:132px;height:132px;border-radius:50%;border:none;background:none;padding:0;
+  cursor:pointer;display:grid;place-items:center;-webkit-tap-highlight-color:transparent;
+  transition:transform .4s var(--out);}
+.sp-orb:hover{transform:scale(1.03);}
+.sp-orb:active{transform:scale(.97);transition:transform .1s ease-out;}
+.sp-orb:focus-visible{outline:2px solid var(--lime);outline-offset:9px;}
+.sp-orb-core{position:relative;z-index:3;width:100%;height:100%;border-radius:50%;display:grid;place-items:center;color:#06120a;
+  background:radial-gradient(120% 120% at 34% 26%,rgba(255,255,255,.82),rgba(255,255,255,0) 44%),
+    radial-gradient(120% 120% at 50% 44%,var(--lime-br),var(--lime) 48%,var(--lime-dp) 98%);
+  box-shadow:inset 0 2px 8px rgba(255,255,255,.45),inset 0 -12px 24px rgba(6,18,10,.5),
+    0 14px 38px -14px rgba(139,216,53,.55);
+  transition:box-shadow .45s var(--out);}
+.sp-orb-ring{position:absolute;inset:-9px;border-radius:50%;border:1px solid rgba(139,216,53,.28);opacity:0;transition:opacity .35s var(--out);}
+.sp-orb:hover .sp-orb-ring{opacity:1;}
 
-/* Conectando: pulso más nervioso y núcleo atenuado */
-.sp-orb-connecting{animation:none;}
-.sp-orb-connecting .sp-orb-ring{animation:sp-halo 1.5s ease-out infinite;}
-.sp-orb-connecting .sp-orb-ring-2{animation-delay:.5s;}
-.sp-orb-connecting .sp-orb-ring-3{animation-delay:1s;}
-.sp-orb-spin{width:26px;height:26px;border-radius:50%;border:3px solid rgba(6,18,10,.35);border-top-color:#06120a;animation:sp-spin .8s linear infinite;}
+.sp-orb-connecting .sp-orb-core{filter:saturate(.7);}
+.sp-orb-connecting .sp-orb-ring{opacity:1;animation:sp-pulse 1.5s ease-out infinite;}
+.sp-orb-live .sp-orb-ring{opacity:1;border-color:rgba(139,216,53,.6);animation:sp-pulse 2s ease-out infinite;}
+.sp-orb-live .sp-orb-core{box-shadow:inset 0 2px 8px rgba(255,255,255,.5),inset 0 -12px 24px rgba(6,18,10,.45),0 18px 50px -12px rgba(139,216,53,.8);}
+@keyframes sp-pulse{0%{transform:scale(1);opacity:.7}100%{transform:scale(1.28);opacity:0}}
+
+.sp-eq{display:flex;align-items:center;gap:4px;height:28px;}
+.sp-eq span{display:block;width:4px;height:100%;border-radius:2px;background:#06120a;animation:sp-eq 1s ease-in-out infinite;}
+@keyframes sp-eq{0%,100%{transform:scaleY(.32)}50%{transform:scaleY(1)}}
+.sp-spin{width:24px;height:24px;border-radius:50%;border:3px solid rgba(6,18,10,.3);border-top-color:#06120a;animation:sp-spin .8s linear infinite;}
+.sp-spin-sm{width:14px;height:14px;border-width:2px;}
 @keyframes sp-spin{to{transform:rotate(360deg)}}
 
-/* En vivo: halo continuo brillante + ecualizador */
-.sp-orb-live{animation:sp-breathe-live 2.6s ease-in-out infinite;}
-@keyframes sp-breathe-live{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
-.sp-orb-live .sp-orb-core{box-shadow:inset 0 2px 10px rgba(255,255,255,.6),inset 0 -16px 30px rgba(6,18,10,.5),0 24px 64px -12px rgba(139,216,53,.85),0 0 0 1px rgba(139,216,53,.55);}
-.sp-orb-live .sp-orb-ring{animation:sp-halo 2s ease-out infinite;border-color:rgba(139,216,53,.7);}
-.sp-orb-live .sp-orb-ring-2{animation-delay:.66s;}
-.sp-orb-live .sp-orb-ring-3{animation-delay:1.33s;}
-.sp-orb-eq{display:flex;align-items:center;gap:5px;height:34px;}
-.sp-orb-eq span{display:block;width:5px;height:100%;border-radius:3px;background:#06120a;transform-origin:center;animation:sp-eq 1s ease-in-out infinite;}
-@keyframes sp-eq{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}
-
-.sp-orb-label{margin:26px 0 0;font-size:1.02rem;font-weight:520;letter-spacing:-.01em;color:var(--hi);transition:color .4s var(--out);}
-.sp-orb-label-idle{color:var(--tx);}
-.sp-orb-label-connecting{color:var(--lime);}
-.sp-orb-label-live{color:var(--lime);}
-
-.sp-actions{display:flex;gap:10px;margin-top:20px;min-height:0;}
+.sp-state{margin:22px 0 0;text-align:center;font-size:.92rem;font-weight:520;letter-spacing:-.008em;color:var(--tx);transition:color .3s var(--out);}
+.sp-state-connecting,.sp-state-live{color:var(--lime-br);}
+.sp-actions{display:flex;gap:10px;margin-top:18px;}
 
 /* ── Botones ── */
-.sp-btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;font-family:inherit;font-size:.98rem;font-weight:560;letter-spacing:-.01em;
-  padding:13px 24px;border-radius:999px;border:none;cursor:pointer;transition:transform .3s var(--spring),box-shadow .3s var(--out),background .3s;}
-.sp-btn:active{transform:scale(.96);transition:transform .1s ease-out;}
-.sp-btn-primary{background:var(--lime);color:#06120a;box-shadow:0 14px 34px -12px rgba(139,216,53,.6);}
-.sp-btn-primary:hover{transform:translateY(-1px);box-shadow:0 20px 44px -14px rgba(139,216,53,.72);}
-.sp-btn-primary:disabled{opacity:.7;cursor:default;transform:none;}
-.sp-btn-hang{background:rgba(255,255,255,.06);color:var(--hi);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(14px);}
-.sp-btn-hang:hover{background:rgba(255,111,94,.14);border-color:rgba(255,111,94,.4);color:#ffb3a8;}
+.sp-btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;font-family:inherit;font-size:.9rem;
+  font-weight:570;letter-spacing:-.008em;padding:12px 22px;border-radius:11px;border:none;cursor:pointer;
+  transition:transform .25s var(--out),box-shadow .25s var(--out),background .25s;}
+.sp-btn:active{transform:scale(.975);transition:transform .09s ease-out;}
+.sp-btn-primary{background:var(--lime);color:#06120a;box-shadow:0 10px 26px -12px rgba(139,216,53,.6);}
+.sp-btn-primary:hover{background:var(--lime-br);box-shadow:0 14px 32px -12px rgba(139,216,53,.7);}
+.sp-btn-primary:disabled{opacity:.65;cursor:default;transform:none;}
+.sp-btn-ghost{background:rgba(255,255,255,.05);color:var(--hi);border:1px solid var(--line);}
+.sp-btn-ghost:hover{background:rgba(255,255,255,.09);}
+.sp-btn-wide{width:100%;padding:14px;}
 
-.sp-switch{margin-top:26px;background:none;border:none;color:var(--dim);font-family:inherit;font-size:.86rem;letter-spacing:-.005em;cursor:pointer;transition:color .3s var(--out);padding:6px;}
-.sp-switch:hover{color:var(--lime);}
-
-.sp-err{margin:16px 0 0;max-width:34ch;font-size:.86rem;line-height:1.45;color:#ffb3a8;background:rgba(255,111,94,.08);border:1px solid rgba(255,111,94,.22);border-radius:12px;padding:11px 14px;}
-
-/* ── Modo teléfono ── */
-.sp-phoneform{display:flex;flex-direction:column;align-items:center;gap:14px;width:min(340px,88vw);}
-.sp-glass{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(18px) saturate(150%);}
-.sp-field-row{display:flex;width:100%;border-radius:16px;overflow:hidden;}
-.sp-select{appearance:none;-webkit-appearance:none;background:transparent;border:none;border-right:1px solid rgba(255,255,255,.1);color:var(--hi);font-family:inherit;font-size:.96rem;padding:15px 14px;cursor:pointer;}
+/* ── Formulario de teléfono ── */
+.sp-form{display:flex;flex-direction:column;align-items:stretch;gap:12px;width:100%;max-width:330px;}
+.sp-field{display:flex;width:100%;border-radius:12px;overflow:hidden;background:rgba(0,0,0,.3);border:1px solid var(--line);
+  transition:border-color .25s var(--out),box-shadow .25s var(--out);}
+.sp-field:focus-within{border-color:rgba(139,216,53,.5);box-shadow:0 0 0 3px rgba(139,216,53,.12);}
+.sp-select{appearance:none;-webkit-appearance:none;background:transparent;border:none;border-right:1px solid var(--line);
+  color:var(--hi);font-family:inherit;font-size:.86rem;padding:13px 12px;cursor:pointer;}
 .sp-select option{background:#0b0f13;color:var(--hi);}
-.sp-input{flex:1;min-width:0;background:transparent;border:none;color:var(--hi);font-family:inherit;font-size:1.05rem;letter-spacing:.02em;padding:15px 16px;}
+.sp-input{flex:1;min-width:0;background:transparent;border:none;color:var(--hi);font-family:inherit;font-size:1rem;
+  letter-spacing:.02em;padding:13px 14px;}
 .sp-input::placeholder{color:var(--dim);}
 .sp-input:focus,.sp-select:focus{outline:none;}
-.sp-field-row:focus-within{border-color:rgba(139,216,53,.5);box-shadow:0 0 0 3px rgba(139,216,53,.14);}
-.sp-phoneform .sp-btn-primary{width:100%;padding:15px;}
-.sp-mini-spin{width:15px;height:15px;border-radius:50%;border:2px solid rgba(6,18,10,.35);border-top-color:#06120a;animation:sp-spin .7s linear infinite;}
-.sp-phone-ok{display:flex;flex-direction:column;align-items:center;}
+.sp-fine{margin:2px 0 0;text-align:center;font-size:.71rem;line-height:1.5;color:var(--dim);}
 
-/* ── Entrada orquestada (materializa: blur+scale+fade) ── */
-.sp-enter{opacity:0;animation:sp-materialize .9s var(--out) both;}
-@keyframes sp-materialize{from{opacity:0;transform:translateY(14px) scale(.985);filter:blur(8px)}to{opacity:1;transform:none;filter:blur(0)}}
+.sp-ok{display:flex;flex-direction:column;align-items:center;gap:16px;}
+.sp-ok-mark{width:60px;height:60px;border-radius:50%;display:grid;place-items:center;color:var(--lime-br);
+  background:rgba(139,216,53,.12);border:1px solid rgba(139,216,53,.34);}
+.sp-ok .sp-state{margin:0;}
+
+.sp-err{margin:14px 0 0;max-width:36ch;text-align:center;font-size:.82rem;line-height:1.45;color:#ffb3a8;
+  background:rgba(255,111,94,.08);border:1px solid rgba(255,111,94,.22);border-radius:10px;padding:10px 13px;}
+
+/* ── Qué vas a escuchar ── */
+.sp-steps{margin-top:clamp(40px,6vh,72px);border-top:1px solid rgba(255,255,255,.06);padding-top:clamp(26px,4vh,38px);}
+.sp-steps-h{margin:0 0 22px;font-size:.7rem;font-weight:660;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);}
+.sp-steps-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(18px,3vw,38px);}
+@media(max-width:780px){.sp-steps-list{grid-template-columns:1fr;gap:16px;}}
+.sp-steps-list li{display:flex;gap:13px;align-items:flex-start;font-size:.87rem;line-height:1.55;color:var(--tx);}
+.sp-step-n{flex:none;font-size:.72rem;font-weight:700;letter-spacing:.06em;color:var(--lime);
+  border:1px solid rgba(139,216,53,.3);border-radius:7px;padding:3px 7px;background:rgba(139,216,53,.07);}
+
+/* ── Entrada ── */
+.sp-enter{opacity:0;animation:sp-rise .75s var(--out) both;}
+@keyframes sp-rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 
 @media(prefers-reduced-motion:reduce){
-  .sp-aurora,.sp-eye-dot,.sp-orb,.sp-orb-core::after,.sp-orb-ring,.sp-orb-eq span,.sp-orb-spin,.sp-orb-live{animation:none!important;}
+  .sp-aurora,.sp-badge-dot,.sp-orb-ring,.sp-eq span,.sp-spin{animation:none!important;}
   .sp-enter{animation:sp-fade .3s ease both;}
   @keyframes sp-fade{from{opacity:0}to{opacity:1}}
-  .sp-orb:hover,.sp-orb:active{transform:none;}
+  .sp-orb:hover,.sp-orb:active,.sp-btn:active{transform:none;}
 }
 @media(prefers-reduced-transparency:reduce){
-  .sp-glass,.sp-btn-hang{backdrop-filter:none;background:#0c1116;}
+  .sp-panel{backdrop-filter:none;background:#0a0f13;}
 }
 `;
