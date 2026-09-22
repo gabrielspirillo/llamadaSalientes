@@ -36,6 +36,12 @@ export interface SendAgentResponseInput {
   /** Si están presentes, se manda como interactive con botones (max 3). */
   buttons?: Array<{ id: string; title: string }> | null;
   connector: WhatsAppConnector;
+  /**
+   * Quién lo manda, tal como se ve en el inbox. 'AGENT' es el asistente (el
+   * defecto); 'HUMAN' es el equipo, para lo que sale desde el panel —un
+   * consentimiento para firmar— y no debe parecer escrito por la IA.
+   */
+  senderType?: 'AGENT' | 'HUMAN';
 }
 
 export interface SendAgentResponseResult {
@@ -72,7 +78,7 @@ export async function sendAgentResponse(
       externalId: sent.id,
       direction: 'OUTBOUND',
       type: kind === 'buttons' ? 'INTERACTIVE' : 'TEXT',
-      senderType: 'AGENT',
+      senderType: input.senderType ?? 'AGENT',
       contentText: input.text,
       // Storage del jsonb del payload del provider: lo dejamos vacío porque
       // el connector no nos lo devuelve. Si en el futuro queremos guardarlo

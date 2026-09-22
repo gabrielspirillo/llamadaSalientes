@@ -2,7 +2,7 @@ import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
 import { type WhatsappAgentMode, isWhatsappAgentMode } from '@/lib/data/whatsapp-agent-settings';
 import { db } from '@/lib/db/client';
-import { tenants, whatsappAgentSettings } from '@/lib/db/schema';
+import { esignIntegrations, tenants, whatsappAgentSettings } from '@/lib/db/schema';
 import { type EnabledModules, MODULE_DEFINITIONS, MODULE_KEYS } from '@/lib/modules';
 import { getCurrentTenant } from '@/lib/tenant';
 import { eq } from 'drizzle-orm';
@@ -13,6 +13,7 @@ import { ActivateButton } from './activate-button';
 import { AgentModeDialog } from './agent-mode-dialog';
 import { BrandingDialog } from './branding-dialog';
 import { EnterButton } from './enter-button';
+import { EsignDialog } from './esign-dialog';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,10 +74,19 @@ export default async function FuturaPanelPage() {
       createdAt: tenants.createdAt,
       agentMode: whatsappAgentSettings.agentMode,
       deriveFallbackPhone: whatsappAgentSettings.deriveFallbackPhone,
+      esignBaseUrl: esignIntegrations.baseUrl,
+      esignActive: esignIntegrations.active,
     })
     .from(tenants)
     // LEFT: la clínica que nunca se configuró no tiene fila y es 'BOOKING'.
-    .leftJoin(whatsappAgentSettings, eq(whatsappAgentSettings.tenantId, tenants.id));
+    .leftJoin(whatsappAgentSettings, eq(whatsappAgentSettings.tenantId, tenants.id))
+    // LEFT: la firma digital sólo la tienen las clínicas que la pidieron.
+    .leftJoin(esignIntegrations, eq(esignIntegrations.tenantId, tenants.id));
+
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.futuradigital.es').replace(
+    /\/+$/,
+    '',
+  );
 
   const clinics = rows
     .map((r) => ({ ...r, status: (r.status ?? 'trial') as Status }))
@@ -167,6 +177,14 @@ export default async function FuturaPanelPage() {
                         tenantId={c.id}
                         mode={agentMode}
                         fallbackPhone={c.deriveFallbackPhone}
+                      />
+                    )}
+                    {!isFutura && (
+                      <EsignDialog
+                        tenantId={c.id}
+                        configured={Boolean(c.esignActive)}
+                        baseUrl={c.esignBaseUrl ?? null}
+                        webhookUrl={`${appUrl}/api/webhooks/documenso/${c.id}`}
                       />
                     )}
                     {!isFutura && (

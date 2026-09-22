@@ -82,6 +82,8 @@ export const IM_EVENTS = [
   'analytics.threshold_alert',
   // Clínicas con perfil de atención (pediatría): cumple años un paciente.
   'patient.birthday',
+  // Clínicas con firma digital: el tutor firmó el consentimiento.
+  'consent.signed',
 ] as const;
 export type ImEvent = (typeof IM_EVENTS)[number];
 
@@ -100,6 +102,7 @@ export const IM_EVENT_ROUTING: Record<ImEvent, { slug: string; tone: ImTone }> =
   'analytics.daily_digest': { slug: 'general', tone: 'sky' },
   'analytics.threshold_alert': { slug: 'general', tone: 'sky' },
   'patient.birthday': { slug: 'agenda', tone: 'blossom' },
+  'consent.signed': { slug: 'agenda', tone: 'mint' },
 };
 
 /** Cuántos mensajes trae cada página del hilo (paginación keyset). */
