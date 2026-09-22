@@ -1,11 +1,17 @@
 'use server';
 
 import { clinicNameSchema } from '@/lib/branding';
+import {
+  type WhatsappAgentMode,
+  isWhatsappAgentMode,
+  setWhatsappAgentMode,
+} from '@/lib/data/whatsapp-agent-settings';
 import { db } from '@/lib/db/client';
 import { tenants } from '@/lib/db/schema';
 import { brandingBucket } from '@/lib/futura/branding-store';
 import { mediaDelete } from '@/lib/storage/media';
 import { getCurrentTenant } from '@/lib/tenant';
+import { normalizeWhatsappE164 } from '@/lib/whatsapp/phone';
 import { clerkClient } from '@clerk/nextjs/server';
 import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
@@ -135,4 +141,59 @@ export async function removeClinicLogoAction(targetTenantId: string): Promise<Br
 function revalidateBranding(): void {
   revalidatePath('/dashboard/futura');
   revalidatePath('/dashboard', 'layout');
+}
+
+/**
+ * Modo del asistente de WhatsApp de una clínica. Sólo Futura.
+ *
+ * Es una decisión de producto por cliente —hay centros que no quieren que el
+ * asistente reserve nada— y por eso no se expone en la configuración de la
+ * propia clínica: se enciende desde aquí.
+ */
+export async function setWhatsappAgentModeAction(
+  targetTenantId: string,
+  rawMode: string,
+  rawFallbackPhone: string | null,
+): Promise<BrandingResult> {
+  const { isSuperAdmin } = await getCurrentTenant();
+  if (!isSuperAdmin) {
+    return { ok: false, error: 'No autorizado.' };
+  }
+  if (!isWhatsappAgentMode(rawMode)) {
+    return { ok: false, error: 'Modo no válido.' };
+  }
+  const mode: WhatsappAgentMode = rawMode;
+
+  const rawPhone = rawFallbackPhone?.trim() ?? '';
+  const fallbackPhone = rawPhone ? normalizeWhatsappE164(rawPhone) : null;
+  if (rawPhone && !fallbackPhone) {
+    return {
+      ok: false,
+      error: 'El móvil de respaldo tiene que llevar el prefijo del país: +34 600 11 22 33.',
+    };
+  }
+
+  const rows = await db
+    .select({ id: tenants.id })
+    .from(tenants)
+    .where(eq(tenants.id, targetTenantId))
+    .limit(1);
+  if (!rows[0]) {
+    return { ok: false, error: 'La clínica no existe.' };
+  }
+
+  await setWhatsappAgentMode({
+    tenantId: targetTenantId,
+    mode,
+    deriveFallbackPhone: fallbackPhone,
+  });
+
+  revalidatePath('/dashboard/futura');
+  return mode === 'DERIVE' && !fallbackPhone
+    ? {
+        ok: true,
+        warning:
+          'Guardado. Sin móvil de respaldo, una consulta que no encaje con ningún profesional se queda sólo en el panel.',
+      }
+    : { ok: true };
 }

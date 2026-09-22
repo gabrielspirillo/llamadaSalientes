@@ -77,6 +77,7 @@ export default async function ProfesionalDetailPage({
                 fullName: p.fullName,
                 email: p.email ?? '',
                 phone: p.phone ?? '',
+                whatsappE164: p.whatsappE164 ?? '',
                 specialty: p.specialty ?? '',
                 licenseNumber: p.licenseNumber ?? '',
                 color: p.color,
@@ -154,6 +155,12 @@ export default async function ProfesionalDetailPage({
               <div className="flex items-center justify-between">
                 <dt className="text-zinc-500">Zona horaria</dt>
                 <dd className="text-zinc-700">{timezone}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-zinc-500">WhatsApp</dt>
+                <dd className="truncate tabular-nums text-zinc-700">
+                  {p.whatsappE164 ? p.whatsappE164 : <Badge tone="warn">Sin número</Badge>}
+                </dd>
               </div>
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-zinc-500">Usuario del panel</dt>

@@ -348,6 +348,11 @@ export const whatsappAgentSettings = pgTable('whatsapp_agent_settings', {
     .references(() => tenants.id, { onDelete: 'cascade' }),
   persona: text('persona'),
   agentName: text('agent_name'),
+  // BOOKING = el asistente agenda (defecto, comportamiento histórico).
+  // DERIVE = recopila la consulta y se la pasa al profesional por WhatsApp.
+  agentMode: text('agent_mode').notNull().default('BOOKING'),
+  // A quién se avisa en modo DERIVE cuando ningún profesional encaja.
+  deriveFallbackPhone: text('derive_fallback_phone'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -1992,6 +1997,9 @@ export const professionals = pgTable(
     fullName: text('full_name').notNull(),
     email: text('email'),
     phone: text('phone'),
+    // Aparte del teléfono: es a donde el asistente le manda las consultas que
+    // deriva, y tiene que estar en E.164 o el proveedor lo manda a otro país.
+    whatsappE164: text('whatsapp_e164'),
     specialty: text('specialty'),
     licenseNumber: text('license_number'),
     color: text('color').notNull().default('#37766a'),

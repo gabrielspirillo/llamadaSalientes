@@ -25,6 +25,7 @@ import {
   users,
 } from '@/lib/db/schema';
 import { zonedToUtc } from '@/lib/tasks/tz';
+import { normalizeWhatsappE164, parseWhatsappPhone } from '@/lib/whatsapp/phone';
 
 export class AgendaValidationError extends Error {
   constructor(message: string) {
@@ -44,6 +45,24 @@ export const professionalInputSchema = z.object({
   fullName: z.string().trim().min(2, 'El nombre es obligatorio').max(120),
   email: z.string().trim().email('Email inválido').max(160).optional().or(z.literal('')),
   phone: z.string().trim().max(40).optional().or(z.literal('')),
+  /**
+   * WhatsApp en E.164. Se valida de verdad —y no como el teléfono, que es
+   * texto libre— porque es a donde el asistente manda las consultas que deriva:
+   * un número a medias no da error, manda el mensaje a otro sitio.
+   */
+  whatsappE164: z
+    .string()
+    .trim()
+    .max(40)
+    .optional()
+    .or(z.literal(''))
+    .superRefine((value, ctx) => {
+      if (!value) return;
+      const parsed = parseWhatsappPhone(value);
+      if (!parsed.ok) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: parsed.error });
+      }
+    }),
   specialty: z.string().trim().max(120).optional().or(z.literal('')),
   licenseNumber: z.string().trim().max(60).optional().or(z.literal('')),
   color: hexColor.optional(),
@@ -225,6 +244,7 @@ export async function createProfessional(ctx: AgendaContext, raw: ProfessionalIn
       fullName: input.fullName,
       email: emptyToNull(input.email),
       phone: emptyToNull(input.phone),
+      whatsappE164: normalizeWhatsappE164(input.whatsappE164),
       specialty: emptyToNull(input.specialty),
       licenseNumber: emptyToNull(input.licenseNumber),
       color: input.color ?? PROFESSIONAL_COLORS[index % PROFESSIONAL_COLORS.length],
@@ -255,6 +275,8 @@ export async function updateProfessional(
   if (input.fullName !== undefined) patch.fullName = input.fullName;
   if (input.email !== undefined) patch.email = emptyToNull(input.email);
   if (input.phone !== undefined) patch.phone = emptyToNull(input.phone);
+  if (input.whatsappE164 !== undefined)
+    patch.whatsappE164 = normalizeWhatsappE164(input.whatsappE164);
   if (input.specialty !== undefined) patch.specialty = emptyToNull(input.specialty);
   if (input.licenseNumber !== undefined) patch.licenseNumber = emptyToNull(input.licenseNumber);
   if (input.color !== undefined) patch.color = input.color;

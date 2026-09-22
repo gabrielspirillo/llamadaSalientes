@@ -511,6 +511,76 @@ paciente es `to_number`, en una entrante es `from_number` — antes se cogía
 siempre `to_number` y una llamada entrante daba de alta al paciente con el
 número de la propia clínica.
 
+## El asistente de WhatsApp puede no agendar: modo DERIVE
+
+Por defecto el asistente cierra el círculo (informa y reserva). Hay centros que
+no lo quieren así — **Train Movements Center** fue el primero: prefieren que
+recoja la consulta y se la pase al profesional que la puede atender, y que sea
+esa persona quien contacte al paciente y acuerde el día.
+
+**Se enciende desde Futura**, clínica por clínica: `/dashboard/futura` → botón
+**Asistente** de cada ficha. Dos opciones ("Agenda la cita" / "Deriva al
+profesional") y, en la segunda, un **móvil de respaldo**. Vive en
+`whatsapp_agent_settings.agent_mode` (`BOOKING` | `DERIVE`) y
+`derive_fallback_phone` (migración `0028_whatsapp_modo_derivacion.sql`). El
+defecto es `BOOKING`: una clínica sin fila de ajustes sigue agendando.
+
+**A quién le llega cada consulta** (`lib/whatsapp/agent/derivation.ts`): el
+profesional que realiza ese servicio (`professional_treatments`, la misma
+relación que usa la agenda, pero **sin exigir `agenda_enabled`** — un centro en
+modo DERIVE no lleva su agenda aquí) → el único profesional activo, si sólo hay
+uno → el móvil de respaldo. Un profesional sin WhatsApp cargado se sigue
+nombrando en el parte, que sale por el respaldo.
+
+**El WhatsApp del profesional es una columna propia**: `professionals.whatsapp_e164`
+(migración `0029_profesional_whatsapp.sql`), con su campo en el alta y en la
+edición de Agenda → Profesionales, y validado con `lib/whatsapp/phone.ts`. No se
+reusó `professionals.phone` porque es texto libre y lleva de todo; y no se
+normaliza con `normalizePatientPhone`, que es permisivo a propósito para lo que
+llega del canal. **Un móvil local sin prefijo no se acepta**: "600 11 22 33"
+normalizado a la fuerza da `+600112233`, un número de otro país que el proveedor
+acepta y al que el mensaje sale —cobrado— sin que nadie se entere de que el
+profesional nunca lo recibió. El teléfono de contacto sólo se usa de reserva, y
+únicamente si ya está en formato internacional; la migración hace ese backfill.
+La lista de profesionales avisa de quién no lo tiene, pero sólo cuando la
+clínica está en modo DERIVE: en el modo normal ese número no hace falta.
+
+**Quitarle las tools no alcanza.** El prompt de DERIVE es otro
+(`buildDerivePrompt`), sin agendamiento y con el protocolo de recopilación, y la
+lista de herramientas se filtra por modo; pero además `executeAgentTool`
+**rechaza en el servidor** `check_availability`, `book_appointment`,
+`cancel_appointment` y `list_professionals` cuando el modo es DERIVE. Un modelo
+puede llamar a una tool que no le ofrecieron, y reservar es justo lo que el
+centro pidió que no pasara.
+
+**El WhatsApp al profesional lo manda el worker, no la tool.**
+`derive_to_professional` sólo resuelve el destinatario y deja el parte en
+`AgentOutput.derivation`; `worker/jobs/whatsapp-process.ts` lo envía en su
+propio `step.run`, antes de contestarle al paciente (lo que se le dice es que ya
+está avisado). Así una segunda vuelta del loop no manda dos avisos, y el banco
+de pruebas de `/dashboard/agent` puede correr el agente entero sin escribirle a
+nadie.
+
+**La despedida la escribe la app**, no el modelo: él no sabe a quién se enrutó
+la consulta, y "te escribe la doctora Ruiz" inventado es peor que no decir nada.
+
+**El hilo del profesional queda con `ai_enabled = false`** en cada aviso. El
+parte sale por el número de la clínica, así que su respuesta entra al inbox como
+una conversación más — sin esto, el asistente se pondría a atender a su propio
+compañero. Y si el móvil del profesional coincide con el del paciente (un número
+mal copiado), el aviso no sale: el parte clínico no puede acabar en el móvil del
+propio paciente.
+
+**Derivar NO es handoff**: la conversación del paciente sigue con el asistente
+encendido. En un centro donde toda consulta termina derivando, apagarlo dejaría
+al asistente atendiendo a cada paciente una sola vez. La red de seguridad es la
+tarea automática (`WHATSAPP_HANDOFF`) y la tarjeta en el chat interno
+(`postWhatsappDerivation`), que se publican aunque el aviso por WhatsApp falle.
+
+⚠️ Con **Evolution** (que es lo que usa Train Movements Center) el aviso sale sin
+restricción. Con **Cloud API de Meta** haría falta una plantilla aprobada para
+escribirle a un profesional que no haya escrito en las últimas 24 h.
+
 ## Módulo Mensajes (core, sin gate de `enabled_modules`)
 
 Sección `/dashboard/messages` (label "Mensajes"). Chat interno del equipo. Transversal, como Tareas.

@@ -3,6 +3,7 @@ import { and, asc, desc, eq, gt } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import {
+  tenants,
   whatsappAgentRuns,
   whatsappConnections,
   whatsappConversations,
@@ -19,6 +20,7 @@ import type { AgentInput, AgentOutput, HistoryTurn } from '@/lib/whatsapp/agent/
 import { syncWhatsappContactAvatar } from '@/lib/whatsapp/contacts/sync-avatar';
 import { syncWhatsappContactWithGhl } from '@/lib/whatsapp/contacts/sync-ghl';
 import { buildConnector } from '@/lib/whatsapp/factory';
+import { notifyProfessionalOfDerivation } from '@/lib/whatsapp/notify-professional';
 import { sendAgentResponse } from '@/lib/whatsapp/outbound/send-response';
 import { publishTypingStart, publishTypingStop } from '@/lib/whatsapp/realtime/publisher';
 import type { WhatsAppConnector } from '@/lib/whatsapp/types';
@@ -246,6 +248,14 @@ async function runWhatsappJob(
     });
 
     // 7. Aplicar flags handoff/urgent ANTES de enviar outbound.
+    //
+    // Una consulta derivada también puede venir marcada como urgente, y ahí el
+    // aviso al equipo lo da el bloque de abajo con el parte entero. Publicar
+    // además la tarjeta de handoff dejaría dos avisos de lo mismo en el chat,
+    // uno de ellos sin el detalle. El flag de urgencia sí se marca igual: es lo
+    // que hace que el inbox la priorice.
+    const avisarComoHandoff =
+      agentOutput.handoff || (agentOutput.urgent && !agentOutput.derivation);
     if (agentOutput.handoff || agentOutput.urgent) {
       await step.run('apply-handoff-flags', async () => {
         await applyHandoffFlags(conversationId, {
@@ -253,6 +263,8 @@ async function runWhatsappJob(
           urgent: agentOutput.urgent,
         });
       });
+    }
+    if (avisarComoHandoff) {
       // El agente soltó la conversación: alguien del equipo tiene que cerrarla.
       await step.run('create-handoff-task', async () => {
         const { onWhatsappHandoff } = await import('@/lib/tasks/hooks');
@@ -284,6 +296,69 @@ async function runWhatsappJob(
         } catch (err) {
           console.warn('[wa-process] publish-handoff-event falló', (err as Error).message);
         }
+        return { ok: true };
+      });
+    }
+
+    // 7 bis. Modo DERIVE: el asistente recopiló la consulta y le toca a un
+    // profesional. El aviso sale ANTES de contestarle al paciente: lo que se le
+    // dice es que ya está avisado, y conviene que sea verdad.
+    const derivation = agentOutput.derivation;
+    if (derivation) {
+      const notified = await step.run('notify-professional', async () => {
+        const [tenantRow] = await db
+          .select({ name: tenants.name })
+          .from(tenants)
+          .where(eq(tenants.id, tenantId))
+          .limit(1);
+        const result = await notifyProfessionalOfDerivation({
+          tenantId,
+          clinicName: tenantRow?.name ?? 'la clínica',
+          derivation,
+          connector,
+        }).catch((err) => {
+          // Nunca debería lanzar, pero si lo hace, la consulta igual tiene que
+          // quedar registrada: sigue el resto de los pasos.
+          console.warn('[wa-process] notify-professional falló', (err as Error).message);
+          return { sent: false, reason: 'excepcion' };
+        });
+        console.log('[wa-process] derivación', {
+          conversationId,
+          via: derivation.via,
+          professionalName: derivation.professionalName,
+          sent: result.sent,
+          reason: 'reason' in result ? result.reason : undefined,
+        });
+        return result.sent;
+      });
+
+      // La tarjeta en el chat interno y la tarea: son la red que hace que una
+      // consulta derivada no dependa de que el profesional mire el móvil.
+      await step.run('publish-derivation-event', async () => {
+        try {
+          const { postWhatsappDerivation } = await import('@/lib/messaging/bot');
+          await postWhatsappDerivation({
+            tenantId,
+            conversationId,
+            patientName: derivation.patientName ?? `Contacto ${contactPhoneE164}`,
+            phone: contactPhoneE164,
+            professionalName: derivation.professionalName,
+            treatmentName: derivation.treatmentName,
+            summary: derivation.summary,
+            preferredTime: derivation.preferredTime,
+            urgent: derivation.urgent,
+            viaFallback: derivation.via === 'respaldo',
+            notified,
+          });
+        } catch (err) {
+          console.warn('[wa-process] publish-derivation-event falló', (err as Error).message);
+        }
+        return { ok: true };
+      });
+
+      await step.run('create-derivation-task', async () => {
+        const { onWhatsappHandoff } = await import('@/lib/tasks/hooks');
+        await onWhatsappHandoff({ tenantId, conversationId });
         return { ok: true };
       });
     }

@@ -1,8 +1,10 @@
 import 'server-only';
 import { z } from 'zod';
 
+import type { WhatsappAgentMode } from '@/lib/data/whatsapp-agent-settings';
 import { type KnownToolName, dispatchTool } from '@/lib/retell/tools';
 
+import { resolveDerivationTarget } from './derivation';
 import type { ToolCallTrace } from './types';
 
 /**
@@ -89,6 +91,14 @@ const flagUrgentArgs = z.object({
   reason: z.string().min(1).max(280),
 });
 
+const deriveToProfessionalArgs = z.object({
+  summary: z.string().min(10).max(700),
+  treatment_name: z.string().optional(),
+  patient_name: z.string().optional(),
+  preferred_time: z.string().optional(),
+  urgent: z.boolean().optional(),
+});
+
 const SCHEMAS = {
   check_availability: checkAvailabilityArgs,
   book_appointment: bookAppointmentArgs,
@@ -101,14 +111,39 @@ const SCHEMAS = {
   search_faqs: searchFaqsArgs,
   request_handoff: requestHandoffArgs,
   flag_urgent: flagUrgentArgs,
+  derive_to_professional: deriveToProfessionalArgs,
 } as const;
 
 export type AgentToolName = keyof typeof SCHEMAS;
 
-// Solo request_handoff corta el loop. flag_urgent es un MARCADOR: setea el
-// flag urgent del run pero deja seguir al agente para que agende la cita de
-// urgencia (no es terminal).
-export const TERMINAL_TOOL_NAMES: ReadonlySet<AgentToolName> = new Set(['request_handoff']);
+// Cortan el loop: la respuesta al paciente la pone el orquestador, no el LLM.
+// flag_urgent es un MARCADOR: setea el flag urgent del run pero deja seguir al
+// agente para que agende la cita de urgencia (no es terminal).
+export const TERMINAL_TOOL_NAMES: ReadonlySet<AgentToolName> = new Set([
+  'request_handoff',
+  'derive_to_professional',
+]);
+
+/**
+ * Las herramientas que tiene cada modo.
+ *
+ * En modo DERIVE el asistente no agenda: se le quitan las tres tools de agenda
+ * y la de profesionales (que trae horarios y le tentaría a prometer una hora),
+ * y se le da `derive_to_professional`. Quitarlas de la lista no alcanza —un
+ * modelo puede inventarse un nombre de tool—, así que `executeAgentTool` las
+ * rechaza además en el servidor.
+ */
+const TOOLS_FUERA_EN_DERIVE: ReadonlySet<AgentToolName> = new Set([
+  'check_availability',
+  'book_appointment',
+  'cancel_appointment',
+  'list_professionals',
+]);
+
+export function isToolAllowedInMode(name: AgentToolName, mode: WhatsappAgentMode): boolean {
+  if (mode === 'DERIVE') return !TOOLS_FUERA_EN_DERIVE.has(name);
+  return name !== 'derive_to_professional';
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // JSON Schema definitions para el LLM (Gemini + OpenAI)
@@ -131,7 +166,13 @@ export interface AgentToolDefinition {
  * y OpenAI (tools[].function). Mantenemos JSON Schema estricto (draft-07) sin
  * `$schema`/`$id` porque ambos providers lo rechazan.
  */
-export function getAgentToolDefinitions(): AgentToolDefinition[] {
+export function getAgentToolDefinitions(
+  mode: WhatsappAgentMode = 'BOOKING',
+): AgentToolDefinition[] {
+  return allToolDefinitions().filter((d) => isToolAllowedInMode(d.name, mode));
+}
+
+function allToolDefinitions(): AgentToolDefinition[] {
   return [
     {
       name: 'check_availability',
@@ -345,6 +386,38 @@ export function getAgentToolDefinitions(): AgentToolDefinition[] {
         additionalProperties: false,
       },
     },
+    {
+      name: 'derive_to_professional',
+      description:
+        'TERMINA la conversación pasándole la consulta al profesional que corresponde, por WhatsApp. Úsala cuando ya tengas claro qué necesita el paciente y sus datos. No confirmes tú ninguna cita ni horario: de eso se encarga el profesional.',
+      parameters: {
+        type: 'object',
+        properties: {
+          summary: {
+            type: 'string',
+            description:
+              'Resumen de la consulta para el profesional, en 2-4 frases: qué necesita, desde cuándo, lo que contó que sea relevante y cualquier antecedente que mencionó. Escríbelo en tercera persona ("Consulta por…"), sin diagnosticar.',
+          },
+          treatment_name: {
+            type: 'string',
+            description:
+              'Servicio del catálogo con el que encaja la consulta, tal como figura en el catálogo. Es lo que decide a qué profesional le llega: si no lo tienes claro, pregúntaselo al paciente antes de derivar.',
+          },
+          patient_name: { type: 'string', description: 'Nombre del paciente, si lo dio.' },
+          preferred_time: {
+            type: 'string',
+            description:
+              'Disponibilidad o preferencia horaria que mencionó, con sus palabras ("martes por la tarde", "cualquier día a partir de las 18h").',
+          },
+          urgent: {
+            type: 'boolean',
+            description: 'true si el paciente describe dolor fuerte o algo que no puede esperar.',
+          },
+        },
+        required: ['summary'],
+        additionalProperties: false,
+      },
+    },
   ];
 }
 
@@ -363,6 +436,10 @@ export interface ExecuteToolInput {
    * tools no dependen de que el modelo se acuerde de pasarlo.
    */
   contactPhoneE164?: string | null;
+  /** Modo del asistente en esta clínica. Defecto: el de siempre. */
+  mode?: WhatsappAgentMode;
+  /** Destinatario de respaldo de las derivaciones (modo DERIVE). */
+  deriveFallbackPhone?: string | null;
 }
 
 /**
@@ -383,6 +460,24 @@ export async function executeAgentTool(input: ExecuteToolInput): Promise<ToolCal
       result: `Herramienta desconocida: ${name}`,
       latencyMs: Date.now() - started,
       error: 'unknown_tool',
+    };
+  }
+
+  const mode: WhatsappAgentMode = input.mode ?? 'BOOKING';
+  if (!isToolAllowedInMode(name, mode)) {
+    // El prompt ya no se la ofrece, pero un modelo puede llamar a una tool que
+    // no tiene. En modo DERIVE reservar una cita sería justo lo que el centro
+    // pidió que no pasara, así que la puerta se cierra también aquí.
+    return {
+      name,
+      args: asArgsRecord(input.rawArgs),
+      ok: false,
+      result:
+        mode === 'DERIVE'
+          ? `En esta clínica no gestionas la agenda: ${name} no está disponible. Recopila la consulta y pásala con derive_to_professional.`
+          : `La herramienta ${name} no está disponible en esta clínica.`,
+      latencyMs: Date.now() - started,
+      error: 'tool_not_available_in_mode',
     };
   }
 
@@ -419,6 +514,10 @@ export async function executeAgentTool(input: ExecuteToolInput): Promise<ToolCal
     };
   }
 
+  if (name === 'derive_to_professional') {
+    return executeDerivation({ input, args, started });
+  }
+
   try {
     const result = await dispatchTool(input.tenantId, name as KnownToolName, args, {
       channel: 'WHATSAPP',
@@ -444,6 +543,66 @@ export async function executeAgentTool(input: ExecuteToolInput): Promise<ToolCal
       args,
       ok: false,
       result: `Error ejecutando ${name}: ${message}`,
+      latencyMs: Date.now() - started,
+      error: message,
+    };
+  }
+}
+
+/**
+ * Resuelve a qué profesional le toca la consulta y devuelve el parte listo.
+ *
+ * NO manda el WhatsApp: eso lo hace el worker en un paso aparte. Aquí sólo se
+ * lee la base, así que una segunda vuelta del loop —o una corrida desde el
+ * banco de pruebas del panel— no le escribe dos veces a nadie.
+ */
+async function executeDerivation(ctx: {
+  input: ExecuteToolInput;
+  args: Record<string, unknown>;
+  started: number;
+}): Promise<ToolCallTrace> {
+  const { input, args, started } = ctx;
+  const summary = String(args.summary ?? '').trim();
+  const treatmentName = typeof args.treatment_name === 'string' ? args.treatment_name : null;
+  const patientName = typeof args.patient_name === 'string' ? args.patient_name : null;
+  const preferredTime = typeof args.preferred_time === 'string' ? args.preferred_time : null;
+  const urgent = args.urgent === true;
+
+  try {
+    const target = await resolveDerivationTarget({
+      tenantId: input.tenantId,
+      treatmentName,
+      fallbackPhone: input.deriveFallbackPhone ?? null,
+    });
+    const aQuien = target.professionalName ?? 'el equipo de la clínica';
+    return {
+      name: 'derive_to_professional',
+      args,
+      ok: true,
+      result:
+        target.via === 'sin-destino'
+          ? 'Consulta registrada. No hay ningún profesional con móvil cargado, así que la recoge el equipo desde el panel. Despídete diciendo que le van a escribir; no prometas quién ni cuándo.'
+          : `Consulta derivada a ${aQuien}. Despídete: el mensaje de cierre lo pone la app.`,
+      latencyMs: Date.now() - started,
+      data: {
+        professionalId: target.professionalId,
+        professionalName: target.professionalName,
+        phoneE164: target.phoneE164,
+        treatmentName: target.treatmentName ?? treatmentName,
+        summary,
+        patientName,
+        preferredTime,
+        urgent,
+        via: target.via,
+      },
+    };
+  } catch (err) {
+    const message = (err as Error).message ?? 'unknown_error';
+    return {
+      name: 'derive_to_professional',
+      args,
+      ok: false,
+      result: `No se pudo derivar la consulta: ${message}`,
       latencyMs: Date.now() - started,
       error: message,
     };

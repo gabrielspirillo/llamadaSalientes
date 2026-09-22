@@ -9,6 +9,7 @@ const BASE = {
   fullName: '',
   email: '',
   phone: '',
+  whatsappE164: '',
   specialty: '',
   licenseNumber: '',
   color: '#37766a',
@@ -39,6 +40,16 @@ describe('pasos del alta', () => {
     expect(loQueFalta('acceso', BASE)).toBeNull();
     expect(loQueFalta('acceso', { ...BASE, linkUserEmail: 'marta' })).toMatch(/no es válido/i);
     expect(loQueFalta('acceso', { ...BASE, linkUserEmail: 'marta@clinica.test' })).toBeNull();
+  });
+
+  it('el WhatsApp tiene que llevar prefijo o no deja pasar del primer paso', () => {
+    const conNombre = { ...BASE, fullName: 'Dra. Ruiz' };
+    expect(loQueFalta('persona', { ...conNombre, whatsappE164: '600 11 22 33' })).toMatch(
+      /prefijo del país/i,
+    );
+    expect(loQueFalta('persona', { ...conNombre, whatsappE164: '+34 600 11 22 33' })).toBeNull();
+    // Vacío se acepta: no toda clínica deriva por WhatsApp.
+    expect(loQueFalta('persona', conNombre)).toBeNull();
   });
 
   it('los pasos sin validación propia dejan seguir', () => {
