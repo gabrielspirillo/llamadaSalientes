@@ -6,6 +6,7 @@ import type { ImAttachment, ImChannelDTO, ImPerson, ImPresence } from '@/lib/mes
 import {
   BarChart3,
   BellOff,
+  Cake,
   Calendar,
   CalendarClock,
   CalendarOff,
@@ -158,6 +159,7 @@ const EVENT_ICONS: Record<ImEvent, LucideIcon> = {
   'task.overdue_digest': ListTodo,
   'analytics.daily_digest': BarChart3,
   'analytics.threshold_alert': TrendingUp,
+  'patient.birthday': Cake,
 };
 
 export function eventIcon(eventKey: string | null | undefined): LucideIcon {
@@ -187,6 +189,7 @@ const EVENT_LABELS: Record<ImEvent, string> = {
   'task.overdue_digest': 'Tareas vencidas',
   'analytics.daily_digest': 'Resumen del día',
   'analytics.threshold_alert': 'Alerta de umbral',
+  'patient.birthday': 'Cumpleaños',
 };
 
 export function eventLabel(eventKey: string | null | undefined): string {

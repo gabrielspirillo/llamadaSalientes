@@ -14,8 +14,11 @@ import {
   toCalendarItems,
   weekDateKeys,
 } from '@/lib/agenda/view';
+import { describeAge } from '@/lib/care-profile/policy';
+import { getCareProfile } from '@/lib/care-profile/queries';
 import { db } from '@/lib/db/client';
 import { professionalShifts, treatments } from '@/lib/db/schema';
+import { listPatientPersons } from '@/lib/patients/persons';
 import { localDateKey, zonedToUtc } from '@/lib/tasks/tz';
 import { and, asc, eq } from 'drizzle-orm';
 import { CalendarDays, Users } from 'lucide-react';
@@ -72,7 +75,11 @@ export default async function AgendaPage({
   const scopedIds =
     selectedProfessionalId === 'all' ? professionalIds : [selectedProfessionalId].filter(Boolean);
 
-  const [appointments, blocks, catalog, shiftRows] = await Promise.all([
+  // El perfil de atención decide si esta clínica lleva a sus pacientes como
+  // personas (con edad y ficha propia). Sin perfil, nada de esto se carga.
+  const careProfile = await getCareProfile(ctx.tenantId);
+
+  const [appointments, blocks, catalog, shiftRows, persons] = await Promise.all([
     scopedIds.length > 0
       ? listAppointmentsInRange(ctx.tenantId, {
           from,
@@ -102,6 +109,9 @@ export default async function AgendaPage({
       .where(
         and(eq(professionalShifts.tenantId, ctx.tenantId), eq(professionalShifts.active, true)),
       ),
+    careProfile && ctx.canWriteAppointments
+      ? listPatientPersons(ctx.tenantId, { limit: 300 })
+      : Promise.resolve([]),
   ]);
 
   const items = toCalendarItems(
@@ -113,6 +123,10 @@ export default async function AgendaPage({
       patientName: a.patientName,
       patientKey: a.patientKey,
       patientPhone: a.patientPhone,
+      // La edad con número sólo existe si el paciente tiene fecha de nacimiento;
+      // la etiqueta de primera visita, sólo en las clínicas con perfil.
+      patientAge: a.patientBirthDate ? describeAge(a.patientBirthDate, todayKey) : null,
+      badge: careProfile && a.isFirstVisit ? '1ª visita' : null,
       treatmentId: a.treatmentId,
       treatmentName: a.treatmentName,
       status: a.status,
@@ -185,6 +199,14 @@ export default async function AgendaPage({
           items={items}
           blocks={calendarBlocks}
           treatments={catalog}
+          patients={persons.map((p) => {
+            const age = p.birthDate ? describeAge(p.birthDate, todayKey) : null;
+            return {
+              id: p.id,
+              label: age ? `${p.fullName} · ${age}` : p.fullName,
+              phone: p.contactPhone,
+            };
+          })}
           timezone={timezone}
           window={window}
           canWrite={ctx.canWriteAppointments}

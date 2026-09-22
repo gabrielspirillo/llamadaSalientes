@@ -80,6 +80,8 @@ export const IM_EVENTS = [
   'task.overdue_digest',
   'analytics.daily_digest',
   'analytics.threshold_alert',
+  // Clínicas con perfil de atención (pediatría): cumple años un paciente.
+  'patient.birthday',
 ] as const;
 export type ImEvent = (typeof IM_EVENTS)[number];
 
@@ -97,6 +99,7 @@ export const IM_EVENT_ROUTING: Record<ImEvent, { slug: string; tone: ImTone }> =
   'task.overdue_digest': { slug: 'general', tone: 'blossom' },
   'analytics.daily_digest': { slug: 'general', tone: 'sky' },
   'analytics.threshold_alert': { slug: 'general', tone: 'sky' },
+  'patient.birthday': { slug: 'agenda', tone: 'blossom' },
 };
 
 /** Cuántos mensajes trae cada página del hilo (paginación keyset). */

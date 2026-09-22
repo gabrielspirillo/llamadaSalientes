@@ -115,6 +115,13 @@ export interface BuildSystemPromptInput {
    * al profesional que corresponda.
    */
   mode?: WhatsappAgentMode;
+  /**
+   * Cómo atiende esta clínica cuando tiene perfil de atención (pediatría):
+   * quién es el paciente, qué se pregunta en una primera visita y cómo se
+   * usan las tools con `patient_id`. Lo construye `buildCareProtocolSection`.
+   * Null para el resto de clínicas: no se añade nada.
+   */
+  careProtocol?: string | null;
 }
 
 /**
@@ -293,6 +300,10 @@ ${leadMemory.profileSummary}${
 Usá esto como contexto del interlocutor (lo que ya habló por WhatsApp o por teléfono).
 NO lo repitas literal, NO inventes datos fuera de esto ni de los DATOS OFICIALES.`
     : '';
+  // Perfil de atención (pediatría). Va antes de las reglas duras y las
+  // complementa: dice quién es el paciente y qué datos hacen falta para darle
+  // de alta, y el servidor exige lo mismo por su cuenta.
+  const careSection = input.careProtocol?.trim() ? `\n\n${input.careProtocol.trim()}` : '';
   const resumeSection = remindersResume
     ? `
 
@@ -319,10 +330,11 @@ tienes que preguntarle si quiere reagendar — ya lo pidió. Tu trabajo:
       personaSection,
       phoneSection,
       leadMemorySection,
+      careSection,
     });
   }
 
-  return `Eres el asistente virtual de WhatsApp de la clínica "${clinic.name}".${personaSection}${phoneSection}${leadMemorySection}${resumeSection}
+  return `Eres el asistente virtual de WhatsApp de la clínica "${clinic.name}".${personaSection}${phoneSection}${leadMemorySection}${careSection}${resumeSection}
 Atiendes TODO lo que llega a la clínica por WhatsApp: pacientes existentes, personas
 interesadas, y también proveedores, profesionales, mutuas, postulantes, prensa, etc.
 Hablas español de España.
@@ -547,6 +559,7 @@ function buildDerivePrompt(input: {
   personaSection: string;
   phoneSection: string;
   leadMemorySection: string;
+  careSection: string;
 }): string {
   const {
     clinic,
@@ -557,9 +570,10 @@ function buildDerivePrompt(input: {
     personaSection,
     phoneSection,
     leadMemorySection,
+    careSection,
   } = input;
 
-  return `Eres el asistente virtual de WhatsApp de "${clinic.name}".${personaSection}${phoneSection}${leadMemorySection}
+  return `Eres el asistente virtual de WhatsApp de "${clinic.name}".${personaSection}${phoneSection}${leadMemorySection}${careSection}
 Atiendes TODO lo que llega por WhatsApp: pacientes, personas interesadas, y también
 proveedores, profesionales, mutuas, postulantes, prensa, etc.
 Hablas español de España.

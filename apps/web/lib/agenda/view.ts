@@ -16,6 +16,10 @@ export interface CalendarItem {
   patientName: string;
   patientKey: string;
   patientPhone: string | null;
+  /** "1 año y 8 meses". Sólo cuando el paciente tiene fecha de nacimiento. */
+  patientAge: string | null;
+  /** Etiqueta corta junto al estado ("1ª visita"). La decide el servidor. */
+  badge: string | null;
   treatmentId: string | null;
   treatmentName: string | null;
   status: AppointmentStatus;
@@ -54,6 +58,8 @@ interface SourceAppointment {
   patientName: string;
   patientKey: string;
   patientPhone: string | null;
+  patientAge?: string | null;
+  badge?: string | null;
   treatmentId: string | null;
   treatmentName: string | null;
   status: AppointmentStatus;
@@ -105,6 +111,8 @@ export function toCalendarItems(
         patientName: a.patientName,
         patientKey: a.patientKey,
         patientPhone: a.patientPhone,
+        patientAge: a.patientAge ?? null,
+        badge: a.badge ?? null,
         treatmentId: a.treatmentId,
         treatmentName: a.treatmentName,
         status: a.status,

@@ -15,7 +15,13 @@ import {
   type SlotCandidate,
   minutesToHHMM,
 } from '@/lib/agenda/shared';
-import { addDaysToKey, localDateKey, weekdayOfKey, zonedToUtc } from '@/lib/tasks/tz';
+import { type FirstVisitRules, isFirstVisitBlackout } from '@/lib/care-profile/policy';
+import { addDaysToKey, localDateKey, localParts, weekdayOfKey, zonedToUtc } from '@/lib/tasks/tz';
+
+/** Una cita ya agendada. `firstVisit` sólo lo miran las clínicas con reglas. */
+export interface BookedInterval extends Interval {
+  firstVisit?: boolean;
+}
 
 export interface SlotOptions {
   /** Timezone de la clínica (o del profesional si tiene una propia). */
@@ -36,6 +42,11 @@ export interface SlotOptions {
   maxAdvanceDays: number;
   /** Instante actual. Se inyecta para poder testear. */
   now: Date;
+  /**
+   * Si se busca hueco para una PRIMERA visita en una clínica con reglas, las
+   * reglas. Null o ausente = cita normal, o clínica sin reglas: nada cambia.
+   */
+  firstVisit?: FirstVisitRules | null;
 }
 
 export interface DayAvailabilityInput {
@@ -43,7 +54,7 @@ export interface DayAvailabilityInput {
   dateKey: string;
   shifts: ShiftRule[];
   /** Citas ya agendadas (sólo las que ocupan: ver BUSY_STATUSES). */
-  appointments: Interval[];
+  appointments: BookedInterval[];
   /** Bloqueos: vacaciones, festivos, formación. */
   blocks: Interval[];
   options: SlotOptions;
@@ -134,6 +145,15 @@ export function computeDaySlots(input: DayAvailabilityInput): SlotCandidate[] {
       const blocked = blocks.some((b) => overlaps(start, end, b.start, b.end));
       if (blocked) continue;
 
+      // Primera visita en una clínica con reglas: fuera las franjas vetadas y
+      // los huecos que encadenarían más primeras de las permitidas.
+      if (
+        options.firstVisit &&
+        describeFirstVisitConflict(start, end, appointments, options.firstVisit, timezone)
+      ) {
+        continue;
+      }
+
       seen.add(start.getTime());
       out.push({ start, end });
     }
@@ -148,7 +168,7 @@ export interface RangeAvailabilityInput {
   /** 'YYYY-MM-DD' inclusive. */
   toDateKey: string;
   shifts: ShiftRule[];
-  appointments: Interval[];
+  appointments: BookedInterval[];
   blocks: Interval[];
   options: SlotOptions;
   /** Corta la búsqueda al llegar a N huecos (los agentes sólo leen los primeros). */
@@ -244,6 +264,64 @@ export function describeConflict(
   const block = blocks.find((b) => overlaps(start, end, b.start, b.end));
   if (block) return 'El profesional tiene ese horario bloqueado.';
 
+  return null;
+}
+
+/**
+ * Por qué un hueco NO vale para una primera visita, o null si vale.
+ *
+ * Dos reglas, las dos de una clínica pediátrica que atiende a pacientes nuevos
+ * con más calma que a los de seguimiento:
+ *
+ *   1. Franjas vetadas ("los lunes y miércoles desde las 19:00 no hay
+ *      primeras"). Se comparan en hora LOCAL del día, como los turnos.
+ *   2. No encadenar más de N primeras visitas SEGUIDAS. "Seguidas" quiere
+ *      decir sin un hueco libre entre medio: dos citas con menos de una
+ *      duración de separación forman cadena; con una cita de seguimiento o un
+ *      rato libre en medio, la cadena se corta. Se cuenta hacia atrás y hacia
+ *      delante desde el hueco candidato.
+ *
+ * Devuelve texto en español porque lo leen la UI y los agentes.
+ */
+export function describeFirstVisitConflict(
+  start: Date,
+  end: Date,
+  appointments: BookedInterval[],
+  rules: FirstVisitRules,
+  timezone: string,
+): string | null {
+  const local = localParts(start, timezone);
+  if (isFirstVisitBlackout(local.weekday, local.hour * 60 + local.minute, rules)) {
+    return 'En esa franja la clínica no da primeras visitas; sí a pacientes que ya han venido. Ofrece otro horario.';
+  }
+
+  if (rules.maxConsecutive === null) return null;
+
+  // Menos de una duración de separación = pegadas. Con la rejilla automática
+  // las citas van una detrás de otra, así que el margen es exactamente eso.
+  const gapLimit = Math.max(end.getTime() - start.getTime(), 5 * 60_000);
+  const sorted = [...appointments].sort((a, b) => a.start.getTime() - b.start.getTime());
+
+  let before = 0;
+  let cursor = start.getTime();
+  for (const a of sorted.filter((x) => x.end.getTime() <= start.getTime()).reverse()) {
+    if (cursor - a.end.getTime() >= gapLimit || !a.firstVisit) break;
+    before += 1;
+    cursor = a.start.getTime();
+  }
+
+  let after = 0;
+  cursor = end.getTime();
+  for (const a of sorted.filter((x) => x.start.getTime() >= end.getTime())) {
+    if (a.start.getTime() - cursor >= gapLimit || !a.firstVisit) break;
+    after += 1;
+    cursor = a.end.getTime();
+  }
+
+  const chain = before + after + 1;
+  if (chain > rules.maxConsecutive) {
+    return `La clínica no encadena más de ${rules.maxConsecutive} primeras visitas seguidas y ese hueco haría ${chain}. Ofrece otro horario, o uno con un paciente de seguimiento en medio.`;
+  }
   return null;
 }
 

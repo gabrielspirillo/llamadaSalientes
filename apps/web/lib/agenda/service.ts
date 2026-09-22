@@ -3,8 +3,12 @@ import { and, eq, gte, inArray, lt, ne, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import type { AgendaContext } from '@/lib/agenda/auth';
-import { describeConflict, isInsideWorkingHours } from '@/lib/agenda/availability';
-import { normalizePatientPhone, patientKeyFor } from '@/lib/agenda/patients';
+import {
+  describeConflict,
+  describeFirstVisitConflict,
+  isInsideWorkingHours,
+} from '@/lib/agenda/availability';
+import { normalizePatientPhone, patientIdFromKey, patientKeyFor } from '@/lib/agenda/patients';
 import {
   getProfessional,
   resolveDuration,
@@ -13,16 +17,20 @@ import {
 } from '@/lib/agenda/queries';
 import { BUSY_STATUSES, PROFESSIONAL_COLORS } from '@/lib/agenda/shared';
 import { syncAppointmentEffects } from '@/lib/agenda/sync';
+import { SESSION_BEHAVIORS, firstVisitRules } from '@/lib/care-profile/policy';
+import { getCareProfile } from '@/lib/care-profile/queries';
 import { db } from '@/lib/db/client';
 import {
   agendaAppointments,
   clinicalNotes,
+  patients,
   professionalShifts,
   professionalTimeOff,
   professionalTreatments,
   professionals,
   treatments,
   users,
+  whatsappContacts,
 } from '@/lib/db/schema';
 import { zonedToUtc } from '@/lib/tasks/tz';
 import { normalizeWhatsappE164, parseWhatsappPhone } from '@/lib/whatsapp/phone';
@@ -31,6 +39,18 @@ export class AgendaValidationError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'AgendaValidationError';
+  }
+}
+
+/**
+ * La cita incumple una regla de reserva de la clínica (primeras visitas). Es
+ * una validación más para los agentes, pero el panel puede saltársela a
+ * sabiendas: por eso tiene clase propia, para que la acción la distinga.
+ */
+export class AgendaPolicyError extends AgendaValidationError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AgendaPolicyError';
   }
 }
 
@@ -156,6 +176,13 @@ export const appointmentInputSchema = z.object({
   patientPhone: z.string().trim().max(40).optional().or(z.literal('')),
   patientEmail: z.string().trim().max(160).optional().or(z.literal('')),
   ghlContactId: z.string().trim().max(60).optional().or(z.literal('')),
+  /**
+   * El paciente como persona (`patients`), en las clínicas que los llevan así.
+   * Su clave manda sobre el CRM y el teléfono: el teléfono es del tutor.
+   */
+  patientId: z.string().uuid().nullable().optional(),
+  /** Si no se manda, se calcula: el paciente no tenía ninguna cita anterior. */
+  isFirstVisit: z.boolean().optional(),
   // El inicio se puede dar de dos formas: como instante ISO (lo que mandan los
   // agentes, que ya hablan en UTC) o como día + minuto LOCAL de la clínica (lo
   // que sabe el calendario del panel). La segunda evita que el navegador, que
@@ -175,6 +202,11 @@ export const appointmentInputSchema = z.object({
   source: z.enum(['PANEL', 'VOICE_AGENT', 'WHATSAPP_AGENT', 'WAITLIST', 'IMPORT']).optional(),
   /** Encajar fuera del horario del profesional (sólo desde el panel, a sabiendas). */
   allowOutsideHours: z.boolean().optional(),
+  /**
+   * Saltarse las reglas de primeras visitas de la clínica (sólo desde el
+   * panel, a sabiendas). Los agentes nunca lo mandan.
+   */
+  overridePolicy: z.boolean().optional(),
   dedupeKey: z.string().trim().max(200).optional(),
 });
 
@@ -189,6 +221,11 @@ export const clinicalNoteInputSchema = z.object({
   treatmentPerformed: z.string().trim().max(2000).optional().or(z.literal('')),
   observations: z.string().trim().max(4000).optional().or(z.literal('')),
   nextSteps: z.string().trim().max(2000).optional().or(z.literal('')),
+  /** Sólo los rellenan las clínicas con perfil de atención. */
+  symptoms: z.string().trim().max(4000).optional().or(z.literal('')),
+  examination: z.string().trim().max(4000).optional().or(z.literal('')),
+  /** Cómo se portó en ESTA sesión. */
+  sessionBehavior: z.enum(SESSION_BEHAVIORS).nullable().optional(),
   private: z.boolean().optional(),
 });
 
@@ -657,6 +694,11 @@ export async function createAppointment(
     (await resolveDuration(ctx.tenantId, professional.id, input.treatmentId ?? null));
   const endsAt = new Date(startsAt.getTime() + duration * 60_000);
 
+  // Reglas de reserva de la clínica (sólo con perfil de atención). Se cargan
+  // fuera del lock: es una lectura por clave primaria y no depende de la agenda.
+  const careProfile = await getCareProfile(ctx.tenantId);
+  const rules = careProfile ? firstVisitRules(careProfile.bookingPolicy) : null;
+
   // El tratamiento llega del cliente: se comprueba que es de este tenant antes
   // de guardarlo (y de usar su duración).
   if (input.treatmentId) {
@@ -670,8 +712,27 @@ export async function createAppointment(
     }
   }
 
-  const phone = normalizePatientPhone(input.patientPhone) ?? emptyToNull(input.patientPhone);
+  // El paciente como persona (clínicas con perfil): tiene que ser de esta
+  // clínica, y su teléfono de contacto es el del tutor, que es a quien se le
+  // recuerda la cita.
+  let person: { id: string; contactPhone: string | null } | null = null;
+  if (input.patientId) {
+    const rows = await db
+      .select({ id: patients.id, contactPhone: whatsappContacts.phoneE164 })
+      .from(patients)
+      .leftJoin(whatsappContacts, eq(whatsappContacts.id, patients.contactId))
+      .where(and(eq(patients.tenantId, ctx.tenantId), eq(patients.id, input.patientId)))
+      .limit(1);
+    person = rows[0] ?? null;
+    if (!person) throw new AgendaValidationError('Ese paciente no existe en esta clínica.');
+  }
+
+  const phone =
+    normalizePatientPhone(input.patientPhone) ??
+    normalizePatientPhone(person?.contactPhone) ??
+    emptyToNull(input.patientPhone);
   const patientKey = patientKeyFor({
+    patientId: person?.id,
     ghlContactId: input.ghlContactId,
     phone,
     email: input.patientEmail,
@@ -695,7 +756,11 @@ export async function createAppointment(
     }
 
     const busy = await tx
-      .select({ startsAt: agendaAppointments.startsAt, endsAt: agendaAppointments.endsAt })
+      .select({
+        startsAt: agendaAppointments.startsAt,
+        endsAt: agendaAppointments.endsAt,
+        isFirstVisit: agendaAppointments.isFirstVisit,
+      })
       .from(agendaAppointments)
       .where(
         and(
@@ -747,12 +812,49 @@ export async function createAppointment(
       }
     }
 
+    // Primera visita = el paciente no tenía ninguna cita que ocupara hueco.
+    // Se fija al crear y no se recalcula: es lo que leen las reglas de reserva
+    // de las clínicas con perfil (no encadenar primeras, tardes sin nuevos).
+    // Sin identidad no hay forma de saberlo y se deja en falso.
+    let isFirstVisit = input.isFirstVisit ?? false;
+    if (input.isFirstVisit === undefined && patientKey !== 'anon:sin-datos') {
+      const previous = await tx
+        .select({ id: agendaAppointments.id })
+        .from(agendaAppointments)
+        .where(
+          and(
+            eq(agendaAppointments.tenantId, ctx.tenantId),
+            eq(agendaAppointments.patientKey, patientKey),
+            inArray(agendaAppointments.status, BUSY_STATUSES),
+          ),
+        )
+        .limit(1);
+      isFirstVisit = previous.length === 0;
+    }
+
+    // Las reglas de primeras visitas se imponen aquí, no sólo al ofrecer
+    // huecos: un agente puede pasar un start_time que no salió de
+    // check_availability, y recepción puede teclear la hora a mano. El panel
+    // se las salta a sabiendas con `overridePolicy`; los agentes, nunca.
+    if (isFirstVisit && rules && !input.overridePolicy) {
+      const conflict = describeFirstVisitConflict(
+        startsAt,
+        endsAt,
+        busy.map((b) => ({ start: b.startsAt, end: b.endsAt, firstVisit: b.isFirstVisit })),
+        rules,
+        timezone,
+      );
+      if (conflict) throw new AgendaPolicyError(conflict);
+    }
+
     const [row] = await tx
       .insert(agendaAppointments)
       .values({
         tenantId: ctx.tenantId,
         professionalId: professional.id,
         treatmentId: input.treatmentId ?? null,
+        patientId: person?.id ?? null,
+        isFirstVisit,
         patientKey,
         patientName: input.patientName,
         patientPhone: phone,
@@ -1013,6 +1115,9 @@ export async function saveClinicalNote(
         treatmentPerformed: emptyToNull(input.treatmentPerformed),
         observations: emptyToNull(input.observations),
         nextSteps: emptyToNull(input.nextSteps),
+        symptoms: emptyToNull(input.symptoms),
+        examination: emptyToNull(input.examination),
+        sessionBehavior: input.sessionBehavior ?? null,
         private: input.private ?? false,
         updatedAt: new Date(),
       })
@@ -1029,11 +1134,16 @@ export async function saveClinicalNote(
       professionalId: input.professionalId,
       appointmentId: input.appointmentId ?? null,
       patientKey: input.patientKey,
+      // La nota se lee por paciente; el id de persona sale de la propia clave.
+      patientId: patientIdFromKey(input.patientKey),
       patientName: emptyToNull(input.patientName),
       summary: input.summary,
       treatmentPerformed: emptyToNull(input.treatmentPerformed),
       observations: emptyToNull(input.observations),
       nextSteps: emptyToNull(input.nextSteps),
+      symptoms: emptyToNull(input.symptoms),
+      examination: emptyToNull(input.examination),
+      sessionBehavior: input.sessionBehavior ?? null,
       private: input.private ?? false,
       authorUserId: ctx.userId,
     })

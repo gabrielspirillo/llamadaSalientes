@@ -3,15 +3,30 @@
 import { saveClinicalNoteAction } from '@/app/(dashboard)/dashboard/agenda/actions';
 import { Button } from '@/components/ui/button';
 import { Input, Label, Select, Textarea } from '@/components/ui/input';
+import {
+  SESSION_BEHAVIORS,
+  SESSION_BEHAVIOR_FACES,
+  SESSION_BEHAVIOR_LABELS,
+  type SessionBehavior,
+} from '@/lib/care-profile/policy';
+import { cn } from '@/lib/cn';
 import { AlertTriangle, Check, Loader2, NotebookPen } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
+
+/** Qué campos y con qué nombres. 'PEDIATRIC' es el de las clínicas con perfil. */
+export type ClinicalNoteTemplate = 'DEFAULT' | 'PEDIATRIC';
 
 /**
  * Nota clínica: lo que el profesional escribe DESPUÉS de atender.
  *
  * Se ata a la cita cuando la hay, pero puede ir suelta: una urgencia sin cita
  * previa también tiene que poder registrarse.
+ *
+ * Con plantilla pediátrica la visita se cuenta en el orden en que ocurre:
+ * síntomas que trae la familia, exploración, tratamiento, diagnóstico,
+ * observaciones y cómo se portó. Las columnas de base son las mismas; cambian
+ * los campos que se enseñan y cómo se llaman.
  */
 export function ClinicalNoteForm({
   patientKey,
@@ -19,23 +34,30 @@ export function ClinicalNoteForm({
   professionalId,
   appointments,
   defaultAppointmentId,
+  template = 'DEFAULT',
 }: {
   patientKey: string;
   patientName: string;
   professionalId: string;
   appointments: { id: string; label: string; professionalId: string }[];
   defaultAppointmentId?: string | null;
+  template?: ClinicalNoteTemplate;
 }) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
   const [saved, setSaved] = React.useState(false);
 
+  const pediatric = template === 'PEDIATRIC';
+
   const [appointmentId, setAppointmentId] = React.useState(defaultAppointmentId ?? '');
+  const [symptoms, setSymptoms] = React.useState('');
+  const [examination, setExamination] = React.useState('');
   const [summary, setSummary] = React.useState('');
   const [treatmentPerformed, setTreatmentPerformed] = React.useState('');
   const [observations, setObservations] = React.useState('');
   const [nextSteps, setNextSteps] = React.useState('');
+  const [behavior, setBehavior] = React.useState<SessionBehavior | null>(null);
   const [isPrivate, setIsPrivate] = React.useState(false);
 
   function submit() {
@@ -54,14 +76,20 @@ export function ClinicalNoteForm({
         treatmentPerformed,
         observations,
         nextSteps,
+        symptoms: pediatric ? symptoms : '',
+        examination: pediatric ? examination : '',
+        sessionBehavior: pediatric ? behavior : null,
         private: isPrivate,
       });
       if (result.ok) {
         setSaved(true);
+        setSymptoms('');
+        setExamination('');
         setSummary('');
         setTreatmentPerformed('');
         setObservations('');
         setNextSteps('');
+        setBehavior(null);
         router.refresh();
       } else {
         setError(result.error);
@@ -89,23 +117,52 @@ export function ClinicalNoteForm({
         </div>
       )}
 
-      <div className="grid gap-1.5">
-        <Label htmlFor="cn-summary">Motivo / diagnóstico</Label>
-        <Input
-          id="cn-summary"
-          value={summary}
-          onChange={(e) => setSummary(e.target.value)}
-          placeholder="Dolor en 36, caries profunda"
-        />
-      </div>
+      {pediatric && (
+        <>
+          <div className="grid gap-1.5">
+            <Label htmlFor="cn-symptoms">Síntomas</Label>
+            <Textarea
+              id="cn-symptoms"
+              className="min-h-[70px]"
+              value={symptoms}
+              onChange={(e) => setSymptoms(e.target.value)}
+              placeholder="Lo que cuenta la familia: tos, mocos, fiebre, desde cuándo…"
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="cn-exam">Exploración</Label>
+            <Textarea
+              id="cn-exam"
+              className="min-h-[70px]"
+              value={examination}
+              onChange={(e) => setExamination(e.target.value)}
+              placeholder="Auscultación, saturación, frecuencia respiratoria…"
+            />
+          </div>
+        </>
+      )}
 
       <div className="grid gap-1.5">
-        <Label htmlFor="cn-done">Qué se hizo</Label>
+        <Label htmlFor="cn-done">{pediatric ? 'Tratamiento' : 'Qué se hizo'}</Label>
         <Input
           id="cn-done"
           value={treatmentPerformed}
           onChange={(e) => setTreatmentPerformed(e.target.value)}
-          placeholder="Obturación de composite en 36"
+          placeholder={
+            pediatric
+              ? 'Drenaje, lavado nasal, técnicas espiratorias…'
+              : 'Obturación de composite en 36'
+          }
+        />
+      </div>
+
+      <div className="grid gap-1.5">
+        <Label htmlFor="cn-summary">{pediatric ? 'Diagnóstico' : 'Motivo / diagnóstico'}</Label>
+        <Input
+          id="cn-summary"
+          value={summary}
+          onChange={(e) => setSummary(e.target.value)}
+          placeholder={pediatric ? 'Bronquiolitis leve' : 'Dolor en 36, caries profunda'}
         />
       </div>
 
@@ -116,7 +173,11 @@ export function ClinicalNoteForm({
           className="min-h-[90px]"
           value={observations}
           onChange={(e) => setObservations(e.target.value)}
-          placeholder="Anestesia, hallazgos, material, incidencias…"
+          placeholder={
+            pediatric
+              ? 'Tolerancia, vómitos, indicaciones a la familia…'
+              : 'Anestesia, hallazgos, material, incidencias…'
+          }
         />
       </div>
 
@@ -126,12 +187,43 @@ export function ClinicalNoteForm({
           id="cn-next"
           value={nextSteps}
           onChange={(e) => setNextSteps(e.target.value)}
-          placeholder="Revisión en 6 meses; presupuestar endodoncia"
+          placeholder={
+            pediatric
+              ? 'Nueva sesión en 48 h; lavados en casa'
+              : 'Revisión en 6 meses; presupuestar endodoncia'
+          }
         />
         <p className="text-[12px] text-zinc-500">
           Esto es lo que recepción y los agentes virtuales pueden usar para el seguimiento.
         </p>
       </div>
+
+      {pediatric && (
+        <div className="grid gap-1.5">
+          <Label>¿Cómo se portó en la sesión?</Label>
+          <div className="flex flex-wrap gap-2">
+            {SESSION_BEHAVIORS.map((b) => (
+              <button
+                key={b}
+                type="button"
+                aria-pressed={behavior === b}
+                onClick={() => setBehavior(behavior === b ? null : b)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-semibold ring-1 transition-colors',
+                  behavior === b
+                    ? 'bg-brand-600 text-white ring-brand-600'
+                    : 'bg-white text-zinc-700 ring-[--color-border] hover:bg-brand-50',
+                )}
+              >
+                <span aria-hidden className="text-base leading-none">
+                  {SESSION_BEHAVIOR_FACES[b]}
+                </span>
+                {SESSION_BEHAVIOR_LABELS[b]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <label className="flex items-start gap-2 text-[13px] text-zinc-600">
         <input

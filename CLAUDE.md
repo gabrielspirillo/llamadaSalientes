@@ -581,6 +581,97 @@ tarea automática (`WHATSAPP_HANDOFF`) y la tarjeta en el chat interno
 restricción. Con **Cloud API de Meta** haría falta una plantilla aprobada para
 escribirle a un profesional que no haya escrito en las últimas 24 h.
 
+## Perfil de atención por clínica (Respinens: pediatría respiratoria)
+
+**Una sola clínica** (Respinens, fisioterapia respiratoria pediátrica, 0–4 años)
+pidió cosas que a un dentista no le dicen nada: la edad con número en la agenda,
+una anamnesis propia, madre y padre en la ficha, reglas de reserva para pacientes
+nuevos, prioridad por edad. Todo eso va **sólo para ella** y sin interruptores:
+
+- **`tenant_care_profile`** (migración `0030_perfil_pediatrico.sql`): una fila por
+  clínica con `booking_policy` (jsonb), `anamnesis_template` (jsonb) y
+  `first_visit_protocol` (texto para los asistentes). **Sin fila = todo como
+  siempre.** La fila de Respinens la siembra `0031_respinens_perfil.sql` por el
+  slug de su organización en Clerk (con caída a "la única clínica cuyo nombre
+  empieza por Respinens"). No hay botón en Futura: la única pregunta que hace el
+  código es `getCareProfile(tenantId)` (`lib/care-profile/queries.ts`) y si
+  devuelve null no pasa nada. Nunca un `if (tenantId === …)`.
+- **El teléfono es del tutor, no del paciente.** La libreta (`whatsapp_contacts`)
+  es única por teléfono, y detrás de un móvil hay hermanos —gemelos que se
+  agendan en horas seguidas—. Por eso existe **`patients`** (el paciente como
+  persona: nombre, fecha de nacimiento, `guardians`, `anamnesis`, marcas) que
+  cuelga del contacto (`contact_id`). Su identidad en la agenda es
+  **`pat:<uuid>`**, que manda sobre `ghl:` y `tel:` (`patientKeyFor`,
+  `lib/agenda/patients.ts`). `agenda_appointments.patient_id` y
+  `clinical_notes.patient_id` son nullables: el resto de clínicas sigue con el
+  contacto como paciente. Módulo: `lib/patients/persons.ts`.
+- **`agenda_appointments.is_first_visit`** se calcula al crear la cita (el
+  paciente no tenía ninguna cita que ocupara hueco) y no se recalcula. Es lo que
+  leen las reglas "no más de dos primeras seguidas" y "lunes y miércoles desde
+  las 19:00 sin nuevos". La clínica no marca tratamientos: es un hecho del
+  historial.
+- **Lo puro va en `lib/care-profile/policy.ts`** (sin base, con tests en
+  `tests/unit/care-profile-edad.test.ts`): `describeAge` ("1 año y 8 meses"),
+  `priorityLevel` (0–6 m muy prioritario, 6–24 m prioritario, o marca manual —la
+  marca nunca baja lo que da la edad), `isFirstVisitBlackout`,
+  `isPatientAgeAllowed`, tutores y anamnesis. Las edades son claves
+  `YYYY-MM-DD`, no instantes: un cumpleaños es una fecha, no un momento.
+- **Panel**: con perfil, la lista de pacientes gana la columna Edad y el botón
+  "Nuevo paciente" (`components/agenda/patient-dialog.tsx`); la ficha
+  (`pacientes/[key]`) pinta la anamnesis arriba (`anamnesis-card.tsx`), las
+  marcas (`patient-marks.tsx`: prioritario + motivo que leen los asistentes,
+  reseña en Google, última carita) y la historia **en orden cronológico** con
+  Síntomas / Exploración / Tratamiento / Diagnóstico / Observaciones y la carita
+  **por sesión** (`clinical_notes.session_behavior`). El formulario de nota
+  recibe `template='PEDIATRIC'`; el resto de clínicas ve el de siempre. En el
+  calendario, el chip lleva la edad si el paciente tiene fecha de nacimiento y la
+  etiqueta "1ª visita" sólo con perfil; el alta de cita ofrece elegir al paciente
+  de la ficha (`patients` → `DialogPatient`) y, si no coincide con ninguno, sigue
+  siendo un nombre libre.
+- **Borrar una cita nunca borra la nota**: no hay borrado físico (sólo
+  `CANCELLED`) y `clinical_notes.appointment_id` es `ON DELETE SET NULL`. La
+  ficha con `pat:` existe aunque no haya citas.
+- **Reglas de reserva de primeras visitas** (`booking_policy`): franjas vetadas
+  (`firstVisitBlackouts`, minutos locales + día ISO) y tope de primeras
+  **seguidas** (`maxConsecutiveFirstVisits`; "seguidas" = sin un hueco libre
+  entre medio: menos de una duración de separación forma cadena, una cita de
+  seguimiento o un rato libre la corta). Viven en el motor puro
+  (`describeFirstVisitConflict`, `lib/agenda/availability.ts`, tests en
+  `tests/unit/agenda-primeras-visitas.test.ts`) y se aplican en DOS sitios: al
+  ofrecer huecos (`getAvailability({ firstVisit })`, que es lo que ven los
+  agentes vía `findAgentSlots`) y al crear la cita (`createAppointment`), porque
+  un agente puede pasar un `start_time` que no salió de `check_availability`.
+  A los agentes se les impone; el panel puede saltárselas a sabiendas con
+  `overridePolicy` (la acción devuelve `code: 'POLICY'` y el alta de cita ofrece
+  la casilla). `check_availability` acepta `first_visit`; si el agente no lo
+  manda, se deduce del teléfono del canal (`phoneHasHistory`).
+- **Los asistentes atienden como la clínica** (`lib/care-profile/agent.ts`): con
+  perfil, `get_patient_info` devuelve los niños del teléfono (edad, prioridad,
+  aviso, `patient_id`), `register_patient` da de alta al NIÑO (`birth_date`
+  obligatoria, `guardian_name` = titular del teléfono, `medical_alert` marca
+  `needs_human_review` y bloquea la cita) y `book_appointment` exige
+  `patient_id` (o resuelve por nombre entre los niños del teléfono) y rechaza
+  edad fuera de rango o aviso médico pendiente. La sección de prompt la arma
+  `buildCareProtocolSection` (pura, con test) y entra igual en WhatsApp
+  (`careProtocol` de `buildSystemPrompt`) y en voz (variable `{{care_protocol}}`
+  de `buildClinicContextVars`). Todo lo que el prompt pide, el servidor lo impone
+  además por su cuenta.
+- **Cumpleaños**: el barrido diario (`task-daily-sweep`) publica en `#agenda` una
+  tarjeta `patient.birthday` por paciente y año (`lib/care-profile/birthdays.ts`,
+  sólo clínicas con perfil; quien nació un 29 de febrero lo celebra el 28 los
+  años no bisiestos, `isBirthdayOn`). Aviso interno con acciones de llamar y
+  abrir la ficha; no se escribe a la familia.
+- **Lista de espera**: `findNextEligibleEntry` reordena la cola por prioridad
+  (`sortByPriority`, estable) cuando las entradas son `pat:<id>` y la clínica
+  tiene perfil; a igualdad manda la antigüedad de siempre. Sin perfil, la cola
+  no cambia.
+- ⚠️ **Voz, pasos manuales por clínica con perfil**: (1) agente + LLM propios en
+  Retell (`agent_configs.retell_agent_id/retell_llm_id`; hoy todas comparten
+  dos LLM) cuyo prompt referencie `{{care_protocol}}`; (2) correr
+  `scripts/retell/sync-agenda-tools.ts`, que ya declara `first_visit`,
+  `patient_id`, `birth_date`, `guardian_name` y `medical_alert`; (3) el DID de
+  Zadarma de la clínica apuntando a ese agente.
+
 ## Módulo Mensajes (core, sin gate de `enabled_modules`)
 
 Sección `/dashboard/messages` (label "Mensajes"). Chat interno del equipo. Transversal, como Tareas.

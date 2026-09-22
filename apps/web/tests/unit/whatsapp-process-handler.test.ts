@@ -62,6 +62,20 @@ vi.mock('@/lib/db/client', () => {
 
 vi.mock('@/lib/db/schema', () => ({
   whatsappAgentRuns: { conversationId: 'conv', createdAt: 'createdAt' },
+  // El handler arrastra (vía la agenda) la libreta de contactos y los
+  // pacientes-persona, cuyas columnas se leen al importar el módulo.
+  whatsappContacts: {
+    id: 'id',
+    tenantId: 'tenantId',
+    phoneE164: 'phoneE164',
+    name: 'name',
+    firstName: 'firstName',
+    lastName: 'lastName',
+    email: 'email',
+    ghlContactId: 'ghlContactId',
+    updatedAt: 'updatedAt',
+  },
+  patients: { id: 'id', tenantId: 'tenantId', contactId: 'contactId' },
   whatsappConnections: { tenantId: 'tenantId', status: 'status', updatedAt: 'updatedAt' },
   whatsappConversations: { id: 'id' },
   whatsappMessages: {
@@ -71,6 +85,16 @@ vi.mock('@/lib/db/schema', () => ({
     createdAt: 'createdAt',
     internalNote: 'internalNote',
   },
+}));
+
+// Los dos pasos best-effort sobre la ficha de contacto (CRM y avatar) no son
+// parte del flujo que se prueba y hacen sus propios selects: sin este mock
+// consumirían la cola FIFO y descolocarían la respuesta del gate.
+vi.mock('@/lib/whatsapp/contacts/sync-ghl', () => ({
+  syncWhatsappContactWithGhl: vi.fn().mockResolvedValue(null),
+}));
+vi.mock('@/lib/whatsapp/contacts/sync-avatar', () => ({
+  syncWhatsappContactAvatar: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/lib/whatsapp/factory', () => ({

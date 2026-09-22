@@ -7,10 +7,13 @@ import {
   getAgentPatientContext,
   listAgentProfessionals,
   matchByName,
+  phoneHasHistory,
   systemAgendaContext,
 } from '@/lib/agenda/agent';
 import { getAppointment, getClinicTimezone, tenantHasAgenda } from '@/lib/agenda/queries';
 import { AgendaValidationError, cancelAppointment, createAppointment } from '@/lib/agenda/service';
+import { resolvePatientForBooking } from '@/lib/care-profile/agent';
+import { getCareProfileSafe } from '@/lib/care-profile/queries';
 import { clockArticle, speakClockTime } from '@/lib/retell/time-speech';
 import { localDateKey } from '@/lib/tasks/tz';
 
@@ -30,6 +33,17 @@ export interface AgendaAvailabilityArgs {
   treatment_name?: string;
   preferred_date?: string;
   professional_name?: string;
+  /**
+   * El paciente es nuevo. Si el agente no lo dice, se deduce del teléfono del
+   * canal: sin ninguna cita previa, es primera visita. Sólo importa en las
+   * clínicas con reglas de reserva.
+   */
+  first_visit?: boolean;
+}
+
+export interface AgendaAvailabilityContext {
+  /** Teléfono del canal (quien llama o escribe), ya normalizado. */
+  patientPhone?: string | null;
 }
 
 export interface AgendaBookArgs {
@@ -38,6 +52,8 @@ export interface AgendaBookArgs {
   professional_name?: string;
   treatment_name?: string;
   patient_name?: string;
+  /** Clínicas con perfil: el niño al que va la cita (`patients.id`). */
+  patient_id?: string;
   phone?: string;
   email?: string;
   contact_id?: string;
@@ -98,16 +114,28 @@ export async function agendaTreatmentProfessionals(
 export async function agendaCheckAvailability(
   tenantId: string,
   args: AgendaAvailabilityArgs,
+  ctx: AgendaAvailabilityContext = {},
 ): Promise<AgendaToolResult> {
   if (!(await usesInternalAgenda(tenantId))) return null;
 
   try {
+    // Primera visita: lo que diga el agente y, si no lo dice, lo que sepa la
+    // agenda del teléfono. Un fallo al mirarlo no puede dejar sin huecos: se
+    // asume paciente conocido y las reglas se vuelven a comprobar al reservar.
+    const firstVisit =
+      typeof args.first_visit === 'boolean'
+        ? args.first_visit
+        : ctx.patientPhone
+          ? !(await phoneHasHistory(tenantId, ctx.patientPhone).catch(() => true))
+          : false;
+
     const search = await findAgentSlots(tenantId, {
       treatmentName: args.treatment_name ?? null,
       professionalName: args.professional_name ?? null,
       preferredDate: args.preferred_date ?? null,
       days: 7,
       limitPerProfessional: 3,
+      firstVisit,
     });
 
     if (search.reason === 'NO_AGENDA') return null;
@@ -192,7 +220,24 @@ export async function agendaBookAppointment(
           'Falta la hora exacta. Llamá a check_availability y pasá el start_time que te devuelve, sin recalcularlo.',
       };
     }
-    if (!args.patient_name?.trim()) {
+
+    // Clínica con perfil de atención: la cita va al NIÑO, que tiene ficha.
+    // Sin ficha no se reserva; de ella salen la edad y el aviso médico.
+    let patientId: string | null = null;
+    let patientName = args.patient_name?.trim() ?? '';
+    const careProfile = await getCareProfileSafe(tenantId);
+    if (careProfile) {
+      const resolved = await resolvePatientForBooking(
+        tenantId,
+        { patientId: args.patient_id, patientName, phone: args.phone },
+        careProfile,
+      );
+      if (!resolved.ok) return { result: resolved.result };
+      patientId = resolved.person.id;
+      patientName = resolved.person.fullName;
+    }
+
+    if (!patientName) {
       return {
         result: 'Necesito el nombre del paciente para dejar la cita a su nombre.',
       };
@@ -216,7 +261,8 @@ export async function agendaBookAppointment(
     const { appointment, deduped } = await createAppointment(systemAgendaContext(tenantId), {
       professionalId: professional.id,
       treatmentId: treatment?.id ?? null,
-      patientName: args.patient_name,
+      patientId,
+      patientName,
       patientPhone: args.phone ?? '',
       patientEmail: args.email ?? '',
       ghlContactId: args.contact_id ?? '',

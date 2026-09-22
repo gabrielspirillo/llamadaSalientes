@@ -41,6 +41,8 @@ const checkAvailabilityArgs = z.object({
   calendar_id: z.string().optional(),
   // Agenda interna: el paciente puede pedir profesional concreto.
   professional_name: z.string().optional(),
+  // Agenda interna: paciente nuevo (reglas de primeras visitas, si la clínica las tiene).
+  first_visit: z.boolean().optional(),
 });
 
 const bookAppointmentArgs = z.object({
@@ -53,6 +55,8 @@ const bookAppointmentArgs = z.object({
   professional_id: z.string().optional(),
   professional_name: z.string().optional(),
   patient_name: z.string().optional(),
+  // Clínicas con perfil de atención: el niño al que va la cita.
+  patient_id: z.string().optional(),
   email: z.string().optional(),
 });
 
@@ -69,6 +73,10 @@ const registerPatientArgs = z.object({
   last_name: z.string().optional(),
   phone: z.string().min(1),
   email: z.string().optional(),
+  // Clínicas con perfil de atención: el paciente es el niño.
+  birth_date: z.string().optional(),
+  guardian_name: z.string().optional(),
+  medical_alert: z.string().optional(),
 });
 
 const listTreatmentsArgs = z.object({}).strict();
@@ -200,6 +208,11 @@ function allToolDefinitions(): AgentToolDefinition[] {
             description:
               'Opcional. Nombre del profesional si el paciente pide uno concreto ("con la doctora Ruiz"). Consúltalos con list_professionals.',
           },
+          first_visit: {
+            type: 'boolean',
+            description:
+              'Opcional. true si es un paciente nuevo (primera visita). Algunas clínicas reservan las primeras visitas en horarios concretos; si no lo pasas, se deduce del historial del teléfono.',
+          },
         },
         required: ['treatment_name', 'preferred_date'],
         additionalProperties: false,
@@ -248,6 +261,11 @@ function allToolDefinitions(): AgentToolDefinition[] {
             type: 'string',
             description:
               'Nombre y apellidos del paciente: la cita se deja a su nombre. Pásalo siempre que lo sepas.',
+          },
+          patient_id: {
+            type: 'string',
+            description:
+              'El id del paciente que devolvió get_patient_info o register_patient. En las clínicas donde el paciente es un niño con ficha propia es OBLIGATORIO: sin él no se reserva.',
           },
           email: { type: 'string', description: 'Opcional. Email del paciente.' },
         },
@@ -298,6 +316,21 @@ function allToolDefinitions(): AgentToolDefinition[] {
           last_name: { type: 'string' },
           phone: { type: 'string' },
           email: { type: 'string' },
+          birth_date: {
+            type: 'string',
+            description:
+              'Fecha de nacimiento del paciente, YYYY-MM-DD. Obligatoria en las clínicas donde el paciente es un niño.',
+          },
+          guardian_name: {
+            type: 'string',
+            description:
+              'Nombre del titular del teléfono (madre, padre o tutor), cuando el paciente es un niño.',
+          },
+          medical_alert: {
+            type: 'string',
+            description:
+              'Sólo si el tutor cuenta una enfermedad importante, un ingreso reciente, TDAH, autismo o algo parecido: resúmelo aquí. La ficha queda marcada para que lo valore una persona y NO se da cita.',
+          },
         },
         required: ['first_name', 'phone'],
         additionalProperties: false,

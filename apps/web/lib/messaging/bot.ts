@@ -497,6 +497,43 @@ export async function postAppointmentCancelled(args: {
   });
 }
 
+/**
+ * Un paciente cumple años hoy. Va a #agenda, una vez por paciente y año.
+ * Sólo lo publican las clínicas con perfil de atención (guardan la fecha de
+ * nacimiento); para el resto este evento no existe en la práctica.
+ */
+export async function postPatientBirthday(args: {
+  tenantId: string;
+  patientId: string;
+  patientName: string;
+  /** "2 años", "8 meses". Null si no se pudo calcular. */
+  age: string | null;
+  phone: string | null;
+  tutorName: string | null;
+  year: number;
+}): Promise<void> {
+  await postSystemEvent({
+    tenantId: args.tenantId,
+    event: 'patient.birthday',
+    title: `Cumpleaños — ${args.patientName}`,
+    body: joinLines([
+      line('Cumple', args.age),
+      line('Tutor', [args.tutorName, args.phone].filter(Boolean).join(' · ') || null),
+    ]),
+    actions: [
+      ...callAction(args.phone, 'Felicitar llamando a'),
+      {
+        id: 'open-patient',
+        label: 'Abrir ficha',
+        tone: 'secondary',
+        href: `/dashboard/agenda/pacientes/${encodeURIComponent(`pat:${args.patientId}`)}`,
+      },
+      TO_TASK_ACTION,
+    ],
+    dedupeKey: `evt:patient.birthday:${args.patientId}:${args.year}`,
+  });
+}
+
 /** La cita quedó marcada como no-show. Va a #agenda. */
 export async function postAppointmentNoShow(args: {
   tenantId: string;

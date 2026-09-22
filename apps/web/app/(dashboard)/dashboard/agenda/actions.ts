@@ -10,6 +10,7 @@ import {
 } from '@/lib/agenda/auth';
 import { getAppointment } from '@/lib/agenda/queries';
 import {
+  AgendaPolicyError,
   AgendaValidationError,
   type AppointmentInput,
   type ProfessionalDeletionPreview,
@@ -33,14 +34,36 @@ import {
 } from '@/lib/agenda/service';
 import { type TeamCandidate, listTeamCandidates } from '@/lib/agenda/team';
 import { recordAudit } from '@/lib/audit';
+import type { SessionBehavior } from '@/lib/care-profile/policy';
 import { createTreatment, listTreatmentsForTenant } from '@/lib/data/treatments';
+import {
+  type PatientInput,
+  type PatientMarksInput,
+  PatientValidationError,
+  createPatient,
+  saveAnamnesis,
+  setPatientMarks,
+  updatePatient,
+} from '@/lib/patients/persons';
 
 export type ActionResult<T = undefined> =
   | ({ ok: true } & (T extends undefined ? { data?: undefined } : { data: T }))
-  | { ok: false; error: string };
+  | {
+      ok: false;
+      error: string;
+      /** 'POLICY' = incumple una regla de reserva que el panel puede saltarse a sabiendas. */
+      code?: 'POLICY';
+    };
 
-function fail(err: unknown): { ok: false; error: string } {
-  if (err instanceof AgendaValidationError || err instanceof AgendaForbiddenError) {
+function fail(err: unknown): { ok: false; error: string; code?: 'POLICY' } {
+  if (err instanceof AgendaPolicyError) {
+    return { ok: false, error: err.message, code: 'POLICY' };
+  }
+  if (
+    err instanceof AgendaValidationError ||
+    err instanceof AgendaForbiddenError ||
+    err instanceof PatientValidationError
+  ) {
     return { ok: false, error: err.message };
   }
   // Zod y el resto: se devuelve algo legible, no un stack.
@@ -462,6 +485,9 @@ export async function saveClinicalNoteAction(
     treatmentPerformed?: string;
     observations?: string;
     nextSteps?: string;
+    symptoms?: string;
+    examination?: string;
+    sessionBehavior?: SessionBehavior | null;
     private?: boolean;
   },
   noteId?: string,
@@ -495,5 +521,79 @@ async function assertAppointmentInScope(
   if (!appointment) throw new AgendaValidationError('Esa cita ya no existe.');
   if (onlyProfessionalId && appointment.professionalId !== onlyProfessionalId) {
     throw new AgendaForbiddenError('Esa cita no es de tu agenda.');
+  }
+}
+
+// ─── Pacientes como personas (clínicas con perfil de atención) ───────────────
+
+function revalidatePatient(patientId: string) {
+  revalidatePath('/dashboard/agenda');
+  revalidatePath('/dashboard/agenda/pacientes');
+  revalidatePath(`/dashboard/agenda/pacientes/${encodeURIComponent(`pat:${patientId}`)}`);
+}
+
+export async function createPatientAction(
+  input: PatientInput,
+): Promise<ActionResult<{ id: string }>> {
+  try {
+    const ctx = await requireAgendaWriter();
+    const person = await createPatient({ tenantId: ctx.tenantId, userId: ctx.userId }, input);
+    await recordAudit({
+      tenantId: ctx.tenantId,
+      actorUserId: ctx.userId,
+      action: 'create',
+      entity: 'patient',
+      entityId: person.id,
+    });
+    revalidatePatient(person.id);
+    return { ok: true, data: { id: person.id } };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+export async function updatePatientAction(
+  patientId: string,
+  input: PatientInput,
+): Promise<ActionResult> {
+  try {
+    const ctx = await requireAgendaWriter();
+    await updatePatient({ tenantId: ctx.tenantId, userId: ctx.userId }, patientId, input);
+    revalidatePatient(patientId);
+    return { ok: true };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+/** La anamnesis es historia clínica: la escribe quien puede escribir notas. */
+export async function saveAnamnesisAction(
+  patientId: string,
+  answers: unknown,
+): Promise<ActionResult> {
+  try {
+    const ctx = await requireAgendaWriter();
+    if (!ctx.canWriteClinicalNotes) {
+      throw new AgendaForbiddenError('Tu rol no permite escribir historia clínica.');
+    }
+    await saveAnamnesis({ tenantId: ctx.tenantId, userId: ctx.userId }, patientId, answers);
+    revalidatePatient(patientId);
+    return { ok: true };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+export async function setPatientMarksAction(
+  patientId: string,
+  input: PatientMarksInput,
+): Promise<ActionResult> {
+  try {
+    const ctx = await requireAgendaWriter();
+    await setPatientMarks({ tenantId: ctx.tenantId, userId: ctx.userId }, patientId, input);
+    revalidatePatient(patientId);
+    return { ok: true };
+  } catch (err) {
+    return fail(err);
   }
 }

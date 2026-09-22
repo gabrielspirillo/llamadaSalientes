@@ -12,7 +12,11 @@ import { cn } from '@/lib/cn';
 import { CalendarDays, ChevronLeft, ChevronRight, Plus, Users } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import * as React from 'react';
-import { AppointmentDialog, type AppointmentDialogSeed } from './appointment-dialog';
+import {
+  AppointmentDialog,
+  type AppointmentDialogSeed,
+  type DialogPatient,
+} from './appointment-dialog';
 import { AppointmentSheet } from './appointment-sheet';
 
 export interface CalendarProfessional {
@@ -38,6 +42,12 @@ export interface CalendarViewProps {
   items: CalendarItem[];
   blocks: CalendarBlock[];
   treatments: CalendarTreatment[];
+  /**
+   * Pacientes-persona de la clínica, para elegirlos al dar cita. Sólo lo
+   * mandan las clínicas que los llevan así; vacío, el alta sigue siendo a nombre
+   * libre como siempre.
+   */
+  patients?: DialogPatient[];
   timezone: string;
   window: { startMinute: number; endMinute: number };
   canWrite: boolean;
@@ -77,6 +87,7 @@ export function CalendarView(props: CalendarViewProps) {
     items,
     blocks,
     treatments,
+    patients = [],
     window: dayWindow,
     canWrite,
     lockedToProfessional,
@@ -420,6 +431,13 @@ export function CalendarView(props: CalendarViewProps) {
                             {lineas === 1
                               ? `${hhmm(item.startMinute)} ${item.patientName}`
                               : item.patientName}
+                            {/* La edad con número: es lo que una clínica pediátrica mira antes que el nombre. */}
+                            {item.patientAge && (
+                              <span className="font-semibold text-zinc-500">
+                                {' '}
+                                · {item.patientAge}
+                              </span>
+                            )}
                           </span>
                           {lineas >= 2 && (
                             <span className="block truncate text-[11px] leading-tight text-zinc-600">
@@ -430,6 +448,7 @@ export function CalendarView(props: CalendarViewProps) {
                           {lineas >= 3 && (
                             <span className="block truncate text-[10px] leading-tight text-zinc-500">
                               {STATUS_LABELS[item.status]}
+                              {item.badge ? ` · ${item.badge}` : ''}
                             </span>
                           )}
                         </button>
@@ -457,6 +476,7 @@ export function CalendarView(props: CalendarViewProps) {
           seed={seed}
           professionals={professionals.filter((p) => p.agendaEnabled)}
           treatments={treatments}
+          patients={patients}
           onClose={() => setSeed(null)}
         />
       )}

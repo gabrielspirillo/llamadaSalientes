@@ -2,13 +2,16 @@ import 'server-only';
 import { and, asc, desc, eq, gte, inArray, lt, lte, ne, or, sql } from 'drizzle-orm';
 
 import { type SlotOptions, computeRangeSlots } from '@/lib/agenda/availability';
-import { patientKeyFor } from '@/lib/agenda/patients';
+import { patientIdFromKey, patientKeyFor, patientKeyForPerson } from '@/lib/agenda/patients';
 import { BUSY_STATUSES, type ShiftRule, type SlotCandidate } from '@/lib/agenda/shared';
+import { firstVisitRules } from '@/lib/care-profile/policy';
+import { getCareProfile } from '@/lib/care-profile/queries';
 import { db } from '@/lib/db/client';
 import {
   agendaAppointments,
   clinicSettings,
   clinicalNotes,
+  patients,
   professionalShifts,
   professionalTimeOff,
   professionalTreatments,
@@ -17,6 +20,12 @@ import {
   users,
   whatsappContacts,
 } from '@/lib/db/schema';
+import {
+  type PatientPerson,
+  getPatientPerson,
+  getPatientPersons,
+  patientFullName,
+} from '@/lib/patients/persons';
 import { addDaysToKey, localDateKey } from '@/lib/tasks/tz';
 
 export type ProfessionalRow = typeof professionals.$inferSelect;
@@ -307,6 +316,9 @@ export interface CalendarAppointment extends AppointmentRow {
   professionalName: string;
   professionalColor: string;
   treatmentName: string | null;
+  /** Del paciente como persona, si la cita lo tiene. 'YYYY-MM-DD'. */
+  patientBirthDate: string | null;
+  patientPriorityFlag: boolean;
 }
 
 export async function listAppointmentsInRange(
@@ -331,10 +343,13 @@ export async function listAppointmentsInRange(
       professionalName: professionals.fullName,
       professionalColor: professionals.color,
       treatmentName: treatments.name,
+      patientBirthDate: patients.birthDate,
+      patientPriorityFlag: patients.priorityFlag,
     })
     .from(agendaAppointments)
     .innerJoin(professionals, eq(professionals.id, agendaAppointments.professionalId))
     .leftJoin(treatments, eq(treatments.id, agendaAppointments.treatmentId))
+    .leftJoin(patients, eq(patients.id, agendaAppointments.patientId))
     .where(and(...where))
     .orderBy(asc(agendaAppointments.startsAt));
 
@@ -343,6 +358,8 @@ export async function listAppointmentsInRange(
     professionalName: r.professionalName,
     professionalColor: r.professionalColor,
     treatmentName: r.treatmentName ?? null,
+    patientBirthDate: r.patientBirthDate ?? null,
+    patientPriorityFlag: r.patientPriorityFlag ?? false,
   }));
 }
 
@@ -387,6 +404,12 @@ export interface AvailabilityParams {
   durationMinutes: number;
   limit?: number;
   now?: Date;
+  /**
+   * Se busca hueco para una PRIMERA visita. En una clínica con perfil y reglas
+   * se descartan las franjas vetadas y los huecos que encadenarían demasiadas
+   * primeras; en el resto no cambia nada.
+   */
+  firstVisit?: boolean;
 }
 
 export interface AvailabilityResult {
@@ -417,7 +440,7 @@ export async function getAvailability(
   const rangeStart = new Date(`${addDaysToKey(params.fromDateKey, -1)}T00:00:00Z`);
   const rangeEnd = new Date(`${addDaysToKey(params.toDateKey, 2)}T00:00:00Z`);
 
-  const [shiftRows, appointmentRows, blockRows] = await Promise.all([
+  const [shiftRows, appointmentRows, blockRows, careProfile] = await Promise.all([
     db
       .select()
       .from(professionalShifts)
@@ -429,7 +452,11 @@ export async function getAvailability(
         ),
       ),
     db
-      .select({ startsAt: agendaAppointments.startsAt, endsAt: agendaAppointments.endsAt })
+      .select({
+        startsAt: agendaAppointments.startsAt,
+        endsAt: agendaAppointments.endsAt,
+        isFirstVisit: agendaAppointments.isFirstVisit,
+      })
       .from(agendaAppointments)
       .where(
         and(
@@ -451,6 +478,7 @@ export async function getAvailability(
           gte(professionalTimeOff.endsAt, rangeStart),
         ),
       ),
+    params.firstVisit ? getCareProfile(tenantId) : Promise.resolve(null),
   ]);
 
   if (shiftRows.length === 0) {
@@ -466,13 +494,18 @@ export async function getAvailability(
     minNoticeHours: professional.minNoticeHours,
     maxAdvanceDays: professional.maxAdvanceDays,
     now: params.now ?? new Date(),
+    firstVisit: careProfile ? firstVisitRules(careProfile.bookingPolicy) : null,
   };
 
   const slots = computeRangeSlots({
     fromDateKey: params.fromDateKey,
     toDateKey: params.toDateKey,
     shifts: shiftRows.map(toShiftRule),
-    appointments: appointmentRows.map((a) => ({ start: a.startsAt, end: a.endsAt })),
+    appointments: appointmentRows.map((a) => ({
+      start: a.startsAt,
+      end: a.endsAt,
+      firstVisit: a.isFirstVisit,
+    })),
     blocks: blockRows.map((b) => ({ start: b.startsAt, end: b.endsAt })),
     options,
     limit: params.limit,
@@ -526,6 +559,10 @@ export interface PatientSummary {
   patientPhone: string | null;
   patientEmail: string | null;
   ghlContactId: string | null;
+  /** Sólo en clínicas que llevan a sus pacientes como personas. */
+  patientId: string | null;
+  birthDate: string | null;
+  priorityFlag: boolean;
   totalAppointments: number;
   lastVisitAt: Date | null;
   nextVisitAt: Date | null;
@@ -565,6 +602,7 @@ export async function listAgendaPatients(
       patientPhone: sql<string | null>`max(${agendaAppointments.patientPhone})`,
       patientEmail: sql<string | null>`max(${agendaAppointments.patientEmail})`,
       ghlContactId: sql<string | null>`max(${agendaAppointments.ghlContactId})`,
+      patientId: sql<string | null>`max(${agendaAppointments.patientId}::text)`,
       totalAppointments: sql<number>`count(*)`,
       lastVisitAt: sql<Date | null>`max(${agendaAppointments.startsAt}) filter (where ${agendaAppointments.startsAt} < ${now}::timestamptz)`,
       nextVisitAt: sql<Date | null>`min(${agendaAppointments.startsAt}) filter (where ${agendaAppointments.startsAt} >= ${now}::timestamptz and ${agendaAppointments.status} <> 'CANCELLED')`,
@@ -594,29 +632,100 @@ export async function listAgendaPatients(
     .groupBy(clinicalNotes.patientKey);
   const noteMap = new Map(noteCounts.map((n) => [n.patientKey, Number(n.n)]));
 
-  const conCitas = rows.map((r) => ({
-    patientKey: r.patientKey,
-    patientName: r.patientName,
-    patientPhone: r.patientPhone,
-    patientEmail: r.patientEmail,
-    ghlContactId: r.ghlContactId,
-    totalAppointments: Number(r.totalAppointments),
-    lastVisitAt: r.lastVisitAt ? new Date(r.lastVisitAt) : null,
-    nextVisitAt: r.nextVisitAt ? new Date(r.nextVisitAt) : null,
-    noteCount: noteMap.get(r.patientKey) ?? 0,
-    professionalIds: r.professionalIds ?? [],
-  }));
+  // El paciente como persona manda sobre lo desnormalizado en la cita: el
+  // nombre se corrige en la ficha, no cita a cita.
+  const persons = await getPatientPersons(
+    tenantId,
+    rows.map((r) => r.patientId).filter((id): id is string => Boolean(id)),
+  );
+
+  const conCitas = rows.map((r) => {
+    const person = r.patientId ? persons.get(r.patientId) : undefined;
+    return {
+      patientKey: r.patientKey,
+      patientName: person?.fullName || r.patientName,
+      patientPhone: person?.contactPhone ?? r.patientPhone,
+      patientEmail: person?.contactEmail ?? r.patientEmail,
+      ghlContactId: r.ghlContactId,
+      patientId: person?.id ?? null,
+      birthDate: person?.birthDate ?? null,
+      priorityFlag: person?.priorityFlag ?? false,
+      totalAppointments: Number(r.totalAppointments),
+      lastVisitAt: r.lastVisitAt ? new Date(r.lastVisitAt) : null,
+      nextVisitAt: r.nextVisitAt ? new Date(r.nextVisitAt) : null,
+      noteCount: noteMap.get(r.patientKey) ?? 0,
+      professionalIds: r.professionalIds ?? [],
+    };
+  });
 
   // Filtrar por profesional es preguntar "quién pasa por SU consulta", y eso
   // sólo lo contestan las citas.
   if (opts.professionalId) return conCitas;
 
-  const sinCitas = await patientsWithoutAppointments(
-    tenantId,
-    new Set(conCitas.map((p) => p.patientKey)),
-    opts,
-  );
-  return [...conCitas, ...sinCitas];
+  const yaListados = new Set(conCitas.map((p) => p.patientKey));
+  const personasSinCitas = await personsWithoutAppointments(tenantId, yaListados, opts);
+  const sinCitas = await patientsWithoutAppointments(tenantId, yaListados, opts);
+  return [...conCitas, ...personasSinCitas, ...sinCitas];
+}
+
+/**
+ * Pacientes-persona (clínicas con perfil) que todavía no tienen cita: el niño
+ * que recepción acaba de dar de alta y al que aún no se le ha dado hora.
+ */
+async function personsWithoutAppointments(
+  tenantId: string,
+  yaListados: Set<string>,
+  opts: { search?: string; limit?: number },
+): Promise<PatientSummary[]> {
+  const where = [eq(patients.tenantId, tenantId), eq(patients.active, true)];
+  if (opts.search?.trim()) {
+    const q = `%${opts.search.trim().toLowerCase()}%`;
+    const filter = or(
+      sql`lower(${patients.firstName} || ' ' || coalesce(${patients.lastName}, '')) like ${q}`,
+      sql`lower(coalesce(${whatsappContacts.phoneE164}, '')) like ${q}`,
+      sql`lower(coalesce(${whatsappContacts.name}, '')) like ${q}`,
+    );
+    if (filter) where.push(filter);
+  }
+  const rows = await db
+    .select({
+      id: patients.id,
+      firstName: patients.firstName,
+      lastName: patients.lastName,
+      birthDate: patients.birthDate,
+      priorityFlag: patients.priorityFlag,
+      phone: whatsappContacts.phoneE164,
+      email: whatsappContacts.email,
+      ghlContactId: whatsappContacts.ghlContactId,
+    })
+    .from(patients)
+    .leftJoin(whatsappContacts, eq(whatsappContacts.id, patients.contactId))
+    .where(and(...where))
+    .orderBy(desc(patients.updatedAt))
+    .limit(opts.limit ?? 200);
+
+  const out: PatientSummary[] = [];
+  for (const r of rows) {
+    const patientKey = patientKeyForPerson(r.id);
+    if (yaListados.has(patientKey)) continue;
+    yaListados.add(patientKey);
+    out.push({
+      patientKey,
+      patientName: patientFullName(r),
+      patientPhone: r.phone,
+      patientEmail: r.email,
+      ghlContactId: r.ghlContactId,
+      patientId: r.id,
+      birthDate: r.birthDate,
+      priorityFlag: r.priorityFlag,
+      totalAppointments: 0,
+      lastVisitAt: null,
+      nextVisitAt: null,
+      noteCount: 0,
+      professionalIds: [],
+    });
+  }
+  return out;
 }
 
 /**
@@ -642,6 +751,12 @@ async function patientsWithoutAppointments(
     );
     if (filter) where.push(filter);
   }
+
+  // Un contacto del que cuelgan pacientes-persona es el tutor, no un paciente:
+  // la madre no puede salir en la lista al lado de sus hijos.
+  where.push(
+    sql`not exists (select 1 from ${patients} where ${patients.contactId} = ${whatsappContacts.id})`,
+  );
 
   const rows = await db
     .select({
@@ -676,6 +791,9 @@ async function patientsWithoutAppointments(
       patientPhone: r.phoneE164,
       patientEmail: r.email,
       ghlContactId: r.ghlContactId,
+      patientId: null,
+      birthDate: null,
+      priorityFlag: false,
       totalAppointments: 0,
       lastVisitAt: null,
       nextVisitAt: null,
@@ -692,6 +810,8 @@ export interface PatientDossier {
   patientPhone: string | null;
   patientEmail: string | null;
   ghlContactId: string | null;
+  /** El paciente como persona, cuando la clave es `pat:`. */
+  patient: PatientPerson | null;
   appointments: CalendarAppointment[];
   notes: (ClinicalNoteRow & { professionalName: string; authorEmail: string | null })[];
 }
@@ -716,6 +836,12 @@ export async function getPatientDossier(
     apptWhere.push(eq(agendaAppointments.professionalId, opts.viewerProfessionalId));
   }
 
+  // Con clave `pat:` la ficha existe aunque no haya citas: el niño recién dado
+  // de alta también tiene ficha. Un profesional restringido sólo ve a quien
+  // pasa por SU consulta, y eso lo dicen las citas.
+  const patientId = patientIdFromKey(patientKey);
+  const person = patientId ? await getPatientPerson(tenantId, patientId) : null;
+
   const appointmentRows = await db
     .select({
       appointment: agendaAppointments,
@@ -730,7 +856,7 @@ export async function getPatientDossier(
     .orderBy(desc(agendaAppointments.startsAt))
     .limit(200);
 
-  if (appointmentRows.length === 0) return null;
+  if (appointmentRows.length === 0 && (!person || opts.viewerProfessionalId)) return null;
 
   const noteWhere = [
     eq(clinicalNotes.tenantId, tenantId),
@@ -753,20 +879,23 @@ export async function getPatientDossier(
     .orderBy(desc(clinicalNotes.createdAt))
     .limit(200);
 
-  const head = appointmentRows[0]?.appointment;
-  if (!head) return null;
+  const head = appointmentRows[0]?.appointment ?? null;
+  if (!head && !person) return null;
 
   return {
     patientKey,
-    patientName: head.patientName,
-    patientPhone: head.patientPhone,
-    patientEmail: head.patientEmail,
-    ghlContactId: head.ghlContactId,
+    patientName: person?.fullName || head?.patientName || 'Sin nombre',
+    patientPhone: person?.contactPhone ?? head?.patientPhone ?? null,
+    patientEmail: person?.contactEmail ?? head?.patientEmail ?? null,
+    ghlContactId: head?.ghlContactId ?? null,
+    patient: person,
     appointments: appointmentRows.map((r) => ({
       ...r.appointment,
       professionalName: r.professionalName,
       professionalColor: r.professionalColor,
       treatmentName: r.treatmentName ?? null,
+      patientBirthDate: person?.birthDate ?? null,
+      patientPriorityFlag: person?.priorityFlag ?? false,
     })),
     notes: noteRows.map((r) => ({
       ...r.note,

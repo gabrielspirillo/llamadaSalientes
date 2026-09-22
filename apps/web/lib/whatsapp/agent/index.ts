@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { type CareProfile, buildCareProtocolSection } from '@/lib/care-profile/policy';
+import { getCareProfile } from '@/lib/care-profile/queries';
 import {
   type WhatsappAgentRuntimeSettings,
   getWhatsappAgentSettings,
@@ -46,6 +48,11 @@ export interface AgentRunDeps {
    * reglas) y el modo del asistente (si agenda o si deriva al profesional).
    */
   loadAgentSettings: (tenantId: string) => Promise<WhatsappAgentRuntimeSettings | null>;
+  /**
+   * Perfil de atención de la clínica (pediatría). Null para casi todas: el
+   * prompt no cambia. Best-effort: si falla, el asistente atiende como siempre.
+   */
+  loadCareProfile: (tenantId: string) => Promise<CareProfile | null>;
 }
 
 const defaultAgentDeps: AgentRunDeps = {
@@ -58,6 +65,7 @@ const defaultAgentDeps: AgentRunDeps = {
     return row ? { profileSummary: row.profileSummary, facts: row.facts } : null;
   },
   loadAgentSettings: getWhatsappAgentSettings,
+  loadCareProfile: getCareProfile,
 };
 
 /**
@@ -87,10 +95,11 @@ export async function runWhatsappAgent(
 
   // Grounding por-tenant: clinic settings + treatments + FAQs. La memoria del
   // lead se carga en paralelo (best-effort: si falla, seguimos sin memoria).
-  const [grounding, leadMemory, agentSettings] = await Promise.all([
+  const [grounding, leadMemory, agentSettings, careProfile] = await Promise.all([
     deps.loadGrounding(input.tenantId),
     deps.loadLeadMemory(input.tenantId, input.contactPhoneE164).catch(() => null),
     deps.loadAgentSettings(input.tenantId).catch(() => null),
+    deps.loadCareProfile(input.tenantId).catch(() => null),
   ]);
   // Sin fila de ajustes, el asistente es el de siempre: una clínica que nunca
   // pasó por el panel de Futura no puede quedarse sin agendar.
@@ -107,6 +116,7 @@ export async function runWhatsappAgent(
     agentName: agentSettings?.agentName ?? null,
     contactPhoneE164: input.contactPhoneE164,
     mode,
+    careProtocol: careProfile ? buildCareProtocolSection(careProfile) : null,
   });
 
   const tools = getAgentToolDefinitions(mode);

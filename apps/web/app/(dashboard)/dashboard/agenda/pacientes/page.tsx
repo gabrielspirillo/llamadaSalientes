@@ -1,3 +1,4 @@
+import { PatientDialog } from '@/components/agenda/patient-dialog';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,9 @@ import { Input, Select } from '@/components/ui/input';
 import { HeadRow, TD, TH, THead, TR, Table, TableWrap } from '@/components/ui/table';
 import { getAgendaContext } from '@/lib/agenda/auth';
 import { listAgendaPatients, listProfessionals, resolveTimezone } from '@/lib/agenda/queries';
+import { describeAge } from '@/lib/care-profile/policy';
+import { getCareProfile } from '@/lib/care-profile/queries';
+import { localDateKey } from '@/lib/tasks/tz';
 import { Contact, Search } from 'lucide-react';
 import Link from 'next/link';
 import { AgendaNav } from '../agenda-nav';
@@ -21,6 +25,12 @@ export default async function AgendaPacientesPage({
   const { q, prof } = await searchParams;
   const ctx = await getAgendaContext();
   const timezone = await resolveTimezone(ctx.tenantId, null);
+  const todayKey = localDateKey(new Date(), timezone);
+
+  // Con perfil de atención, el paciente es una persona con ficha propia: se
+  // puede dar de alta desde aquí y se le ve la edad. Sin perfil, la lista es la
+  // de siempre.
+  const careProfile = await getCareProfile(ctx.tenantId);
 
   const professionals = ctx.scope === 'OWN' ? [] : await listProfessionals(ctx.tenantId);
 
@@ -53,6 +63,9 @@ export default async function AgendaPacientesPage({
         icon={<Contact className="h-5 w-5" />}
         title={ctx.scope === 'OWN' ? 'Mis pacientes' : 'Pacientes de la agenda'}
         description="Quién ha pasado por consulta, cuándo vuelve y su historia clínica."
+        actions={
+          careProfile && ctx.canWriteAppointments ? <PatientDialog mode="create" /> : undefined
+        }
       />
 
       <AgendaNav active="pacientes" ctx={{ canManageProfessionals: ctx.canManageProfessionals }} />
@@ -106,6 +119,7 @@ export default async function AgendaPacientesPage({
                 <THead>
                   <HeadRow>
                     <TH>Paciente</TH>
+                    {careProfile && <TH>Edad</TH>}
                     <TH>Contacto</TH>
                     <TH>Citas</TH>
                     <TH>Última visita</TH>
@@ -119,7 +133,17 @@ export default async function AgendaPacientesPage({
                     <TR key={p.patientKey}>
                       <TD>
                         <span className="text-[15px] font-bold text-zinc-900">{p.patientName}</span>
+                        {p.priorityFlag && (
+                          <Badge tone="warn" size="sm" className="ml-2">
+                            Prioritario
+                          </Badge>
+                        )}
                       </TD>
+                      {careProfile && (
+                        <TD className="text-[13px] text-zinc-600">
+                          {p.birthDate ? (describeAge(p.birthDate, todayKey) ?? '—') : '—'}
+                        </TD>
+                      )}
                       <TD className="text-[13px] text-zinc-600">
                         {p.patientPhone ?? p.patientEmail ?? '—'}
                       </TD>

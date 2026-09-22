@@ -2,6 +2,10 @@ import 'server-only';
 import { and, asc, desc, eq, inArray, ne, or, sql } from 'drizzle-orm';
 
 import { professionalFromCalendarRef } from '@/lib/agenda/appointment-ref';
+import { patientIdFromKey } from '@/lib/agenda/patients';
+import { getClinicTimezone } from '@/lib/agenda/queries';
+import { ageAt, priorityLevel, sortByPriority } from '@/lib/care-profile/policy';
+import { getCareProfile } from '@/lib/care-profile/queries';
 import { db } from '@/lib/db/client';
 import {
   appointmentsCache,
@@ -13,9 +17,11 @@ import {
   waitlistOffers,
   waitlistSettings as waitlistSettingsTable,
 } from '@/lib/db/schema';
+import { getPatientPersons } from '@/lib/patients/persons';
 import { sendQueueEvent } from '@/lib/queue/client';
 import { resolveActiveConnection } from '@/lib/reminders/send-whatsapp';
 import { driverScopeForWhatsAppMode } from '@/lib/reminders/template-resolver';
+import { localDateKey } from '@/lib/tasks/tz';
 import {
   type MatchSettings,
   type SlotForMatching,
@@ -368,6 +374,7 @@ export async function findNextEligibleEntry(
   const candidates = await db
     .select({
       id: waitlistEntries.id,
+      ghlContactId: waitlistEntries.ghlContactId,
       treatmentId: waitlistEntries.treatmentId,
       assignedDentistId: waitlistEntries.assignedDentistId,
       originalStartTime: waitlistEntries.originalStartTime,
@@ -388,7 +395,11 @@ export async function findNextEligibleEntry(
     .orderBy(asc(waitlistEntries.createdAt))
     .limit(50);
 
-  for (const c of candidates) {
+  // Clínica con perfil de atención: los bebés y los marcados como prioritarios
+  // pasan por delante; a igualdad, la antigüedad de siempre.
+  const ordered = await prioritizeCandidates(tenantId, candidates);
+
+  for (const c of ordered) {
     const entry: WaitlistEntryForMatching = {
       treatmentId: c.treatmentId,
       assignedDentistId: c.assignedDentistId,
@@ -414,6 +425,40 @@ export async function findNextEligibleEntry(
     }
   }
   return null;
+}
+
+/**
+ * Reordena la cola por prioridad clínica cuando la clínica tiene perfil de
+ * atención y las entradas son de pacientes-persona (`pat:<id>`). Para el
+ * resto devuelve la lista tal cual: sin perfil no hay prioridad que aplicar, y
+ * un fallo al leerla tampoco puede cambiar el orden.
+ */
+async function prioritizeCandidates<T extends { ghlContactId: string }>(
+  tenantId: string,
+  candidates: T[],
+): Promise<T[]> {
+  const ids = candidates
+    .map((c) => patientIdFromKey(c.ghlContactId))
+    .filter((id): id is string => Boolean(id));
+  if (ids.length === 0) return candidates;
+
+  const profile = await getCareProfile(tenantId).catch(() => null);
+  if (!profile) return candidates;
+
+  const [persons, timezone] = await Promise.all([
+    getPatientPersons(tenantId, ids),
+    getClinicTimezone(tenantId),
+  ]);
+  const todayKey = localDateKey(new Date(), timezone);
+
+  return sortByPriority(candidates, (c) => {
+    const person = persons.get(patientIdFromKey(c.ghlContactId) ?? '');
+    if (!person) return 'NORMAL';
+    const ageMonths = person.birthDate
+      ? (ageAt(person.birthDate, todayKey)?.totalMonths ?? null)
+      : null;
+    return priorityLevel({ ageMonths, priorityFlag: person.priorityFlag }, profile.bookingPolicy);
+  });
 }
 
 function pickInitialChannel(mode: WaitlistSettingsRow['channelMode']): WaitlistChannel {
