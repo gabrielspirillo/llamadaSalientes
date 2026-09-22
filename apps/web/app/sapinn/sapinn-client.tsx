@@ -187,7 +187,7 @@ export function SapinnDemo() {
           Futura Solutions <i>×</i> Sapinn Consulting
         </div>
         <div className="sp-badge">
-          <span className="sp-badge-dot" /> Demostración en directo
+          <span className="sp-badge-dot" /> Demo
         </div>
       </header>
 
@@ -195,13 +195,13 @@ export function SapinnDemo() {
         <div className="sp-split">
           {/* ── Titular ── */}
           <section className="sp-intro sp-enter">
-            <p className="sp-eyebrow">Agente de voz saliente para oficina de farmacia</p>
+            <p className="sp-eyebrow">Agente de voz saliente para farmacias</p>
             <h1 className="sp-title">
               Escúchalo antes de <span className="sp-title-hl">decidir</span>.
             </h1>
             <p className="sp-lead">
-              Es el sistema que llamaría a las farmacias del territorio sin cubrir. No es una
-              maqueta: responde en tiempo real y se le puede interrumpir.
+              Es el sistema que llamaría a las farmacias del territorio sin cubrir. Responde en
+              tiempo real y se le puede interrumpir.
             </p>
           </section>
 
