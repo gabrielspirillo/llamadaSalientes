@@ -4,6 +4,8 @@ import { and, asc, desc, eq, gte, inArray, lt, lte, ne, or, sql } from 'drizzle-
 import { type SlotOptions, computeRangeSlots } from '@/lib/agenda/availability';
 import { patientIdFromKey, patientKeyFor, patientKeyForPerson } from '@/lib/agenda/patients';
 import { BUSY_STATUSES, type ShiftRule, type SlotCandidate } from '@/lib/agenda/shared';
+import { firstVisitRules } from '@/lib/care-profile/policy';
+import { getCareProfile } from '@/lib/care-profile/queries';
 import { db } from '@/lib/db/client';
 import {
   agendaAppointments,
@@ -402,6 +404,12 @@ export interface AvailabilityParams {
   durationMinutes: number;
   limit?: number;
   now?: Date;
+  /**
+   * Se busca hueco para una PRIMERA visita. En una clínica con perfil y reglas
+   * se descartan las franjas vetadas y los huecos que encadenarían demasiadas
+   * primeras; en el resto no cambia nada.
+   */
+  firstVisit?: boolean;
 }
 
 export interface AvailabilityResult {
@@ -432,7 +440,7 @@ export async function getAvailability(
   const rangeStart = new Date(`${addDaysToKey(params.fromDateKey, -1)}T00:00:00Z`);
   const rangeEnd = new Date(`${addDaysToKey(params.toDateKey, 2)}T00:00:00Z`);
 
-  const [shiftRows, appointmentRows, blockRows] = await Promise.all([
+  const [shiftRows, appointmentRows, blockRows, careProfile] = await Promise.all([
     db
       .select()
       .from(professionalShifts)
@@ -444,7 +452,11 @@ export async function getAvailability(
         ),
       ),
     db
-      .select({ startsAt: agendaAppointments.startsAt, endsAt: agendaAppointments.endsAt })
+      .select({
+        startsAt: agendaAppointments.startsAt,
+        endsAt: agendaAppointments.endsAt,
+        isFirstVisit: agendaAppointments.isFirstVisit,
+      })
       .from(agendaAppointments)
       .where(
         and(
@@ -466,6 +478,7 @@ export async function getAvailability(
           gte(professionalTimeOff.endsAt, rangeStart),
         ),
       ),
+    params.firstVisit ? getCareProfile(tenantId) : Promise.resolve(null),
   ]);
 
   if (shiftRows.length === 0) {
@@ -481,13 +494,18 @@ export async function getAvailability(
     minNoticeHours: professional.minNoticeHours,
     maxAdvanceDays: professional.maxAdvanceDays,
     now: params.now ?? new Date(),
+    firstVisit: careProfile ? firstVisitRules(careProfile.bookingPolicy) : null,
   };
 
   const slots = computeRangeSlots({
     fromDateKey: params.fromDateKey,
     toDateKey: params.toDateKey,
     shifts: shiftRows.map(toShiftRule),
-    appointments: appointmentRows.map((a) => ({ start: a.startsAt, end: a.endsAt })),
+    appointments: appointmentRows.map((a) => ({
+      start: a.startsAt,
+      end: a.endsAt,
+      firstVisit: a.isFirstVisit,
+    })),
     blocks: blockRows.map((b) => ({ start: b.startsAt, end: b.endsAt })),
     options,
     limit: params.limit,

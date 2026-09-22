@@ -89,6 +89,10 @@ export function AppointmentDialog({
   const [patientEmail, setPatientEmail] = React.useState('');
   const [notes, setNotes] = React.useState('');
   const [allowOutsideHours, setAllowOutsideHours] = React.useState(false);
+  // Sólo aparece cuando el servidor rechazó la cita por una regla de reserva
+  // (primeras visitas). Recepción decide; los agentes nunca pueden.
+  const [policyBlocked, setPolicyBlocked] = React.useState(false);
+  const [overridePolicy, setOverridePolicy] = React.useState(false);
 
   const [slots, setSlots] = React.useState<{ startMinute: number; dateKey: string }[]>([]);
   const [loadingSlots, setLoadingSlots] = React.useState(false);
@@ -158,12 +162,14 @@ export function AppointmentDialog({
         durationMinutes: duration,
         notes,
         allowOutsideHours,
+        overridePolicy,
       });
       if (result.ok) {
         onClose();
         router.refresh();
       } else {
         setError(result.error);
+        if (result.code === 'POLICY') setPolicyBlocked(true);
       }
     });
   }
@@ -348,6 +354,21 @@ export function AppointmentDialog({
               pise con otra cita.
             </span>
           </label>
+
+          {policyBlocked && (
+            <label className="flex items-start gap-2 text-[13px] text-zinc-600">
+              <input
+                type="checkbox"
+                checked={overridePolicy}
+                onChange={(e) => setOverridePolicy(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                Guardar igualmente aunque incumpla la regla de primeras visitas. Queda a criterio de
+                recepción.
+              </span>
+            </label>
+          )}
 
           {error && (
             <p className="flex items-start gap-2 rounded-[14px] bg-rose-50 p-3 text-[13px] text-rose-700">

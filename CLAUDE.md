@@ -631,6 +631,20 @@ nuevos, prioridad por edad. Todo eso va **sólo para ella** y sin interruptores:
 - **Borrar una cita nunca borra la nota**: no hay borrado físico (sólo
   `CANCELLED`) y `clinical_notes.appointment_id` es `ON DELETE SET NULL`. La
   ficha con `pat:` existe aunque no haya citas.
+- **Reglas de reserva de primeras visitas** (`booking_policy`): franjas vetadas
+  (`firstVisitBlackouts`, minutos locales + día ISO) y tope de primeras
+  **seguidas** (`maxConsecutiveFirstVisits`; "seguidas" = sin un hueco libre
+  entre medio: menos de una duración de separación forma cadena, una cita de
+  seguimiento o un rato libre la corta). Viven en el motor puro
+  (`describeFirstVisitConflict`, `lib/agenda/availability.ts`, tests en
+  `tests/unit/agenda-primeras-visitas.test.ts`) y se aplican en DOS sitios: al
+  ofrecer huecos (`getAvailability({ firstVisit })`, que es lo que ven los
+  agentes vía `findAgentSlots`) y al crear la cita (`createAppointment`), porque
+  un agente puede pasar un `start_time` que no salió de `check_availability`.
+  A los agentes se les impone; el panel puede saltárselas a sabiendas con
+  `overridePolicy` (la acción devuelve `code: 'POLICY'` y el alta de cita ofrece
+  la casilla). `check_availability` acepta `first_visit`; si el agente no lo
+  manda, se deduce del teléfono del canal (`phoneHasHistory`).
 
 ## Módulo Mensajes (core, sin gate de `enabled_modules`)
 

@@ -206,7 +206,10 @@ export function ageAt(birthDate: string, todayKey: string): Age | null {
   const b = parseDateKey(birthDate);
   const t = parseDateKey(todayKey);
   if (!b || !t) return null;
-  if (t.year < b.year || (t.year === b.year && (t.month < b.month || (t.month === b.month && t.day < b.day)))) {
+  if (
+    t.year < b.year ||
+    (t.year === b.year && (t.month < b.month || (t.month === b.month && t.day < b.day)))
+  ) {
     return null;
   }
 
@@ -291,13 +294,34 @@ export function priorityLevel(
 
 // ─── Primeras visitas ────────────────────────────────────────────────────────
 
+/**
+ * Lo que el motor de huecos necesita saber de las primeras visitas. Es un
+ * recorte de la política: null cuando la clínica no tiene ninguna regla, para
+ * que el motor no haga trabajo de más.
+ */
+export interface FirstVisitRules {
+  maxConsecutive: number | null;
+  blackouts: FirstVisitBlackout[];
+}
+
+export function firstVisitRules(policy: BookingPolicy): FirstVisitRules | null {
+  if (policy.maxConsecutiveFirstVisits === null && policy.firstVisitBlackouts.length === 0) {
+    return null;
+  }
+  return {
+    maxConsecutive: policy.maxConsecutiveFirstVisits,
+    blackouts: policy.firstVisitBlackouts,
+  };
+}
+
 /** ¿Cae este minuto local de este día en una franja sin primeras visitas? */
 export function isFirstVisitBlackout(
   weekday: number,
   startMinute: number,
-  policy: BookingPolicy,
+  rules: Pick<BookingPolicy, 'firstVisitBlackouts'> | Pick<FirstVisitRules, 'blackouts'>,
 ): boolean {
-  return policy.firstVisitBlackouts.some(
+  const blackouts = 'blackouts' in rules ? rules.blackouts : rules.firstVisitBlackouts;
+  return blackouts.some(
     (b) => b.weekday === weekday && startMinute >= b.fromMinute && startMinute < b.toMinute,
   );
 }

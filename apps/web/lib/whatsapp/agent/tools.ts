@@ -41,6 +41,8 @@ const checkAvailabilityArgs = z.object({
   calendar_id: z.string().optional(),
   // Agenda interna: el paciente puede pedir profesional concreto.
   professional_name: z.string().optional(),
+  // Agenda interna: paciente nuevo (reglas de primeras visitas, si la clínica las tiene).
+  first_visit: z.boolean().optional(),
 });
 
 const bookAppointmentArgs = z.object({
@@ -199,6 +201,11 @@ function allToolDefinitions(): AgentToolDefinition[] {
             type: 'string',
             description:
               'Opcional. Nombre del profesional si el paciente pide uno concreto ("con la doctora Ruiz"). Consúltalos con list_professionals.',
+          },
+          first_visit: {
+            type: 'boolean',
+            description:
+              'Opcional. true si es un paciente nuevo (primera visita). Algunas clínicas reservan las primeras visitas en horarios concretos; si no lo pasas, se deduce del historial del teléfono.',
           },
         },
         required: ['treatment_name', 'preferred_date'],

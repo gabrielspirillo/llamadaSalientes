@@ -37,6 +37,8 @@ export type CheckAvailabilityArgs = {
   calendar_id?: string;
   /** Agenda interna: el paciente pidió un profesional concreto. */
   professional_name?: string;
+  /** Agenda interna: el paciente es nuevo (aplican las reglas de primeras visitas). */
+  first_visit?: boolean;
 };
 
 export type BookAppointmentArgs = {
@@ -151,15 +153,21 @@ function formatSlots(slots: GhlSlot[]): string {
 export async function checkAvailability(
   tenantId: string,
   args: CheckAvailabilityArgs,
+  ctx: ToolContext = {},
 ): Promise<ToolResult> {
   // La agenda de la plataforma manda cuando la clínica la usa. Si no hay
   // ningún profesional con la agenda encendida, `agendaCheckAvailability`
   // devuelve null y seguimos por GoHighLevel como siempre.
-  const internal = await agendaCheckAvailability(tenantId, {
-    treatment_name: args.treatment_name,
-    preferred_date: args.preferred_date,
-    professional_name: args.professional_name,
-  });
+  const internal = await agendaCheckAvailability(
+    tenantId,
+    {
+      treatment_name: args.treatment_name,
+      preferred_date: args.preferred_date,
+      professional_name: args.professional_name,
+      first_visit: typeof args.first_visit === 'boolean' ? args.first_visit : undefined,
+    },
+    { patientPhone: normalizePatientPhone(ctx.patientPhone) },
+  );
   if (internal) return internal;
 
   const integration = await getGhlIntegration(tenantId);
@@ -962,7 +970,7 @@ export async function dispatchTool(
 ): Promise<ToolResult> {
   switch (toolName as KnownToolName) {
     case 'check_availability':
-      return checkAvailability(tenantId, args as CheckAvailabilityArgs);
+      return checkAvailability(tenantId, args as CheckAvailabilityArgs, ctx);
     case 'book_appointment':
       return bookAppointment(tenantId, args as BookAppointmentArgs, ctx);
     case 'cancel_appointment':

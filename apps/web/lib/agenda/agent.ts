@@ -1,9 +1,9 @@
 import 'server-only';
-import { and, asc, desc, eq, gte, inArray, ne } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, ne, or } from 'drizzle-orm';
 
 import type { AgendaContext } from '@/lib/agenda/auth';
 import { describeAbsences, describeWeeklySchedule } from '@/lib/agenda/describe';
-import { patientKeyFor } from '@/lib/agenda/patients';
+import { normalizePatientPhone, patientKeyFor } from '@/lib/agenda/patients';
 import { type AvailabilityResult, getAvailability, getClinicTimezone } from '@/lib/agenda/queries';
 import { type AppointmentInput, createAppointment } from '@/lib/agenda/service';
 import { BUSY_STATUSES } from '@/lib/agenda/shared';
@@ -213,6 +213,8 @@ export interface AgentSlotSearch {
   days?: number;
   limitPerProfessional?: number;
   now?: Date;
+  /** El hueco es para un paciente nuevo: aplican las reglas de primeras visitas. */
+  firstVisit?: boolean;
 }
 
 export interface AgentSlotOption {
@@ -367,6 +369,7 @@ export async function findAgentSlots(
         durationMinutes: duration,
         limit: perProfessional,
         now,
+        firstVisit: params.firstVisit ?? false,
       });
       return availability.slots.map<AgentSlotOption>((s) => ({
         professionalId: p.id,
@@ -438,6 +441,40 @@ export async function bookAgentAppointment(
   },
 ) {
   return createAppointment(systemAgendaContext(tenantId), input);
+}
+
+/**
+ * ¿Desde este teléfono ya ha venido alguien a la clínica?
+ *
+ * Es lo que decide si al ofrecer huecos aplican las reglas de primeras
+ * visitas cuando el agente no lo dice. Se mira el teléfono en la cita y no
+ * sólo la clave `tel:`: en una clínica pediátrica el móvil es del tutor y la
+ * cita va a nombre del niño (`pat:`), pero el teléfono queda guardado igual.
+ * Un hermano nuevo de un paciente conocido saldrá como "ya ha venido"; la
+ * regla se vuelve a comprobar por paciente al reservar, así que como mucho se
+ * le ofrece un hueco que luego se rechaza.
+ */
+export async function phoneHasHistory(
+  tenantId: string,
+  phone: string | null | undefined,
+): Promise<boolean> {
+  const phoneE164 = normalizePatientPhone(phone);
+  if (!phoneE164) return false;
+  const rows = await db
+    .select({ id: agendaAppointments.id })
+    .from(agendaAppointments)
+    .where(
+      and(
+        eq(agendaAppointments.tenantId, tenantId),
+        inArray(agendaAppointments.status, BUSY_STATUSES),
+        or(
+          eq(agendaAppointments.patientKey, `tel:${phoneE164}`),
+          eq(agendaAppointments.patientPhone, phoneE164),
+        ),
+      ),
+    )
+    .limit(1);
+  return rows.length > 0;
 }
 
 // ─── Contexto de paciente para los agentes ───────────────────────────────────

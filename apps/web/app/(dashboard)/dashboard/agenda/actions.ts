@@ -10,6 +10,7 @@ import {
 } from '@/lib/agenda/auth';
 import { getAppointment } from '@/lib/agenda/queries';
 import {
+  AgendaPolicyError,
   AgendaValidationError,
   type AppointmentInput,
   type ProfessionalDeletionPreview,
@@ -47,9 +48,17 @@ import {
 
 export type ActionResult<T = undefined> =
   | ({ ok: true } & (T extends undefined ? { data?: undefined } : { data: T }))
-  | { ok: false; error: string };
+  | {
+      ok: false;
+      error: string;
+      /** 'POLICY' = incumple una regla de reserva que el panel puede saltarse a sabiendas. */
+      code?: 'POLICY';
+    };
 
-function fail(err: unknown): { ok: false; error: string } {
+function fail(err: unknown): { ok: false; error: string; code?: 'POLICY' } {
+  if (err instanceof AgendaPolicyError) {
+    return { ok: false, error: err.message, code: 'POLICY' };
+  }
   if (
     err instanceof AgendaValidationError ||
     err instanceof AgendaForbiddenError ||
