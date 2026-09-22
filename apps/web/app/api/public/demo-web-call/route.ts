@@ -3,6 +3,7 @@ import { clientIp, consumeRateLimit } from '@/lib/queue/rate-limit';
 import { getRetellClient } from '@/lib/retell/client';
 import { buildClinicContextVars } from '@/lib/retell/clinic-context';
 import { describeRetellError } from '@/lib/retell/errors';
+import { sapinnAgentId, sapinnDynamicVars } from '@/lib/sapinn/demo';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -96,33 +97,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Agente DEDICADO de la demo de Sapinn (marca de alimentación infantil que
-  // llama a farmacias, español de España). Es un agente propio en Retell,
-  // aislado de los de Futura: se creó aparte y no comparte prompt ni LLM con
-  // el agente de demo de Futura, así que ajustarlo no afecta al resto del
-  // dashboard. Se puede sobreescribir por env sin tocar el código.
-  const SAPINN_DEMO_AGENT_ID = 'agent_e8d27609a342f597ba3e5ef329';
-  const agentId = env.SAPINN_RETELL_AGENT_ID || SAPINN_DEMO_AGENT_ID;
+  // Agente y guion salen de lib/sapinn/demo.ts, el mismo módulo que usa la
+  // llamada telefónica, para que los dos caminos de la demo no se separen.
+  const agentId = sapinnAgentId();
 
   try {
     const clinicVars = await buildClinicContextVars(tenantId);
     const retell = getRetellClient();
-    // Marca de la demo (placeholder profesional; se cambia aquí en un sitio).
-    const BRAND = 'Nutrialia';
-    // El saludo lo componemos NOSOTROS y lo inyectamos en begin_message
-    // ({{greeting}}) del agente. Así la agente habla primero, usa el nombre si
-    // lo hay y NO lo vuelve a preguntar; si no hay nombre, lo pregunta ella.
-    const displayName = parsed.data.name?.trim() || '';
-    // Saludo simple y profesional: declara IA en la 1ª frase (pliego), dice
-    // marca y sector, y una sola pregunta. La verificación de rol y el respeto
-    // al mostrador ocupado los lleva el guion, no el saludo.
-    // Sin nombre (caso normal en la landing) la agente lo pregunta; si llegara
-    // uno, saluda por él y no lo vuelve a pedir.
-    const hello = displayName ? `Buenos días, ${displayName}.` : 'Buenos días.';
-    const ask = displayName
-      ? '¿Tiene un momento para hablar?'
-      : '¿Con quién tengo el gusto de hablar?';
-    const greeting = `${hello} Soy Lucía, un asistente de voz con inteligencia artificial de ${BRAND}, nutrición infantil. ${ask}`;
     const webCall = await retell.call.createWebCall({
       agent_id: agentId,
       metadata: {
@@ -132,17 +113,7 @@ export async function POST(req: NextRequest) {
       },
       retell_llm_dynamic_variables: {
         ...clinicVars,
-        greeting,
-        brand: BRAND,
-        lead_name: displayName,
-        name: displayName,
-        patient_name: displayName,
-        current_date: new Date().toISOString().slice(0, 10),
-        direction: 'outbound',
-        lead_source: 'sapinn-landing',
-        use_case: 'prueba',
-        campaign_name: 'Prueba desde la propuesta',
-        demo_flow: 'sapinn_web',
+        ...sapinnDynamicVars(parsed.data.name?.trim() || ''),
       },
     });
 
