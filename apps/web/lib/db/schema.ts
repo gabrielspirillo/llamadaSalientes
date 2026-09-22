@@ -2150,6 +2150,83 @@ export const patients = pgTable(
   }),
 );
 
+// ─── Consentimiento informado con firma digital (migración 0032) ─────────────
+// Sólo las clínicas con fila en `esign_integrations` enseñan el botón.
+
+export const esignIntegrations = pgTable('esign_integrations', {
+  tenantId: uuid('tenant_id')
+    .primaryKey()
+    .references(() => tenants.id, { onDelete: 'cascade' }),
+  provider: text('provider').notNull().default('DOCUMENSO'),
+  baseUrl: text('base_url').notNull(),
+  apiTokenEnc: text('api_token_enc').notNull(),
+  webhookSecretEnc: text('webhook_secret_enc').notNull(),
+  active: boolean('active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const consentTemplates = pgTable(
+  'consent_templates',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    key: text('key').notNull(),
+    title: text('title').notNull(),
+    /** Bloques del texto. La forma la fija `lib/consents/template.ts`. */
+    body: jsonb('body').notNull(),
+    acknowledgments: jsonb('acknowledgments').$type<string[]>().notNull().default([]),
+    messageTemplate: text('message_template'),
+    active: boolean('active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantKeyUnique: unique('consent_templates_tenant_id_key_key').on(t.tenantId, t.key),
+  }),
+);
+
+export const patientConsents = pgTable(
+  'patient_consents',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    patientId: uuid('patient_id')
+      .references(() => patients.id, { onDelete: 'cascade' })
+      .notNull(),
+    templateId: uuid('template_id').references(() => consentTemplates.id, {
+      onDelete: 'set null',
+    }),
+    templateKey: text('template_key').notNull(),
+    provider: text('provider').notNull().default('DOCUMENSO'),
+    providerDocumentId: integer('provider_document_id'),
+    recipientName: text('recipient_name').notNull(),
+    recipientEmail: text('recipient_email'),
+    recipientPhone: text('recipient_phone').notNull(),
+    recipientDni: text('recipient_dni'),
+    recipientAddress: text('recipient_address'),
+    signingUrl: text('signing_url'),
+    /** SENT | SIGNED | CANCELLED | ERROR */
+    status: text('status').notNull().default('SENT'),
+    sentAt: timestamp('sent_at', { withTimezone: true }),
+    signedAt: timestamp('signed_at', { withTimezone: true }),
+    /** Key del PDF firmado en el bucket interno. */
+    pdfKey: text('pdf_key'),
+    whatsappMessageId: text('whatsapp_message_id'),
+    sentByUserId: uuid('sent_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+    error: text('error'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    patientIdx: index('patient_consents_patient_idx').on(t.tenantId, t.patientId, t.createdAt),
+  }),
+);
+
 export const agendaAppointments = pgTable(
   'agenda_appointments',
   {

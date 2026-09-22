@@ -672,6 +672,65 @@ nuevos, prioridad por edad. Todo eso va **sólo para ella** y sin interruptores:
   `patient_id`, `birth_date`, `guardian_name` y `medical_alert`; (3) el DID de
   Zadarma de la clínica apuntando a ese agente.
 
+## Consentimiento informado con firma digital (Documenso, por WhatsApp)
+
+Respinens firma el consentimiento informado de cada menor **con un clic desde la
+ficha del paciente**: la app genera el PDF con los datos del niño y del tutor ya
+rellenos, lo crea en la instancia de Documenso **propia de la clínica**
+(`consentimiento.respinens.es`, proyecto "Respinens" en Dokploy, compose
+`respinens-documenso`) y manda el enlace de firma por el WhatsApp de la clínica.
+El tutor lo firma desde el móvil; Documenso avisa por webhook y el PDF sellado
+queda en el bucket interno. Migraciones `0032_consentimientos.sql` (tablas) y
+`0033_respinens_consentimiento.sql` (la plantilla de Respinens, por slug).
+
+- **Sin interruptor**: la ficha enseña la tarjeta (`components/agenda/consent-card.tsx`)
+  cuando la clínica tiene fila en `esign_integrations` (URL, token de API y
+  secreto del webhook, cifrados con `ENCRYPTION_KEY`) **y** una
+  `consent_templates` activa (`tenantHasEsign`). Futura las da de alta desde
+  `/dashboard/futura` → **Firma digital** (`esign-dialog.tsx`), que prueba el
+  token antes de guardar. Sólo pacientes-persona (`pat:`): el consentimiento es
+  del niño.
+- **El PDF lo tipografía la app** (`lib/consents/pdf.ts`, pdf-lib, puro, con
+  tests), no una plantilla de Documenso: así sale relleno y sabemos dónde van la
+  firma y la fecha (porcentajes de página, origen arriba a la izquierda, que es
+  como los quiere Documenso). Las declaraciones ("Al firmar declaro que…") se
+  imprimen antes de la firma; no se usan casillas de Documenso. Helvetica sólo
+  sabe WinAnsi: `sanitize` quita lo que no cabe (emojis, flechas) en vez de
+  reventar.
+- **El texto es de la clínica**: bloques `heading | paragraph | bullets | numbered`
+  en `consent_templates.body` (`lib/consents/template.ts`), más
+  `acknowledgments` y `message_template` del WhatsApp (`{{tutor}}`,
+  `{{paciente}}`, `{{clinica}}`, `{{enlace}}`; si falta `{{enlace}}` se añade).
+- **API v1 de Documenso** (`lib/consents/documenso.ts`): crear documento con el
+  tutor como firmante (`externalId` = nuestro id) → subir el PDF a la URL
+  prefirmada → `fields` (SIGNATURE + DATE) → `send` con `sendEmail:false`. El
+  enlace es el `signingUrl` del firmante. Documenso exige correo por firmante:
+  sin correo del tutor se usa `tutor.<dígitos>@sin-correo.invalid` (los correos
+  están apagados). El PDF firmado se baja por la v2
+  (`/api/v2/document/{id}/download?version=signed`, sirve con almacenamiento en
+  base de datos) con caída a la v1.
+- **El WhatsApp sale firmado como equipo** (`senderType: 'HUMAN'` en
+  `sendAgentResponse`): en el inbox no parece escrito por el asistente. Si no
+  hay conector o el envío falla, el documento ya existe y la fila guarda el
+  enlace: la tarjeta ofrece "Copiar enlace" para mandarlo a mano.
+- **Webhook** `POST /api/webhooks/documenso/<tenantId>`: la clínica va en la URL
+  (cada una tiene su instancia y su secreto); `X-Documenso-Secret` en claro,
+  comparado en tiempo constante contra `esign_integrations`. En
+  `DOCUMENT_COMPLETED` (`completeConsent`) se baja el PDF, se guarda en
+  `tenants/<tenant>/consents/<id>.pdf` del bucket interno, la fila pasa a
+  `SIGNED` y se publica `consent.signed` en `#agenda`. Devuelve 500 si falla la
+  descarga para que Documenso reintente. Idempotente.
+- **PDF firmado**: `GET /api/consents/<id>/pdf` firma la URL en cada lectura
+  (10 min) y redirige; la fila se busca por (clínica de la sesión, id).
+- ⚠️ **Alta de la instancia (manual, una vez por clínica)**: DNS del dominio → IP
+  del VPS (Traefik emite el certificado solo); entrar a Documenso, crear la
+  cuenta de la clínica (`NEXT_PUBLIC_DISABLE_SIGNUP=false` sólo mientras tanto,
+  luego `true` y redeploy), Ajustes → API Tokens (uno sin caducidad) y Ajustes →
+  Webhooks (evento `DOCUMENT_COMPLETED`, URL y secreto que muestra el diálogo de
+  Futura); pegar URL + token + secreto en Futura → Firma digital. El correo de
+  Documenso sale por Resend (`NEXT_PRIVATE_SMTP_TRANSPORT=resend`); sólo se usa
+  para la cuenta, no para firmar.
+
 ## Módulo Mensajes (core, sin gate de `enabled_modules`)
 
 Sección `/dashboard/messages` (label "Mensajes"). Chat interno del equipo. Transversal, como Tareas.

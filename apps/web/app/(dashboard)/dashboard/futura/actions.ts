@@ -1,6 +1,7 @@
 'use server';
 
 import { clinicNameSchema } from '@/lib/branding';
+import { ConsentError, upsertEsignIntegration } from '@/lib/consents/service';
 import {
   type WhatsappAgentMode,
   isWhatsappAgentMode,
@@ -196,4 +197,36 @@ export async function setWhatsappAgentModeAction(
           'Guardado. Sin móvil de respaldo, una consulta que no encaje con ningún profesional se queda sólo en el panel.',
       }
     : { ok: true };
+}
+
+/**
+ * La instancia de Documenso de una clínica (firma digital del consentimiento).
+ * Sólo Futura: es una decisión de producto por cliente, con secretos.
+ */
+export async function saveEsignIntegrationAction(
+  targetTenantId: string,
+  input: { baseUrl: string; apiToken: string; webhookSecret: string },
+): Promise<BrandingResult> {
+  const { isSuperAdmin } = await getCurrentTenant();
+  if (!isSuperAdmin) {
+    return { ok: false, error: 'No autorizado.' };
+  }
+  const rows = await db
+    .select({ id: tenants.id })
+    .from(tenants)
+    .where(eq(tenants.id, targetTenantId))
+    .limit(1);
+  if (!rows[0]) {
+    return { ok: false, error: 'La clínica no existe.' };
+  }
+  try {
+    await upsertEsignIntegration({ tenantId: targetTenantId, ...input });
+  } catch (err) {
+    if (err instanceof ConsentError) return { ok: false, error: err.message };
+    console.error('[futura] firma digital', err);
+    return { ok: false, error: 'No se pudo guardar la configuración.' };
+  }
+  revalidatePath('/dashboard/futura');
+  revalidatePath('/dashboard', 'layout');
+  return { ok: true };
 }

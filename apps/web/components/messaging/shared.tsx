@@ -11,6 +11,7 @@ import {
   CalendarClock,
   CalendarOff,
   CalendarX,
+  FileSignature,
   FileText,
   Hash,
   ListTodo,
@@ -160,6 +161,7 @@ const EVENT_ICONS: Record<ImEvent, LucideIcon> = {
   'analytics.daily_digest': BarChart3,
   'analytics.threshold_alert': TrendingUp,
   'patient.birthday': Cake,
+  'consent.signed': FileSignature,
 };
 
 export function eventIcon(eventKey: string | null | undefined): LucideIcon {
@@ -190,6 +192,7 @@ const EVENT_LABELS: Record<ImEvent, string> = {
   'analytics.daily_digest': 'Resumen del día',
   'analytics.threshold_alert': 'Alerta de umbral',
   'patient.birthday': 'Cumpleaños',
+  'consent.signed': 'Consentimiento firmado',
 };
 
 export function eventLabel(eventKey: string | null | undefined): string {

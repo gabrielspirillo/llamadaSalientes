@@ -1,5 +1,6 @@
 import { AnamnesisCard } from '@/components/agenda/anamnesis-card';
 import { ClinicalNoteForm } from '@/components/agenda/clinical-note-form';
+import { ConsentCard } from '@/components/agenda/consent-card';
 import { PatientDialog } from '@/components/agenda/patient-dialog';
 import { PatientMarks } from '@/components/agenda/patient-marks';
 import { PageHeader } from '@/components/dashboard/page-header';
@@ -19,6 +20,7 @@ import {
   priorityLevel,
 } from '@/lib/care-profile/policy';
 import { getCareProfile } from '@/lib/care-profile/queries';
+import { listPatientConsents, tenantHasEsign } from '@/lib/consents/service';
 import { localDateKey } from '@/lib/tasks/tz';
 import { Baby, CalendarDays, Lock, NotebookPen, User } from 'lucide-react';
 import { notFound } from 'next/navigation';
@@ -41,13 +43,20 @@ export default async function PacienteDossierPage({
   const ctx = await getAgendaContext();
   const timezone = await resolveTimezone(ctx.tenantId, null);
 
-  const [dossier, careProfile] = await Promise.all([
+  const [dossier, careProfile, hasEsign] = await Promise.all([
     getPatientDossier(ctx.tenantId, patientKey, {
       viewerProfessionalId: ctx.scope === 'OWN' ? ctx.professional?.id : undefined,
     }),
     getCareProfile(ctx.tenantId),
+    // Firma digital: sólo las clínicas que la tienen configurada ven la tarjeta.
+    tenantHasEsign(ctx.tenantId).catch(() => false),
   ]);
   if (!dossier) notFound();
+
+  const consents =
+    hasEsign && dossier.patient
+      ? await listPatientConsents(ctx.tenantId, dossier.patient.id).catch(() => [])
+      : [];
 
   const fmt = new Intl.DateTimeFormat('es-ES', {
     timeZone: timezone,
@@ -318,6 +327,33 @@ export default async function PacienteDossierPage({
                 />
               </CardContent>
             </Card>
+          )}
+
+          {person && hasEsign && (
+            <ConsentCard
+              patientId={person.id}
+              patientName={person.fullName}
+              canWrite={ctx.canWriteAppointments}
+              defaults={{
+                name:
+                  person.guardians.find((g) => g.role !== 'NINGUNO' && g.name.trim())?.name ??
+                  person.contactName ??
+                  '',
+                phone: person.contactPhone ?? '',
+                email: person.contactEmail ?? '',
+              }}
+              consents={consents.map((c) => ({
+                id: c.id,
+                status: c.status as 'SENT' | 'SIGNED' | 'CANCELLED' | 'ERROR',
+                recipientName: c.recipientName,
+                recipientPhone: c.recipientPhone,
+                sentAt: c.sentAt?.toISOString() ?? null,
+                signedAt: c.signedAt?.toISOString() ?? null,
+                signingUrl: c.signingUrl,
+                hasPdf: Boolean(c.pdfKey),
+                error: c.error,
+              }))}
+            />
           )}
 
           <Card>

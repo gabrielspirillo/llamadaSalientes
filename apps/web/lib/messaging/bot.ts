@@ -534,6 +534,37 @@ export async function postPatientBirthday(args: {
   });
 }
 
+/** El tutor firmó el consentimiento informado. Va a #agenda, una vez. */
+export async function postConsentSigned(args: {
+  tenantId: string;
+  consentId: string;
+  patientId: string;
+  patientName: string;
+  guardianName: string;
+}): Promise<void> {
+  await postSystemEvent({
+    tenantId: args.tenantId,
+    event: 'consent.signed',
+    title: `Consentimiento firmado — ${args.patientName}`,
+    body: joinLines([line('Firmó', args.guardianName)]),
+    actions: [
+      {
+        id: 'open-patient',
+        label: 'Abrir ficha',
+        tone: 'primary',
+        href: `/dashboard/agenda/pacientes/${encodeURIComponent(`pat:${args.patientId}`)}`,
+      },
+      {
+        id: 'open-pdf',
+        label: 'Ver PDF',
+        tone: 'secondary',
+        href: `/api/consents/${args.consentId}/pdf`,
+      },
+    ],
+    dedupeKey: `evt:consent.signed:${args.consentId}`,
+  });
+}
+
 /** La cita quedó marcada como no-show. Va a #agenda. */
 export async function postAppointmentNoShow(args: {
   tenantId: string;

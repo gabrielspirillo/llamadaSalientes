@@ -35,6 +35,8 @@ import {
 import { type TeamCandidate, listTeamCandidates } from '@/lib/agenda/team';
 import { recordAudit } from '@/lib/audit';
 import type { SessionBehavior } from '@/lib/care-profile/policy';
+import { DocumensoError } from '@/lib/consents/documenso';
+import { ConsentError, type GuardianInput, sendConsent } from '@/lib/consents/service';
 import { createTreatment, listTreatmentsForTenant } from '@/lib/data/treatments';
 import {
   type PatientInput,
@@ -62,7 +64,9 @@ function fail(err: unknown): { ok: false; error: string; code?: 'POLICY' } {
   if (
     err instanceof AgendaValidationError ||
     err instanceof AgendaForbiddenError ||
-    err instanceof PatientValidationError
+    err instanceof PatientValidationError ||
+    err instanceof ConsentError ||
+    err instanceof DocumensoError
   ) {
     return { ok: false, error: err.message };
   }
@@ -593,6 +597,38 @@ export async function setPatientMarksAction(
     await setPatientMarks({ tenantId: ctx.tenantId, userId: ctx.userId }, patientId, input);
     revalidatePatient(patientId);
     return { ok: true };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+// ─── Consentimiento informado (clínicas con firma digital) ───────────────────
+
+/**
+ * Un clic: PDF con los datos rellenos → Documenso → enlace por WhatsApp al
+ * tutor. Quien puede dar citas puede mandarlo.
+ */
+export async function sendConsentAction(
+  patientId: string,
+  guardian: GuardianInput,
+): Promise<ActionResult<{ signingUrl: string; whatsappSent: boolean; warning?: string }>> {
+  try {
+    const ctx = await requireAgendaWriter();
+    const result = await sendConsent({
+      tenantId: ctx.tenantId,
+      patientId,
+      guardian,
+      sentByUserId: ctx.userId,
+    });
+    revalidatePatient(patientId);
+    return {
+      ok: true,
+      data: {
+        signingUrl: result.signingUrl,
+        whatsappSent: result.whatsappSent,
+        ...(result.warning ? { warning: result.warning } : {}),
+      },
+    };
   } catch (err) {
     return fail(err);
   }
