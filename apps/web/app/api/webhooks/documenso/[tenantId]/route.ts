@@ -60,8 +60,7 @@ export async function POST(
   }
 
   const recipients = body.payload.recipients ?? body.payload.Recipient ?? [];
-  const allSigned =
-    recipients.length > 0 && recipients.every((r) => r.signingStatus === 'SIGNED');
+  const allSigned = recipients.length > 0 && recipients.every((r) => r.signingStatus === 'SIGNED');
   const completed =
     body.event === 'DOCUMENT_COMPLETED' ||
     body.payload.status === 'COMPLETED' ||

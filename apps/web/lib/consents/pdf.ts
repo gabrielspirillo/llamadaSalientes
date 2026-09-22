@@ -50,19 +50,24 @@ const RULE = rgb(0.78, 0.78, 0.82);
 /**
  * Helvetica sólo sabe WinAnsi: castellano completo, comillas, guiones largos y
  * el punto medio, pero ni emojis ni flechas. Lo que no cabe se quita antes de
- * dibujar, en vez de reventar a mitad de página.
+ * dibujar, en vez de reventar a mitad de página. Trabaja línea a línea: los
+ * saltos los reparte `wrap` antes de llegar aquí.
  */
 function sanitize(text: string): string {
   return text
-    .replace(/ /g, ' ')
-    .replace(/[‐-‒]/g, '-')
-    .replace(/[^\u0009\u000a -~¡-ÿ–—‘’“”•…€™]/g, '');
+    .replace(/\u00a0/g, ' ')
+    .replace(/\t/g, ' ')
+    .replace(/[\u2010-\u2012]/g, '-')
+    .replace(
+      /[^ -~\u00a1-\u00ff\u2013\u2014\u2018\u2019\u201c\u201d\u2022\u2026\u20ac\u2122]/g,
+      '',
+    );
 }
 
 function wrap(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
   const lines: string[] = [];
-  for (const rawLine of sanitize(text).split('\n')) {
-    const words = rawLine.split(/\s+/).filter(Boolean);
+  for (const rawLine of text.split('\n')) {
+    const words = sanitize(rawLine).split(/\s+/).filter(Boolean);
     if (words.length === 0) {
       lines.push('');
       continue;
@@ -143,9 +148,21 @@ class Writer {
     lines.forEach((line, i) => {
       this.ensure(lineH);
       if (i === 0) {
-        this.page.drawText('•', { x: MARGIN + 3, y: this.y - size, size, font: this.regular, color: INK });
+        this.page.drawText('•', {
+          x: MARGIN + 3,
+          y: this.y - size,
+          size,
+          font: this.regular,
+          color: INK,
+        });
       }
-      this.page.drawText(line, { x: MARGIN + indent, y: this.y - size, size, font: this.regular, color: INK });
+      this.page.drawText(line, {
+        x: MARGIN + indent,
+        y: this.y - size,
+        size,
+        font: this.regular,
+        color: INK,
+      });
       this.y -= lineH;
     });
   }
@@ -160,7 +177,13 @@ class Writer {
     lines.forEach((line, i) => {
       this.ensure(lineH);
       if (i === 0) {
-        this.page.drawText(labelText, { x: MARGIN, y: this.y - size, size, font: this.bold, color: INK });
+        this.page.drawText(labelText, {
+          x: MARGIN,
+          y: this.y - size,
+          size,
+          font: this.bold,
+          color: INK,
+        });
       }
       this.page.drawText(line, {
         x: MARGIN + (i === 0 ? labelW : 0),

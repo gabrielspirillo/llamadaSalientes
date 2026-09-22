@@ -89,7 +89,9 @@ export async function getEsignIntegration(tenantId: string): Promise<EsignIntegr
 function normalizeBaseUrl(raw: string): string {
   const trimmed = raw.trim().replace(/\/+$/, '');
   if (!/^https?:\/\/[^\s/]+$/i.test(trimmed)) {
-    throw new ConsentError('La URL tiene que ser la raíz de Documenso, tipo https://consentimiento.respinens.es');
+    throw new ConsentError(
+      'La URL tiene que ser la raíz de Documenso, tipo https://consentimiento.respinens.es',
+    );
   }
   return trimmed;
 }
@@ -109,7 +111,8 @@ export async function upsertEsignIntegration(input: {
   const apiToken = input.apiToken.trim();
   const webhookSecret = input.webhookSecret.trim();
   if (apiToken.length < 10) throw new ConsentError('El token de API no parece válido.');
-  if (webhookSecret.length < 16) throw new ConsentError('El secreto del webhook es demasiado corto.');
+  if (webhookSecret.length < 16)
+    throw new ConsentError('El secreto del webhook es demasiado corto.');
 
   try {
     await testConnection({ baseUrl, apiToken });
@@ -336,7 +339,9 @@ export async function sendConsent(input: {
     await sendDocument(cfg, created.documentId);
   } catch (err) {
     throw new ConsentError(
-      err instanceof DocumensoError ? err.message : `No se pudo crear el documento: ${(err as Error).message}`,
+      err instanceof DocumensoError
+        ? err.message
+        : `No se pudo crear el documento: ${(err as Error).message}`,
     );
   }
 
@@ -453,7 +458,10 @@ export async function completeConsent(input: {
           .select()
           .from(patientConsents)
           .where(
-            and(eq(patientConsents.tenantId, input.tenantId), eq(patientConsents.id, input.externalId)),
+            and(
+              eq(patientConsents.tenantId, input.tenantId),
+              eq(patientConsents.id, input.externalId),
+            ),
           )
           .limit(1)
       : [];
@@ -477,7 +485,8 @@ export async function completeConsent(input: {
   const integration = await getEsignIntegration(input.tenantId);
   if (!integration) throw new ConsentError('La clínica ya no tiene la firma digital configurada.');
   const documentId = row.providerDocumentId ?? input.providerDocumentId;
-  if (documentId === null) throw new ConsentError('El consentimiento no tiene documento en Documenso.');
+  if (documentId === null)
+    throw new ConsentError('El consentimiento no tiene documento en Documenso.');
 
   const bytes = await downloadSignedPdf(
     { baseUrl: integration.baseUrl, apiToken: integration.apiToken },

@@ -17,7 +17,9 @@ export const consentBlockSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('numbered'),
     items: z
-      .array(z.object({ title: z.string().trim().min(1).max(200), text: z.string().trim().max(3000) }))
+      .array(
+        z.object({ title: z.string().trim().min(1).max(200), text: z.string().trim().max(3000) }),
+      )
       .min(1)
       .max(40),
   }),

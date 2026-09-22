@@ -226,7 +226,8 @@ export async function downloadSignedPdf(
       const data = (await v2.json().catch(() => null)) as { downloadUrl?: string } | null;
       if (data?.downloadUrl) {
         let file = await fetchBytes(data.downloadUrl, false);
-        if (file.status === 401 || file.status === 403) file = await fetchBytes(data.downloadUrl, true);
+        if (file.status === 401 || file.status === 403)
+          file = await fetchBytes(data.downloadUrl, true);
         if (file.ok) return new Uint8Array(await file.arrayBuffer());
       }
     } else {
