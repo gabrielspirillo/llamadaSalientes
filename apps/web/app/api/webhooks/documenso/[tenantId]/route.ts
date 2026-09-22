@@ -79,11 +79,14 @@ export async function POST(
   } catch (err) {
     // 500 a propósito: que Documenso lo reintente. El PDF firmado no puede
     // perderse por un corte de red con el bucket.
+    const message = (err as Error).message ?? 'error desconocido';
     console.error('[webhooks/documenso] no se pudo cerrar el consentimiento', {
       tenantId,
       documentId: body.payload.id,
-      err: (err as Error).message,
+      err: message,
     });
-    return NextResponse.json({ error: 'retry' }, { status: 500 });
+    // El motivo viaja en la respuesta: el registro de webhooks de Documenso lo
+    // enseña y es la única ventana a este error sin entrar al servidor.
+    return NextResponse.json({ error: 'retry', detail: message.slice(0, 300) }, { status: 500 });
   }
 }
