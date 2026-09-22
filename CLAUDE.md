@@ -35,7 +35,41 @@ Si encontrás código que importe `@supabase/supabase-js`, `inngest`, o el clien
 - `REDIS_URL = redis://default:<pwd>@cliniq-redis-p3hfxn:6379`
 - `S3_ENDPOINT = http://cliniq-minio-qw28tw:9000` (interno) / `S3_PUBLIC_BASE_URL = https://s3.futuradigital.es` (público para URLs en el inbox UI).
 
-Auto-deploy está activado: cualquier push a `main` que toque archivos en los watchPaths configurados dispara redeploy automático (~3–5 min para web, ~2 min para worker).
+## Deploy: el build vive en GitHub Actions, NO en el VPS
+
+**Para desplegar basta con mergear a `main`.** Lo que pasa después está en
+`.github/workflows/ci.yml`: GitHub corre biome + typecheck + vitest, construye
+las dos imágenes, las publica en GHCR y llama a la API de Dokploy, que sólo baja
+la imagen y reinicia. **Si el CI está en rojo, no se despliega.**
+
+Antes compilaba el propio VPS y cada push costaba **~4,5 min**, más 2–3 min el
+primer deploy de cada día (la limpieza diaria de Docker se lleva la capa del
+`pnpm install`). El worker, que no compila nada, tardaba 8 segundos: toda la
+diferencia era el `next build`, en frío, compitiendo con Postgres, Redis, MinIO
+y los dos contenedores de la app en la misma máquina.
+
+- **Imágenes**: `ghcr.io/gabrielspirillo/llamadasalientes/{web,worker}`, tag por
+  commit. El paquete es **privado**: Dokploy se autentica con el PAT de
+  `GHCR_PULL_TOKEN`, que el workflow reenvía en cada deploy.
+- **El worker se despliega ANTES que el web**: aplica las migraciones al
+  arrancar, así que el web no puede adelantarse a un esquema que no existe. El
+  workflow sondea el estado y aborta si el worker falla.
+- **Los secretos del build no van como build-arg**, sino como secretos de
+  BuildKit (`--mount=type=secret` en `Dockerfile.web`): un ARG queda en el
+  historial de la imagen y esta imagen se publica. Sólo las `NEXT_PUBLIC_*` van
+  como build-arg, porque acaban embebidas en el JS del navegador de todos modos.
+- **`experimental.cpus` y la optimización de memoria son configurables**
+  (`NEXT_BUILD_CPUS`, `NEXT_BUILD_LOW_MEMORY`). Los defaults siguen siendo los
+  del VPS (2 cores, sin OOM); el workflow los sube porque el runner está vacío.
+- ⚠️ **No volver a poner la Fuente del servicio en Git.** Eso devuelve el build
+  al VPS. Los dos servicios están fijados a Imagen Docker, y `autoDeploy` está
+  apagado para que el webhook de push no dispare un deploy en paralelo.
+
+Secrets que el workflow necesita (repo → Settings → Secrets and variables →
+Actions): `DOKPLOY_API_KEY`, `GHCR_PULL_USER`, `GHCR_PULL_TOKEN`,
+`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`,
+`CLERK_WEBHOOK_SIGNING_SECRET`, `DATABASE_URL`, `DIRECT_URL`, `ENCRYPTION_KEY`
+y, si se usa, `SENTRY_DSN`.
 
 **Los dos servicios Git clonan por SSH, no por HTTPS.** Con `customGitUrl` en
 `https://github.com/...` los despliegues **manuales** fallaban en 0,3 s con

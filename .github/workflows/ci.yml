@@ -1,13 +1,44 @@
-name: CI
+name: CI + Deploy
+
+# El build de producción vive aquí, NO en el VPS. Antes cada push disparaba un
+# `next build` dentro de Dokploy: ~4,5 min en frío, +2–3 min el primer deploy de
+# cada día (la limpieza diaria de Docker se lleva la capa del pnpm install), y
+# todo ello compitiendo con Postgres, Redis, MinIO y los dos contenedores de la
+# app en la misma máquina. Ahora construye GitHub, publica en GHCR y Dokploy
+# sólo baja la imagen y reinicia.
+#
+# El deploy cuelga de `checks`, así que un push con los tests en rojo no llega
+# a producción.
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  # Disparo manual: sirve para publicar una imagen desde una rama y comprobar
+  # que el build pasa ANTES de tocar la configuración de Dokploy. Sin marcar
+  # `deploy`, construye y publica pero no toca producción.
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Desplegar a producción al terminar'
+        type: boolean
+        default: false
+
+# `packages: write` es lo que permite al GITHUB_TOKEN publicar en GHCR.
+permissions:
+  contents: read
+  packages: write
+
+env:
+  DOKPLOY_URL: https://vpsdokploy.futuradigital.es
+  # Ids de las aplicaciones en Dokploy. No son secretos (sin la API key no
+  # sirven de nada) y ya están en CLAUDE.md.
+  DOKPLOY_APP_WEB: haWRYSRoJ65pdbPLKzfnJ
+  DOKPLOY_APP_WORKER: d74nHjRGQsplPqFALx-RP
 
 jobs:
-  build:
+  checks:
     name: Lint + Typecheck + Test
     runs-on: ubuntu-latest
     steps:
@@ -38,3 +69,157 @@ jobs:
         env:
           NEXT_PUBLIC_APP_URL: http://localhost:3000
           NODE_ENV: test
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Las dos imágenes se construyen en paralelo: son independientes.
+  image-web:
+    name: Imagen web
+    needs: checks
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Nombre de imagen en minúsculas
+        # GHCR rechaza mayúsculas y el repo se llama "llamadaSalientes".
+        id: img
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}/web" >> "$GITHUB_OUTPUT"
+
+      - name: Build + push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.web
+          push: true
+          # El tag por commit es el que se despliega; `latest` queda como
+          # conveniencia para mirar la imagen a mano.
+          tags: |
+            ${{ steps.img.outputs.name }}:${{ github.sha }}
+            ${{ steps.img.outputs.name }}:latest
+          # Sólo las NEXT_PUBLIC_* van como build-arg: acaban embebidas en el JS
+          # que descarga el navegador, así que no son secretas. Las privadas van
+          # abajo, en `secrets`, para que no queden en las capas de la imagen.
+          build-args: |
+            NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL || 'https://app.futuradigital.es' }}
+            NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+            NEXT_BUILD_CPUS=4
+            NODE_HEAP_MB=6144
+            NEXT_BUILD_LOW_MEMORY=false
+          secrets: |
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            DIRECT_URL=${{ secrets.DIRECT_URL }}
+            CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }}
+            CLERK_WEBHOOK_SIGNING_SECRET=${{ secrets.CLERK_WEBHOOK_SIGNING_SECRET }}
+            ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
+            SENTRY_DSN=${{ secrets.SENTRY_DSN }}
+          # Caché de capas entre corridas. Es lo que evita repetir el
+          # `pnpm install` en cada push.
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+  image-worker:
+    name: Imagen worker
+    needs: checks
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Nombre de imagen en minúsculas
+        id: img
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}/worker" >> "$GITHUB_OUTPUT"
+
+      - name: Build + push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.worker
+          push: true
+          tags: |
+            ${{ steps.img.outputs.name }}:${{ github.sha }}
+            ${{ steps.img.outputs.name }}:latest
+          cache-from: type=gha,scope=worker
+          cache-to: type=gha,mode=max,scope=worker
+
+  # ───────────────────────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy a Dokploy
+    needs: [image-web, image-worker]
+    # En disparo manual sólo despliega si se pidió explícitamente.
+    if: github.event_name == 'push' || inputs.deploy
+    runs-on: ubuntu-latest
+    # Un solo deploy a la vez: dos pushes seguidos no pueden pisarse a mitad de
+    # migración.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - name: Apuntar Dokploy al commit y desplegar
+        env:
+          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          GHCR_PULL_USER: ${{ secrets.GHCR_PULL_USER }}
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          repo="${GITHUB_REPOSITORY,,}"
+
+          api() {
+            curl -fsS -X POST "$DOKPLOY_URL/api/$1" \
+              -H "x-api-key: $DOKPLOY_API_KEY" \
+              -H 'Content-Type: application/json' \
+              -d "$2"
+          }
+
+          # Fija la imagen del servicio al tag de ESTE commit. Las credenciales
+          # del registro van en cada llamada para que el paso sea idempotente:
+          # si alguien rehace el servicio en Dokploy, el deploy siguiente lo
+          # deja bien solo.
+          point_at() {
+            api application.saveDockerProvider "$(jq -nc \
+              --arg id "$1" --arg image "$2" \
+              --arg u "$GHCR_PULL_USER" --arg p "$GHCR_PULL_TOKEN" \
+              '{applicationId:$id, dockerImage:$image, username:$u, password:$p, registryUrl:"ghcr.io"}')" > /dev/null
+          }
+
+          # Dokploy encola el deploy y responde enseguida, así que hay que
+          # sondear el estado: si el worker falla, el web no debe salir. Un
+          # error de red en el sondeo no aborta nada — se reintenta al vuelta
+          # siguiente; para eso está el `|| true`.
+          deploy_and_wait() {
+            local id="$1" name="$2" status
+            api application.deploy "$(jq -nc --arg id "$id" '{applicationId:$id}')" > /dev/null
+            echo "→ $name: deploy encolado"
+            for _ in $(seq 1 90); do
+              sleep 10
+              status=$(curl -fsS "$DOKPLOY_URL/api/deployment.all?applicationId=$id" \
+                -H "x-api-key: $DOKPLOY_API_KEY" \
+                | jq -r '(.data // .) | sort_by(.createdAt) | last | .status' 2>/dev/null || true)
+              case "$status" in
+                done)  echo "✓ $name desplegado"; return 0 ;;
+                error) echo "✗ $name falló — mirar el log en Dokploy"; return 1 ;;
+              esac
+            done
+            echo "✗ $name: sin respuesta tras 15 min"
+            return 1
+          }
+
+          point_at "$DOKPLOY_APP_WORKER" "ghcr.io/$repo/worker:$SHA"
+          point_at "$DOKPLOY_APP_WEB"    "ghcr.io/$repo/web:$SHA"
+
+          # El worker VA PRIMERO: aplica las migraciones al arrancar, así que el
+          # web no puede adelantarse a un esquema que todavía no existe.
+          deploy_and_wait "$DOKPLOY_APP_WORKER" "cliniq-worker"
+          deploy_and_wait "$DOKPLOY_APP_WEB"    "cliniq-web"
