@@ -3,6 +3,12 @@ import { z } from 'zod';
 // Validación de variables de entorno. Crashea al boot si falta algo crítico.
 // Las claves van pasando de `optional()` a `min(1)` a medida que avanzan
 // las fases del roadmap.
+//
+// ⚠️ Esto también corre durante `next build`, al importarse. Por eso el build
+// necesita valores para las obligatorias aunque no se conecte a nada con
+// ellas, y por eso el workflow se las pasa como secretos de BuildKit
+// (`Dockerfile.web`) en vez de como build-args: un ARG quedaría en el
+// historial de la imagen, que ahora se publica en un registro.
 
 // Vercel/CI a veces inyectan strings vacíos para vars no seteadas; los tratamos
 // como undefined para que los `.default()` y `.optional()` se comporten bien.

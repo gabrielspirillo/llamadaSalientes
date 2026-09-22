@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1.7
 #
 # Imagen de la app Next.js (web).
-# Build context: raíz del repo (Dokploy → "Build Path: ." y "Dockerfile: Dockerfile.web").
+# Build context: raíz del repo. La construye GitHub Actions (.github/workflows/
+# ci.yml) y la publica en GHCR; Dokploy ya no compila, sólo baja la imagen.
 #
 # Multi-stage para imagen final mínima (~150MB):
 #   1. base    → node + pnpm
@@ -38,38 +39,52 @@ COPY --from=deps /repo/apps/web/node_modules ./apps/web/node_modules
 COPY --from=deps /repo/packages ./packages
 COPY . .
 
-# El build de Next embebe en el bundle todas las vars `NEXT_PUBLIC_*` y valida
-# el shape de las claves de Clerk al prerenderizar las páginas estáticas.
-# Por eso pasamos los secretos vía --build-arg desde Dokploy (Build Arguments).
-# Las vars privadas (DATABASE_URL, etc.) NO se embeben pero el build de Next
-# las valida con el schema Zod de lib/env.ts, así que también las requerimos.
+# El build de Next embebe en el bundle todas las vars `NEXT_PUBLIC_*`, así que
+# esas SÍ van como build-arg: son públicas por definición (acaban en el JS que
+# descarga el navegador).
 ARG NEXT_PUBLIC_APP_URL
 ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 ARG NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
 ARG NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
-ARG CLERK_SECRET_KEY
-ARG CLERK_WEBHOOK_SIGNING_SECRET
-ARG DATABASE_URL
-ARG DIRECT_URL
-ARG ENCRYPTION_KEY
-ARG SENTRY_DSN
 
 ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
 ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
 ENV NEXT_PUBLIC_CLERK_SIGN_IN_URL=${NEXT_PUBLIC_CLERK_SIGN_IN_URL}
 ENV NEXT_PUBLIC_CLERK_SIGN_UP_URL=${NEXT_PUBLIC_CLERK_SIGN_UP_URL}
-ENV CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
-ENV CLERK_WEBHOOK_SIGNING_SECRET=${CLERK_WEBHOOK_SIGNING_SECRET}
-ENV DATABASE_URL=${DATABASE_URL}
-ENV DIRECT_URL=${DIRECT_URL}
-ENV ENCRYPTION_KEY=${ENCRYPTION_KEY}
-ENV SENTRY_DSN=${SENTRY_DSN}
 
-# Techo de heap para V8. Sin él, Node crece hasta que el kernel lo mata y el
-# deploy falla con un error opaco; con el techo, V8 recolecta antes de llegar.
-ENV NODE_OPTIONS="--max-old-space-size=2560"
+# Cuántos cores y cuánta heap puede usar el build. Los defaults son los del VPS
+# (2 cores, 2,5 GB), donde el build compite con Postgres, Redis, MinIO y los dos
+# contenedores de la app. En GitHub Actions la máquina está vacía y se suben.
+ARG NEXT_BUILD_CPUS=2
+ARG NODE_HEAP_MB=2560
+ARG NEXT_BUILD_LOW_MEMORY=true
+ENV NEXT_BUILD_CPUS=${NEXT_BUILD_CPUS}
+ENV NEXT_BUILD_LOW_MEMORY=${NEXT_BUILD_LOW_MEMORY}
 
-RUN pnpm --filter web build
+# Las vars PRIVADAS no van como ARG/ENV: quedarían para siempre en la config y
+# en el historial de la imagen, y esta imagen se publica en un registro. Entran
+# como secretos de BuildKit, que viven sólo durante este RUN y no dejan capa.
+# `next build` no se conecta a nada con ellas: sólo tienen que satisfacer el
+# esquema Zod de lib/env.ts, que valida el entorno al importarse.
+#
+# El caché de webpack (.next/cache) se monta como caché de BuildKit: sin esto
+# cada build recompila los 643 ficheros desde cero. No entra en la imagen (el
+# output standalone no lo necesita), sólo acelera el build siguiente.
+RUN --mount=type=secret,id=DATABASE_URL \
+    --mount=type=secret,id=DIRECT_URL \
+    --mount=type=secret,id=CLERK_SECRET_KEY \
+    --mount=type=secret,id=CLERK_WEBHOOK_SIGNING_SECRET \
+    --mount=type=secret,id=ENCRYPTION_KEY \
+    --mount=type=secret,id=SENTRY_DSN \
+    --mount=type=cache,id=next-build-cache,target=/repo/apps/web/.next/cache \
+    NODE_OPTIONS="--max-old-space-size=${NODE_HEAP_MB}" \
+    DATABASE_URL="$(cat /run/secrets/DATABASE_URL)" \
+    DIRECT_URL="$(cat /run/secrets/DIRECT_URL)" \
+    CLERK_SECRET_KEY="$(cat /run/secrets/CLERK_SECRET_KEY)" \
+    CLERK_WEBHOOK_SIGNING_SECRET="$(cat /run/secrets/CLERK_WEBHOOK_SIGNING_SECRET)" \
+    ENCRYPTION_KEY="$(cat /run/secrets/ENCRYPTION_KEY)" \
+    SENTRY_DSN="$(cat /run/secrets/SENTRY_DSN 2>/dev/null || true)" \
+    pnpm --filter web build
 
 # ───────────────────────────────────────────────────────────────────────────
 FROM node:${NODE_VERSION} AS runner

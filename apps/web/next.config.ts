@@ -1,6 +1,12 @@
 import path from 'node:path';
 import type { NextConfig } from 'next';
 
+// Cores que puede usar webpack durante el build. Default 2 (el VPS); el
+// workflow de GitHub Actions lo sube. Un valor inválido cae al default en vez
+// de propagar un NaN a la config de Next.
+const parsedCpus = Number(process.env.NEXT_BUILD_CPUS);
+const buildCpus = Number.isInteger(parsedCpus) && parsedCpus > 0 ? parsedCpus : 2;
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
@@ -15,6 +21,16 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     '/docs/[[...slug]]': ['../../docs/**/*'],
   },
+  typescript: {
+    // El typecheck NO se salta: corre en el job `checks` del workflow, en
+    // paralelo con el build, y el deploy espera a los dos. Correrlo también
+    // dentro de `next build` era hacer el mismo `tsc` sobre los mismos 643
+    // ficheros una segunda vez, en serie y dentro del camino crítico.
+    //
+    // ⚠️ Si alguien quita el gate de `checks` del workflow, hay que volver a
+    // poner esto en false: sería la única red que queda.
+    ignoreBuildErrors: true,
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: '4mb',
@@ -23,10 +39,16 @@ const nextConfig: NextConfig = {
     // y los dos contenedores de la app ya residentes, eso termina en OOM y el
     // deploy falla sin dejar la app caída (sigue sirviendo el contenedor
     // viejo). Estas dos opciones bajan el pico a costa de algo de tiempo.
-    webpackMemoryOptimizations: true,
+    //
+    // Desde que el build vive en GitHub Actions (máquina vacía, 4 cores y
+    // 16 GB) el freno sobra, así que sale de aquí y lo decide quien construye:
+    // el workflow sube NEXT_BUILD_CPUS y apaga la optimización de memoria. Los
+    // defaults siguen siendo los del VPS, para que un build local o de
+    // emergencia allí siga sin OOMear.
+    webpackMemoryOptimizations: process.env.NEXT_BUILD_LOW_MEMORY !== 'false',
     // Sin esto, webpack levanta un worker por core: en un VPS de muchos cores
     // se multiplica la memoria del build sin ganar gran cosa.
-    cpus: 2,
+    cpus: buildCpus,
   },
   async headers() {
     return [

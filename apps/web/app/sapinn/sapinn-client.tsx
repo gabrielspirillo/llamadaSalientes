@@ -173,8 +173,8 @@ export function SapinnDemo() {
         </h1>
         <p className="sp-demo-note sp-enter" style={{ animationDelay: '.22s' }}>
           <strong>Demostración.</strong> El asistente no tiene cargados el catálogo, la agenda ni la
-          información real del cliente, así que puede improvisar datos. La voz, la dicción y el guion
-          se ajustan a medida en la versión final.
+          información real del cliente, así que puede improvisar datos. La voz, la dicción y el
+          guion se ajustan a medida en la versión final.
         </p>
         {mode === 'phone' && (
           <p className="sp-sub sp-enter" style={{ animationDelay: '.28s' }}>
