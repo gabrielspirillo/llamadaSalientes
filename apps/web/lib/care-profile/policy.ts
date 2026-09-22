@@ -325,3 +325,92 @@ export function isFirstVisitBlackout(
     (b) => b.weekday === weekday && startMinute >= b.fromMinute && startMinute < b.toMinute,
   );
 }
+
+export const PRIORITY_RANK: Record<PriorityLevel, number> = {
+  VERY_HIGH: 2,
+  HIGH: 1,
+  NORMAL: 0,
+};
+
+/**
+ * Ordena de más a menos prioritario conservando, a igualdad, el orden en que
+ * llegaron (que en la lista de espera es la antigüedad). Es estable a
+ * propósito: la prioridad reordena, no baraja.
+ */
+export function sortByPriority<T>(items: T[], levelOf: (item: T) => PriorityLevel): T[] {
+  return items
+    .map((item, index) => ({ item, index, rank: PRIORITY_RANK[levelOf(item)] }))
+    .sort((a, b) => b.rank - a.rank || a.index - b.index)
+    .map((x) => x.item);
+}
+
+// ─── Cumpleaños ──────────────────────────────────────────────────────────────
+
+function isLeapYear(year: number): boolean {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+
+/**
+ * ¿Cumple años hoy? Quien nació un 29 de febrero lo celebra el 28 los años
+ * que no son bisiestos: sin esto, tres de cada cuatro años no habría aviso.
+ */
+export function isBirthdayOn(birthDate: string, todayKey: string): boolean {
+  const b = parseDateKey(birthDate);
+  const t = parseDateKey(todayKey);
+  if (!b || !t) return false;
+  if (t.year < b.year) return false;
+  if (b.month === t.month && b.day === t.day) return true;
+  return b.month === 2 && b.day === 29 && t.month === 2 && t.day === 28 && !isLeapYear(t.year);
+}
+
+// ─── Lo que se le cuenta a los asistentes ────────────────────────────────────
+
+/**
+ * La sección del prompt que hace que un asistente atienda como esta clínica.
+ * Es la misma para WhatsApp y para voz (Retell la recibe como variable): los
+ * nombres de las tools coinciden en los dos canales.
+ *
+ * Lo que aquí se dice, el servidor lo impone además por su cuenta (edad,
+ * aviso médico, patient_id obligatorio): esto es para que el asistente lo haga
+ * bien a la primera, no la única barrera.
+ */
+export function buildCareProtocolSection(profile: CareProfile): string {
+  const policy = profile.bookingPolicy;
+  const range = describeAgeRange(policy);
+  const lines: string[] = [
+    '# Cómo atiende esta clínica (perfil pediátrico)',
+    'El PACIENTE es el niño o la niña; quien escribe o llama es su madre, su padre o un tutor. Cada niño tiene su propia ficha aunque varios hermanos compartan el teléfono, así que nunca des por hecho quién es el paciente: pregúntalo.',
+  ];
+  if (range) {
+    lines.push(
+      `Sólo se atiende a bebés y niños ${range} (incluidos). Si el niño es mayor, explícalo con amabilidad y no des cita.`,
+    );
+  }
+  lines.push(
+    '',
+    'Herramientas en esta clínica:',
+    '- get_patient_info(phone) devuelve los niños registrados con ese teléfono, con su edad y su patient_id. Si no devuelve ninguno, es una PRIMERA VISITA.',
+    '- register_patient da de alta al NIÑO: first_name y last_name son los del niño, birth_date (YYYY-MM-DD) es obligatoria y guardian_name es el nombre del titular del teléfono. Si el tutor cuenta una enfermedad importante, un ingreso reciente, TDAH, autismo o algo parecido, pásalo en medical_alert: la ficha queda marcada, NO se da cita y se pasa la conversación a una persona del equipo.',
+    '- check_availability: en una primera visita pasa first_visit=true. La clínica reserva las primeras visitas en horarios concretos: ofrece sólo lo que devuelva.',
+    '- book_appointment: pasa SIEMPRE patient_id (el que devolvió get_patient_info o register_patient). Sin patient_id no se reserva.',
+  );
+  if (policy.siblingsConsecutive) {
+    lines.push(
+      '- Gemelos o hermanos que vienen juntos: cada niño con su patient_id y en huecos seguidos. Reserva el primero y vuelve a check_availability para el siguiente, salvo que prefieran horarios distintos o cita para uno solo.',
+    );
+  }
+  if (policy.priorityAgeMonths) {
+    const { veryHighMax, highMax } = policy.priorityAgeMonths;
+    lines.push(
+      `- Prioridad: los bebés de hasta ${veryHighMax} meses son MUY prioritarios y hasta ${highMax} meses prioritarios; también quien esté marcado como prioritario en su ficha (get_patient_info lo dice y por qué). A un paciente prioritario ofrécele el primer hueco disponible y, si no hay nada cercano, pásalo a recepción para que le hagan sitio.`,
+    );
+  }
+  if (profile.firstVisitProtocol) {
+    lines.push(
+      '',
+      '# Protocolo de primera visita (palabras de la clínica)',
+      profile.firstVisitProtocol,
+    );
+  }
+  return lines.join('\n');
+}

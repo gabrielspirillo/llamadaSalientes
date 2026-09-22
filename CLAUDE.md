@@ -645,6 +645,23 @@ nuevos, prioridad por edad. Todo eso va **sólo para ella** y sin interruptores:
   `overridePolicy` (la acción devuelve `code: 'POLICY'` y el alta de cita ofrece
   la casilla). `check_availability` acepta `first_visit`; si el agente no lo
   manda, se deduce del teléfono del canal (`phoneHasHistory`).
+- **Los asistentes atienden como la clínica** (`lib/care-profile/agent.ts`): con
+  perfil, `get_patient_info` devuelve los niños del teléfono (edad, prioridad,
+  aviso, `patient_id`), `register_patient` da de alta al NIÑO (`birth_date`
+  obligatoria, `guardian_name` = titular del teléfono, `medical_alert` marca
+  `needs_human_review` y bloquea la cita) y `book_appointment` exige
+  `patient_id` (o resuelve por nombre entre los niños del teléfono) y rechaza
+  edad fuera de rango o aviso médico pendiente. La sección de prompt la arma
+  `buildCareProtocolSection` (pura, con test) y entra igual en WhatsApp
+  (`careProtocol` de `buildSystemPrompt`) y en voz (variable `{{care_protocol}}`
+  de `buildClinicContextVars`). Todo lo que el prompt pide, el servidor lo impone
+  además por su cuenta.
+- ⚠️ **Voz, pasos manuales por clínica con perfil**: (1) agente + LLM propios en
+  Retell (`agent_configs.retell_agent_id/retell_llm_id`; hoy todas comparten
+  dos LLM) cuyo prompt referencie `{{care_protocol}}`; (2) correr
+  `scripts/retell/sync-agenda-tools.ts`, que ya declara `first_visit`,
+  `patient_id`, `birth_date`, `guardian_name` y `medical_alert`; (3) el DID de
+  Zadarma de la clínica apuntando a ese agente.
 
 ## Módulo Mensajes (core, sin gate de `enabled_modules`)
 

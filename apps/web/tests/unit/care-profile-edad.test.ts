@@ -7,11 +7,13 @@ import {
   describeAgeRange,
   describeAnamnesis,
   describeGuardians,
+  isBirthdayOn,
   isFirstVisitBlackout,
   isPatientAgeAllowed,
   parseAnamnesisTemplate,
   parseBookingPolicy,
   priorityLevel,
+  sortByPriority,
 } from '@/lib/care-profile/policy';
 
 /**
@@ -147,5 +149,50 @@ describe('tutores y anamnesis', () => {
   it('una plantilla mal formada se ignora entera', () => {
     expect(parseAnamnesisTemplate([{ key: 'Con Mayúsculas', label: 'x' }])).toEqual([]);
     expect(parseAnamnesisTemplate('no')).toEqual([]);
+  });
+});
+
+describe('cumpleaños', () => {
+  it('el día y el mes, cualquier año posterior al nacimiento', () => {
+    expect(isBirthdayOn('2024-09-22', '2026-09-22')).toBe(true);
+    expect(isBirthdayOn('2024-09-22', '2026-09-21')).toBe(false);
+    expect(isBirthdayOn('2024-09-22', '2026-10-22')).toBe(false);
+    expect(isBirthdayOn('2027-09-22', '2026-09-22')).toBe(false);
+  });
+
+  it('quien nació un 29 de febrero lo celebra el 28 en los años no bisiestos', () => {
+    expect(isBirthdayOn('2024-02-29', '2026-02-28')).toBe(true);
+    expect(isBirthdayOn('2024-02-29', '2028-02-29')).toBe(true);
+    expect(isBirthdayOn('2024-02-29', '2028-02-28')).toBe(false);
+    expect(isBirthdayOn('2024-02-28', '2026-02-28')).toBe(true);
+  });
+
+  it('sin fecha válida no hay cumpleaños', () => {
+    expect(isBirthdayOn('', '2026-02-28')).toBe(false);
+    expect(isBirthdayOn('2024-13-01', '2026-02-28')).toBe(false);
+  });
+});
+
+describe('orden por prioridad', () => {
+  it('los muy prioritarios primero y, a igualdad, el orden de llegada', () => {
+    const cola = [
+      { id: 'a', level: 'NORMAL' as const },
+      { id: 'b', level: 'HIGH' as const },
+      { id: 'c', level: 'VERY_HIGH' as const },
+      { id: 'd', level: 'HIGH' as const },
+      { id: 'e', level: 'NORMAL' as const },
+    ];
+    expect(sortByPriority(cola, (x) => x.level).map((x) => x.id)).toEqual([
+      'c',
+      'b',
+      'd',
+      'a',
+      'e',
+    ]);
+  });
+
+  it('sin prioridades no toca nada', () => {
+    const cola = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+    expect(sortByPriority(cola, () => 'NORMAL').map((x) => x.id)).toEqual(['a', 'b', 'c']);
   });
 });

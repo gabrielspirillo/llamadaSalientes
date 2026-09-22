@@ -2133,6 +2133,9 @@ export const patients = pgTable(
     priorityFlag: boolean('priority_flag').notNull().default(false),
     priorityReason: text('priority_reason'),
     googleReview: boolean('google_review').notNull().default(false),
+    /** Un aviso médico que la clínica valora en persona antes de dar cita. */
+    needsHumanReview: boolean('needs_human_review').notNull().default(false),
+    reviewReason: text('review_reason'),
     notes: text('notes'),
     active: boolean('active').notNull().default(true),
     createdByUserId: uuid('created_by_user_id').references(() => users.id, {

@@ -68,6 +68,11 @@ CREATE TABLE IF NOT EXISTS patients (
   priority_reason text,
   -- Dejó reseña en Google.
   google_review boolean NOT NULL DEFAULT false,
+  -- El tutor contó algo (enfermedad importante, ingreso reciente, TDAH,
+  -- autismo…) que la clínica quiere valorar en persona antes de dar cita. Lo
+  -- marcan los asistentes; los agentes no reservan mientras esté en true.
+  needs_human_review boolean NOT NULL DEFAULT false,
+  review_reason text,
   notes text,
   active boolean NOT NULL DEFAULT true,
   created_by_user_id uuid REFERENCES users(id) ON DELETE SET NULL,

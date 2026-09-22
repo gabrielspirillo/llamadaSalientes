@@ -12,6 +12,8 @@ import {
 } from '@/lib/agenda/agent';
 import { getAppointment, getClinicTimezone, tenantHasAgenda } from '@/lib/agenda/queries';
 import { AgendaValidationError, cancelAppointment, createAppointment } from '@/lib/agenda/service';
+import { resolvePatientForBooking } from '@/lib/care-profile/agent';
+import { getCareProfileSafe } from '@/lib/care-profile/queries';
 import { clockArticle, speakClockTime } from '@/lib/retell/time-speech';
 import { localDateKey } from '@/lib/tasks/tz';
 
@@ -50,6 +52,8 @@ export interface AgendaBookArgs {
   professional_name?: string;
   treatment_name?: string;
   patient_name?: string;
+  /** Clínicas con perfil: el niño al que va la cita (`patients.id`). */
+  patient_id?: string;
   phone?: string;
   email?: string;
   contact_id?: string;
@@ -216,7 +220,24 @@ export async function agendaBookAppointment(
           'Falta la hora exacta. Llamá a check_availability y pasá el start_time que te devuelve, sin recalcularlo.',
       };
     }
-    if (!args.patient_name?.trim()) {
+
+    // Clínica con perfil de atención: la cita va al NIÑO, que tiene ficha.
+    // Sin ficha no se reserva; de ella salen la edad y el aviso médico.
+    let patientId: string | null = null;
+    let patientName = args.patient_name?.trim() ?? '';
+    const careProfile = await getCareProfileSafe(tenantId);
+    if (careProfile) {
+      const resolved = await resolvePatientForBooking(
+        tenantId,
+        { patientId: args.patient_id, patientName, phone: args.phone },
+        careProfile,
+      );
+      if (!resolved.ok) return { result: resolved.result };
+      patientId = resolved.person.id;
+      patientName = resolved.person.fullName;
+    }
+
+    if (!patientName) {
       return {
         result: 'Necesito el nombre del paciente para dejar la cita a su nombre.',
       };
@@ -240,7 +261,8 @@ export async function agendaBookAppointment(
     const { appointment, deduped } = await createAppointment(systemAgendaContext(tenantId), {
       professionalId: professional.id,
       treatmentId: treatment?.id ?? null,
-      patientName: args.patient_name,
+      patientId,
+      patientName,
       patientPhone: args.phone ?? '',
       patientEmail: args.email ?? '',
       ghlContactId: args.contact_id ?? '',

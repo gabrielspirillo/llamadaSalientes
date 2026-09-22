@@ -12,7 +12,7 @@ import {
   type SessionBehavior,
 } from '@/lib/care-profile/policy';
 import { cn } from '@/lib/cn';
-import { AlertTriangle, Check, Loader2, Star } from 'lucide-react';
+import { AlertTriangle, Check, Loader2, ShieldAlert, Star } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
@@ -28,6 +28,8 @@ export function PatientMarks({
   priorityFlag,
   priorityReason,
   googleReview,
+  needsHumanReview = false,
+  reviewReason = null,
   computedPriority,
   lastBehavior,
   canEdit,
@@ -36,6 +38,9 @@ export function PatientMarks({
   priorityFlag: boolean;
   priorityReason: string | null;
   googleReview: boolean;
+  /** Aviso médico que dejó un asistente: hasta que alguien lo valore, no se da cita. */
+  needsHumanReview?: boolean;
+  reviewReason?: string | null;
   computedPriority: PriorityLevel;
   lastBehavior: SessionBehavior | null;
   canEdit: boolean;
@@ -52,13 +57,14 @@ export function PatientMarks({
   const dirty =
     flag !== priorityFlag || review !== googleReview || (flag && reason !== (priorityReason ?? ''));
 
-  function submit() {
+  function submit(extra: { needsHumanReview?: boolean } = {}) {
     setError(null);
     startTransition(async () => {
       const result = await setPatientMarksAction(patientId, {
         priorityFlag: flag,
         priorityReason: reason,
         googleReview: review,
+        ...extra,
       });
       if (result.ok) {
         setSaved(true);
@@ -71,6 +77,33 @@ export function PatientMarks({
 
   return (
     <div className="grid gap-3">
+      {needsHumanReview && (
+        <div className="flex flex-wrap items-start gap-2 rounded-[14px] border border-amber-200 bg-amber-50/80 p-3 text-[13px] text-amber-900">
+          <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold">Pendiente de valorar por una persona</p>
+            <p>
+              {reviewReason ?? 'Aviso dejado por el asistente.'} Mientras tanto, los asistentes no
+              le dan cita.
+            </p>
+          </div>
+          {canEdit && (
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={pending}
+              onClick={() => submit({ needsHumanReview: false })}
+            >
+              {pending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4" />
+              )}
+              Ya valorado
+            </Button>
+          )}
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         {computedPriority !== 'NORMAL' && (
           <Badge tone={computedPriority === 'VERY_HIGH' ? 'danger' : 'warn'}>
@@ -147,7 +180,7 @@ export function PatientMarks({
             </span>
           )}
           {dirty && (
-            <Button size="sm" onClick={submit} disabled={pending}>
+            <Button size="sm" onClick={() => submit()} disabled={pending}>
               {pending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (

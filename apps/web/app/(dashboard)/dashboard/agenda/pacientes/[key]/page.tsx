@@ -310,6 +310,8 @@ export default async function PacienteDossierPage({
                   priorityFlag={person.priorityFlag}
                   priorityReason={person.priorityReason}
                   googleReview={person.googleReview}
+                  needsHumanReview={person.needsHumanReview}
+                  reviewReason={person.reviewReason}
                   computedPriority={priority}
                   lastBehavior={lastBehavior}
                   canEdit={ctx.canWriteAppointments}

@@ -8,8 +8,11 @@
 // para cada LLM:
 //
 //   · añade `list_professionals` si falta;
-//   · añade `professional_name` a `check_availability`;
-//   · añade `professional_id`, `patient_name` y `email` a `book_appointment`.
+//   · añade `professional_name` y `first_visit` a `check_availability`;
+//   · añade `professional_id`, `patient_name`, `patient_id` y `email` a
+//     `book_appointment`;
+//   · añade `birth_date`, `guardian_name` y `medical_alert` a `register_patient`
+//     (perfil de atención pediátrico: el paciente es el niño).
 //
 // Es idempotente: lo que ya está no se toca, y se puede volver a correr cada vez
 // que se dé de alta una clínica.
@@ -67,6 +70,11 @@ const CAMPOS_NUEVOS: Record<string, Record<string, { type: string; description?:
       description:
         'Opcional. Nombre del profesional si el paciente pide uno concreto. Consúltalos con list_professionals.',
     },
+    first_visit: {
+      type: 'boolean',
+      description:
+        'Opcional. true si es un paciente nuevo (primera visita). Algunas clínicas reservan las primeras visitas en horarios concretos.',
+    },
   },
   book_appointment: {
     professional_id: {
@@ -78,7 +86,29 @@ const CAMPOS_NUEVOS: Record<string, Record<string, { type: string; description?:
       type: 'string',
       description: 'Nombre y apellidos del paciente, para dejar la cita a su nombre.',
     },
+    patient_id: {
+      type: 'string',
+      description:
+        'El id que devolvió get_patient_info o register_patient. Obligatorio en las clínicas donde el paciente es un niño con ficha propia.',
+    },
     email: { type: 'string', description: 'Opcional. Email del paciente.' },
+  },
+  register_patient: {
+    birth_date: {
+      type: 'string',
+      description:
+        'Fecha de nacimiento del paciente, YYYY-MM-DD. Obligatoria en las clínicas donde el paciente es un niño.',
+    },
+    guardian_name: {
+      type: 'string',
+      description:
+        'Nombre del titular del teléfono (madre, padre o tutor), cuando el paciente es un niño.',
+    },
+    medical_alert: {
+      type: 'string',
+      description:
+        'Sólo si el tutor cuenta una enfermedad importante, un ingreso reciente, TDAH, autismo o algo parecido. La ficha queda marcada para que lo valore una persona y NO se da cita.',
+    },
   },
 };
 

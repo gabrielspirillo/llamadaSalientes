@@ -503,9 +503,13 @@ export interface AgentPatientContext {
  */
 export async function getAgentPatientContext(
   tenantId: string,
-  identity: { phone?: string | null; ghlContactId?: string | null },
+  identity: { phone?: string | null; ghlContactId?: string | null; patientId?: string | null },
 ): Promise<AgentPatientContext | null> {
-  const patientKey = patientKeyFor({ phone: identity.phone, ghlContactId: identity.ghlContactId });
+  const patientKey = patientKeyFor({
+    patientId: identity.patientId,
+    phone: identity.phone,
+    ghlContactId: identity.ghlContactId,
+  });
   if (patientKey.startsWith('anon:')) return null;
 
   const [upcoming, past] = await Promise.all([

@@ -38,3 +38,17 @@ export async function getCareProfile(tenantId: string): Promise<CareProfile | nu
     firstVisitProtocol: row.firstVisitProtocol?.trim() || null,
   };
 }
+
+/**
+ * Como `getCareProfile`, pero nunca lanza: si la lectura falla, la clínica
+ * atiende como todas. Es lo que usan las tools de los asistentes, donde un
+ * error de base no puede dejar al agente sin respuesta.
+ */
+export async function getCareProfileSafe(tenantId: string): Promise<CareProfile | null> {
+  try {
+    return await getCareProfile(tenantId);
+  } catch (err) {
+    console.warn('[care-profile] no se pudo leer el perfil de atención', (err as Error).message);
+    return null;
+  }
+}

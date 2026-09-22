@@ -55,6 +55,9 @@ export const patientMarksSchema = z.object({
   priorityFlag: z.boolean(),
   priorityReason: z.string().trim().max(300).optional().or(z.literal('')),
   googleReview: z.boolean(),
+  /** Si no se manda, el aviso médico se deja como estaba. */
+  needsHumanReview: z.boolean().optional(),
+  reviewReason: z.string().trim().max(500).optional().or(z.literal('')),
 });
 export type PatientMarksInput = z.infer<typeof patientMarksSchema>;
 
@@ -74,6 +77,9 @@ export interface PatientPerson {
   priorityFlag: boolean;
   priorityReason: string | null;
   googleReview: boolean;
+  /** Aviso médico pendiente de que lo valore una persona. Los agentes no reservan. */
+  needsHumanReview: boolean;
+  reviewReason: string | null;
   notes: string | null;
   active: boolean;
   createdAt: Date;
@@ -122,6 +128,8 @@ function toPerson(row: {
     priorityFlag: p.priorityFlag,
     priorityReason: p.priorityReason,
     googleReview: p.googleReview,
+    needsHumanReview: p.needsHumanReview,
+    reviewReason: p.reviewReason,
     notes: p.notes,
     active: p.active,
     createdAt: p.createdAt,
@@ -343,6 +351,34 @@ export async function setPatientMarks(
       priorityFlag: input.priorityFlag,
       priorityReason: input.priorityFlag ? emptyToNull(input.priorityReason) : null,
       googleReview: input.googleReview,
+      ...(input.needsHumanReview === undefined
+        ? {}
+        : {
+            needsHumanReview: input.needsHumanReview,
+            reviewReason: input.needsHumanReview ? emptyToNull(input.reviewReason) : null,
+          }),
+      updatedAt: new Date(),
+    })
+    .where(and(eq(patients.tenantId, scope.tenantId), eq(patients.id, patientId)))
+    .returning({ id: patients.id });
+  if (!row) throw new PatientValidationError('Ese paciente no existe en esta clínica.');
+}
+
+/**
+ * Aviso médico que deja un asistente: el tutor contó algo (enfermedad
+ * importante, ingreso reciente, TDAH, autismo…) que la clínica quiere valorar
+ * en persona. Mientras esté puesto, los agentes no le dan cita.
+ */
+export async function setPatientReview(
+  scope: PatientScope,
+  patientId: string,
+  input: { needsHumanReview: boolean; reviewReason: string | null },
+): Promise<void> {
+  const [row] = await db
+    .update(patients)
+    .set({
+      needsHumanReview: input.needsHumanReview,
+      reviewReason: input.needsHumanReview ? emptyToNull(input.reviewReason) : null,
       updatedAt: new Date(),
     })
     .where(and(eq(patients.tenantId, scope.tenantId), eq(patients.id, patientId)))
