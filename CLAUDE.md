@@ -42,11 +42,18 @@ Si encontrás código que importe `@supabase/supabase-js`, `inngest`, o el clien
 las dos imágenes, las publica en GHCR y llama a la API de Dokploy, que sólo baja
 la imagen y reinicia. **Si el CI está en rojo, no se despliega.**
 
-Antes compilaba el propio VPS y cada push costaba **~4,5 min**, más 2–3 min el
-primer deploy de cada día (la limpieza diaria de Docker se lleva la capa del
-`pnpm install`). El worker, que no compila nada, tardaba 8 segundos: toda la
+Antes compilaba el propio VPS y cada push costaba **4m23s–7m50s**. El worker,
+que no compila nada, tardaba 8 segundos en el mismo circuito: toda la
 diferencia era el `next build`, en frío, compitiendo con Postgres, Redis, MinIO
-y los dos contenedores de la app en la misma máquina.
+y los dos contenedores de la app en la misma máquina. Los picos de 7–8 min eran
+el primer deploy de cada día, cuando la limpieza diaria de Docker ya se había
+llevado la capa del `pnpm install`.
+
+Medido en Actions (imagen web): **5m31s** en frío absoluto, **3m35s** con las
+capas cacheadas y **3m16s** en régimen. Dentro de eso, el `next build` en sí son
+**30 segundos**: el resto es el circuito de Docker —capas, push a GHCR y
+guardado de la caché—, que es donde queda margen si algún día vuelve a molestar.
+Los tres jobs corren en paralelo, así que el minuto de tests no suma.
 
 - **Imágenes**: `ghcr.io/gabrielspirillo/llamadasalientes/{web,worker}`, tag por
   commit. El paquete es **privado**: Dokploy se autentica con el PAT de
