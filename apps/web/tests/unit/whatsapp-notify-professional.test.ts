@@ -25,6 +25,9 @@ vi.mock('@/lib/whatsapp/persist', () => ({
   getOrCreateOpenConversation: mocks.getOrCreateConversation,
 }));
 vi.mock('@/lib/whatsapp/factory', () => ({ getConnectorForTenant: async () => null }));
+// Redis del cerrojo: por defecto la clave NO existía (primer aviso pasa).
+const redisSet = vi.hoisted(() => vi.fn(async (): Promise<string | null> => 'OK'));
+vi.mock('@/lib/queue/connection', () => ({ getRedis: () => ({ set: redisSet }) }));
 vi.mock('@/lib/db/client', () => ({
   db: {
     update: () => ({
@@ -55,6 +58,9 @@ const DERIVATION = {
 
 beforeEach(() => {
   for (const m of Object.values(mocks)) m.mockReset();
+  redisSet.mockReset();
+  redisSet.mockResolvedValue('OK'); // por defecto: no había aviso previo
+
   mocks.upsertContact.mockResolvedValue({ id: 'contacto-ana' });
   mocks.getOrCreateConversation.mockResolvedValue({ id: 'conv-ana' });
   mocks.sendAgentResponse.mockResolvedValue({ messageId: 'm-1', externalId: 'x-1', kind: 'text' });
@@ -108,5 +114,33 @@ describe('notifyProfessionalOfDerivation', () => {
     });
 
     expect(result).toEqual({ sent: false, reason: 'sin_conector' });
+  });
+
+  it('no reenvía la misma consulta: el cerrojo por conversación corta el segundo aviso', async () => {
+    // El SET NX devuelve algo distinto de 'OK' cuando la clave ya existe.
+    redisSet.mockResolvedValue(null);
+    const result = await notifyProfessionalOfDerivation({
+      tenantId: 'c1',
+      clinicName: 'Centro',
+      derivation: DERIVATION,
+      sourceConversationId: 'conv-paciente',
+      connector: CONNECTOR,
+    });
+
+    expect(result).toEqual({ sent: false, reason: 'duplicado' });
+    expect(mocks.sendAgentResponse).not.toHaveBeenCalled();
+  });
+
+  it('si Redis no responde, manda igual (no perder el aviso por el cerrojo)', async () => {
+    redisSet.mockRejectedValue(new Error('redis caído'));
+    const result = await notifyProfessionalOfDerivation({
+      tenantId: 'c1',
+      clinicName: 'Centro',
+      derivation: DERIVATION,
+      sourceConversationId: 'conv-paciente',
+      connector: CONNECTOR,
+    });
+
+    expect(result.sent).toBe(true);
   });
 });

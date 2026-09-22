@@ -315,6 +315,9 @@ async function runWhatsappJob(
           tenantId,
           clinicName: tenantRow?.name ?? 'la clínica',
           derivation,
+          // La conversación del paciente: es la clave del cerrojo contra el
+          // doble aviso si el modelo re-deriva la misma consulta.
+          sourceConversationId: conversationId,
           connector,
         }).catch((err) => {
           // Nunca debería lanzar, pero si lo hace, la consulta igual tiene que
