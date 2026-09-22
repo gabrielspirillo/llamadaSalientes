@@ -7,12 +7,11 @@ import { getClinicTimezone } from '@/lib/agenda/queries';
 import {
   type DocumensoConfig,
   DocumensoError,
-  addFields,
   createDocument,
+  distributeDocument,
   downloadSignedPdf,
-  sendDocument,
+  getSigningUrl,
   testConnection,
-  uploadPdf,
 } from '@/lib/consents/documenso';
 import { renderConsentPdf } from '@/lib/consents/pdf';
 import {
@@ -314,29 +313,26 @@ export async function sendConsent(input: {
   const cfg: DocumensoConfig = { baseUrl: integration.baseUrl, apiToken: integration.apiToken };
 
   let created: Awaited<ReturnType<typeof createDocument>>;
+  let signingUrl: string;
   try {
     created = await createDocument(cfg, {
       title: `${template.title} — ${person.fullName}`,
       externalId: consentId,
       recipient: { name: guardian.name, email: email ?? placeholderEmail(phone.e164) },
-      timezone,
-    });
-    await uploadPdf(cfg, created.uploadUrl, rendered.bytes);
-    await addFields(
-      cfg,
-      created.documentId,
-      rendered.fields.map((f) => ({
-        recipientId: created.recipientId,
+      fields: rendered.fields.map((f) => ({
         type: f.type,
         pageNumber: f.pageNumber,
         pageX: f.pageX,
         pageY: f.pageY,
-        pageWidth: f.pageWidth,
-        pageHeight: f.pageHeight,
-        fieldMeta: { type: f.type.toLowerCase(), required: true },
+        width: f.pageWidth,
+        height: f.pageHeight,
       })),
-    );
-    await sendDocument(cfg, created.documentId);
+      timezone,
+      pdf: rendered.bytes,
+      filename: `consentimiento-${consentId}.pdf`,
+    });
+    signingUrl = await getSigningUrl(cfg, created.documentId);
+    await distributeDocument(cfg, created.documentId);
   } catch (err) {
     throw new ConsentError(
       err instanceof DocumensoError
@@ -359,7 +355,7 @@ export async function sendConsent(input: {
     recipientPhone: phone.e164,
     recipientDni: emptyToNull(guardian.dni),
     recipientAddress: emptyToNull(guardian.address),
-    signingUrl: created.signingUrl,
+    signingUrl: signingUrl,
     status: 'SENT',
     sentAt: now,
     sentByUserId: input.sentByUserId,
@@ -379,7 +375,7 @@ export async function sendConsent(input: {
       .where(eq(patientConsents.id, consentId));
     return {
       consentId,
-      signingUrl: created.signingUrl,
+      signingUrl: signingUrl,
       whatsappSent: false,
       warning: 'La clínica no tiene WhatsApp conectado. Copia el enlace y mándaselo al tutor.',
     };
@@ -400,7 +396,7 @@ export async function sendConsent(input: {
       tutor: firstNameOf(guardian.name),
       paciente: person.firstName,
       clinica: clinicName,
-      enlace: created.signingUrl,
+      enlace: signingUrl,
     });
     const sent = await sendAgentResponse({
       tenantId: input.tenantId,
@@ -414,7 +410,7 @@ export async function sendConsent(input: {
       .update(patientConsents)
       .set({ whatsappMessageId: sent.externalId, error: null, updatedAt: new Date() })
       .where(eq(patientConsents.id, consentId));
-    return { consentId, signingUrl: created.signingUrl, whatsappSent: true };
+    return { consentId, signingUrl: signingUrl, whatsappSent: true };
   } catch (err) {
     const message = (err as Error).message ?? 'error desconocido';
     console.error('[consents] el WhatsApp del consentimiento no salió', {
@@ -428,7 +424,7 @@ export async function sendConsent(input: {
       .where(eq(patientConsents.id, consentId));
     return {
       consentId,
-      signingUrl: created.signingUrl,
+      signingUrl: signingUrl,
       whatsappSent: false,
       warning: `El WhatsApp no salió (${message}). Copia el enlace y mándaselo al tutor.`,
     };

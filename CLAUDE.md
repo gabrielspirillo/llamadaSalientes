@@ -701,14 +701,17 @@ queda en el bucket interno. Migraciones `0032_consentimientos.sql` (tablas) y
   en `consent_templates.body` (`lib/consents/template.ts`), más
   `acknowledgments` y `message_template` del WhatsApp (`{{tutor}}`,
   `{{paciente}}`, `{{clinica}}`, `{{enlace}}`; si falta `{{enlace}}` se añade).
-- **API v1 de Documenso** (`lib/consents/documenso.ts`): crear documento con el
-  tutor como firmante (`externalId` = nuestro id) → subir el PDF a la URL
-  prefirmada → `fields` (SIGNATURE + DATE) → `send` con `sendEmail:false`. El
-  enlace es el `signingUrl` del firmante. Documenso exige correo por firmante:
-  sin correo del tutor se usa `tutor.<dígitos>@sin-correo.invalid` (los correos
-  están apagados). El PDF firmado se baja por la v2
-  (`/api/v2/document/{id}/download?version=signed`, sirve con almacenamiento en
-  base de datos) con caída a la v1.
+- **API v2 de Documenso** (`lib/consents/documenso.ts`): `POST /api/v2/document/create`
+  en multipart con el PDF, el tutor como firmante y sus campos (SIGNATURE +
+  DATE) en la misma petición, `externalId` = nuestro id → `GET /api/v2/document/{id}`
+  para el `token` del firmante (enlace = `<instancia>/sign/<token>`) →
+  `distribute` con `distributionMethod: 'NONE'`. ⚠️ **La v1 no sirve** con el
+  almacenamiento en base de datos de estas instancias: su alta va por URL
+  prefirmada y responde "Create document is not available without S3
+  transport". Documenso exige correo por firmante: sin correo del tutor se usa
+  `tutor.<dígitos>@sin-correo.invalid` (los correos están apagados). El PDF
+  firmado se baja por `/api/v2/document/{id}/download?version=signed`, con
+  caída a la v1.
 - **El WhatsApp sale firmado como equipo** (`senderType: 'HUMAN'` en
   `sendAgentResponse`): en el inbox no parece escrito por el asistente. Si no
   hay conector o el envío falla, el documento ya existe y la fila guarda el
