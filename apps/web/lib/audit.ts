@@ -25,6 +25,8 @@ export type AuditEntity =
   | 'tenant_telephony'
   // Módulo Agenda (migración 0026).
   | 'professional'
+  // Paciente como persona (migración 0030).
+  | 'patient'
   | 'professional_schedule'
   | 'agenda_appointment';
 

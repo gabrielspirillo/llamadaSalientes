@@ -6,9 +6,13 @@
 // tres casos, cada cita guarda una `patient_key`: la identidad estable del
 // paciente DENTRO del tenant.
 //
-// Prioridad: id del CRM > teléfono normalizado > email > nombre. Va prefijada
-// por espacio de nombres para que un id del CRM no pueda colisionar nunca con
-// un teléfono. Es puro: se testea sin base.
+// Prioridad: paciente de la plataforma > id del CRM > teléfono normalizado >
+// email > nombre. Va prefijada por espacio de nombres para que un id del CRM no
+// pueda colisionar nunca con un teléfono. Es puro: se testea sin base.
+//
+// `pat:<uuid>` es el paciente como PERSONA (tabla `patients`), distinto del
+// contacto que llama: en una clínica pediátrica el teléfono es del tutor y
+// detrás hay hermanos. Sin esta clave, dos gemelos compartirían historia.
 
 /** E.164 (`+` y dígitos). Devuelve null si no hay forma de normalizarlo. */
 export function normalizePatientPhone(raw: string | null | undefined): string | null {
@@ -22,6 +26,8 @@ export function normalizePatientPhone(raw: string | null | undefined): string | 
 }
 
 export interface PatientIdentity {
+  /** Id de `patients`, cuando la clínica lleva a sus pacientes como personas. */
+  patientId?: string | null;
   ghlContactId?: string | null;
   phone?: string | null;
   email?: string | null;
@@ -35,6 +41,9 @@ export interface PatientIdentity {
  * (recepción a veces sólo tiene un nombre a medias).
  */
 export function patientKeyFor(identity: PatientIdentity): string {
+  const patientId = identity.patientId?.trim();
+  if (patientId) return patientKeyForPerson(patientId);
+
   const ghl = identity.ghlContactId?.trim();
   if (ghl) return `ghl:${ghl}`;
 
@@ -62,8 +71,21 @@ function slugifyName(raw: string | null | undefined): string {
   );
 }
 
+/** Clave de un paciente de la plataforma (`patients.id`). */
+export function patientKeyForPerson(patientId: string): string {
+  return `pat:${patientId}`;
+}
+
+/** `patients.id` si la clave es de un paciente de la plataforma; si no, null. */
+export function patientIdFromKey(key: string | null | undefined): string | null {
+  if (!key?.startsWith('pat:')) return null;
+  const id = key.slice(4);
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ? id : null;
+}
+
 /** Etiqueta legible de una clave, para depurar y para la ficha del paciente. */
 export function describePatientKey(key: string): string {
+  if (key.startsWith('pat:')) return 'Paciente de la clínica';
   if (key.startsWith('ghl:')) return `CRM ${key.slice(4)}`;
   if (key.startsWith('tel:')) return key.slice(4);
   if (key.startsWith('email:')) return key.slice(6);
@@ -81,8 +103,14 @@ export function contactRefsFor(contact: {
   ghlContactId?: string | null;
   phone?: string | null;
   email?: string | null;
+  /** Los pacientes (personas) que cuelgan de este contacto. */
+  patientIds?: string[] | null;
 }): string[] {
   const refs = new Set<string>();
+  for (const id of contact.patientIds ?? []) {
+    const clean = id?.trim();
+    if (clean) refs.add(patientKeyForPerson(clean));
+  }
   const ghl = contact.ghlContactId?.trim();
   if (ghl) {
     refs.add(ghl);

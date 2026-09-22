@@ -8,7 +8,14 @@ import {
   isInternalAppointmentId,
   professionalFromCalendarRef,
 } from '@/lib/agenda/appointment-ref';
-import { contactRefsFor, patientKeyFor, phoneFromPatientKey } from '@/lib/agenda/patients';
+import {
+  contactRefsFor,
+  describePatientKey,
+  patientIdFromKey,
+  patientKeyFor,
+  patientKeyForPerson,
+  phoneFromPatientKey,
+} from '@/lib/agenda/patients';
 
 /**
  * La identidad compartida entre la agenda de la plataforma y las tablas que
@@ -93,5 +100,32 @@ describe('identidades con las que se busca a un paciente', () => {
 
   it('el id del CRM manda sobre el teléfono al fijar la identidad', () => {
     expect(patientKeyFor({ ghlContactId: CRM_ID, phone: '+34600111222' })).toBe(`ghl:${CRM_ID}`);
+  });
+});
+
+describe('el paciente como persona (clínicas con perfil de atención)', () => {
+  it('su clave manda sobre el CRM y el teléfono: el teléfono es del tutor', () => {
+    // Dos gemelos comparten móvil; sin esto compartirían también la historia.
+    const key = patientKeyFor({ patientId: UUID, ghlContactId: CRM_ID, phone: '+34600111222' });
+    expect(key).toBe(`pat:${UUID}`);
+    expect(patientKeyForPerson(UUID)).toBe(key);
+    expect(patientIdFromKey(key)).toBe(UUID);
+    expect(describePatientKey(key)).toBe('Paciente de la clínica');
+  });
+
+  it('un id vacío no es una persona: se cae a la identidad de siempre', () => {
+    expect(patientKeyFor({ patientId: '  ', phone: '+34600111222' })).toBe('tel:+34600111222');
+    expect(patientIdFromKey('tel:+34600111222')).toBeNull();
+    expect(patientIdFromKey('pat:no-es-uuid')).toBeNull();
+    expect(patientIdFromKey(null)).toBeNull();
+  });
+
+  it('la ficha del tutor encuentra las citas de todos sus hijos', () => {
+    const other = '9b2f1c40-0d7e-4a52-8f1a-5c7e2d1b3a44';
+    const refs = contactRefsFor({ phone: '+34600111222', patientIds: [UUID, other, ' '] });
+    expect(refs).toContain(`pat:${UUID}`);
+    expect(refs).toContain(`pat:${other}`);
+    expect(refs).toContain('tel:+34600111222');
+    expect(refs).toHaveLength(3);
   });
 });

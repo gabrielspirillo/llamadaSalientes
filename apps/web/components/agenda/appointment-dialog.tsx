@@ -34,6 +34,15 @@ interface Treatment {
   durationMinutes: number;
 }
 
+/** Paciente-persona elegible al dar cita (clínicas que los llevan así). */
+export interface DialogPatient {
+  id: string;
+  /** Lo que se ve en el desplegable: "Martina Ruiz · 1 año y 8 meses". */
+  label: string;
+  /** Teléfono del tutor, si lo hay. */
+  phone: string | null;
+}
+
 function hhmm(minute: number): string {
   return `${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
 }
@@ -54,11 +63,13 @@ export function AppointmentDialog({
   seed,
   professionals,
   treatments,
+  patients = [],
   onClose,
 }: {
   seed: AppointmentDialogSeed;
   professionals: Professional[];
   treatments: Treatment[];
+  patients?: DialogPatient[];
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -73,6 +84,7 @@ export function AppointmentDialog({
   const [time, setTime] = React.useState(hhmm(seed.startMinute));
   const [duration, setDuration] = React.useState(30);
   const [patientName, setPatientName] = React.useState('');
+  const [patientId, setPatientId] = React.useState('');
   const [patientPhone, setPatientPhone] = React.useState('');
   const [patientEmail, setPatientEmail] = React.useState('');
   const [notes, setNotes] = React.useState('');
@@ -115,13 +127,30 @@ export function AppointmentDialog({
     if (t) setDuration(t.durationMinutes);
   }
 
+  // Si lo tecleado coincide con un paciente de la ficha, la cita va a SU
+  // ficha (y el teléfono del tutor se rellena solo). Si no, es un nombre libre
+  // como siempre: dar cita no obliga a haber dado de alta antes.
+  function onPatientNameChange(value: string) {
+    setPatientName(value);
+    const match = patients.find((p) => p.label === value);
+    if (match) {
+      setPatientId(match.id);
+      if (match.phone && !patientPhone) setPatientPhone(match.phone);
+    } else {
+      setPatientId('');
+    }
+  }
+
   function submit() {
     setError(null);
     startTransition(async () => {
+      const match = patients.find((p) => p.id === patientId);
       const result = await createAppointmentAction({
         professionalId,
         treatmentId: treatmentId || null,
-        patientName,
+        patientId: patientId || null,
+        // A la cita va el nombre limpio, sin la edad del desplegable.
+        patientName: match ? match.label.split(' · ')[0] || patientName : patientName,
         patientPhone,
         patientEmail,
         startDateKey: dateKey,
@@ -253,10 +282,27 @@ export function AppointmentDialog({
               <Label htmlFor="ap-name">Paciente</Label>
               <Input
                 id="ap-name"
+                list={patients.length > 0 ? 'ap-patients' : undefined}
                 value={patientName}
-                onChange={(e) => setPatientName(e.target.value)}
-                placeholder="Nombre y apellidos"
+                onChange={(e) => onPatientNameChange(e.target.value)}
+                placeholder={
+                  patients.length > 0
+                    ? 'Busca en la ficha o escribe un nombre'
+                    : 'Nombre y apellidos'
+                }
               />
+              {patients.length > 0 && (
+                <datalist id="ap-patients">
+                  {patients.map((p) => (
+                    <option key={p.id} value={p.label} />
+                  ))}
+                </datalist>
+              )}
+              {patientId && (
+                <p className="text-[12px] font-semibold text-emerald-700">
+                  Paciente de la ficha: la cita queda en su historia.
+                </p>
+              )}
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="ap-phone">Teléfono</Label>

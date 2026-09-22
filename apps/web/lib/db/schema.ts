@@ -2098,6 +2098,55 @@ export const professionalTimeOff = pgTable(
   }),
 );
 
+// ─── Perfil de atención y pacientes como personas ────────────────────────────
+// Ver migración 0030 y `lib/care-profile/policy.ts`. Sin fila de perfil, la
+// clínica atiende como todas y `patients` no se usa.
+
+export const tenantCareProfile = pgTable('tenant_care_profile', {
+  tenantId: uuid('tenant_id')
+    .primaryKey()
+    .references(() => tenants.id, { onDelete: 'cascade' }),
+  profile: text('profile').notNull().default('PEDIATRIC'),
+  bookingPolicy: jsonb('booking_policy').notNull().default({}),
+  anamnesisTemplate: jsonb('anamnesis_template').notNull().default([]),
+  firstVisitProtocol: text('first_visit_protocol'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const patients = pgTable(
+  'patients',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    /** El tutor: la ficha de contacto (teléfono) desde la que se llama o escribe. */
+    contactId: uuid('contact_id').references(() => whatsappContacts.id, { onDelete: 'set null' }),
+    firstName: text('first_name').notNull(),
+    lastName: text('last_name'),
+    birthDate: date('birth_date', { mode: 'string' }),
+    guardians: jsonb('guardians').$type<{ role: string; name: string }[]>().notNull().default([]),
+    anamnesis: jsonb('anamnesis')
+      .$type<Record<string, { value: boolean | null; detail: string }>>()
+      .notNull()
+      .default({}),
+    priorityFlag: boolean('priority_flag').notNull().default(false),
+    priorityReason: text('priority_reason'),
+    googleReview: boolean('google_review').notNull().default(false),
+    notes: text('notes'),
+    active: boolean('active').notNull().default(true),
+    createdByUserId: uuid('created_by_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantIdx: index('patients_tenant_idx').on(t.tenantId, t.active),
+    contactIdx: index('patients_contact_idx').on(t.contactId),
+  }),
+);
+
 export const agendaAppointments = pgTable(
   'agenda_appointments',
   {
@@ -2127,6 +2176,10 @@ export const agendaAppointments = pgTable(
     }),
     /** Idempotencia de agentes virtuales y reintentos de cola. */
     dedupeKey: text('dedupe_key'),
+    /** El paciente como persona, cuando la clínica los lleva así (perfil). */
+    patientId: uuid('patient_id').references(() => patients.id, { onDelete: 'set null' }),
+    /** El paciente no tenía ninguna cita anterior al crear ésta. */
+    isFirstVisit: boolean('is_first_visit').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
@@ -2156,6 +2209,12 @@ export const clinicalNotes = pgTable(
     treatmentPerformed: text('treatment_performed'),
     observations: text('observations'),
     nextSteps: text('next_steps'),
+    /** Sólo las clínicas con perfil los pintan: síntomas que cuenta la familia y exploración. */
+    symptoms: text('symptoms'),
+    examination: text('examination'),
+    /** Cómo se portó en ESTA sesión: GREEN | YELLOW | RED. */
+    sessionBehavior: text('session_behavior'),
+    patientId: uuid('patient_id').references(() => patients.id, { onDelete: 'set null' }),
     /** Privada = no se le enseña a los agentes virtuales ni al resto del equipo. */
     private: boolean('private').notNull().default(false),
     authorUserId: uuid('author_user_id').references(() => users.id, { onDelete: 'set null' }),
