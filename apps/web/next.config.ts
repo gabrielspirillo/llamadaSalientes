@@ -21,6 +21,16 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     '/docs/[[...slug]]': ['../../docs/**/*'],
   },
+  typescript: {
+    // El typecheck NO se salta: corre en el job `checks` del workflow, en
+    // paralelo con el build, y el deploy espera a los dos. Correrlo también
+    // dentro de `next build` era hacer el mismo `tsc` sobre los mismos 643
+    // ficheros una segunda vez, en serie y dentro del camino crítico.
+    //
+    // ⚠️ Si alguien quita el gate de `checks` del workflow, hay que volver a
+    // poner esto en false: sería la única red que queda.
+    ignoreBuildErrors: true,
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: '4mb',

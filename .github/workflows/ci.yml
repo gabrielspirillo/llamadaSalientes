@@ -74,7 +74,7 @@ jobs:
   # Las dos imágenes se construyen en paralelo entre sí y con los checks.
   image-web:
     name: Imagen web
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -89,6 +89,32 @@ jobs:
         # GHCR rechaza mayúsculas y el repo se llama "llamadaSalientes".
         id: img
         run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}/web" >> "$GITHUB_OUTPUT"
+
+      # El caché de webpack es lo que convierte el build en incremental: sin él
+      # se recompilan los 643 ficheros en cada corrida. Va aparte porque los
+      # `--mount=type=cache` de BuildKit NO viajan en `cache-from: type=gha`:
+      # esa caché sólo persiste en un builder que vive siempre (el VPS), y aquí
+      # cada job estrena builder. Estas dos acciones lo sacan y lo devuelven.
+      - name: Restaurar caché del build de Next
+        uses: actions/cache@v4
+        with:
+          path: next-build-cache
+          # La clave lleva el sha para guardar una entrada nueva cada vez;
+          # restore-keys recupera la más reciente que haya.
+          key: next-build-cache-${{ github.sha }}
+          restore-keys: |
+            next-build-cache-
+
+      - name: Inyectar la caché en BuildKit
+        uses: reproducible-containers/buildkit-cache-dance@v3.1.2
+        with:
+          cache-map: |
+            {
+              "next-build-cache": {
+                "target": "/repo/apps/web/.next/cache",
+                "id": "next-build-cache"
+              }
+            }
 
       - name: Build + push
         uses: docker/build-push-action@v6
@@ -124,7 +150,7 @@ jobs:
 
   image-worker:
     name: Imagen worker
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
