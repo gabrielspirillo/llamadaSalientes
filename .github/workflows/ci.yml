@@ -223,24 +223,37 @@ jobs:
           }
 
           # Dokploy encola el deploy y responde enseguida, así que hay que
-          # sondear el estado: si el worker falla, el web no debe salir. Un
-          # error de red en el sondeo no aborta nada — se reintenta al vuelta
-          # siguiente; para eso está el `|| true`.
+          # sondear el estado: si el worker falla, el web no debe salir.
+          #
+          # `deployment.all` devuelve un ARRAY pelado. Ojo con envolverlo en
+          # `.data // .`: sobre un array, `.data` no da null, LANZA, y `//` no
+          # rescata errores. Con el error tragado el sondeo leía vacío en cada
+          # vuelta y esperaba los 15 minutos enteros aunque el deploy hubiera
+          # terminado bien en el primer minuto.
           deploy_and_wait() {
-            local id="$1" name="$2" status
+            local id="$1" name="$2" status mudo=0
             api application.deploy "$(jq -nc --arg id "$id" '{applicationId:$id}')" > /dev/null
             echo "→ $name: deploy encolado"
-            for _ in $(seq 1 90); do
+            for _ in $(seq 1 60); do
               sleep 10
+              # Un fallo de red no aborta el deploy: se reintenta a la vuelta
+              # siguiente. Pero tampoco pasa inadvertido — si el sondeo se queda
+              # mudo se avisa, en vez de esperar al timeout sin decir nada.
               status=$(curl -fsS "$DOKPLOY_URL/api/deployment.all?applicationId=$id" \
                 -H "x-api-key: $DOKPLOY_API_KEY" \
-                | jq -r '(.data // .) | sort_by(.createdAt) | last | .status' 2>/dev/null || true)
+                | jq -er 'if type == "array" then . else .data end
+                          | sort_by(.createdAt) | last | .status' || true)
               case "$status" in
                 done)  echo "✓ $name desplegado"; return 0 ;;
                 error) echo "✗ $name falló — mirar el log en Dokploy"; return 1 ;;
+                "")    mudo=$((mudo + 1))
+                       if [ "$mudo" = 3 ]; then
+                         echo "⚠ $name: el sondeo no devuelve estado; sigo esperando"
+                       fi ;;
+                *)     mudo=0 ;;
               esac
             done
-            echo "✗ $name: sin respuesta tras 15 min"
+            echo "✗ $name: sigue sin terminar tras 10 min"
             return 1
           }
 
