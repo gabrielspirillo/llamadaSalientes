@@ -3,6 +3,7 @@ import { and, eq } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import { whatsappConversations } from '@/lib/db/schema';
+import { getRedis } from '@/lib/queue/connection';
 import { formatDerivationBrief } from '@/lib/whatsapp/agent/derivation';
 import type { AgentDerivation } from '@/lib/whatsapp/agent/types';
 import { getConnectorForTenant } from '@/lib/whatsapp/factory';
@@ -34,6 +35,8 @@ export async function notifyProfessionalOfDerivation(input: {
   tenantId: string;
   clinicName: string;
   derivation: AgentDerivation;
+  /** Conversación del paciente de la que salió la derivación. Da el cerrojo. */
+  sourceConversationId?: string;
   /** Se inyecta en los tests; en producción lo resuelve el tenant. */
   connector?: WhatsAppConnector | null;
 }): Promise<NotifyProfessionalResult> {
@@ -44,6 +47,23 @@ export async function notifyProfessionalOfDerivation(input: {
     // Un móvil mal cargado que coincide con el del paciente le mandaría el
     // parte clínico a él mismo. No hay mensaje que valga ese riesgo.
     return { sent: false, reason: 'destinatario_es_el_paciente' };
+  }
+
+  // Cerrojo contra el doble aviso. El modelo puede re-derivar la MISMA consulta
+  // si el paciente insiste ("con urgencia", "¿pronto?"): dos runs distintos, dos
+  // llamadas a esta función. Como el resumen puede venir con otras palabras cada
+  // vez, no se puede dedupear por su texto; sí por (conversación, destinatario):
+  // el mismo profesional avisado dos veces por la misma conversación en una
+  // ventana corta es un reenvío, no una consulta nueva. Un caso genuinamente
+  // distinto suele ir a otro profesional, o llega pasada la ventana.
+  //
+  // Best-effort: si Redis no responde, se manda igual (mejor un posible
+  // duplicado que perder el aviso). Se toma ANTES del envío, con TTL amplio.
+  if (input.sourceConversationId) {
+    const yaAvisado = await derivacionYaEnviada(tenantId, input.sourceConversationId, to);
+    if (yaAvisado) {
+      return { sent: false, reason: 'duplicado' };
+    }
   }
 
   const connector = input.connector ?? (await getConnectorForTenant(tenantId));
@@ -116,6 +136,33 @@ async function conversacionDelProfesional(input: {
     );
 
   return conversation.id;
+}
+
+/**
+ * ¿Ya se avisó a este destinatario por esta conversación hace poco?
+ *
+ * `SET NX` sobre Redis con TTL: el primero gana y devuelve false (no duplicado),
+ * los siguientes ven la clave puesta y devuelven true. Ventana de 2 horas: cubre
+ * de sobra una ráfaga de reintentos del paciente sin bloquear una consulta nueva
+ * de otro día. Si Redis falla, no bloqueamos (devolvemos false): el aviso vale
+ * más que el riesgo de un duplicado ocasional.
+ */
+const DERIVE_NOTIFY_TTL_MS = 2 * 60 * 60 * 1000;
+
+async function derivacionYaEnviada(
+  tenantId: string,
+  conversationId: string,
+  toPhoneE164: string,
+): Promise<boolean> {
+  try {
+    const redis = getRedis();
+    const key = `derive-notify:${tenantId}:${conversationId}:${toPhoneE164}`;
+    const ok = await redis.set(key, '1', 'PX', DERIVE_NOTIFY_TTL_MS, 'NX');
+    return ok !== 'OK';
+  } catch (err) {
+    console.warn('[wa-derive] cerrojo de aviso no disponible', (err as Error).message);
+    return false;
+  }
 }
 
 function channelOf(

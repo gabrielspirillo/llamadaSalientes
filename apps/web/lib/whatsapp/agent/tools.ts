@@ -411,7 +411,8 @@ function allToolDefinitions(): AgentToolDefinition[] {
           },
           urgent: {
             type: 'boolean',
-            description: 'true si el paciente describe dolor fuerte o algo que no puede esperar.',
+            description:
+              'true SÓLO si no puede esperar: lesión de hoy/pocos días, dolor fuerte que impide moverse, hinchazón importante o algo que empeora rápido. Un dolor de semanas o una molestia leve va con false aunque el paciente quiera cita pronto.',
           },
         },
         required: ['summary'],
