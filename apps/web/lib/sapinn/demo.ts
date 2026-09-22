@@ -25,32 +25,24 @@ export function sapinnAgentId(): string {
 }
 
 /**
- * Saludo que inyectamos en `begin_message` ({{greeting}}) del agente.
+ * El SALUDO y el prompt viven en Retell, como texto literal, NO aquí.
  *
- * Lo componemos NOSOTROS para que la agente hable primero: con
- * `begin_message` vacío Retell espera a que hable el visitante y la demo
- * arranca en silencio, que es justo lo que no puede pasar delante de un
- * cliente. Declara IA en la primera frase, como exige el pliego.
+ * Antes inyectábamos el saludo desde el código como `{{greeting}}` en el
+ * `begin_message` del agente. Eso lo ataba a que la llamada saliera de esta
+ * app: cualquier prueba hecha desde el panel de Retell arrancaba diciendo
+ * "{{greeting}}" en voz alta, y `{{brand}}` se leía como "mil". Desde que la
+ * página no pide el nombre, el saludo es siempre idéntico, así que inyectarlo
+ * no aportaba nada y sólo añadía una forma de romperse.
  *
- * Sin nombre (el caso normal: la página ya no lo pide) la agente lo pregunta;
- * si llegara uno, saluda por él y no lo vuelve a pedir.
+ * Si alguien vuelve a poner `{{...}}` en el prompt del agente, tiene que
+ * añadir aquí la variable correspondiente o volverá a leerse en crudo.
  */
-export function sapinnGreeting(displayName: string): string {
-  const hello = displayName ? `Buenos días, ${displayName}.` : 'Buenos días.';
-  const ask = displayName
-    ? '¿Tiene un momento para hablar?'
-    : '¿Con quién tengo el gusto de hablar?';
-  return `${hello} Soy Lucía, un asistente de voz con inteligencia artificial de ${SAPINN_BRAND}, nutrición infantil. ${ask}`;
-}
 
-/** Variables dinámicas que lee el prompt del agente, iguales en ambos caminos. */
+/** Variables dinámicas disponibles para el prompt, iguales en ambos caminos. */
 export function sapinnDynamicVars(displayName = ''): Record<string, string> {
   return {
-    greeting: sapinnGreeting(displayName),
     brand: SAPINN_BRAND,
     lead_name: displayName,
-    name: displayName,
-    patient_name: displayName,
     current_date: new Date().toISOString().slice(0, 10),
     direction: 'outbound',
     lead_source: 'sapinn-landing',
