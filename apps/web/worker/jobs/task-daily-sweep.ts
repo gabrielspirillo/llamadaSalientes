@@ -18,6 +18,7 @@ export async function processTaskDailySweepJob(
   tenants: number;
   pendingTreatment: number;
   inactive: number;
+  birthdays: number;
   failed: number;
   remindersRequeued: number;
 }> {
@@ -34,6 +35,7 @@ export async function processTaskDailySweepJob(
 
   let pendingTreatment = 0;
   let inactive = 0;
+  let birthdays = 0;
   let failed = 0;
 
   for (const tenantId of tenantIds) {
@@ -49,6 +51,13 @@ export async function processTaskDailySweepJob(
       } catch (err) {
         console.warn('[task-daily-sweep] digest de mensajes falló', (err as Error).message);
       }
+      // Cumpleaños del día (sólo clínicas con perfil de atención). Best-effort.
+      try {
+        const { postBirthdayNotices } = await import('@/lib/care-profile/birthdays');
+        birthdays += await postBirthdayNotices(tenantId);
+      } catch (err) {
+        console.warn('[task-daily-sweep] avisos de cumpleaños fallaron', (err as Error).message);
+      }
     } catch (err) {
       failed += 1;
       console.error('[task-daily-sweep] tenant failed', {
@@ -58,5 +67,12 @@ export async function processTaskDailySweepJob(
     }
   }
 
-  return { tenants: tenantIds.length, pendingTreatment, inactive, failed, remindersRequeued };
+  return {
+    tenants: tenantIds.length,
+    pendingTreatment,
+    inactive,
+    birthdays,
+    failed,
+    remindersRequeued,
+  };
 }

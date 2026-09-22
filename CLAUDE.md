@@ -656,6 +656,15 @@ nuevos, prioridad por edad. Todo eso va **sólo para ella** y sin interruptores:
   (`careProtocol` de `buildSystemPrompt`) y en voz (variable `{{care_protocol}}`
   de `buildClinicContextVars`). Todo lo que el prompt pide, el servidor lo impone
   además por su cuenta.
+- **Cumpleaños**: el barrido diario (`task-daily-sweep`) publica en `#agenda` una
+  tarjeta `patient.birthday` por paciente y año (`lib/care-profile/birthdays.ts`,
+  sólo clínicas con perfil; quien nació un 29 de febrero lo celebra el 28 los
+  años no bisiestos, `isBirthdayOn`). Aviso interno con acciones de llamar y
+  abrir la ficha; no se escribe a la familia.
+- **Lista de espera**: `findNextEligibleEntry` reordena la cola por prioridad
+  (`sortByPriority`, estable) cuando las entradas son `pat:<id>` y la clínica
+  tiene perfil; a igualdad manda la antigüedad de siempre. Sin perfil, la cola
+  no cambia.
 - ⚠️ **Voz, pasos manuales por clínica con perfil**: (1) agente + LLM propios en
   Retell (`agent_configs.retell_agent_id/retell_llm_id`; hoy todas comparten
   dos LLM) cuyo prompt referencie `{{care_protocol}}`; (2) correr
