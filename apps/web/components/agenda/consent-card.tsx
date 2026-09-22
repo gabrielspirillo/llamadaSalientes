@@ -1,6 +1,9 @@
 'use client';
 
-import { sendConsentAction } from '@/app/(dashboard)/dashboard/agenda/actions';
+import {
+  refreshConsentAction,
+  sendConsentAction,
+} from '@/app/(dashboard)/dashboard/agenda/actions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardTopbar } from '@/components/ui/card';
@@ -15,7 +18,7 @@ import {
 } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/ui/feedback';
 import { Input, Label } from '@/components/ui/input';
-import { AlertTriangle, Check, Copy, FileSignature, Loader2, Send } from 'lucide-react';
+import { AlertTriangle, Check, Copy, FileSignature, Loader2, RefreshCw, Send } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
@@ -139,12 +142,70 @@ export function ConsentCard({
                   </Button>
                 )}
                 {c.status === 'SENT' && c.signingUrl && <CopyLink url={c.signingUrl} />}
+                {c.status === 'SENT' && canWrite && (
+                  <RefreshConsent patientId={patientId} consentId={c.id} />
+                )}
               </li>
             ))}
           </ul>
         )}
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * "¿Ya firmó?": pregunta a Documenso y, si está completado, cierra el
+ * consentimiento aquí mismo. Es lo que salva el caso de un webhook perdido, y
+ * si algo falla al cerrar, el motivo se ve aquí y no en un registro.
+ */
+function RefreshConsent({ patientId, consentId }: { patientId: string; consentId: string }) {
+  const router = useRouter();
+  const [pending, startTransition] = React.useTransition();
+  const [note, setNote] = React.useState<{ tone: 'ok' | 'warn' | 'error'; text: string } | null>(
+    null,
+  );
+
+  function run() {
+    setNote(null);
+    startTransition(async () => {
+      const result = await refreshConsentAction(patientId, consentId);
+      if (!result.ok) {
+        setNote({ tone: 'error', text: result.error });
+        return;
+      }
+      if (result.data.signed) {
+        setNote({ tone: 'ok', text: 'Firmado. Ya está el PDF.' });
+        router.refresh();
+      } else {
+        setNote({
+          tone: 'warn',
+          text: `Todavía sin firmar (estado en Documenso: ${result.data.status}).`,
+        });
+      }
+    });
+  }
+
+  return (
+    <div className="flex w-full flex-wrap items-center gap-2">
+      <Button size="sm" variant="ghost" onClick={run} disabled={pending}>
+        {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+        Comprobar firma
+      </Button>
+      {note && (
+        <span
+          className={
+            note.tone === 'ok'
+              ? 'text-[12px] font-semibold text-emerald-700'
+              : note.tone === 'warn'
+                ? 'text-[12px] text-amber-700'
+                : 'text-[12px] text-rose-700'
+          }
+        >
+          {note.text}
+        </span>
+      )}
+    </div>
   );
 }
 
