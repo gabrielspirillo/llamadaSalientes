@@ -71,11 +71,10 @@ jobs:
           NODE_ENV: test
 
   # ───────────────────────────────────────────────────────────────────────────
-  # Las dos imágenes se construyen en paralelo: son independientes.
+  # Las dos imágenes se construyen en paralelo entre sí y con los checks.
   image-web:
     name: Imagen web
-    needs: checks
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -125,8 +124,7 @@ jobs:
 
   image-worker:
     name: Imagen worker
-    needs: checks
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -156,7 +154,11 @@ jobs:
   # ───────────────────────────────────────────────────────────────────────────
   deploy:
     name: Deploy a Dokploy
-    needs: [image-web, image-worker]
+    # El gate vive aquí: el deploy espera a los checks Y a las imágenes, pero
+    # las imágenes no esperan a los checks. Así el minuto de tests no se suma al
+    # reloj del deploy. Con los tests en rojo la imagen se publica pero NO sale
+    # a producción, que es lo que importa.
+    needs: [checks, image-web, image-worker]
     # En disparo manual sólo despliega si se pidió explícitamente.
     if: github.event_name == 'push' || inputs.deploy
     runs-on: ubuntu-latest
