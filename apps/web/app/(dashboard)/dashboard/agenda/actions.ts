@@ -36,7 +36,12 @@ import { type TeamCandidate, listTeamCandidates } from '@/lib/agenda/team';
 import { recordAudit } from '@/lib/audit';
 import type { SessionBehavior } from '@/lib/care-profile/policy';
 import { DocumensoError } from '@/lib/consents/documenso';
-import { ConsentError, type GuardianInput, sendConsent } from '@/lib/consents/service';
+import {
+  ConsentError,
+  type GuardianInput,
+  refreshConsent,
+  sendConsent,
+} from '@/lib/consents/service';
 import { createTreatment, listTreatmentsForTenant } from '@/lib/data/treatments';
 import {
   type PatientInput,
@@ -629,6 +634,21 @@ export async function sendConsentAction(
         ...(result.warning ? { warning: result.warning } : {}),
       },
     };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+/** "¿Ya firmó?": consulta Documenso y cierra el consentimiento si está completado. */
+export async function refreshConsentAction(
+  patientId: string,
+  consentId: string,
+): Promise<ActionResult<{ status: string; signed: boolean }>> {
+  try {
+    const ctx = await requireAgendaWriter();
+    const result = await refreshConsent({ tenantId: ctx.tenantId, consentId });
+    revalidatePatient(patientId);
+    return { ok: true, data: result };
   } catch (err) {
     return fail(err);
   }

@@ -10,6 +10,7 @@ import {
   createDocument,
   distributeDocument,
   downloadSignedPdf,
+  getDocument,
   getSigningUrl,
   testConnection,
 } from '@/lib/consents/documenso';
@@ -525,6 +526,48 @@ export async function completeConsent(input: {
   }
 
   return { consentId: row.id, already: false };
+}
+
+/**
+ * Comprobar a mano si el tutor ya firmó: se le pregunta a Documenso por el
+ * estado del documento y, si está completado, se cierra igual que lo haría el
+ * webhook. Es la red de seguridad cuando un webhook se pierde o falla, y lo
+ * que enseña el motivo del fallo en pantalla en vez de en un registro.
+ */
+export async function refreshConsent(input: {
+  tenantId: string;
+  consentId: string;
+}): Promise<{ status: string; signed: boolean }> {
+  const rows = await db
+    .select()
+    .from(patientConsents)
+    .where(
+      and(eq(patientConsents.tenantId, input.tenantId), eq(patientConsents.id, input.consentId)),
+    )
+    .limit(1);
+  const row = rows[0];
+  if (!row) throw new ConsentError('Ese consentimiento no existe.');
+  if (row.status === 'SIGNED' && row.pdfKey) return { status: 'SIGNED', signed: true };
+  if (row.providerDocumentId === null) {
+    throw new ConsentError('El consentimiento no tiene documento en Documenso.');
+  }
+
+  const integration = await getEsignIntegration(input.tenantId);
+  if (!integration?.active) throw new ConsentError('La firma digital no está configurada.');
+
+  const doc = await getDocument(
+    { baseUrl: integration.baseUrl, apiToken: integration.apiToken },
+    row.providerDocumentId,
+  );
+  if (doc.status !== 'COMPLETED') return { status: doc.status, signed: false };
+
+  await completeConsent({
+    tenantId: input.tenantId,
+    providerDocumentId: row.providerDocumentId,
+    externalId: row.id,
+    completedAt: doc.completedAt ? new Date(doc.completedAt) : new Date(),
+  });
+  return { status: 'SIGNED', signed: true };
 }
 
 /** URL firmada y efímera del PDF firmado, o null si no existe o no está firmado. */
