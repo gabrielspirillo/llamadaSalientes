@@ -62,6 +62,12 @@ export interface ToolCallTrace {
   latencyMs: number;
   /** Mensaje de error si ok=false. */
   error?: string;
+  /**
+   * Salida estructurada de la tool, cuando el orquestador necesita algo más que
+   * el texto que ve el LLM. Hoy lo usa `derive_to_professional` para devolver a
+   * quién se enrutó la consulta: el modelo no lo decide ni lo sabe.
+   */
+  data?: Record<string, unknown>;
 }
 
 export const toolCallTraceSchema = z.object({
@@ -71,6 +77,7 @@ export const toolCallTraceSchema = z.object({
   result: z.string(),
   latencyMs: z.number().int().nonnegative(),
   error: z.string().optional(),
+  data: z.record(z.unknown()).optional(),
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -147,6 +154,26 @@ export interface AgentInput {
 }
 
 /**
+ * Lo que el asistente recopiló y a quién hay que pasárselo. Lo produce la tool
+ * `derive_to_professional` (modo DERIVE) y lo consume el worker.
+ */
+export interface AgentDerivation {
+  professionalId: string | null;
+  professionalName: string | null;
+  /** E.164 del destinatario del aviso. Null = no había a quién avisar. */
+  phoneE164: string | null;
+  treatmentName: string | null;
+  summary: string;
+  patientName: string | null;
+  /** WhatsApp del paciente. Sale del canal, no del modelo. */
+  patientPhoneE164: string;
+  preferredTime: string | null;
+  urgent: boolean;
+  /** Cómo se resolvió el destinatario (ver `resolveDerivationTarget`). */
+  via: string;
+}
+
+/**
  * Respuesta del agente. El job de Inngest la usa para:
  *  - Mandar `responseText` o `responseButtons` por el connector.
  *  - Marcar la conversación HANDOFF / URGENT.
@@ -165,6 +192,15 @@ export interface AgentOutput {
   } | null;
   handoff: boolean;
   urgent: boolean;
+  /**
+   * Modo DERIVE: la consulta que hay que pasarle al profesional y a quién.
+   * Null en el modo normal, o cuando el asistente no llegó a derivar nada.
+   *
+   * El aviso NO se manda desde aquí: lo hace el worker en su propio paso, para
+   * que un reintento del LLM no dispare dos WhatsApps y para que el banco de
+   * pruebas del panel pueda correr el agente entero sin molestar a nadie.
+   */
+  derivation: AgentDerivation | null;
   // Telemetría del LLM call principal (post-fallback).
   model: string;
   tokensIn: number;

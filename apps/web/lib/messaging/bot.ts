@@ -336,6 +336,86 @@ export async function postWhatsappHandoff(args: {
   });
 }
 
+/**
+ * Modo DERIVE: el asistente le pasó una consulta a un profesional.
+ *
+ * Va al mismo canal que el handoff y con la misma tarjeta, porque para el
+ * equipo es el mismo trabajo: hay una persona esperando respuesta. Lo que
+ * cambia es que aquí ya se sabe a quién le tocó y qué contó el paciente, y eso
+ * es justo lo que evita que alguien tenga que abrir el hilo para enterarse.
+ */
+export async function postWhatsappDerivation(args: {
+  tenantId: string;
+  conversationId: string;
+  patientName: string;
+  phone: string | null;
+  /** Nombre del profesional que recibió el aviso, si se pudo resolver. */
+  professionalName?: string | null;
+  treatmentName?: string | null;
+  summary: string;
+  preferredTime?: string | null;
+  urgent?: boolean;
+  /** true cuando el aviso salió por el número de respaldo. */
+  viaFallback?: boolean;
+  /** false = no se pudo avisar por WhatsApp: lo recoge el equipo desde aquí. */
+  notified: boolean;
+  mentionUserIds?: string[];
+}): Promise<void> {
+  const destino = args.professionalName?.trim() || 'sin profesional asignado';
+  await postSystemEvent({
+    tenantId: args.tenantId,
+    event: 'wa.handoff',
+    title: `${args.urgent ? 'URGENTE · ' : ''}Consulta derivada — ${args.patientName}`,
+    body: joinLines([
+      line('Teléfono', args.phone),
+      line('Para', destino),
+      args.treatmentName ? line('Servicio', args.treatmentName) : null,
+      args.preferredTime ? line('Disponibilidad', args.preferredTime) : null,
+      args.summary.slice(0, 500),
+      args.notified
+        ? args.viaFallback
+          ? 'Aviso enviado al número de respaldo.'
+          : null
+        : 'No se pudo avisar por WhatsApp: hay que pasarle la consulta a mano.',
+    ]),
+    context: {
+      type: 'WA_CONVERSATION',
+      id: args.conversationId,
+      payload: {
+        whatsappConversationId: args.conversationId,
+        patientName: args.patientName,
+        patientPhone: args.phone,
+        professionalName: args.professionalName ?? null,
+        treatmentName: args.treatmentName ?? null,
+        summary: args.summary,
+        notified: args.notified,
+      },
+    },
+    actions: [
+      {
+        id: 'open-wa',
+        label: 'Ver la conversación',
+        tone: 'primary',
+        href: `/dashboard/whatsapp/${args.conversationId}`,
+      },
+      TO_TASK_ACTION,
+    ],
+    mentionUserIds: args.mentionUserIds,
+    // Una tarjeta por consulta derivada: aquí el dedupe no puede ser por día
+    // como en el handoff, porque dos consultas distintas del mismo paciente son
+    // dos avisos distintos. El resumen las distingue.
+    dedupeKey: `evt:wa.derivation:${args.conversationId}:${hashCorto(args.summary)}`,
+  });
+}
+
+function hashCorto(texto: string): string {
+  let h = 0;
+  for (let i = 0; i < texto.length; i++) {
+    h = (h * 31 + texto.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h).toString(36);
+}
+
 /** Recordatorio enviado, cita sin confirmar. Va a #agenda. */
 export async function postReminderNoResponse(args: {
   tenantId: string;

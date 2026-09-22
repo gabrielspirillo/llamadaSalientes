@@ -29,6 +29,7 @@ import { Input, Label, Select, Switch } from '@/components/ui/input';
 import { PROFESSIONAL_COLORS } from '@/lib/agenda/shared';
 import type { TeamCandidate } from '@/lib/agenda/team';
 import { cn } from '@/lib/cn';
+import { parseWhatsappPhone } from '@/lib/whatsapp/phone';
 import { AlertTriangle, ArrowLeft, ArrowRight, Check, Loader2, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
@@ -38,6 +39,8 @@ export interface ProfessionalFormValues {
   fullName: string;
   email: string;
   phone: string;
+  /** WhatsApp en E.164. Es a donde el asistente le deriva las consultas. */
+  whatsappE164: string;
   specialty: string;
   licenseNumber: string;
   color: string;
@@ -56,6 +59,7 @@ const EMPTY: ProfessionalFormValues = {
   fullName: '',
   email: '',
   phone: '',
+  whatsappE164: '',
   specialty: '',
   licenseNumber: '',
   color: PROFESSIONAL_COLORS[0],
@@ -110,6 +114,10 @@ export function loQueFalta(paso: PasoId, values: ProfessionalFormValues): string
   }
   if (paso === 'acceso' && values.linkUserEmail.trim() && !values.linkUserEmail.includes('@')) {
     return 'El email del usuario del panel no es válido.';
+  }
+  if (paso === 'persona' && values.whatsappE164.trim()) {
+    const parsed = parseWhatsappPhone(values.whatsappE164);
+    if (!parsed.ok) return parsed.error;
   }
   return null;
 }
@@ -199,6 +207,10 @@ export function ProfessionalDialog({
       fullName: persona.fullName,
       email: persona.email,
       phone: persona.phone ?? v.phone,
+      // El teléfono que trae Clerk vale como WhatsApp sólo si ya viene con
+      // prefijo: adivinarle el país a un móvil local es lo que manda el aviso
+      // a otro sitio.
+      whatsappE164: v.whatsappE164 || whatsappSugerido(persona.phone) || '',
       // Elegir a alguien del equipo vincula su usuario: es justo lo que hace
       // que después vea su propia agenda al entrar.
       linkUserEmail: persona.email,
@@ -229,6 +241,7 @@ export function ProfessionalDialog({
       fullName: values.fullName,
       email: values.email,
       phone: values.phone,
+      whatsappE164: values.whatsappE164,
       specialty: values.specialty,
       licenseNumber: values.licenseNumber,
       color: values.color,
@@ -539,6 +552,8 @@ function PasoPersona({
           />
         </div>
       </div>
+
+      <WhatsappField value={values.whatsappE164} onChange={(v) => set('whatsappE164', v)} />
 
       <div className="grid gap-1.5">
         <Label>Color en el calendario</Label>
@@ -873,4 +888,58 @@ function PasoHuecos({
       </div>
     </div>
   );
+}
+
+/**
+ * El WhatsApp del profesional.
+ *
+ * Va con su propio campo y no pegado al teléfono porque es el número al que el
+ * asistente le manda las consultas que deriva: si está mal, el mensaje sale
+ * igual —el proveedor no sabe que ese número no existe— y la consulta se pierde
+ * sin que nadie vea un error. Por eso se valida mientras se escribe y se enseña
+ * cómo va a quedar guardado.
+ */
+function WhatsappField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const parsed = React.useMemo(() => (value.trim() ? parseWhatsappPhone(value) : null), [value]);
+
+  return (
+    <div className="grid gap-1.5">
+      <Label htmlFor="pf-whatsapp">WhatsApp</Label>
+      <Input
+        id="pf-whatsapp"
+        inputMode="tel"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="+34 600 11 22 33"
+        aria-invalid={parsed?.ok === false}
+        aria-describedby="pf-whatsapp-hint"
+      />
+      <p
+        id="pf-whatsapp-hint"
+        className={cn(
+          'text-[12px] leading-relaxed',
+          parsed?.ok === false ? 'text-rose-600' : 'text-zinc-500',
+        )}
+      >
+        {parsed?.ok === false
+          ? parsed.error
+          : parsed?.ok
+            ? `Se guardará como ${parsed.e164}. Aquí le llegan las consultas que le derive el asistente.`
+            : 'Con el prefijo del país (+34, +54…). Es donde el asistente de WhatsApp le manda las consultas de los pacientes.'}
+      </p>
+    </div>
+  );
+}
+
+/** El teléfono que trae el equipo sólo se propone si ya es internacional. */
+function whatsappSugerido(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+  const parsed = parseWhatsappPhone(phone);
+  return parsed.ok ? parsed.e164 : null;
 }

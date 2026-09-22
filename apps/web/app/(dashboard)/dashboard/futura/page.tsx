@@ -1,13 +1,16 @@
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
+import { type WhatsappAgentMode, isWhatsappAgentMode } from '@/lib/data/whatsapp-agent-settings';
 import { db } from '@/lib/db/client';
-import { tenants } from '@/lib/db/schema';
+import { tenants, whatsappAgentSettings } from '@/lib/db/schema';
 import { type EnabledModules, MODULE_DEFINITIONS, MODULE_KEYS } from '@/lib/modules';
 import { getCurrentTenant } from '@/lib/tenant';
+import { eq } from 'drizzle-orm';
 import { LayoutDashboard } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { ModuleToggle } from '../configuration/_panels/modules-panel-toggle';
 import { ActivateButton } from './activate-button';
+import { AgentModeDialog } from './agent-mode-dialog';
 import { BrandingDialog } from './branding-dialog';
 import { EnterButton } from './enter-button';
 
@@ -68,8 +71,12 @@ export default async function FuturaPanelPage() {
       enabledModules: tenants.enabledModules,
       logoUrl: tenants.logoUrl,
       createdAt: tenants.createdAt,
+      agentMode: whatsappAgentSettings.agentMode,
+      deriveFallbackPhone: whatsappAgentSettings.deriveFallbackPhone,
     })
-    .from(tenants);
+    .from(tenants)
+    // LEFT: la clínica que nunca se configuró no tiene fila y es 'BOOKING'.
+    .leftJoin(whatsappAgentSettings, eq(whatsappAgentSettings.tenantId, tenants.id));
 
   const clinics = rows
     .map((r) => ({ ...r, status: (r.status ?? 'trial') as Status }))
@@ -118,6 +125,9 @@ export default async function FuturaPanelPage() {
         <div className="space-y-3">
           {clinics.map((c) => {
             const modules = (c.enabledModules ?? {}) as EnabledModules;
+            const agentMode: WhatsappAgentMode = isWhatsappAgentMode(c.agentMode)
+              ? c.agentMode
+              : 'BOOKING';
             const meta = STATUS_META[c.status] ?? { label: c.status, tone: 'neutral' as const };
             const isFutura = c.id === realTenant.id;
             const needsAttention = c.status === 'pending' || c.status === 'onboarding';
@@ -152,6 +162,13 @@ export default async function FuturaPanelPage() {
                   </div>
                   <div className="flex flex-wrap items-center justify-end gap-2">
                     <BrandingDialog tenantId={c.id} name={c.name} logoUrl={c.logoUrl} />
+                    {!isFutura && (
+                      <AgentModeDialog
+                        tenantId={c.id}
+                        mode={agentMode}
+                        fallbackPhone={c.deriveFallbackPhone}
+                      />
+                    )}
                     {!isFutura && (
                       <>
                         {impersonating && c.id === actingTenant.id ? (

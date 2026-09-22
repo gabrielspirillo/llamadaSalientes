@@ -9,10 +9,11 @@ import { Callout, EmptyState } from '@/components/ui/feedback';
 import { HeadRow, TD, TH, THead, TR, Table, TableWrap } from '@/components/ui/table';
 import { getAgendaContext } from '@/lib/agenda/auth';
 import { listProfessionals } from '@/lib/agenda/queries';
+import { getWhatsappAgentSettings } from '@/lib/data/whatsapp-agent-settings';
 import { db } from '@/lib/db/client';
 import { treatments } from '@/lib/db/schema';
 import { and, asc, eq } from 'drizzle-orm';
-import { Info, Plus, Stethoscope, UserCog } from 'lucide-react';
+import { Info, MessageCircle, Plus, Stethoscope, UserCog } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { AgendaNav } from '../agenda-nav';
@@ -26,14 +27,19 @@ export default async function ProfesionalesPage() {
   // enseñar una página que no se puede usar.
   if (!ctx.canManageProfessionals) redirect('/dashboard/agenda');
 
-  const [rows, catalog] = await Promise.all([
+  const [rows, catalog, agentSettings] = await Promise.all([
     listProfessionals(ctx.tenantId, { includeInactive: true }),
     db
       .select({ id: treatments.id, name: treatments.name })
       .from(treatments)
       .where(and(eq(treatments.tenantId, ctx.tenantId), eq(treatments.active, true)))
       .orderBy(asc(treatments.name)),
+    // El modo del asistente cambia lo que hay que avisar: si deriva, un
+    // profesional sin WhatsApp no recibe las consultas de sus pacientes.
+    getWhatsappAgentSettings(ctx.tenantId).catch(() => null),
   ]);
+  const derivando = agentSettings?.mode === 'DERIVE';
+  const sinWhatsapp = rows.filter((p) => p.active && !p.whatsappE164);
 
   return (
     <>
@@ -54,6 +60,20 @@ export default async function ProfesionalesPage() {
       />
 
       <AgendaNav active="profesionales" ctx={{ canManageProfessionals: true }} />
+
+      {derivando && sinWhatsapp.length > 0 && (
+        <Callout tone="warn" icon={<MessageCircle className="h-4 w-4" />} className="mt-5">
+          El asistente de WhatsApp de esta clínica no agenda: le pasa cada consulta al profesional
+          que realiza ese servicio.{' '}
+          <strong>
+            {sinWhatsapp.length === 1
+              ? `${sinWhatsapp[0]?.fullName} no tiene WhatsApp cargado`
+              : `${sinWhatsapp.length} profesionales no tienen WhatsApp cargado`}
+          </strong>
+          : sus consultas se van al número de respaldo. Añádelo en «Configurar», con el prefijo del
+          país.
+        </Callout>
+      )}
 
       {catalog.length === 0 && (
         <Callout tone="brand" icon={<Info className="h-4 w-4" />} className="mt-5">
@@ -90,6 +110,7 @@ export default async function ProfesionalesPage() {
                 <THead>
                   <HeadRow>
                     <TH>Profesional</TH>
+                    <TH>WhatsApp</TH>
                     <TH>Tratamientos</TH>
                     <TH>Horario</TH>
                     <TH>Acceso</TH>
@@ -121,6 +142,15 @@ export default async function ProfesionalesPage() {
                             </div>
                           </div>
                         </div>
+                      </TD>
+                      <TD className="tabular-nums text-zinc-600">
+                        {p.whatsappE164 ? (
+                          p.whatsappE164
+                        ) : derivando && p.active ? (
+                          <Badge tone="warn">Falta</Badge>
+                        ) : (
+                          <span className="text-zinc-400">—</span>
+                        )}
                       </TD>
                       <TD className="tabular-nums text-zinc-600">
                         {p.treatmentCount > 0 ? `${p.treatmentCount}` : '—'}

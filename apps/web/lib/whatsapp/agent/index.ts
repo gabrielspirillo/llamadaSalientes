@@ -1,6 +1,9 @@
 import 'server-only';
 
-import { getWhatsappAgentSettings } from '@/lib/data/whatsapp-agent-settings';
+import {
+  type WhatsappAgentRuntimeSettings,
+  getWhatsappAgentSettings,
+} from '@/lib/data/whatsapp-agent-settings';
 import { getLeadMemory } from '@/lib/memory/lead-memory';
 import { type LlmCallResult, type LlmMessage, callLLM } from './llm';
 import {
@@ -10,6 +13,7 @@ import {
   loadGroundingForTenant,
 } from './prompt';
 
+import { buildDerivationReply } from './derivation';
 import { detectDiagnosis, detectInjection, redactPii } from './guardrails';
 import {
   type AgentToolName,
@@ -17,7 +21,7 @@ import {
   executeAgentTool,
   getAgentToolDefinitions,
 } from './tools';
-import type { AgentInput, AgentIntent, AgentOutput, ToolCallTrace } from './types';
+import type { AgentDerivation, AgentInput, AgentIntent, AgentOutput, ToolCallTrace } from './types';
 
 /**
  * Dependencias inyectables del orquestador. En producción usan las
@@ -37,10 +41,11 @@ export interface AgentRunDeps {
     tenantId: string,
     phoneE164: string,
   ) => Promise<{ profileSummary: string | null; facts: Record<string, unknown> } | null>;
-  /** Personalización por tenant (persona/nombre) — aditiva, no anula reglas. */
-  loadAgentSettings: (
-    tenantId: string,
-  ) => Promise<{ persona: string | null; agentName: string | null } | null>;
+  /**
+   * Ajustes por tenant: personalización de tono/nombre (aditiva, no anula
+   * reglas) y el modo del asistente (si agenda o si deriva al profesional).
+   */
+  loadAgentSettings: (tenantId: string) => Promise<WhatsappAgentRuntimeSettings | null>;
 }
 
 const defaultAgentDeps: AgentRunDeps = {
@@ -87,6 +92,9 @@ export async function runWhatsappAgent(
     deps.loadLeadMemory(input.tenantId, input.contactPhoneE164).catch(() => null),
     deps.loadAgentSettings(input.tenantId).catch(() => null),
   ]);
+  // Sin fila de ajustes, el asistente es el de siempre: una clínica que nunca
+  // pasó por el panel de Futura no puede quedarse sin agendar.
+  const mode = agentSettings?.mode ?? 'BOOKING';
   const system = buildSystemPrompt({
     clinic: grounding.clinic,
     treatments: grounding.treatments,
@@ -98,9 +106,10 @@ export async function runWhatsappAgent(
     persona: agentSettings?.persona ?? null,
     agentName: agentSettings?.agentName ?? null,
     contactPhoneE164: input.contactPhoneE164,
+    mode,
   });
 
-  const tools = getAgentToolDefinitions();
+  const tools = getAgentToolDefinitions(mode);
 
   const messages: LlmMessage[] = [
     { role: 'system', content: system },
@@ -119,6 +128,7 @@ export async function runWhatsappAgent(
   let finalText: string | null = null;
   let handoff = false;
   let urgent = false;
+  let derivation: AgentDerivation | null = null;
   const guardrailFlags: string[] = [];
 
   // Guardrail de ENTRADA: inyección de prompts / jailbreak (OWASP LLM01). Si
@@ -182,6 +192,8 @@ export async function runWhatsappAgent(
         // Su WhatsApp es su teléfono: las tools lo usan para la ficha del
         // paciente y para la cita sin depender de que el modelo lo pase.
         contactPhoneE164: input.contactPhoneE164,
+        mode,
+        deriveFallbackPhone: agentSettings?.deriveFallbackPhone ?? null,
       });
       toolsCalled.push(trace);
 
@@ -199,13 +211,27 @@ export async function runWhatsappAgent(
       } else if (trace.ok && tc.name === 'request_handoff') {
         handoff = true;
         terminalHit = true;
+      } else if (trace.ok && tc.name === 'derive_to_professional') {
+        // Modo DERIVE: el asistente cerró su parte. El aviso al profesional lo
+        // manda el worker; aquí sólo dejamos el parte listo y la despedida.
+        derivation = readDerivation(trace, input.contactPhoneE164, urgent);
+        if (derivation) terminalHit = true;
       }
     }
 
     if (terminalHit) {
-      // request_handoff es la única terminal: la respuesta la pone el
-      // orquestador (plantilla), no el LLM. Descartamos su `text` final.
-      finalText = HANDOFF_RESPONSE_TEXT;
+      // Las terminales las cierra el orquestador con una plantilla, no el LLM:
+      // él no sabe a quién se enrutó la consulta. Descartamos su `text` final.
+      finalText = derivation
+        ? buildDerivationReply({
+            professionalId: derivation.professionalId,
+            professionalName: derivation.professionalName,
+            specialty: null,
+            phoneE164: derivation.phoneE164,
+            treatmentName: derivation.treatmentName,
+            via: derivation.via as 'treatment' | 'unico-profesional' | 'respaldo' | 'sin-destino',
+          })
+        : HANDOFF_RESPONSE_TEXT;
       break;
     }
   }
@@ -221,7 +247,7 @@ export async function runWhatsappAgent(
 
   // Guardrail de SALIDA: sobre respuestas GENERADAS por el LLM (incluye las
   // confirmaciones de cita de urgencia), no sobre la plantilla de handoff.
-  if (finalText && !handoff) {
+  if (finalText && !handoff && !derivation) {
     const redacted = redactPii(finalText);
     if (redacted.count > 0) {
       finalText = redacted.text;
@@ -243,8 +269,12 @@ export async function runWhatsappAgent(
     }
   }
 
-  const intent = deriveIntent({ urgent, handoff, toolsCalled });
-  const intentConfidence = deriveConfidence({ urgent, handoff, toolsCalled });
+  const intent = deriveIntent({ urgent, handoff: handoff || !!derivation, toolsCalled });
+  const intentConfidence = deriveConfidence({
+    urgent,
+    handoff: handoff || !!derivation,
+    toolsCalled,
+  });
 
   // latencyMs total: incluye carga de grounding + todas las vueltas LLM +
   // ejecución de tools. Lo persistimos como latencia "end-to-end" del run.
@@ -258,6 +288,7 @@ export async function runWhatsappAgent(
     responseButtons: null,
     handoff,
     urgent,
+    derivation,
     model,
     tokensIn,
     tokensOut,
@@ -266,6 +297,37 @@ export async function runWhatsappAgent(
     toolsCalled,
     errorText,
     traceId: null,
+  };
+}
+
+/**
+ * Lee el parte que dejó `derive_to_professional` en su traza.
+ *
+ * El destinatario lo resolvió la tool contra la base, no el modelo: aquí sólo
+ * se comprueba el shape. Si viniera roto, devolvemos null y el loop sigue — el
+ * asistente se despide por su cuenta y la consulta queda igual en el inbox.
+ */
+function readDerivation(
+  trace: ToolCallTrace,
+  contactPhoneE164: string,
+  urgentSoFar: boolean,
+): AgentDerivation | null {
+  const d = trace.data;
+  if (!d || typeof d.summary !== 'string' || !d.summary.trim()) return null;
+  return {
+    professionalId: typeof d.professionalId === 'string' ? d.professionalId : null,
+    professionalName: typeof d.professionalName === 'string' ? d.professionalName : null,
+    phoneE164: typeof d.phoneE164 === 'string' ? d.phoneE164 : null,
+    treatmentName: typeof d.treatmentName === 'string' ? d.treatmentName : null,
+    summary: d.summary.trim(),
+    patientName: typeof d.patientName === 'string' ? d.patientName : null,
+    preferredTime: typeof d.preferredTime === 'string' ? d.preferredTime : null,
+    // El flag_urgent del propio run cuenta igual que el urgent=true de la tool:
+    // el profesional tiene que ver la prisa la marque el modelo donde la marque.
+    urgent: d.urgent === true || urgentSoFar,
+    via: typeof d.via === 'string' ? d.via : 'sin-destino',
+    // El teléfono del paciente no sale del modelo: es el del propio WhatsApp.
+    patientPhoneE164: contactPhoneE164,
   };
 }
 
