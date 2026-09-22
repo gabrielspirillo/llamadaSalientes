@@ -32,6 +32,7 @@ import {
   updateProfessional,
 } from '@/lib/agenda/service';
 import { agendaBookAppointment, agendaCheckAvailability } from '@/lib/agenda/voice';
+import { createPatient } from '@/lib/patients/persons';
 import { dispatchTool } from '@/lib/retell/tools';
 import { raw, seedTenant } from './_qa-tasks-helpers';
 
@@ -615,5 +616,38 @@ describe('aislamiento por tenant', () => {
       select count(*)::int as n from professional_treatments
       where professional_id = ${suyo!.id}`;
     expect(filas[0]?.n).toBe(0);
+  });
+});
+
+describe('pacientes-persona (clínicas con perfil de atención)', () => {
+  it('una clínica sin ninguna cita lista a los niños dados de alta, y no al tutor', async () => {
+    // Clínica recién nacida: fichas creadas, ni una sola cita. Antes la lista
+    // se cortaba en "no hay citas" y salía vacía con pacientes ya guardados.
+    const nueva = await seedTenant('agenda-sin-citas', TZ);
+    const persona = await createPatient(
+      { tenantId: nueva.tenantId, userId: nueva.userA },
+      {
+        firstName: 'Martina',
+        lastName: 'Ruiz Gómez',
+        birthDate: '2025-01-15',
+        contactPhone: '+34600111222',
+        contactName: 'Laura Gómez',
+      },
+    );
+
+    const pacientes = await listAgendaPatients(nueva.tenantId, {});
+    expect(pacientes).toHaveLength(1);
+    expect(pacientes[0]).toMatchObject({
+      patientId: persona.id,
+      patientKey: `pat:${persona.id}`,
+      patientName: 'Martina Ruiz Gómez',
+      patientPhone: '+34600111222',
+      birthDate: '2025-01-15',
+      totalAppointments: 0,
+    });
+
+    // Y buscar por el móvil del tutor encuentra al niño, no a la madre.
+    const porTelefono = await listAgendaPatients(nueva.tenantId, { search: '600111222' });
+    expect(porTelefono.map((p) => p.patientName)).toEqual(['Martina Ruiz Gómez']);
   });
 });

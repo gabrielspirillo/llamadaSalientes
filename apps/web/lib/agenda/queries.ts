@@ -614,22 +614,28 @@ export async function listAgendaPatients(
     .orderBy(sql`max(${agendaAppointments.startsAt}) desc`)
     .limit(opts.limit ?? 200);
 
-  if (rows.length === 0) return [];
-
-  const noteCounts = await db
-    .select({ patientKey: clinicalNotes.patientKey, n: sql<number>`count(*)` })
-    .from(clinicalNotes)
-    .where(
-      and(
-        eq(clinicalNotes.tenantId, tenantId),
-        inArray(
-          clinicalNotes.patientKey,
-          rows.map((r) => r.patientKey),
-        ),
-        ...(opts.professionalId ? [eq(clinicalNotes.professionalId, opts.professionalId)] : []),
-      ),
-    )
-    .groupBy(clinicalNotes.patientKey);
+  // Sin ninguna cita en la clínica NO se corta aquí: los pacientes dados de
+  // alta a los que todavía no se les ha dado hora también son pacientes. Una
+  // clínica recién nacida tenía la lista vacía con fichas ya creadas.
+  const noteCounts =
+    rows.length === 0
+      ? []
+      : await db
+          .select({ patientKey: clinicalNotes.patientKey, n: sql<number>`count(*)` })
+          .from(clinicalNotes)
+          .where(
+            and(
+              eq(clinicalNotes.tenantId, tenantId),
+              inArray(
+                clinicalNotes.patientKey,
+                rows.map((r) => r.patientKey),
+              ),
+              ...(opts.professionalId
+                ? [eq(clinicalNotes.professionalId, opts.professionalId)]
+                : []),
+            ),
+          )
+          .groupBy(clinicalNotes.patientKey);
   const noteMap = new Map(noteCounts.map((n) => [n.patientKey, Number(n.n)]));
 
   // El paciente como persona manda sobre lo desnormalizado en la cita: el
