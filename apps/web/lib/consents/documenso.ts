@@ -1,13 +1,19 @@
 import 'server-only';
 
 /**
- * Cliente mínimo de la API v1 de Documenso (instancia propia de cada clínica).
+ * Cliente mínimo de la API v2 de Documenso (instancia propia de cada clínica).
  *
  * Sólo lo que hace falta para el flujo "un clic → el tutor firma desde el
- * móvil": crear el documento con su firmante, subir el PDF, colocar los
- * campos, mandarlo sin correo (el enlace va por WhatsApp) y bajar el PDF
- * firmado cuando Documenso avisa por webhook. Nada de plantillas de Documenso:
- * el PDF lo genera la app con los datos ya rellenos.
+ * móvil": crear el documento con el PDF, el firmante y sus campos en UNA
+ * llamada (multipart), leer el token del firmante para armar su enlace,
+ * distribuirlo sin correo (el enlace va por WhatsApp) y bajar el PDF sellado
+ * cuando Documenso avisa por webhook. Nada de plantillas de Documenso: el PDF
+ * lo genera la app con los datos ya rellenos.
+ *
+ * Por qué v2 y no v1: con el almacenamiento en base de datos (el de estas
+ * instancias, sin S3) la v1 responde "Create document is not available
+ * without S3 transport" — su alta va por URL prefirmada. La v2 sube el fichero
+ * en la misma petición, como la propia interfaz de Documenso.
  *
  * Toda llamada lleva timeout: una instancia caída no puede colgar una Server
  * Action ni el webhook.
@@ -38,11 +44,13 @@ function base(cfg: DocumensoConfig): string {
 async function call<T>(cfg: DocumensoConfig, path: string, init: RequestInit = {}): Promise<T> {
   let res: Response;
   try {
+    // Con FormData el Content-Type (y su boundary) lo pone fetch.
+    const isForm = typeof FormData !== 'undefined' && init.body instanceof FormData;
     res = await fetch(`${base(cfg)}${path}`, {
       ...init,
       headers: {
         Authorization: cfg.apiToken,
-        'Content-Type': 'application/json',
+        ...(isForm ? {} : { 'Content-Type': 'application/json' }),
         ...(init.headers ?? {}),
       },
       signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -66,14 +74,28 @@ async function call<T>(cfg: DocumensoConfig, path: string, init: RequestInit = {
   }
 }
 
-export interface CreatedDocument {
-  documentId: number;
-  uploadUrl: string;
-  recipientId: number;
-  /** Enlace de firma del tutor. Es lo que va por WhatsApp. */
-  signingUrl: string;
+export type DocumensoFieldType = 'SIGNATURE' | 'DATE';
+
+/** Campo del firmante. Porcentajes de la página, origen arriba a la izquierda. */
+export interface DocumensoField {
+  type: DocumensoFieldType;
+  pageNumber: number;
+  pageX: number;
+  pageY: number;
+  width: number;
+  height: number;
 }
 
+export interface CreatedDocument {
+  documentId: number;
+  envelopeId: string;
+}
+
+/**
+ * Crea el documento con el PDF, el tutor como único firmante y sus campos, en
+ * una sola petición multipart. Los correos de Documenso quedan apagados: el
+ * enlace de firma sale por WhatsApp.
+ */
 export async function createDocument(
   cfg: DocumensoConfig,
   input: {
@@ -81,105 +103,87 @@ export async function createDocument(
     /** Nuestro id del consentimiento: vuelve en el webhook y evita ambigüedades. */
     externalId: string;
     recipient: { name: string; email: string };
+    fields: DocumensoField[];
     timezone: string;
+    pdf: Uint8Array;
+    filename?: string;
   },
 ): Promise<CreatedDocument> {
-  const res = await call<{
-    documentId: number;
-    uploadUrl: string;
-    recipients: { recipientId: number; signingUrl: string }[];
-  }>(cfg, '/api/v1/documents', {
-    method: 'POST',
-    body: JSON.stringify({
-      title: input.title,
-      externalId: input.externalId,
-      recipients: [{ name: input.recipient.name, email: input.recipient.email, role: 'SIGNER' }],
-      meta: {
-        timezone: input.timezone,
-        dateFormat: 'dd/MM/yyyy',
-        language: 'es',
-        // Los correos de Documenso no se usan: el enlace va por WhatsApp.
-        emailSettings: {
-          recipientSigningRequest: false,
-          recipientSigned: false,
-          documentCompleted: false,
-          ownerDocumentCompleted: false,
-          recipientRemoved: false,
-          documentPending: false,
-          documentDeleted: false,
-        },
+  const payload = {
+    title: input.title,
+    externalId: input.externalId,
+    recipients: [
+      {
+        name: input.recipient.name,
+        email: input.recipient.email,
+        role: 'SIGNER',
+        fields: input.fields.map((f) => ({
+          type: f.type,
+          pageNumber: f.pageNumber,
+          pageX: f.pageX,
+          pageY: f.pageY,
+          width: f.width,
+          height: f.height,
+          fieldMeta: { type: f.type === 'SIGNATURE' ? 'signature' : 'date', required: true },
+        })),
       },
-    }),
-  });
-  const recipient = res.recipients[0];
-  if (!recipient) throw new DocumensoError('Documenso creó el documento sin firmante.');
-  return {
-    documentId: res.documentId,
-    uploadUrl: res.uploadUrl,
-    recipientId: recipient.recipientId,
-    signingUrl: recipient.signingUrl,
+    ],
+    meta: {
+      timezone: input.timezone,
+      dateFormat: 'dd/MM/yyyy',
+      language: 'es',
+      distributionMethod: 'NONE',
+      signingOrder: 'PARALLEL',
+      typedSignatureEnabled: true,
+      drawSignatureEnabled: true,
+      uploadSignatureEnabled: false,
+      emailSettings: {
+        recipientSigningRequest: false,
+        recipientRemoved: false,
+        recipientSigned: false,
+        documentPending: false,
+        documentCompleted: false,
+        documentDeleted: false,
+        ownerDocumentCompleted: false,
+        ownerRecipientExpired: false,
+        ownerDocumentCreated: false,
+      },
+    },
   };
-}
 
-/** Sube el PDF a la URL prefirmada que devolvió `createDocument`. */
-export async function uploadPdf(
-  cfg: DocumensoConfig,
-  uploadUrl: string,
-  bytes: Uint8Array,
-): Promise<void> {
-  const put = async (withAuth: boolean) =>
-    fetch(uploadUrl, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/pdf',
-        ...(withAuth ? { Authorization: cfg.apiToken } : {}),
-      },
-      body: bytes as BodyInit,
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-  // Una URL prefirmada de S3 rechaza cabeceras de más; la subida "a base de
-  // datos" de Documenso, en cambio, es su propio endpoint y pide el token.
-  let res = await put(false);
-  if (res.status === 401 || res.status === 403) res = await put(true);
-  if (!res.ok) {
-    throw new DocumensoError(
-      `No se pudo subir el PDF a Documenso (${res.status}): ${(await res.text()).slice(0, 200)}`,
-      res.status,
-    );
-  }
-}
+  const form = new FormData();
+  form.append('payload', JSON.stringify(payload));
+  form.append(
+    'file',
+    new Blob([input.pdf as BlobPart], { type: 'application/pdf' }),
+    input.filename ?? 'consentimiento.pdf',
+  );
 
-export type DocumensoFieldType = 'SIGNATURE' | 'DATE' | 'CHECKBOX' | 'TEXT';
-
-export interface DocumensoField {
-  recipientId: number;
-  type: DocumensoFieldType;
-  pageNumber: number;
-  /** Porcentajes de la página, origen arriba a la izquierda. */
-  pageX: number;
-  pageY: number;
-  pageWidth: number;
-  pageHeight: number;
-  fieldMeta?: Record<string, unknown>;
-}
-
-export async function addFields(
-  cfg: DocumensoConfig,
-  documentId: number,
-  fields: DocumensoField[],
-): Promise<void> {
-  if (fields.length === 0) return;
-  await call(cfg, `/api/v1/documents/${documentId}/fields`, {
+  const res = await call<{ envelopeId: string; id: number }>(cfg, '/api/v2/document/create', {
     method: 'POST',
-    body: JSON.stringify(fields),
+    body: form,
   });
+  return { documentId: res.id, envelopeId: res.envelopeId };
+}
+
+/**
+ * El enlace de firma del tutor: `<instancia>/sign/<token del firmante>`. Es
+ * lo que va por WhatsApp. Se lee del documento porque el alta no lo devuelve.
+ */
+export async function getSigningUrl(cfg: DocumensoConfig, documentId: number): Promise<string> {
+  const doc = await call<{
+    recipients?: { id: number; role: string; token: string }[];
+  }>(cfg, `/api/v2/document/${documentId}`);
+  const signer = (doc.recipients ?? []).find((r) => r.role === 'SIGNER') ?? doc.recipients?.[0];
+  if (!signer?.token) throw new DocumensoError('Documenso creó el documento sin firmante.');
+  return `${base(cfg)}/sign/${signer.token}`;
 }
 
 /** Pasa el documento a "pendiente de firma" sin mandar correos. */
-export async function sendDocument(cfg: DocumensoConfig, documentId: number): Promise<void> {
-  await call(cfg, `/api/v1/documents/${documentId}/send`, {
+export async function distributeDocument(cfg: DocumensoConfig, documentId: number): Promise<void> {
+  await call(cfg, '/api/v2/document/distribute', {
     method: 'POST',
-    body: JSON.stringify({ sendEmail: false, sendCompletionEmails: false }),
+    body: JSON.stringify({ documentId, meta: { distributionMethod: 'NONE' } }),
   });
 }
 
@@ -193,7 +197,7 @@ export async function getDocument(
   cfg: DocumensoConfig,
   documentId: number,
 ): Promise<DocumensoDocumentStatus> {
-  return call<DocumensoDocumentStatus>(cfg, `/api/v1/documents/${documentId}`);
+  return call<DocumensoDocumentStatus>(cfg, `/api/v2/document/${documentId}`);
 }
 
 /**
