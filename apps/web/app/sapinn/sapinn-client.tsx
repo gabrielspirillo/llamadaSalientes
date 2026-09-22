@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 
 // Prefijos del selector. La autoridad es la lista blanca del backend; esto es
-// comodidad de UI. Sólo los dos territorios del cliente: España es el mercado
-// del piloto y Portugal el otro país donde tiene delegados. Ofrecer media
-// Latinoamérica en una demo para una farmacéutica española era ruido.
+// comodidad de UI. España es el mercado del piloto y Portugal el otro país
+// donde el cliente tiene delegados; Argentina está para que podamos probarla
+// nosotros. Los tres están en DEFAULT_DEMO_ALLOWED_COUNTRY_CODES.
 const PREFIXES = [
   { code: '+34', label: 'España +34' },
   { code: '+351', label: 'Portugal +351' },
+  { code: '+54', label: 'Argentina +54' },
 ];
 
 // Lo que el pliego pide que no se negocie, y que la demo demuestra en vivo.
@@ -375,20 +376,20 @@ export function SapinnDemo() {
               </div>
             )}
           </section>
+          {/* ── Qué va a pasar en la llamada. Va en la columna de la consola
+                 para que toda la página quepa en una pantalla. ── */}
+          <section className="sp-steps sp-enter" style={{ animationDelay: '.18s' }}>
+            <h2 className="sp-steps-h">Qué vas a escuchar</h2>
+            <ol className="sp-steps-list">
+              {STEPS.map((s, i) => (
+                <li key={s}>
+                  <span className="sp-step-n">{String(i + 1).padStart(2, '0')}</span>
+                  <span>{s}</span>
+                </li>
+              ))}
+            </ol>
+          </section>
         </div>
-
-        {/* ── Qué va a pasar en la llamada ── */}
-        <section className="sp-steps sp-enter" style={{ animationDelay: '.18s' }}>
-          <h2 className="sp-steps-h">Qué vas a escuchar</h2>
-          <ol className="sp-steps-list">
-            {STEPS.map((s, i) => (
-              <li key={s}>
-                <span className="sp-step-n">{String(i + 1).padStart(2, '0')}</span>
-                <span>{s}</span>
-              </li>
-            ))}
-          </ol>
-        </section>
       </main>
     </div>
   );
@@ -456,7 +457,7 @@ const CSS = `
 
 /* ── Barra ── */
 .sp-bar{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:center;gap:16px;
-  padding:20px clamp(18px,4vw,44px);border-bottom:1px solid rgba(255,255,255,.055);}
+  padding:clamp(12px,1.8vh,18px) clamp(18px,4vw,44px);flex:none;border-bottom:1px solid rgba(255,255,255,.055);}
 .sp-lockup{font-size:.82rem;font-weight:600;letter-spacing:-.005em;color:var(--hi);}
 .sp-lockup i{color:var(--lime);margin:0 6px;font-style:normal;font-weight:500;}
 .sp-badge{display:inline-flex;align-items:center;gap:8px;font-size:.68rem;font-weight:600;letter-spacing:.1em;
@@ -466,38 +467,47 @@ const CSS = `
 
 /* ── Layout ── */
 .sp-main{position:relative;z-index:2;flex:1;width:100%;max-width:1160px;margin:0 auto;
-  padding:clamp(34px,6vh,70px) clamp(18px,4vw,44px) clamp(40px,7vh,72px);}
-/* Dos filas a la izquierda (titular y garantías) y la consola ocupando las dos
-   a la derecha. En una columna el orden cambia: titular · consola · garantías. */
-.sp-split{display:grid;grid-template-columns:1.06fr .94fr;
-  grid-template-areas:"intro panel" "support panel";
-  column-gap:clamp(30px,5vw,66px);row-gap:32px;align-items:start;}
+  padding:clamp(20px,3.2vh,44px) clamp(18px,4vw,44px) clamp(22px,3.4vh,46px);}
+/* Rejilla pensada para caber en una pantalla: a la izquierda titular y
+   garantías, a la derecha la consola y los pasos de la llamada.
+   En una columna el orden cambia: titular · consola · garantías · pasos. */
+.sp-split{display:grid;grid-template-columns:1.04fr .96fr;
+  grid-template-areas:"intro panel" "support panel" "support steps";
+  column-gap:clamp(28px,4.4vw,58px);row-gap:clamp(18px,2.4vh,26px);align-items:start;}
 .sp-intro{grid-area:intro;}
 .sp-support{grid-area:support;}
 .sp-panel{grid-area:panel;}
+.sp-steps{grid-area:steps;}
 @media(max-width:940px){
-  .sp-split{grid-template-columns:1fr;grid-template-areas:"intro" "panel" "support";row-gap:30px;}
+  .sp-split{grid-template-columns:1fr;grid-template-areas:"intro" "panel" "support" "steps";row-gap:28px;}
+}
+
+/* Una sola vista cuando hay altura para ello. Por debajo de 760px de alto la
+   página vuelve a hacer scroll: es preferible a recortar contenido. */
+@media(min-width:941px) and (min-height:760px){
+  .sp-root{height:100svh;overflow:hidden;}
+  .sp-main{display:flex;flex-direction:column;justify-content:center;}
 }
 
 /* ── Columna de texto ── */
-.sp-eyebrow{margin:0 0 18px;font-size:.7rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--lime);}
-.sp-title{margin:0;color:var(--hi);font-size:clamp(2.2rem,4.5vw,3.5rem);font-weight:660;line-height:1.05;letter-spacing:-.032em;}
+.sp-eyebrow{margin:0 0 clamp(10px,1.4vh,16px);font-size:.7rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--lime);}
+.sp-title{margin:0;color:var(--hi);font-size:clamp(2rem,3.9vw,3.15rem);font-weight:660;line-height:1.05;letter-spacing:-.032em;}
 /* El padding/margin compensados ensanchan la caja que pinta el degradado sin
    mover el texto: sin ellos, background-clip:text recorta el último glifo. */
 .sp-title-hl{background:linear-gradient(180deg,var(--lime-br),var(--lime) 60%,var(--lime-dp) 135%);
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
   padding-right:.08em;margin-right:-.08em;}
-.sp-lead{margin:20px 0 0;max-width:46ch;font-size:clamp(.98rem,1.5vw,1.08rem);line-height:1.6;color:var(--tx);font-weight:420;}
+.sp-lead{margin:clamp(12px,1.6vh,18px) 0 0;max-width:46ch;font-size:clamp(.92rem,1.3vw,1.02rem);line-height:1.55;color:var(--tx);font-weight:420;}
 
 /* Hechos: rejilla de datos, no bullets de marketing */
 .sp-facts{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin:0;padding:1px;
   background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden;}
 @media(max-width:440px){.sp-facts{grid-template-columns:1fr;}}
-.sp-fact{background:#070b0e;padding:15px 16px;}
+.sp-fact{background:#070b0e;padding:clamp(10px,1.4vh,14px) 14px;}
 .sp-fact dt{margin:0 0 5px;font-size:.66rem;font-weight:660;letter-spacing:.11em;text-transform:uppercase;color:var(--lime);}
 .sp-fact dd{margin:0;font-size:.85rem;line-height:1.45;color:var(--hi);font-weight:430;}
 
-.sp-note{margin:24px 0 0;max-width:58ch;font-size:.78rem;line-height:1.65;color:var(--dim);
+.sp-note{margin:clamp(12px,1.8vh,18px) 0 0;max-width:58ch;font-size:.74rem;line-height:1.55;color:var(--dim);
   border-left:2px solid rgba(139,216,53,.34);padding-left:14px;}
 .sp-note strong{color:var(--tx);font-weight:600;}
 
@@ -515,11 +525,11 @@ const CSS = `
 .sp-seg-btn:hover{color:var(--hi);}
 .sp-seg-btn.is-on{background:rgba(139,216,53,.14);color:var(--lime-br);box-shadow:inset 0 0 0 1px rgba(139,216,53,.3);}
 
-.sp-console{display:flex;flex-direction:column;align-items:center;padding:26px 14px 18px;}
-.sp-console-hint{margin:0 0 24px;max-width:34ch;text-align:center;font-size:.82rem;line-height:1.5;color:var(--dim);}
+.sp-console{display:flex;flex-direction:column;align-items:center;padding:clamp(14px,2.2vh,22px) 14px clamp(10px,1.6vh,16px);}
+.sp-console-hint{margin:0 0 clamp(12px,2vh,20px);max-width:34ch;text-align:center;font-size:.82rem;line-height:1.5;color:var(--dim);}
 
 /* ── Botón de llamada: contenido, sin pulso permanente ── */
-.sp-orb{position:relative;width:132px;height:132px;border-radius:50%;border:none;background:none;padding:0;
+.sp-orb{position:relative;width:clamp(96px,11vh,124px);height:clamp(96px,11vh,124px);border-radius:50%;border:none;background:none;padding:0;
   cursor:pointer;display:grid;place-items:center;-webkit-tap-highlight-color:transparent;
   transition:transform .4s var(--out);}
 .sp-orb:hover{transform:scale(1.03);}
@@ -547,7 +557,7 @@ const CSS = `
 .sp-spin-sm{width:14px;height:14px;border-width:2px;}
 @keyframes sp-spin{to{transform:rotate(360deg)}}
 
-.sp-state{margin:22px 0 0;text-align:center;font-size:.92rem;font-weight:520;letter-spacing:-.008em;color:var(--tx);transition:color .3s var(--out);}
+.sp-state{margin:clamp(12px,1.8vh,18px) 0 0;text-align:center;font-size:.92rem;font-weight:520;letter-spacing:-.008em;color:var(--tx);transition:color .3s var(--out);}
 .sp-state-connecting,.sp-state-live{color:var(--lime-br);}
 .sp-actions{display:flex;gap:10px;margin-top:18px;}
 
@@ -586,11 +596,10 @@ const CSS = `
   background:rgba(255,111,94,.08);border:1px solid rgba(255,111,94,.22);border-radius:10px;padding:10px 13px;}
 
 /* ── Qué vas a escuchar ── */
-.sp-steps{margin-top:clamp(40px,6vh,72px);border-top:1px solid rgba(255,255,255,.06);padding-top:clamp(26px,4vh,38px);}
-.sp-steps-h{margin:0 0 22px;font-size:.7rem;font-weight:660;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);}
-.sp-steps-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(18px,3vw,38px);}
-@media(max-width:780px){.sp-steps-list{grid-template-columns:1fr;gap:16px;}}
-.sp-steps-list li{display:flex;gap:13px;align-items:flex-start;font-size:.87rem;line-height:1.55;color:var(--tx);}
+.sp-steps{border-top:1px solid rgba(255,255,255,.06);padding-top:clamp(16px,2.2vh,22px);}
+.sp-steps-h{margin:0 0 14px;font-size:.68rem;font-weight:660;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);}
+.sp-steps-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;}
+.sp-steps-list li{display:flex;gap:11px;align-items:flex-start;font-size:.82rem;line-height:1.5;color:var(--tx);}
 .sp-step-n{flex:none;font-size:.72rem;font-weight:700;letter-spacing:.06em;color:var(--lime);
   border:1px solid rgba(139,216,53,.3);border-radius:7px;padding:3px 7px;background:rgba(139,216,53,.07);}
 
