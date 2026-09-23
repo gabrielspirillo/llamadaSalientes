@@ -33,6 +33,7 @@ import {
 } from '@/lib/agenda/service';
 import { agendaBookAppointment, agendaCheckAvailability } from '@/lib/agenda/voice';
 import { createPatient } from '@/lib/patients/persons';
+import { upsertWhatsappContact } from '@/lib/whatsapp/persist';
 import { dispatchTool } from '@/lib/retell/tools';
 import { raw, seedTenant } from './_qa-tasks-helpers';
 
@@ -649,5 +650,33 @@ describe('pacientes-persona (clínicas con perfil de atención)', () => {
     // Y buscar por el móvil del tutor encuentra al niño, no a la madre.
     const porTelefono = await listAgendaPatients(nueva.tenantId, { search: '600111222' });
     expect(porTelefono.map((p) => p.patientName)).toEqual(['Martina Ruiz Gómez']);
+  });
+});
+
+describe('aislamiento de la lista de pacientes', () => {
+  it('los contactos y los niños de otra clínica no salen en la lista de esta', async () => {
+    const a = await seedTenant('lista-a', TZ);
+    const b = await seedTenant('lista-b', TZ);
+
+    // Clínica A: dos contactos sueltos (sin cita) y un niño con ficha.
+    await upsertWhatsappContact({ tenantId: a.tenantId, phoneE164: '+34611111111', name: 'Javi' });
+    await upsertWhatsappContact({ tenantId: a.tenantId, phoneE164: '+34622222222', name: 'Lucía' });
+    await createPatient(
+      { tenantId: a.tenantId, userId: a.userA },
+      { firstName: 'Nico', lastName: 'De A', birthDate: '2025-03-01', contactPhone: '+34633333333' },
+    );
+    // Clínica B: un solo contacto propio.
+    await upsertWhatsappContact({ tenantId: b.tenantId, phoneE164: '+34644444444', name: 'Solo B' });
+
+    const deB = await listAgendaPatients(b.tenantId, {});
+    expect(deB.map((p) => p.patientName)).toEqual(['Solo B']);
+
+    const deA = await listAgendaPatients(a.tenantId, {});
+    expect(deA.map((p) => p.patientName).sort()).toEqual(['Javi', 'Lucía', 'Nico De A']);
+    // El tutor de Nico (+34633333333) no sale como paciente: de él cuelga un niño.
+    expect(deA.some((p) => p.patientPhone === '+34633333333' && p.patientId === null)).toBe(false);
+
+    // Y buscar desde B por un teléfono de A no encuentra nada.
+    expect(await listAgendaPatients(b.tenantId, { search: '611111111' })).toHaveLength(0);
   });
 });
