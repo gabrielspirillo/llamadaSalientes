@@ -313,6 +313,19 @@ sus pacientes. Por eso el diálogo pregunta primero qué arrastra:
   los agentes, su historia sigue en la ficha de cada paciente, y se puede
   reactivar. El borrado duro se rechaza en el servicio, no sólo en la UI.
 
+**Quitar a un paciente o contacto sin historia** (`RemovePatientButton` en
+Agenda → Pacientes; acciones en `patient-removal-actions.ts`). Existe porque el
+banco de pruebas de `/dashboard/agent` corre con tools reales sobre la clínica
+que se está gestionando: cada prueba de `register_patient` deja un contacto de
+mentira en la libreta de esa clínica, y el panel no tenía forma de borrarlo.
+Sólo admin, sólo filas con 0 citas y 0 notas, y el servidor lo vuelve a
+comprobar (`previewPatientDeletion`/`deletePatient` en `lib/patients/persons.ts`,
+`previewContactDeletion`/`deleteContact` en `lib/patients/registry.ts`). Con
+citas, notas, un consentimiento firmado o niños a cargo se rechaza: eso es
+historia y no se borra desde aquí. Al borrar un contacto se van en cascada sus
+conversaciones y notas de WhatsApp (el diálogo avisa cuántos mensajes). Las
+filas `ghl:`/`email:` no se tocan: vienen del CRM.
+
 **Roles**:
 - `admin` de la clínica y Futura: configuran profesionales, horarios,
   tratamientos y bloqueos. Futura entra impersonando y `getCurrentTenant` ya

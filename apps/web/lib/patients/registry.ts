@@ -1,9 +1,16 @@
 import 'server-only';
-import { and, eq, or, sql } from 'drizzle-orm';
+import { and, count, eq, inArray, or, sql } from 'drizzle-orm';
 
-import { normalizePatientPhone } from '@/lib/agenda/patients';
+import { contactRefsFor, normalizePatientPhone } from '@/lib/agenda/patients';
 import { db } from '@/lib/db/client';
-import { whatsappContacts } from '@/lib/db/schema';
+import {
+  agendaAppointments,
+  clinicalNotes,
+  patients,
+  whatsappContacts,
+  whatsappConversations,
+  whatsappMessages,
+} from '@/lib/db/schema';
 
 /**
  * Fichero de pacientes de la plataforma.
@@ -257,4 +264,114 @@ export async function resolveContactNames(
   }
 
   return out;
+}
+
+// ─── Quitar un contacto ──────────────────────────────────────────────────────
+
+export interface ContactDeletionPreview {
+  name: string | null;
+  phone: string;
+  appointments: number;
+  notes: number;
+  /** Niños que cuelgan de este contacto (es su tutor). */
+  patients: number;
+  /** Mensajes de WhatsApp que se irían con él. */
+  messages: number;
+  canDelete: boolean;
+}
+
+/**
+ * Qué arrastraría borrar un contacto de la libreta. Existe para limpiar los
+ * contactos que dejan las pruebas del asistente: se ejecutan con tools reales
+ * sobre la clínica que se está gestionando y dan de alta a gente que no
+ * existe. Con citas, notas o niños a su cargo no se borra: eso es historia.
+ */
+export async function previewContactDeletion(
+  tenantId: string,
+  contactId: string,
+): Promise<ContactDeletionPreview | null> {
+  const rows = await db
+    .select({
+      id: whatsappContacts.id,
+      phone: whatsappContacts.phoneE164,
+      name: whatsappContacts.name,
+      email: whatsappContacts.email,
+      ghlContactId: whatsappContacts.ghlContactId,
+    })
+    .from(whatsappContacts)
+    .where(and(eq(whatsappContacts.tenantId, tenantId), eq(whatsappContacts.id, contactId)))
+    .limit(1);
+  const contact = rows[0];
+  if (!contact) return null;
+
+  const refs = contactRefsFor({
+    ghlContactId: contact.ghlContactId,
+    phone: contact.phone,
+    email: contact.email,
+  });
+  const refsFilter = refs.length > 0 ? inArray(agendaAppointments.patientKey, refs) : sql`false`;
+  const noteRefsFilter = refs.length > 0 ? inArray(clinicalNotes.patientKey, refs) : sql`false`;
+
+  const [[appts], [notes], [kids], [messages]] = await Promise.all([
+    db
+      .select({ n: count() })
+      .from(agendaAppointments)
+      .where(
+        and(
+          eq(agendaAppointments.tenantId, tenantId),
+          or(refsFilter, eq(agendaAppointments.patientPhone, contact.phone)),
+        ),
+      ),
+    db
+      .select({ n: count() })
+      .from(clinicalNotes)
+      .where(and(eq(clinicalNotes.tenantId, tenantId), noteRefsFilter)),
+    db
+      .select({ n: count() })
+      .from(patients)
+      .where(and(eq(patients.tenantId, tenantId), eq(patients.contactId, contactId))),
+    db
+      .select({ n: count() })
+      .from(whatsappMessages)
+      .innerJoin(
+        whatsappConversations,
+        eq(whatsappConversations.id, whatsappMessages.conversationId),
+      )
+      .where(
+        and(
+          eq(whatsappConversations.tenantId, tenantId),
+          eq(whatsappConversations.contactId, contactId),
+        ),
+      ),
+  ]);
+
+  const appointments = Number(appts?.n ?? 0);
+  const noteCount = Number(notes?.n ?? 0);
+  const kidCount = Number(kids?.n ?? 0);
+  return {
+    name: contact.name,
+    phone: contact.phone,
+    appointments,
+    notes: noteCount,
+    patients: kidCount,
+    messages: Number(messages?.n ?? 0),
+    canDelete: appointments === 0 && noteCount === 0 && kidCount === 0,
+  };
+}
+
+/**
+ * Borra un contacto sin historia. Sus conversaciones y mensajes se van con él
+ * (cascada en la base); las citas y las notas lo impiden antes.
+ */
+export async function deleteContact(tenantId: string, contactId: string): Promise<void> {
+  const preview = await previewContactDeletion(tenantId, contactId);
+  if (!preview) throw new Error('Ese contacto no existe en esta clínica.');
+  if (!preview.canDelete) {
+    throw new Error(
+      'Este contacto tiene citas, notas o pacientes a su cargo y no se puede borrar.',
+    );
+  }
+  await db
+    .delete(whatsappContacts)
+    .where(and(eq(whatsappContacts.tenantId, tenantId), eq(whatsappContacts.id, contactId)));
 }

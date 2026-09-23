@@ -1,4 +1,5 @@
 import { PatientDialog } from '@/components/agenda/patient-dialog';
+import { RemovePatientButton } from '@/components/agenda/remove-patient-button';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -162,13 +163,22 @@ export default async function AgendaPacientesPage({
                         {p.noteCount > 0 ? `${p.noteCount} nota(s)` : '—'}
                       </TD>
                       <TD className="text-right">
-                        <Button asChild variant="ghost" size="sm">
-                          <Link
-                            href={`/dashboard/agenda/pacientes/${encodeURIComponent(p.patientKey)}`}
-                          >
-                            Abrir ficha
-                          </Link>
-                        </Button>
+                        <div className="inline-flex items-center gap-1">
+                          <Button asChild variant="ghost" size="sm">
+                            <Link
+                              href={`/dashboard/agenda/pacientes/${encodeURIComponent(p.patientKey)}`}
+                            >
+                              Abrir ficha
+                            </Link>
+                          </Button>
+                          {/* Sólo sin historia y sólo admin: las altas de prueba del asistente. */}
+                          {ctx.canManageProfessionals &&
+                            p.totalAppointments === 0 &&
+                            p.noteCount === 0 &&
+                            (p.patientId !== null || p.patientKey.startsWith('tel:')) && (
+                              <RemovePatientButton patientKey={p.patientKey} name={p.patientName} />
+                            )}
+                        </div>
                       </TD>
                     </TR>
                   ))}
