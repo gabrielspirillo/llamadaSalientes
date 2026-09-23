@@ -8,12 +8,7 @@ import { PatientDialog } from '@/components/agenda/patient-dialog';
 import { type PatientFact, PatientHeader } from '@/components/agenda/patient-header';
 import { PatientMarks } from '@/components/agenda/patient-marks';
 import { PatientReviewAlert } from '@/components/agenda/patient-review-alert';
-import {
-  type PatientTab,
-  type PatientTabItem,
-  PatientTabs,
-  isPatientTab,
-} from '@/components/agenda/patient-tabs';
+import { PatientTabs } from '@/components/agenda/patient-tabs';
 import { TodayAppointmentCard, type TodayItem } from '@/components/agenda/today-appointment-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,6 +17,7 @@ import { EmptyState } from '@/components/ui/feedback';
 import { getAgendaContext } from '@/lib/agenda/auth';
 import { buildBillingLines, describeConcept, summarizeBilling } from '@/lib/agenda/billing';
 import { listPatientCharges } from '@/lib/agenda/charges';
+import { type PatientTab, type PatientTabItem, isPatientTab } from '@/lib/agenda/patient-tabs';
 import { getPatientDossier, listProfessionals, resolveTimezone } from '@/lib/agenda/queries';
 import { STATUS_LABELS } from '@/lib/agenda/shared';
 import {
