@@ -8,6 +8,12 @@ import {
   requireAgendaManager,
   requireAgendaWriter,
 } from '@/lib/agenda/auth';
+import { type PaymentMethod, parseAmountToCents } from '@/lib/agenda/billing';
+import {
+  assertChargeAppointmentInScope,
+  assertChargeInScope,
+  registerPayment,
+} from '@/lib/agenda/charges';
 import { getAppointment } from '@/lib/agenda/queries';
 import {
   AgendaPolicyError,
@@ -649,6 +655,61 @@ export async function refreshConsentAction(
     const result = await refreshConsent({ tenantId: ctx.tenantId, consentId });
     revalidatePatient(patientId);
     return { ok: true, data: result };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+// ─── Cobros por cita (pestaña Contable de la ficha) ──────────────────────────
+
+/**
+ * Registra el pago de una cita: importe, método y fecha. Quien puede dar citas
+ * puede cobrarlas. El comprobante, si lo hay, sube aparte por
+ * `POST /api/agenda/charges/files`: un archivo no cabe en una Server Action.
+ */
+export async function registerPaymentAction(input: {
+  appointmentId?: string | null;
+  chargeId?: string | null;
+  /** Lo que tecleó recepción: "45", "45,50", "45.5"… */
+  amount: string;
+  /** 'YYYY-MM-DD'. */
+  paidOn: string;
+  paymentMethod: PaymentMethod;
+}): Promise<ActionResult<{ chargeId: string }>> {
+  try {
+    const ctx = await requireAgendaWriter();
+    const amountCents = parseAmountToCents(input.amount);
+    if (amountCents === null) return { ok: false, error: 'El importe no es válido.' };
+
+    const onlyProfessionalId = ctx.scope === 'OWN' ? ctx.professional?.id : undefined;
+    if (input.appointmentId) {
+      await assertChargeAppointmentInScope(ctx.tenantId, input.appointmentId, onlyProfessionalId);
+    } else if (input.chargeId) {
+      await assertChargeInScope(ctx.tenantId, input.chargeId, onlyProfessionalId);
+    } else {
+      return { ok: false, error: 'Falta la cita que se cobra.' };
+    }
+
+    const result = await registerPayment(
+      { tenantId: ctx.tenantId, userId: ctx.userId },
+      {
+        appointmentId: input.appointmentId ?? null,
+        chargeId: input.chargeId ?? null,
+        amountCents,
+        paidOn: input.paidOn,
+        paymentMethod: input.paymentMethod,
+      },
+    );
+    await recordAudit({
+      tenantId: ctx.tenantId,
+      actorUserId: ctx.userId,
+      action: 'update',
+      entity: 'patient_charge',
+      entityId: result.chargeId,
+      after: { amountCents, paymentMethod: input.paymentMethod, paidOn: input.paidOn },
+    }).catch(() => undefined);
+    revalidatePath(`/dashboard/agenda/pacientes/${encodeURIComponent(result.patientKey)}`);
+    return { ok: true, data: { chargeId: result.chargeId } };
   } catch (err) {
     return fail(err);
   }

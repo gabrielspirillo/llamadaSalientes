@@ -82,6 +82,12 @@ export const anamnesisItemSchema = z.object({
   key: anamnesisKey,
   label: z.string().trim().min(1).max(80),
   hint: z.string().trim().max(200).optional(),
+  /**
+   * Un "sí" en este ítem sale en la línea "A tener en cuenta" de la cabecera
+   * de la ficha (prematuro, ingresos, alergias…). Lo decide la plantilla de
+   * la clínica, no el código.
+   */
+  alert: z.boolean().optional(),
 });
 export const anamnesisTemplateSchema = z.array(anamnesisItemSchema).max(40);
 export type AnamnesisItem = z.infer<typeof anamnesisItemSchema>;
@@ -119,6 +125,41 @@ export function describeAnamnesis(template: AnamnesisItem[], answers: AnamnesisA
       return `${item.label}: ${a.value ? 'sí' : 'no'}${detail ? ` (${detail})` : ''}`;
     })
     .filter((s): s is string => s !== null)
+    .join(' · ');
+}
+
+/**
+ * Lo que hay que tener presente al atender: los "sí" de los ítems marcados
+ * como alerta en la plantilla, con su detalle, más el motivo de la prioridad
+ * manual si lo hay. Es la línea "A tener en cuenta" de la cabecera de la
+ * ficha. Vacío = nada anotado.
+ */
+export function describeWatchouts(
+  template: AnamnesisItem[],
+  answers: AnamnesisAnswers,
+  extra: { priorityFlag?: boolean; priorityReason?: string | null } = {},
+): string[] {
+  const out: string[] = [];
+  if (extra.priorityFlag && extra.priorityReason?.trim()) out.push(extra.priorityReason.trim());
+  for (const item of template) {
+    if (!item.alert) continue;
+    const a = answers[item.key];
+    if (!a || a.value !== true) continue;
+    const detail = a.detail.trim();
+    out.push(detail ? `${item.label}: ${detail}` : item.label);
+  }
+  return out;
+}
+
+/**
+ * "Laura · Iván": sólo los nombres, para la cabecera. Un tutor sin nombre sale
+ * por su rol ("Mamá") y "no hay" no sale: la cabecera cuenta quién está, no
+ * quién falta.
+ */
+export function guardianNames(guardians: Guardian[]): string {
+  return guardians
+    .filter((g) => g.role !== 'NINGUNO')
+    .map((g) => g.name.trim() || GUARDIAN_ROLE_LABELS[g.role])
     .join(' · ');
 }
 

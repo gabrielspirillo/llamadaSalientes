@@ -28,7 +28,9 @@ export type AuditEntity =
   // Paciente como persona (migración 0030).
   | 'patient'
   | 'professional_schedule'
-  | 'agenda_appointment';
+  | 'agenda_appointment'
+  // Cobros por cita (migración 0034).
+  | 'patient_charge';
 
 export async function recordAudit(input: {
   tenantId: string;

@@ -747,6 +747,74 @@ queda en el bucket interno. Migraciones `0032_consentimientos.sql` (tablas) y
   Documenso sale por Resend (`NEXT_PRIVATE_SMTP_TRANSPORT=resend`); sólo se usa
   para la cuenta, no para firmar.
 
+## Ficha del paciente: cabecera, pestañas y Contable (diseño "Perfil Paciente v3")
+
+La ficha (`/dashboard/agenda/pacientes/[key]`) sigue el diseño de Claude Design
+"Perfil paciente Respisens" (`Perfil Paciente v3.dc.html`, variante 1b
+"cabecera + pestañas"), pedido para Respinens y aplicado a **todas** las
+clínicas: lo pediátrico (edad, tutores, anamnesis, caritas) sólo sale cuando
+la clave es `pat:` y la clínica tiene perfil; el resto ve la misma cabecera y
+las mismas pestañas con sus datos de contacto.
+
+- **Cabecera** (`components/agenda/patient-header.tsx`): tarjeta con nombre,
+  prioridad y reseña como badges, "Editar" (el `PatientDialog` de siempre) y una
+  tira de datos: Edad · Nacimiento · Tutores · Última sesión · **A tener en
+  cuenta**. Esa última línea la arma `describeWatchouts()`
+  (`lib/care-profile/policy.ts`): los "sí" de los ítems de la anamnesis con
+  `alert: true` en la plantilla, más el motivo de la prioridad manual. Qué
+  ítems avisan lo decide la plantilla de la clínica (`0034` marca los de
+  Respinens: enfermedad importante, prematuro, ingresos, alergias, PA, RGE,
+  antecedentes), nunca el código.
+- **Pestañas por URL** (`?tab=visita|anamnesis|historia|citas|contable`,
+  `components/agenda/patient-tabs.tsx`): contenido de servidor, sólo se pinta
+  la activa (regla de rendimiento del panel). Anamnesis sólo con plantilla.
+  Contadores: `9/14` en Anamnesis (en móvil, lo pendiente), nº de notas, nº de
+  citas y **cobros pendientes** en Contable; en ámbar cuando piden acción. En
+  móvil las pestañas quedan pegadas bajo el topbar (`top-[68px]`) con icono.
+  Para quien no puede escribir notas, la pestaña por defecto es Historia.
+- **Visita de hoy**: el `ClinicalNoteForm` con cabecera ("Hoy 17:30 · Dra.
+  Ruiz · Fisioterapia"), **"Partir de la anterior"** (copia la última nota al
+  formulario) y botón de guardar pegado abajo en móvil. A la derecha, sólo en
+  escritorio, el resumen fijo: chips de la anamnesis con enlace a completar,
+  última visita con su próximo paso, Marcas y Consentimiento. En móvil, en su
+  lugar, un aviso "Anamnesis: N sin contestar → Completar" y la última visita
+  en línea. El aviso médico pendiente (`needs_human_review`) va bajo la
+  cabecera (`patient-review-alert.tsx`), con "Ya valorado".
+- **Historia**: línea de tiempo, **la más reciente arriba** (así lo trae el
+  diseño v3; antes la pediátrica iba en orden cronológico).
+- **Anamnesis**: lo pendiente primero y en ámbar, barra de progreso. El orden
+  se fija con lo guardado, no con el borrador: una fila que salta al
+  contestarla es lo peor que le puede pasar a quien está tecleando.
+
+**Contable** (migración `0034_cobros_paciente.sql`, tablas `patient_charges` y
+`patient_charge_files`): Facturado / Cobrado / Pendiente, y por cada cita el
+pago (importe, método, fecha) y sus comprobantes.
+
+- **Las líneas son las citas, no los cargos** (`buildBillingLines`,
+  `lib/agenda/billing.ts`, puro y con tests en `tests/unit/agenda-cobros.test.ts`):
+  una cita sin cargo sale PENDIENTE con el precio del tratamiento
+  (`treatments.price_cents`) como importe; una cancelada sin cargo no sale; un
+  cargo suelto o cuya cita se borró se lista igual. Un cargo por cita (único
+  parcial): registrar el pago dos veces corrige el mismo.
+- `amount_cents` **NULL = "sin importe"**, que no es 0 €: pasa cuando se
+  adjunta la factura antes de cobrar (`ensureChargeForAppointment` crea el
+  cargo PENDIENTE). No cuenta en Facturado pero sí como pendiente.
+- **El pago va por Server Action** (`registerPaymentAction`) y **el comprobante
+  por endpoint** (`POST /api/agenda/charges/files`, multipart): un archivo no
+  cabe en una acción y hay que rechazarlo por tipo y tamaño antes del bucket.
+  Si el pago entra y el archivo no, el panel lo dice tal cual. Allowlist: JPG,
+  PNG, WEBP, HEIC y PDF, hasta 15 MB. Sin kind explícito, un PDF es Factura y
+  una foto Justificante (`inferChargeFileKind`).
+- Los comprobantes van al **bucket interno** (`S3_BUCKET_INTERNAL`, key
+  `tenants/<tenant>/charges/<cargo>/<uuid>.<ext>`): una factura lleva nombre y
+  DNI del tutor. `GET /api/agenda/charges/files/[id]` firma la URL en cada
+  lectura (10 min) y redirige; la fila se busca por (clínica, id) y, para un
+  profesional que sólo ve su agenda, por su cita.
+- **Quién**: quien puede dar citas puede cobrarlas (`requireAgendaWriter`); un
+  profesional restringido sólo sus citas (`assertChargeAppointmentInScope`,
+  `assertChargeInScope`; un cargo suelto no es de nadie y se le niega). Los
+  importes se leen con `parseAmountToCents` ("45", "45,50", "1.250,00").
+
 ## Módulo Mensajes (core, sin gate de `enabled_modules`)
 
 Sección `/dashboard/messages` (label "Mensajes"). Chat interno del equipo. Transversal, como Tareas.

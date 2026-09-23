@@ -818,7 +818,8 @@ export interface PatientDossier {
   ghlContactId: string | null;
   /** El paciente como persona, cuando la clave es `pat:`. */
   patient: PatientPerson | null;
-  appointments: CalendarAppointment[];
+  /** Con el precio del tratamiento: es el importe por defecto al cobrar la cita. */
+  appointments: (CalendarAppointment & { treatmentPriceCents: number | null })[];
   notes: (ClinicalNoteRow & { professionalName: string; authorEmail: string | null })[];
 }
 
@@ -854,6 +855,7 @@ export async function getPatientDossier(
       professionalName: professionals.fullName,
       professionalColor: professionals.color,
       treatmentName: treatments.name,
+      treatmentPriceCents: treatments.priceCents,
     })
     .from(agendaAppointments)
     .innerJoin(professionals, eq(professionals.id, agendaAppointments.professionalId))
@@ -900,6 +902,7 @@ export async function getPatientDossier(
       professionalName: r.professionalName,
       professionalColor: r.professionalColor,
       treatmentName: r.treatmentName ?? null,
+      treatmentPriceCents: r.treatmentPriceCents ?? null,
       patientBirthDate: person?.birthDate ?? null,
       patientPriorityFlag: person?.priorityFlag ?? false,
     })),

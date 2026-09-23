@@ -2307,3 +2307,72 @@ export const clinicalNotes = pgTable(
     appointmentIdx: index('clinical_notes_appointment_idx').on(t.appointmentId),
   }),
 );
+
+// ─── Cobros por cita y comprobantes (migración 0034) ─────────────────────────
+// La pestaña "Contable" de la ficha del paciente. Un cargo por cita (o suelto),
+// PENDING hasta que se registra el pago, y sus comprobantes en el bucket
+// interno. `amount_cents` NULL = importe sin fijar todavía.
+
+export const patientCharges = pgTable(
+  'patient_charges',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    patientKey: text('patient_key').notNull(),
+    patientId: uuid('patient_id').references(() => patients.id, { onDelete: 'set null' }),
+    appointmentId: uuid('appointment_id').references(() => agendaAppointments.id, {
+      onDelete: 'set null',
+    }),
+    concept: text('concept').notNull(),
+    /** Null mientras nadie fijó el importe. */
+    amountCents: integer('amount_cents'),
+    currency: text('currency').notNull().default('EUR'),
+    /** PENDING | PAID */
+    status: text('status').notNull().default('PENDING'),
+    /** CARD | CASH | BIZUM | TRANSFER */
+    paymentMethod: text('payment_method'),
+    /** Fecha de calendario 'YYYY-MM-DD', no un instante. */
+    paidOn: date('paid_on', { mode: 'string' }),
+    paidByUserId: uuid('paid_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+    createdByUserId: uuid('created_by_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    patientIdx: index('patient_charges_patient_idx').on(t.tenantId, t.patientKey, t.createdAt),
+    appointmentUniq: uniqueIndex('patient_charges_appointment_uniq')
+      .on(t.tenantId, t.appointmentId)
+      .where(sql`appointment_id IS NOT NULL`),
+  }),
+);
+
+export const patientChargeFiles = pgTable(
+  'patient_charge_files',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    chargeId: uuid('charge_id')
+      .references(() => patientCharges.id, { onDelete: 'cascade' })
+      .notNull(),
+    /** INVOICE | RECEIPT | PROOF */
+    kind: text('kind').notNull().default('RECEIPT'),
+    fileName: text('file_name').notNull(),
+    /** Key en el bucket interno. La URL se firma en cada lectura. */
+    storageKey: text('storage_key').notNull(),
+    mimeType: text('mime_type').notNull(),
+    sizeBytes: integer('size_bytes').notNull(),
+    uploadedByUserId: uuid('uploaded_by_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    chargeIdx: index('patient_charge_files_charge_idx').on(t.chargeId, t.createdAt),
+  }),
+);
