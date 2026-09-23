@@ -33,7 +33,11 @@ export type AuditEntity =
   | 'patient_charge'
   // Historia clínica y consentimiento: entran en la actividad de la ficha.
   | 'clinical_note'
-  | 'patient_consent';
+  | 'patient_consent'
+  // Módulo Finanzas (migración 0036).
+  | 'finance_entry'
+  | 'finance_category'
+  | 'finance_settings';
 
 export async function recordAudit(input: {
   tenantId: string;

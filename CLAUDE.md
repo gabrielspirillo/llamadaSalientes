@@ -876,6 +876,79 @@ pago (importe, método, fecha) y sus comprobantes.
   `assertChargeInScope`; un cargo suelto no es de nadie y se le niega). Los
   importes se leen con `parseAmountToCents` ("45", "45,50", "1.250,00").
 
+## Módulo Finanzas (contratable: `enabled_modules.finance`)
+
+Sección `/dashboard/finanzas` (label "Finanzas", icono cartera). Lo pidió
+**Respinens**: ver el negocio entero —lo que entra contra lo que sale, con los
+tickets y las facturas guardados— y los indicadores que dicen si la clínica va
+bien. Es un módulo contratable como WhatsApp o las llamadas: la migración
+`0036_finanzas.sql` se lo enciende a Respinens (por slug, como el perfil de
+atención) y Futura lo enciende o apaga a cualquiera desde Configuración →
+Módulos. Sin él, el sidebar lo muestra con candado y `ModuleGate` lo tapa.
+
+**Los cobros de las citas NO se duplican.** La ficha del paciente sigue siendo
+la dueña de `patient_charges`; el módulo los LEE y los une con su libro propio
+en un libro unificado (`LedgerLine`, `lib/finance/model.ts`). Tres fuentes:
+
+| `source` | Qué es | De dónde |
+|---|---|---|
+| `entry` | Gasto o ingreso que no viene de una cita (alquiler, luz, un bono) | `finance_entries` |
+| `charge` | El cobro de una cita, tal como lo dejó la ficha | `patient_charges` + su cita |
+| `appointment` | Sesión ya pasada y no anulada **sin ningún cargo**: la fuga de cobro | `agenda_appointments` sin fila en `patient_charges` |
+
+**Tablas** (`0036`): `finance_categories` (con la marca **`is_fixed`**: se paga
+haya o no pacientes; es lo que sostiene el punto de equilibrio),
+`finance_entries` (dos fechas: `occurred_on` = devengo, `paid_on` = caja),
+`finance_entry_files` (comprobantes en el bucket interno, URL firmada en cada
+lectura por `GET /api/finanzas/files/[id]`) y `finance_settings` (objetivo de
+ingresos mensual). Se siembran 14 categorías de gasto y 3 de ingreso la primera
+vez (`ensureFinanceProvisioned`, idempotente por único parcial); se renombran o
+archivan, no se borran.
+
+**Caja o devengo** (`basis`, en la URL): caja cuenta lo pagado por fecha de
+pago; devengo cuenta por la fecha del gasto o de la sesión, pagado o no. Lo
+pendiente de cobrar y de pagar es un **saldo a fecha**, no un flujo: una sesión
+de hace tres meses sin cobrar sigue pendiente aunque el período sea "este mes"
+(`openBalances`). Los períodos en curso (este mes, trimestre, año) van hasta
+HOY y se comparan con el mismo tramo transcurrido del anterior
+(`resolvePeriod`): comparar 23 días de septiembre con agosto entero diría que
+el mes va fatal.
+
+**Pestañas por URL** (`?tab=`): **Resumen** (sólo admin: KPI con variación,
+semáforo de salud, punto de equilibrio, objetivo, ingresos vs gastos, resultado
+acumulado, gastos por categoría, ingresos por tratamiento/profesional/método,
+fijos vs variables, pendiente de cobro por antigüedad), **Movimientos** (el
+libro con filtros de período, base, tipo, estado, categoría, profesional,
+método, origen y texto; alta/edición/pago/comprobante/borrado por línea; "traer
+gastos recurrentes del mes"), **Documentos** (todos los comprobantes, del libro
+y de los cobros de citas; subir uno abre el alta con el archivo puesto: no
+existe un comprobante sin su gasto) y **Ajustes** (sólo admin: categorías,
+casilla de fijo, objetivo mensual). `GET /api/finanzas/export` devuelve el
+libro filtrado en CSV a la española (`;`, coma decimal, BOM) para la gestoría.
+
+**El semáforo** (`healthReport`, umbrales en `HEALTH_THRESHOLDS`): margen neto,
+ingresos vs anterior, pendiente de cobro sobre ingresos, cobertura de fijos,
+dependencia de un profesional, sesiones sin cobro registrado y punto de
+equilibrio (fijos mensuales / (ticket medio − variable por sesión)). Cada señal
+lleva icono, valor y explicación; nunca sólo color. Todo lo puro tiene tests en
+`tests/unit/finanzas-modelo.test.ts`.
+
+**Roles** (`lib/finance/auth.ts`): `admin` (la dueña, y Futura) lo ve todo y es
+quien borra; `operator` (recepción) carga gastos y comprobantes y ve el libro;
+`viewer` y un profesional con acceso restringido no entran. Los cobros de las
+citas se tocan desde la ficha del paciente, nunca desde aquí.
+
+**Recurrentes**: un gasto marcado `is_recurring` se puede "traer" al mes actual
+desde Movimientos: se copia PENDIENTE con `dedupe_key = rec:<raíz>:<YYYY-MM>`,
+así que volver a pulsar no duplica (`replicateRecurring`). No hay cron: es un
+clic a principio de mes.
+
+**Gráficos**: `components/finanzas/finance-charts.tsx` (recharts, por
+`charts-lazy.tsx`). Un solo eje por gráfico; el color sigue a la entidad (una
+categoría conserva su color aunque cambie el filtro: se pasa `colorIndex` desde
+el catálogo, no desde el ranking); ingresos en verde de marca, gastos en gris
+neutro, resultado como línea oscura.
+
 ## Módulo Mensajes (core, sin gate de `enabled_modules`)
 
 Sección `/dashboard/messages` (label "Mensajes"). Chat interno del equipo. Transversal, como Tareas.

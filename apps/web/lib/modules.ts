@@ -1,7 +1,7 @@
 // Catálogo de módulos contratables por tenant. Fase 1: bloqueo solo visual.
 // Source-of-truth de la columna `tenants.enabled_modules` (jsonb).
 
-export type ModuleKey = 'whatsapp' | 'outbound' | 'inbound';
+export type ModuleKey = 'whatsapp' | 'outbound' | 'inbound' | 'finance';
 
 export const MODULE_DEFINITIONS: Record<
   ModuleKey,
@@ -27,6 +27,11 @@ export const MODULE_DEFINITIONS: Record<
     description: 'Recepción de llamadas con agente de voz + transferencias',
     routes: ['/dashboard/calls'],
   },
+  finance: {
+    label: 'Finanzas',
+    description: 'Ingresos, gastos, comprobantes y salud del negocio',
+    routes: ['/dashboard/finanzas'],
+  },
 };
 
 export const MODULE_KEYS = Object.keys(MODULE_DEFINITIONS) as ModuleKey[];
@@ -37,6 +42,7 @@ export const DEFAULT_ENABLED_MODULES: EnabledModules = {
   whatsapp: false,
   outbound: false,
   inbound: false,
+  finance: false,
 };
 
 export function isModuleEnabled(
