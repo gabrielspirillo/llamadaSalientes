@@ -21,6 +21,8 @@ export function isPatientTab(value: unknown): value is PatientTab {
 
 export interface PatientTabItem {
   value: PatientTab;
+  /** La URL de la pestaña, ya resuelta en el servidor: al cliente no le llegan funciones. */
+  href: string;
   label: string;
   /** Etiqueta corta para móvil ("Hoy"). */
   shortLabel?: string;
