@@ -32,6 +32,7 @@ import {
   Sparkles,
   Stethoscope,
   Users,
+  Wallet,
   X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -92,6 +93,12 @@ const ENTRIES: readonly NavEntry[] = [
   {
     kind: 'link',
     item: { href: '/dashboard/analytics', label: 'Métricas', icon: BarChart3, tone: 'sky' },
+  },
+  // Módulo contratable (`enabled_modules.finance`): sale con candado en las
+  // clínicas que no lo tienen, como los canales.
+  {
+    kind: 'link',
+    item: { href: '/dashboard/finanzas', label: 'Finanzas', icon: Wallet, tone: 'honey' },
   },
   {
     kind: 'group',

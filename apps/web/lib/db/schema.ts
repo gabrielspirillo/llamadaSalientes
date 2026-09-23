@@ -28,8 +28,10 @@ export const tenants = pgTable('tenants', {
   plan: text('plan').notNull().default('starter'),
   status: text('status').notNull().default('active'), // active|suspended|trial
   clerkOrganizationId: text('clerk_organization_id').notNull().unique(),
+  // `finance` llegó después (migración 0036): las filas viejas no traen la
+  // clave y `isModuleEnabled` la lee como apagada.
   enabledModules: jsonb('enabled_modules')
-    .$type<{ whatsapp: boolean; outbound: boolean; inbound: boolean }>()
+    .$type<{ whatsapp: boolean; outbound: boolean; inbound: boolean; finance?: boolean }>()
     .notNull()
     .default({ whatsapp: false, outbound: false, inbound: false }),
   // Marca propia de la clínica (white-label). Las pone Futura desde su panel.
@@ -2381,3 +2383,118 @@ export const patientChargeFiles = pgTable(
     chargeIdx: index('patient_charge_files_charge_idx').on(t.chargeId, t.createdAt),
   }),
 );
+
+// ─── Módulo Finanzas (migración 0036) ────────────────────────────────────────
+// Categorías de gasto e ingreso, el libro de movimientos que no vienen de una
+// cita, sus comprobantes y el objetivo mensual. Los cobros de citas siguen en
+// `patient_charges`: el módulo los LEE, no los copia.
+
+export const financeCategories = pgTable(
+  'finance_categories',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    /** INCOME | EXPENSE */
+    kind: text('kind').notNull(),
+    slug: text('slug').notNull(),
+    name: text('name').notNull(),
+    /** Coste fijo: se paga haya o no pacientes. */
+    isFixed: boolean('is_fixed').notNull().default(false),
+    sortOrder: integer('sort_order').notNull().default(0),
+    active: boolean('active').notNull().default(true),
+    isSystem: boolean('is_system').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    slugUniq: uniqueIndex('finance_categories_slug_uniq').on(t.tenantId, t.kind, t.slug),
+  }),
+);
+
+export const financeEntries = pgTable(
+  'finance_entries',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    /** INCOME | EXPENSE */
+    kind: text('kind').notNull(),
+    categoryId: uuid('category_id').references(() => financeCategories.id, {
+      onDelete: 'set null',
+    }),
+    concept: text('concept').notNull(),
+    /** Proveedor (gasto) o quien paga (ingreso). */
+    counterparty: text('counterparty'),
+    amountCents: integer('amount_cents').notNull(),
+    taxCents: integer('tax_cents').notNull().default(0),
+    currency: text('currency').notNull().default('EUR'),
+    /** Devengo: 'YYYY-MM-DD'. */
+    occurredOn: date('occurred_on', { mode: 'string' }).notNull(),
+    /** PENDING | PAID */
+    status: text('status').notNull().default('PAID'),
+    /** Caja: 'YYYY-MM-DD'. Null mientras está pendiente. */
+    paidOn: date('paid_on', { mode: 'string' }),
+    /** CARD | CASH | BIZUM | TRANSFER | DIRECT_DEBIT */
+    paymentMethod: text('payment_method'),
+    professionalId: uuid('professional_id').references(() => professionals.id, {
+      onDelete: 'set null',
+    }),
+    isRecurring: boolean('is_recurring').notNull().default(false),
+    /** 'rec:<origen>:<YYYY-MM>' al replicar un recurrente. */
+    dedupeKey: text('dedupe_key'),
+    notes: text('notes'),
+    createdByUserId: uuid('created_by_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    occurredIdx: index('finance_entries_occurred_idx').on(t.tenantId, t.occurredOn),
+    paidIdx: index('finance_entries_paid_idx')
+      .on(t.tenantId, t.paidOn)
+      .where(sql`paid_on IS NOT NULL`),
+    dedupeUniq: uniqueIndex('finance_entries_dedupe_uniq')
+      .on(t.tenantId, t.dedupeKey)
+      .where(sql`dedupe_key IS NOT NULL`),
+  }),
+);
+
+export const financeEntryFiles = pgTable(
+  'finance_entry_files',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    entryId: uuid('entry_id')
+      .references(() => financeEntries.id, { onDelete: 'cascade' })
+      .notNull(),
+    /** INVOICE | RECEIPT | PROOF */
+    kind: text('kind').notNull().default('RECEIPT'),
+    fileName: text('file_name').notNull(),
+    /** Key en el bucket interno. La URL se firma en cada lectura. */
+    storageKey: text('storage_key').notNull(),
+    mimeType: text('mime_type').notNull(),
+    sizeBytes: integer('size_bytes').notNull(),
+    uploadedByUserId: uuid('uploaded_by_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    entryIdx: index('finance_entry_files_entry_idx').on(t.entryId, t.createdAt),
+  }),
+);
+
+export const financeSettings = pgTable('finance_settings', {
+  tenantId: uuid('tenant_id')
+    .primaryKey()
+    .references(() => tenants.id, { onDelete: 'cascade' }),
+  /** Objetivo de ingresos al mes. Null = sin objetivo. */
+  monthlyRevenueGoalCents: integer('monthly_revenue_goal_cents'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
