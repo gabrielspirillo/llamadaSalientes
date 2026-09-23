@@ -39,13 +39,11 @@ const ICONS: Record<PatientTab, LucideIcon> = {
 export function PatientTabs({
   items,
   active,
-  hrefFor,
   headerId,
   identity,
 }: {
   items: PatientTabItem[];
   active: PatientTab;
-  hrefFor: (tab: PatientTab) => string;
   /** Id de la cabecera: cuando deja de verse, aparece la identidad compacta. */
   headerId?: string;
   identity?: { name: string; chips: string[] };
@@ -117,11 +115,11 @@ export function PatientTabs({
           return (
             <a
               key={it.value}
-              href={hrefFor(it.value)}
+              href={it.href}
               onClick={(e) => {
                 if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
                 e.preventDefault();
-                go(it.value, hrefFor(it.value));
+                go(it.value, it.href);
               }}
               aria-current={isActive ? 'page' : undefined}
               className={cn(

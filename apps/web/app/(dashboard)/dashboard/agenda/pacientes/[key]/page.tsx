@@ -226,11 +226,12 @@ export default async function PacienteDossierPage({
   const scheduleHref = `/dashboard/agenda?paciente=${encodeURIComponent(patientKey)}`;
 
   const tabItems: PatientTabItem[] = [
-    { value: 'visita', label: 'Visita de hoy', shortLabel: 'Hoy' },
+    { value: 'visita', href: hrefFor('visita'), label: 'Visita de hoy', shortLabel: 'Hoy' },
     ...(hasAnamnesis
       ? [
           {
             value: 'anamnesis' as const,
+            href: hrefFor('anamnesis'),
             label: 'Anamnesis',
             count: `${answered}/${template.length}`,
             mobileCount: pendingAnamnesis > 0 ? String(pendingAnamnesis) : null,
@@ -240,22 +241,25 @@ export default async function PacienteDossierPage({
       : []),
     {
       value: 'historia',
+      href: hrefFor('historia'),
       label: 'Historia',
       count: visibleNotes.length > 0 ? String(visibleNotes.length) : null,
     },
     {
       value: 'citas',
+      href: hrefFor('citas'),
       label: 'Citas',
       count: dossier.appointments.length > 0 ? String(dossier.appointments.length) : null,
     },
     {
       value: 'contable',
+      href: hrefFor('contable'),
       label: 'Contable',
       count: billingTotals.dueCount > 0 ? String(billingTotals.dueCount) : null,
       mobileCount: billingTotals.dueCount > 0 ? String(billingTotals.dueCount) : null,
       warn: billingTotals.dueCount > 0,
     },
-    { value: 'actividad', label: 'Actividad' },
+    { value: 'actividad', href: hrefFor('actividad'), label: 'Actividad' },
   ];
 
   // ─── Cabecera ───────────────────────────────────────────────────────────
@@ -526,7 +530,6 @@ export default async function PacienteDossierPage({
         <PatientTabs
           items={tabItems}
           active={tab}
-          hrefFor={hrefFor}
           headerId={HEADER_ID}
           identity={{ name: dossier.patientName, chips: watchouts.map(formatWatchout) }}
         />
