@@ -20,6 +20,10 @@ export interface AppointmentDialogSeed {
   professionalId: string;
   dateKey: string;
   startMinute: number;
+  /** Cita para un paciente concreto (viene de su ficha): va rellena. */
+  patientId?: string | null;
+  patientName?: string | null;
+  patientPhone?: string | null;
 }
 
 interface Professional {
@@ -83,9 +87,9 @@ export function AppointmentDialog({
   const [dateKey, setDateKey] = React.useState(seed.dateKey);
   const [time, setTime] = React.useState(hhmm(seed.startMinute));
   const [duration, setDuration] = React.useState(30);
-  const [patientName, setPatientName] = React.useState('');
-  const [patientId, setPatientId] = React.useState('');
-  const [patientPhone, setPatientPhone] = React.useState('');
+  const [patientName, setPatientName] = React.useState(seed.patientName ?? '');
+  const [patientId, setPatientId] = React.useState(seed.patientId ?? '');
+  const [patientPhone, setPatientPhone] = React.useState(seed.patientPhone ?? '');
   const [patientEmail, setPatientEmail] = React.useState('');
   const [notes, setNotes] = React.useState('');
   const [allowOutsideHours, setAllowOutsideHours] = React.useState(false);
@@ -273,7 +277,7 @@ export function AppointmentDialog({
                       'rounded-full px-2.5 py-1 text-[12px] font-semibold tabular-nums transition-colors',
                       time === hhmm(s.startMinute)
                         ? 'bg-brand-600 text-white'
-                        : 'bg-white text-zinc-700 ring-1 ring-[--color-border] hover:bg-brand-50',
+                        : 'bg-white text-zinc-700 ring-1 ring-(--color-border) hover:bg-brand-50',
                     )}
                   >
                     {hhmm(s.startMinute)}

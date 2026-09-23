@@ -95,7 +95,7 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
 
       <form
         onSubmit={handleCreate}
-        className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-4"
+        className="rounded-[22px] border border-(--color-border) bg-white shadow-[var(--shadow-soft)] p-4"
       >
         <p className="mb-3 text-sm font-semibold text-zinc-900">Nueva respuesta rápida</p>
         <div className="grid gap-2 sm:grid-cols-[200px_1fr_auto]">
@@ -104,7 +104,7 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
             value={shortcut}
             onChange={(e) => setShortcut(e.target.value.replace(/[^a-z0-9_-]/gi, '').slice(0, 32))}
             placeholder="Atajo (por ejemplo: saludo)"
-            className="rounded-lg border border-[--color-border] px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+            className="rounded-lg border border-(--color-border) px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
             required
           />
           <textarea
@@ -113,7 +113,7 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
             placeholder="Texto que se insertará al escribir /saludo"
             rows={2}
             maxLength={4096}
-            className="rounded-lg border border-[--color-border] px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+            className="rounded-lg border border-(--color-border) px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
             required
           />
           <button
@@ -126,7 +126,7 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
         </div>
       </form>
 
-      <div className="overflow-x-auto rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)]">
+      <div className="overflow-x-auto rounded-[22px] border border-(--color-border) bg-white shadow-[var(--shadow-soft)]">
         <table className="w-full text-sm">
           <thead className="bg-zinc-50 text-left text-xs uppercase text-zinc-500">
             <tr>
@@ -136,7 +136,7 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
               <th className="px-4 py-2" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-[--color-border-subtle]">
+          <tbody className="divide-y divide-(--color-border-subtle)">
             {rows.length === 0 && (
               <tr>
                 <td colSpan={4} className="px-4 py-6 text-center text-sm text-zinc-500">
@@ -156,7 +156,7 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
                         onChange={(e) =>
                           setEditShortcut(e.target.value.replace(/[^a-z0-9_-]/gi, '').slice(0, 32))
                         }
-                        className="w-full rounded border border-[--color-border] px-2 py-1 text-xs"
+                        className="w-full rounded border border-(--color-border) px-2 py-1 text-xs"
                       />
                     ) : (
                       `/${r.shortcut}`
@@ -168,7 +168,7 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
                         value={editText}
                         onChange={(e) => setEditText(e.target.value)}
                         rows={2}
-                        className="w-full rounded border border-[--color-border] px-2 py-1 text-xs"
+                        className="w-full rounded border border-(--color-border) px-2 py-1 text-xs"
                       />
                     ) : (
                       <span className="line-clamp-2 text-zinc-700">{r.text}</span>
@@ -191,7 +191,7 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
                         <button
                           type="button"
                           onClick={cancelEdit}
-                          className="rounded-lg border border-[--color-border] px-2 py-1 text-xs"
+                          className="rounded-lg border border-(--color-border) px-2 py-1 text-xs"
                         >
                           Cancelar
                         </button>
@@ -201,7 +201,7 @@ export function QuickRepliesAdmin({ initial }: { initial: Row[] }) {
                         <button
                           type="button"
                           onClick={() => startEdit(r)}
-                          className="rounded-lg border border-[--color-border] px-2 py-1 text-xs hover:bg-zinc-50"
+                          className="rounded-lg border border-(--color-border) px-2 py-1 text-xs hover:bg-zinc-50"
                         >
                           Editar
                         </button>

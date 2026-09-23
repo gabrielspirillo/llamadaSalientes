@@ -154,7 +154,7 @@ function QuickSwitcherPanel({ onClose }: { onClose: () => void }) {
           }
         }}
       >
-        <div className="relative flex items-center gap-3 border-b border-[--color-border-subtle] px-5 py-4">
+        <div className="relative flex items-center gap-3 border-b border-(--color-border-subtle) px-5 py-4">
           <span
             aria-hidden
             className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(95,168,150,0.12),transparent_70%)]"
@@ -200,7 +200,7 @@ function QuickSwitcherPanel({ onClose }: { onClose: () => void }) {
                       i === cursor ? 'bg-brand-50' : 'hover:bg-zinc-100/70',
                     )}
                   >
-                    <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-brand-600 ring-1 ring-[--color-border]">
+                    <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-brand-600 ring-1 ring-(--color-border)">
                       {r.type === 'person' ? (
                         <User className="h-4 w-4" />
                       ) : r.dm ? (
@@ -228,7 +228,7 @@ function QuickSwitcherPanel({ onClose }: { onClose: () => void }) {
           )}
         </div>
 
-        <div className="flex items-center justify-between border-t border-[--color-border-subtle] bg-[#fbfaff] px-5 py-2.5 text-[12px] text-zinc-500">
+        <div className="flex items-center justify-between border-t border-(--color-border-subtle) bg-[#fbfaff] px-5 py-2.5 text-[12px] text-zinc-500">
           <span>↑↓ para moverte · ↵ para abrir · Esc para cerrar</span>
           <span className="tabular-nums">⌘J</span>
         </div>

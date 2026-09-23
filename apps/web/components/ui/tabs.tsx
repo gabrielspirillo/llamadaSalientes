@@ -14,7 +14,7 @@ export const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      'scrollbar-none inline-flex h-11 max-w-full items-center gap-1 overflow-x-auto rounded-full border border-[--color-border] bg-white/70 p-1 text-zinc-500 backdrop-blur-xl',
+      'scrollbar-none inline-flex h-11 max-w-full items-center gap-1 overflow-x-auto rounded-full border border-(--color-border) bg-white/70 p-1 text-zinc-500 backdrop-blur-xl',
       className,
     )}
     {...props}
@@ -71,7 +71,7 @@ export function SegmentedNav({
   return (
     <div
       className={cn(
-        'scrollbar-none inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-[--color-border] bg-white/70 p-1 backdrop-blur-xl',
+        'scrollbar-none inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-(--color-border) bg-white/70 p-1 backdrop-blur-xl',
         className,
       )}
     >

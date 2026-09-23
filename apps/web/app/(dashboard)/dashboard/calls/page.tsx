@@ -84,7 +84,7 @@ export default async function CallsPage({
         <Card className="overflow-hidden">
           {/* --- Filtros ---------------------------------------------------- */}
           <form
-            className="flex flex-col gap-3 border-b border-[--color-border-subtle] p-4 sm:p-5 md:flex-row md:flex-wrap md:items-center"
+            className="flex flex-col gap-3 border-b border-(--color-border-subtle) p-4 sm:p-5 md:flex-row md:flex-wrap md:items-center"
             action="/dashboard/calls"
           >
             <div className="relative flex-1 md:min-w-[240px]">
@@ -279,7 +279,7 @@ export default async function CallsPage({
                 </TableWrap>
               </div>
 
-              <div className="flex items-center justify-between border-t border-[--color-border-subtle] bg-[#fafbfb] p-4 text-[13px] text-zinc-500 sm:px-5">
+              <div className="flex items-center justify-between border-t border-(--color-border-subtle) bg-[#fafbfb] p-4 text-[13px] text-zinc-500 sm:px-5">
                 <span className="inline-flex items-center gap-2">
                   <Phone className="h-3.5 w-3.5" />
                   Mostrando {realCalls.length} de {realCalls.length}

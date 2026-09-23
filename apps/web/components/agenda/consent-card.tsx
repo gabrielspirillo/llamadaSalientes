@@ -18,7 +18,18 @@ import {
 } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/ui/feedback';
 import { Input, Label } from '@/components/ui/input';
-import { AlertTriangle, Check, Copy, FileSignature, Loader2, RefreshCw, Send } from 'lucide-react';
+import { formatPhoneDisplay } from '@/lib/patients/names';
+import {
+  AlertTriangle,
+  Check,
+  Copy,
+  FileSignature,
+  FileText,
+  Loader2,
+  RefreshCw,
+  Send,
+} from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
@@ -31,26 +42,24 @@ export interface ConsentListItem {
   signedAt: string | null;
   signingUrl: string | null;
   hasPdf: boolean;
+  /** El WhatsApp salió de verdad (hay id de mensaje del proveedor). */
+  whatsappSent: boolean;
   error: string | null;
 }
 
-const STATUS_LABEL: Record<ConsentListItem['status'], string> = {
-  SENT: 'Pendiente de firma',
-  SIGNED: 'Firmado',
-  CANCELLED: 'Cancelado',
-  ERROR: 'Error',
-};
-
-const STATUS_TONE: Record<ConsentListItem['status'], 'warn' | 'success' | 'neutral' | 'danger'> = {
-  SENT: 'warn',
-  SIGNED: 'success',
-  CANCELLED: 'neutral',
-  ERROR: 'danger',
-};
+export interface ConsentRecipientDefaults {
+  name: string;
+  phone: string;
+  email: string;
+  /** "Mamá", "Papá"…: quién es para el niño. */
+  relation: string | null;
+}
 
 /**
- * El consentimiento informado del paciente: los ya mandados, con su estado, y
- * el botón que lo manda con un clic al WhatsApp del tutor.
+ * El consentimiento informado del paciente: los ya mandados con su estado
+ * real (creado, enviado por WhatsApp, firmado) y las acciones que tocan en
+ * cada momento. Con uno pendiente, lo primero es comprobar la firma o copiar
+ * el enlace; mandar otro pasa a segundo plano.
  *
  * Sólo se pinta en las clínicas con firma digital configurada. El PDF firmado
  * se abre por una ruta que firma la URL en cada lectura.
@@ -65,13 +74,13 @@ export function ConsentCard({
   patientId: string;
   patientName: string;
   consents: ConsentListItem[];
-  defaults: { name: string; phone: string; email: string };
+  defaults: ConsentRecipientDefaults;
   canWrite: boolean;
 }) {
   const fmt = React.useMemo(
     () =>
       new Intl.DateTimeFormat('es-ES', {
-        day: '2-digit',
+        day: 'numeric',
         month: 'short',
         year: 'numeric',
         hour: '2-digit',
@@ -84,7 +93,7 @@ export function ConsentCard({
   const signed = consents.find((c) => c.status === 'SIGNED');
 
   return (
-    <Card>
+    <Card id="consentimiento">
       <CardTopbar
         icon={<FileSignature className="h-4 w-4" />}
         title="Consentimiento informado"
@@ -92,60 +101,51 @@ export function ConsentCard({
           signed
             ? `Firmado el ${signed.signedAt ? fmt.format(new Date(signed.signedAt)) : '—'}`
             : pending
-              ? 'Enviado, pendiente de firma'
+              ? pending.whatsappSent
+                ? 'Enviado, pendiente de firma'
+                : 'Creado, sin enviar todavía'
               : 'Todavía no se ha enviado'
         }
         tone="sky"
-        action={
-          canWrite ? (
-            <SendConsentDialog
-              patientId={patientId}
-              patientName={patientName}
-              defaults={defaults}
-            />
-          ) : undefined
-        }
       />
-      <CardContent>
+      <CardContent className="grid gap-3">
+        {canWrite && (
+          <div className="flex flex-wrap gap-2">
+            {pending ? (
+              <>
+                <RefreshConsent patientId={patientId} consentId={pending.id} primary />
+                {pending.signingUrl && <CopyLink url={pending.signingUrl} />}
+                <SendConsentDialog
+                  patientId={patientId}
+                  patientName={patientName}
+                  defaults={defaults}
+                  variant="ghost"
+                  label="Enviar otro"
+                />
+              </>
+            ) : (
+              <SendConsentDialog
+                patientId={patientId}
+                patientName={patientName}
+                defaults={defaults}
+                variant="primary"
+                label={signed ? 'Enviar uno nuevo' : 'Enviar consentimiento'}
+              />
+            )}
+          </div>
+        )}
+
         {consents.length === 0 ? (
           <EmptyState
             icon={<FileSignature className="h-5 w-5" />}
             title="Sin consentimiento"
             description="Con un clic se manda al WhatsApp del tutor, que lo lee y lo firma desde el móvil."
+            className="py-8"
           />
         ) : (
-          <ul className="space-y-2.5">
+          <ul className="grid gap-2.5">
             {consents.map((c) => (
-              <li
-                key={c.id}
-                className="flex flex-wrap items-center gap-2 rounded-[14px] border border-[--color-border] p-3"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-semibold text-zinc-800">
-                    {c.recipientName} · {c.recipientPhone}
-                  </p>
-                  <p className="text-[12px] text-zinc-500">
-                    {c.status === 'SIGNED' && c.signedAt
-                      ? `Firmado el ${fmt.format(new Date(c.signedAt))}`
-                      : c.sentAt
-                        ? `Enviado el ${fmt.format(new Date(c.sentAt))}`
-                        : '—'}
-                    {c.error ? ` · ${c.error}` : ''}
-                  </p>
-                </div>
-                <Badge tone={STATUS_TONE[c.status]}>{STATUS_LABEL[c.status]}</Badge>
-                {c.hasPdf && (
-                  <Button asChild size="sm" variant="secondary">
-                    <a href={`/api/consents/${c.id}/pdf`} target="_blank" rel="noreferrer">
-                      Ver PDF
-                    </a>
-                  </Button>
-                )}
-                {c.status === 'SENT' && c.signingUrl && <CopyLink url={c.signingUrl} />}
-                {c.status === 'SENT' && canWrite && (
-                  <RefreshConsent patientId={patientId} consentId={c.id} />
-                )}
-              </li>
+              <ConsentRow key={c.id} consent={c} fmt={fmt} />
             ))}
           </ul>
         )}
@@ -154,12 +154,87 @@ export function ConsentCard({
   );
 }
 
+function ConsentRow({ consent: c, fmt }: { consent: ConsentListItem; fmt: Intl.DateTimeFormat }) {
+  const noWhatsapp = c.error?.includes('Sin WhatsApp conectado') ?? false;
+  const badge: { tone: 'warn' | 'success' | 'neutral' | 'danger'; label: string } =
+    c.status === 'SIGNED'
+      ? { tone: 'success', label: 'Firmado' }
+      : c.status === 'SENT'
+        ? c.whatsappSent
+          ? { tone: 'warn', label: 'Pendiente de firma' }
+          : { tone: 'warn', label: 'Sin enviar' }
+        : c.status === 'CANCELLED'
+          ? { tone: 'neutral', label: 'Cancelado' }
+          : { tone: 'danger', label: 'Error' };
+
+  return (
+    <li className="grid gap-2 rounded-[14px] border border-(--color-border) p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-semibold text-zinc-800">
+            {c.recipientName} · {formatPhoneDisplay(c.recipientPhone)}
+          </p>
+          <p className="text-[12px] text-zinc-600">
+            {c.status === 'SIGNED' && c.signedAt
+              ? `Firmado el ${fmt.format(new Date(c.signedAt))}`
+              : c.whatsappSent && c.sentAt
+                ? `Enviado por WhatsApp el ${fmt.format(new Date(c.sentAt))}`
+                : c.sentAt
+                  ? `Documento creado el ${fmt.format(new Date(c.sentAt))}`
+                  : '—'}
+          </p>
+        </div>
+        <Badge tone={badge.tone}>{badge.label}</Badge>
+      </div>
+      {c.status === 'SENT' && !c.whatsappSent && (
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[10px] bg-amber-50 px-2.5 py-2 text-[12px] text-amber-900">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          <span>
+            El WhatsApp no salió{c.error ? `: ${c.error.replace(/^WhatsApp: /, '')}` : ''}. Copia el
+            enlace y mándaselo a mano
+            {noWhatsapp ? ' o conecta el WhatsApp de la clínica' : ''}.
+          </span>
+          {noWhatsapp && (
+            <Link
+              href="/dashboard/whatsapp/integrations"
+              prefetch={false}
+              className="font-semibold underline underline-offset-2"
+            >
+              Conectar WhatsApp
+            </Link>
+          )}
+        </p>
+      )}
+      {(c.hasPdf || (c.status === 'SENT' && c.signingUrl)) && (
+        <div className="flex flex-wrap gap-2">
+          {c.hasPdf && (
+            <Button asChild size="sm" variant="secondary">
+              <a href={`/api/consents/${c.id}/pdf`} target="_blank" rel="noreferrer">
+                <FileText className="h-4 w-4" /> Ver PDF firmado
+              </a>
+            </Button>
+          )}
+          {c.status === 'SENT' && c.signingUrl && <CopyLink url={c.signingUrl} />}
+        </div>
+      )}
+    </li>
+  );
+}
+
 /**
  * "¿Ya firmó?": pregunta a Documenso y, si está completado, cierra el
  * consentimiento aquí mismo. Es lo que salva el caso de un webhook perdido, y
  * si algo falla al cerrar, el motivo se ve aquí y no en un registro.
  */
-function RefreshConsent({ patientId, consentId }: { patientId: string; consentId: string }) {
+function RefreshConsent({
+  patientId,
+  consentId,
+  primary = false,
+}: {
+  patientId: string;
+  consentId: string;
+  primary?: boolean;
+}) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
   const [note, setNote] = React.useState<{ tone: 'ok' | 'warn' | 'error'; text: string } | null>(
@@ -187,8 +262,13 @@ function RefreshConsent({ patientId, consentId }: { patientId: string; consentId
   }
 
   return (
-    <div className="flex w-full flex-wrap items-center gap-2">
-      <Button size="sm" variant="ghost" onClick={run} disabled={pending}>
+    <div className="flex flex-wrap items-center gap-2">
+      <Button
+        size="sm"
+        variant={primary ? 'primary' : 'secondary'}
+        onClick={run}
+        disabled={pending}
+      >
         {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
         Comprobar firma
       </Button>
@@ -198,7 +278,7 @@ function RefreshConsent({ patientId, consentId }: { patientId: string; consentId
             note.tone === 'ok'
               ? 'text-[12px] font-semibold text-emerald-700'
               : note.tone === 'warn'
-                ? 'text-[12px] text-amber-700'
+                ? 'text-[12px] text-amber-800'
                 : 'text-[12px] text-rose-700'
           }
         >
@@ -214,7 +294,7 @@ function CopyLink({ url }: { url: string }) {
   return (
     <Button
       size="sm"
-      variant="ghost"
+      variant="secondary"
       onClick={() => {
         navigator.clipboard?.writeText(url).then(() => {
           setCopied(true);
@@ -230,18 +310,22 @@ function CopyLink({ url }: { url: string }) {
 }
 
 /**
- * Los datos del tutor que van impresos en el PDF. Vienen rellenos de la ficha
- * (quien está a cargo y su móvil); lo que falte (DNI, dirección) se pide aquí,
- * no en la ficha: es lo que exige el documento, no la agenda.
+ * Los datos del tutor que van impresos en el PDF. Vienen rellenos con el
+ * titular del teléfono de la ficha; lo que falte (DNI, dirección) se pide
+ * aquí, no en la ficha: es lo que exige el documento, no la agenda.
  */
 function SendConsentDialog({
   patientId,
   patientName,
   defaults,
+  variant,
+  label,
 }: {
   patientId: string;
   patientName: string;
-  defaults: { name: string; phone: string; email: string };
+  defaults: ConsentRecipientDefaults;
+  variant: 'primary' | 'ghost';
+  label: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
@@ -281,8 +365,8 @@ function SendConsentDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button size="sm">
-          <Send className="h-4 w-4" /> Enviar consentimiento
+        <Button size="sm" variant={variant}>
+          <Send className="h-4 w-4" /> {label}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg">
@@ -290,7 +374,11 @@ function SendConsentDialog({
           <DialogTitle>Consentimiento de {patientName}</DialogTitle>
           <DialogDescription>
             Se genera el PDF con los datos ya rellenos y se manda el enlace de firma al WhatsApp del
-            tutor. Lo firma desde el móvil.
+            tutor
+            {defaults.name
+              ? `: ${defaults.name}${defaults.relation ? ` (${defaults.relation})` : ''}, titular del teléfono`
+              : ''}
+            . Lo firma desde el móvil.
           </DialogDescription>
         </DialogHeader>
 

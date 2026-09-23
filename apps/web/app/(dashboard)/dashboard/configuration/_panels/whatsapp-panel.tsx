@@ -38,7 +38,7 @@ export async function WhatsappPanel() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
-        <section className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-6">
+        <section className="rounded-[22px] border border-(--color-border) bg-white shadow-[var(--shadow-soft)] p-6">
           <div className="mb-4 flex items-start justify-between">
             <div>
               <h3 className="text-[20px] font-bold tracking-tight text-zinc-900">Meta Cloud API</h3>
@@ -72,7 +72,7 @@ export async function WhatsappPanel() {
           />
         </section>
 
-        <section className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-6">
+        <section className="rounded-[22px] border border-(--color-border) bg-white shadow-[var(--shadow-soft)] p-6">
           <div className="mb-4 flex items-start justify-between">
             <div>
               <h3 className="text-[20px] font-bold tracking-tight text-zinc-900">Evolution API</h3>
@@ -107,7 +107,7 @@ export async function WhatsappPanel() {
           />
         </section>
 
-        <section className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-6">
+        <section className="rounded-[22px] border border-(--color-border) bg-white shadow-[var(--shadow-soft)] p-6">
           <div className="mb-4 flex items-start justify-between">
             <div>
               <h3 className="text-[20px] font-bold tracking-tight text-zinc-900">Twilio (BSP)</h3>

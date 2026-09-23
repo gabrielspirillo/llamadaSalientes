@@ -95,7 +95,7 @@ export function TimeOffEditor({
           no pase consulta.
         </p>
       ) : (
-        <ul className="divide-y divide-[--color-border-subtle]">
+        <ul className="divide-y divide-(--color-border-subtle)">
           {blocks.map((b) => (
             <li key={b.id} className="flex items-center justify-between gap-3 py-2.5">
               <div className="flex min-w-0 items-center gap-2.5">
@@ -138,7 +138,7 @@ export function TimeOffEditor({
       )}
 
       {showForm ? (
-        <div className="mt-4 rounded-[14px] border border-[--color-border] p-3">
+        <div className="mt-4 rounded-[14px] border border-(--color-border) p-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="grid gap-1.5">
               <Label htmlFor="to-from">Desde</Label>

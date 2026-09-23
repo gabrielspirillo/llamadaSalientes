@@ -20,22 +20,62 @@ export type CareProfileKind = (typeof CARE_PROFILE_KINDS)[number];
 
 // ─── Tutores ─────────────────────────────────────────────────────────────────
 
-export const GUARDIAN_ROLES = ['MADRE', 'PADRE', 'NINGUNO'] as const;
+export const GUARDIAN_ROLES = [
+  'MADRE',
+  'PADRE',
+  'ABUELA',
+  'ABUELO',
+  'TUTOR',
+  'OTRO',
+  'NINGUNO',
+] as const;
 export type GuardianRole = (typeof GUARDIAN_ROLES)[number];
 
 export const GUARDIAN_ROLE_LABELS: Record<GuardianRole, string> = {
   MADRE: 'Mamá',
   PADRE: 'Papá',
+  ABUELA: 'Abuela',
+  ABUELO: 'Abuelo',
+  TUTOR: 'Tutor/a legal',
+  OTRO: 'Otro',
   NINGUNO: 'No hay',
 };
 
+export const CONTACT_CHANNELS = ['WHATSAPP', 'CALL'] as const;
+export type ContactChannel = (typeof CONTACT_CHANNELS)[number];
+export const CONTACT_CHANNEL_LABELS: Record<ContactChannel, string> = {
+  WHATSAPP: 'WhatsApp',
+  CALL: 'Llamada',
+};
+
+/**
+ * Un tutor: quién es para el niño, cómo se llama y cómo se le localiza. El
+ * marcado como `primary` es el titular del teléfono de la ficha: a él se le
+ * llama, se le escribe y se le manda el consentimiento.
+ */
 export const guardianSchema = z.object({
   role: z.enum(GUARDIAN_ROLES),
   name: z.string().trim().max(120).default(''),
+  phone: z.string().trim().max(40).optional(),
+  email: z.string().trim().max(160).optional(),
+  channel: z.enum(CONTACT_CHANNELS).nullable().optional(),
+  primary: z.boolean().optional(),
 });
-/** Como mucho dos: mamá y papá, dos mamás, dos papás, o una sola persona. */
-export const guardiansSchema = z.array(guardianSchema).max(2);
+/** Hasta cuatro: madre, padre, abuela que trae al niño, tutor legal. */
+export const guardiansSchema = z.array(guardianSchema).max(4);
 export type Guardian = z.infer<typeof guardianSchema>;
+
+/** Los tutores que existen: con nombre o teléfono y no marcados como "no hay". */
+export function activeGuardians(guardians: Guardian[]): Guardian[] {
+  return guardians.filter(
+    (g) => g.role !== 'NINGUNO' && (g.name.trim() !== '' || (g.phone?.trim() ?? '') !== ''),
+  );
+}
+
+/** El titular del teléfono, si alguien lo es. */
+export function primaryGuardian(guardians: Guardian[]): Guardian | null {
+  return activeGuardians(guardians).find((g) => g.primary) ?? null;
+}
 
 export function parseGuardians(raw: unknown): Guardian[] {
   const parsed = guardiansSchema.safeParse(raw ?? []);
@@ -81,13 +121,22 @@ const anamnesisKey = z.string().regex(/^[a-z][a-z0-9_]{0,40}$/);
 export const anamnesisItemSchema = z.object({
   key: anamnesisKey,
   label: z.string().trim().min(1).max(80),
+  /** Texto guía del "¿cuál?": qué se espera que se anote. */
   hint: z.string().trim().max(200).optional(),
+  /** Nombre completo de una sigla (RGE → Reflujo gastroesofágico). */
+  fullName: z.string().trim().max(120).optional(),
+  /** Bloque de la pestaña: Antecedentes médicos, Perinatal, Entorno… */
+  group: z.string().trim().max(60).optional(),
   /**
    * Un "sí" en este ítem sale en la línea "A tener en cuenta" de la cabecera
    * de la ficha (prematuro, ingresos, alergias…). Lo decide la plantilla de
    * la clínica, no el código.
    */
   alert: z.boolean().optional(),
+  /** Un "sí" aquí no cuadra con un "sí" en un ítem de alerta ("Sano"). */
+  exclusive: z.boolean().optional(),
+  /** A este ítem no se le pregunta "¿cuál?". */
+  noDetail: z.boolean().optional(),
 });
 export const anamnesisTemplateSchema = z.array(anamnesisItemSchema).max(40);
 export type AnamnesisItem = z.infer<typeof anamnesisItemSchema>;
@@ -128,25 +177,83 @@ export function describeAnamnesis(template: AnamnesisItem[], answers: AnamnesisA
     .join(' · ');
 }
 
+export interface WatchoutItem {
+  key: string;
+  label: string;
+  detail: string | null;
+  source: 'ANAMNESIS' | 'PRIORITY';
+}
+
 /**
  * Lo que hay que tener presente al atender: los "sí" de los ítems marcados
  * como alerta en la plantilla, con su detalle, más el motivo de la prioridad
- * manual si lo hay. Es la línea "A tener en cuenta" de la cabecera de la
- * ficha. Vacío = nada anotado.
+ * manual si lo hay. Es el banner de alertas de la ficha. Vacío = nada anotado.
  */
 export function describeWatchouts(
   template: AnamnesisItem[],
   answers: AnamnesisAnswers,
   extra: { priorityFlag?: boolean; priorityReason?: string | null } = {},
-): string[] {
-  const out: string[] = [];
-  if (extra.priorityFlag && extra.priorityReason?.trim()) out.push(extra.priorityReason.trim());
+): WatchoutItem[] {
+  const out: WatchoutItem[] = [];
+  if (extra.priorityFlag && extra.priorityReason?.trim()) {
+    out.push({
+      key: 'priority',
+      label: 'Prioritario',
+      detail: extra.priorityReason.trim(),
+      source: 'PRIORITY',
+    });
+  }
   for (const item of template) {
     if (!item.alert) continue;
     const a = answers[item.key];
     if (!a || a.value !== true) continue;
     const detail = a.detail.trim();
-    out.push(detail ? `${item.label}: ${detail}` : item.label);
+    out.push({ key: item.key, label: item.label, detail: detail || null, source: 'ANAMNESIS' });
+  }
+  return out;
+}
+
+/** "Prematuro: 34 semanas" o "Ingresos". */
+export function formatWatchout(item: WatchoutItem): string {
+  return item.detail ? `${item.label}: ${item.detail}` : item.label;
+}
+
+/**
+ * Contradicciones que se pueden detectar sin saber medicina: un "sí" en un
+ * ítem `exclusive` ("Sano") junto a un "sí" en un ítem de alerta. Avisa, no
+ * bloquea: quien contesta decide.
+ */
+export function anamnesisConflicts(template: AnamnesisItem[], answers: AnamnesisAnswers): string[] {
+  const yes = (key: string) => answers[key]?.value === true;
+  const out: string[] = [];
+  for (const excl of template) {
+    if (!excl.exclusive || !yes(excl.key)) continue;
+    const clashes = template.filter((i) => i.alert && i.key !== excl.key && yes(i.key));
+    if (clashes.length === 0) continue;
+    out.push(
+      `"${excl.label}: sí" no cuadra con ${clashes.map((c) => `"${c.label}: sí"`).join(' ni ')}.`,
+    );
+  }
+  return out;
+}
+
+export interface AnamnesisGroup {
+  /** Null = ítems sin bloque (plantillas antiguas). */
+  group: string | null;
+  items: AnamnesisItem[];
+}
+
+/** Los ítems por bloque, en el orden en que cada bloque aparece por primera vez. */
+export function groupAnamnesis(template: AnamnesisItem[]): AnamnesisGroup[] {
+  const out: AnamnesisGroup[] = [];
+  for (const item of template) {
+    const group = item.group?.trim() || null;
+    let bucket = out.find((g) => g.group === group);
+    if (!bucket) {
+      bucket = { group, items: [] };
+      out.push(bucket);
+    }
+    bucket.items.push(item);
   }
   return out;
 }
@@ -331,6 +438,46 @@ export function priorityLevel(
     else if (input.ageMonths <= rule.highMax && level === 'NORMAL') level = 'HIGH';
   }
   return level;
+}
+
+export interface PriorityDescription {
+  level: PriorityLevel;
+  /** De dónde sale: la edad, la marca manual, las dos, o nada. */
+  source: 'AGE' | 'MANUAL' | 'BOTH' | null;
+  /** "por edad (hasta 24 meses)", "marcado a mano: bronquiolitis de repetición". */
+  reason: string | null;
+}
+
+/**
+ * La prioridad explicada, para que la cabecera y la tarjeta de marcas digan
+ * lo mismo: un niño de 20 meses es prioritario POR EDAD aunque nadie haya
+ * marcado la casilla, y eso hay que decirlo, no dejar que parezca un error.
+ */
+export function describePriority(
+  input: { ageMonths: number | null; priorityFlag: boolean; priorityReason?: string | null },
+  policy: BookingPolicy,
+): PriorityDescription {
+  const level = priorityLevel(input, policy);
+  const rule = policy.priorityAgeMonths;
+  const byAge =
+    rule !== null &&
+    input.ageMonths !== null &&
+    (input.ageMonths <= rule.veryHighMax || input.ageMonths <= rule.highMax);
+  const byFlag = input.priorityFlag;
+  const source = byAge && byFlag ? 'BOTH' : byAge ? 'AGE' : byFlag ? 'MANUAL' : null;
+  const parts: string[] = [];
+  if (byAge && rule) {
+    const cap =
+      input.ageMonths !== null && input.ageMonths <= rule.veryHighMax
+        ? rule.veryHighMax
+        : rule.highMax;
+    parts.push(`por edad (hasta ${cap} meses)`);
+  }
+  if (byFlag) {
+    const reason = input.priorityReason?.trim();
+    parts.push(reason ? `marcado a mano: ${reason}` : 'marcado a mano');
+  }
+  return { level, source, reason: parts.length ? parts.join(' · ') : null };
 }
 
 // ─── Primeras visitas ────────────────────────────────────────────────────────

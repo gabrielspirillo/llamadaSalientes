@@ -75,7 +75,7 @@ export default async function OutboundPage() {
         <Reveal>
           <Card className="overflow-hidden">
             {/* Mobile: cards */}
-            <ul className="stagger divide-y divide-[--color-border-subtle] md:hidden">
+            <ul className="stagger divide-y divide-(--color-border-subtle) md:hidden">
               {campaigns.map((c, i) => (
                 <li key={c.id} style={{ ['--i' as string]: Math.min(i, 12) }}>
                   <Link

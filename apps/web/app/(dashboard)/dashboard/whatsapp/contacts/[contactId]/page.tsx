@@ -188,7 +188,7 @@ export default async function ContactDetailPage({ params }: Props) {
 
         {/* Hero card fija. No scrollea. */}
         <div className="shrink-0 px-6 pt-4">
-          <div className="flex items-center gap-4 rounded-2xl border border-[--color-border] bg-white p-5">
+          <div className="flex items-center gap-4 rounded-2xl border border-(--color-border) bg-white p-5">
             <Avatar initials={initials} size={64} />
             <div className="min-w-0">
               <h1 className="truncate text-xl font-semibold text-zinc-900">{fullName}</h1>

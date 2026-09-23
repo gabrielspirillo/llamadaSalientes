@@ -2,6 +2,8 @@ import { AnamnesisCard } from '@/components/agenda/anamnesis-card';
 import { type BillingLineView, BillingPanel } from '@/components/agenda/billing-panel';
 import { ClinicalNoteForm, type PreviousNote } from '@/components/agenda/clinical-note-form';
 import { ConsentCard } from '@/components/agenda/consent-card';
+import { type HistoryNoteView, HistoryTimeline } from '@/components/agenda/history-timeline';
+import { PatientAlertsBanner } from '@/components/agenda/patient-alerts-banner';
 import { PatientDialog } from '@/components/agenda/patient-dialog';
 import { type PatientFact, PatientHeader } from '@/components/agenda/patient-header';
 import { PatientMarks } from '@/components/agenda/patient-marks';
@@ -12,6 +14,7 @@ import {
   PatientTabs,
   isPatientTab,
 } from '@/components/agenda/patient-tabs';
+import { TodayAppointmentCard, type TodayItem } from '@/components/agenda/today-appointment-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardTopbar } from '@/components/ui/card';
@@ -19,23 +22,37 @@ import { EmptyState } from '@/components/ui/feedback';
 import { getAgendaContext } from '@/lib/agenda/auth';
 import { buildBillingLines, describeConcept, summarizeBilling } from '@/lib/agenda/billing';
 import { listPatientCharges } from '@/lib/agenda/charges';
-import { getPatientDossier, resolveTimezone } from '@/lib/agenda/queries';
+import { getPatientDossier, listProfessionals, resolveTimezone } from '@/lib/agenda/queries';
 import { STATUS_LABELS } from '@/lib/agenda/shared';
 import {
+  EMPTY_BOOKING_POLICY,
+  GUARDIAN_ROLE_LABELS,
   PRIORITY_LABELS,
   SESSION_BEHAVIOR_FACES,
   SESSION_BEHAVIOR_LABELS,
+  activeGuardians,
   ageAt,
   describeAge,
+  describePriority,
   describeWatchouts,
-  guardianNames,
+  formatWatchout,
   isSessionBehavior,
-  priorityLevel,
+  primaryGuardian,
 } from '@/lib/care-profile/policy';
 import { getCareProfile } from '@/lib/care-profile/queries';
 import { listPatientConsents, tenantHasEsign } from '@/lib/consents/service';
+import { describeActivity, listPatientActivity } from '@/lib/patients/activity';
+import { formatPhoneDisplay, initialsOf, phoneDigits } from '@/lib/patients/names';
 import { localDateKey } from '@/lib/tasks/tz';
-import { Baby, CalendarDays, History, Lock, NotebookPen, Pencil, Star, User } from 'lucide-react';
+import {
+  Activity,
+  CalendarDays,
+  CalendarPlus,
+  MessageCircle,
+  Pencil,
+  Phone,
+  Star,
+} from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AgendaNav } from '../../agenda-nav';
@@ -47,10 +64,12 @@ function dateFromKey(key: string): Date {
   return new Date(`${key}T00:00:00Z`);
 }
 
+const HEADER_ID = 'patient-header';
+
 /**
- * Ficha del paciente: cabecera con lo que se mira antes de atender, pestañas
- * por URL (visita de hoy, anamnesis, historia, citas, contable) y, en la de
- * hoy, un resumen fijo a la derecha.
+ * Ficha del paciente: cabecera con lo que se mira antes de atender, banner
+ * de alertas clínicas, pestañas por URL (visita de hoy, anamnesis, historia,
+ * citas, contable, actividad) y, en la de hoy, un resumen fijo a la derecha.
  *
  * Las pestañas son contenido de servidor y sólo se pinta la activa: `?tab=`
  * decide cuál, y `?nota=<cita>` sigue abriendo la nota de esa cita.
@@ -70,12 +89,13 @@ export default async function PacienteDossierPage({
   const timezone = await resolveTimezone(ctx.tenantId, null);
   const viewerProfessionalId = ctx.scope === 'OWN' ? ctx.professional?.id : undefined;
 
-  const [dossier, careProfile, hasEsign, charges] = await Promise.all([
+  const [dossier, careProfile, hasEsign, charges, professionalRows] = await Promise.all([
     getPatientDossier(ctx.tenantId, patientKey, { viewerProfessionalId }),
     getCareProfile(ctx.tenantId),
     // Firma digital: sólo las clínicas que la tienen configurada ven la tarjeta.
     tenantHasEsign(ctx.tenantId).catch(() => false),
     listPatientCharges(ctx.tenantId, patientKey, { viewerProfessionalId }).catch(() => []),
+    listProfessionals(ctx.tenantId).catch(() => []),
   ]);
   if (!dossier) notFound();
 
@@ -119,10 +139,14 @@ export default async function PacienteDossierPage({
   const ageMonths = person?.birthDate
     ? (ageAt(person.birthDate, todayKey)?.totalMonths ?? null)
     : null;
-  const priority =
-    person && careProfile
-      ? priorityLevel({ ageMonths, priorityFlag: person.priorityFlag }, careProfile.bookingPolicy)
-      : 'NORMAL';
+  const priority = describePriority(
+    {
+      ageMonths,
+      priorityFlag: person?.priorityFlag ?? false,
+      priorityReason: person?.priorityReason ?? null,
+    },
+    careProfile?.bookingPolicy ?? EMPTY_BOOKING_POLICY,
+  );
 
   // Una nota privada es la valoración personal de quien la escribió: la ve su
   // autor, no el resto del equipo. Vienen de la más nueva a la más vieja.
@@ -133,17 +157,24 @@ export default async function PacienteDossierPage({
   const lastBehavior =
     lastNote && isSessionBehavior(lastNote.sessionBehavior) ? lastNote.sessionBehavior : null;
 
-  const professionalIdForNote =
-    ctx.professional?.id ??
-    dossier.appointments.find((a) => a.status === 'COMPLETED')?.professionalId ??
-    dossier.appointments[0]?.professionalId ??
-    null;
-  const canWriteToday = ctx.canWriteClinicalNotes && professionalIdForNote !== null;
-
+  const activeProfessionals = professionalRows
+    .filter((p) => p.active)
+    .map((p) => ({ id: p.id, fullName: p.fullName }));
   const todaysAppointment =
     dossier.appointments.find(
       (a) => a.status !== 'CANCELLED' && localDateKey(a.startsAt, timezone) === todayKey,
     ) ?? null;
+  // Quién firma la nota: el profesional logueado; si no, el de la cita de hoy,
+  // el de la última atendida o el primero activo. Con varios se elige en el
+  // formulario, así recepción o Futura pueden dejar la nota dictada.
+  const professionalIdForNote =
+    ctx.professional?.id ??
+    todaysAppointment?.professionalId ??
+    dossier.appointments.find((a) => a.status === 'COMPLETED')?.professionalId ??
+    dossier.appointments[0]?.professionalId ??
+    activeProfessionals[0]?.id ??
+    null;
+  const canWriteToday = ctx.canWriteClinicalNotes && professionalIdForNote !== null;
   const seedAppointment = nota ? (dossier.appointments.find((a) => a.id === nota) ?? null) : null;
 
   // ─── Contable ───────────────────────────────────────────────────────────
@@ -196,6 +227,7 @@ export default async function PacienteDossierPage({
     isPatientTab(rawTab) && (rawTab !== 'anamnesis' || hasAnamnesis) ? rawTab : defaultTab;
   const base = `/dashboard/agenda/pacientes/${encodeURIComponent(patientKey)}`;
   const hrefFor = (t: PatientTab) => (t === defaultTab ? base : `${base}?tab=${t}`);
+  const scheduleHref = `/dashboard/agenda?paciente=${encodeURIComponent(patientKey)}`;
 
   const tabItems: PatientTabItem[] = [
     { value: 'visita', label: 'Visita de hoy', shortLabel: 'Hoy' },
@@ -227,6 +259,7 @@ export default async function PacienteDossierPage({
       mobileCount: billingTotals.dueCount > 0 ? String(billingTotals.dueCount) : null,
       warn: billingTotals.dueCount > 0,
     },
+    { value: 'actividad', label: 'Actividad' },
   ];
 
   // ─── Cabecera ───────────────────────────────────────────────────────────
@@ -236,51 +269,88 @@ export default async function PacienteDossierPage({
         priorityReason: person.priorityReason,
       })
     : [];
-  const pastAppointments = dossier.appointments.filter(
-    (a) => a.status === 'COMPLETED' || a.startsAt.getTime() < Date.now(),
-  );
+  const now = Date.now();
   const nextAppointment = [...dossier.appointments]
     .reverse()
-    .find((a) => a.status !== 'CANCELLED' && a.startsAt.getTime() >= Date.now());
+    .find((a) => a.status !== 'CANCELLED' && a.startsAt.getTime() >= now);
+  const lastPast = dossier.appointments.find(
+    (a) => a.status === 'COMPLETED' || (a.status !== 'CANCELLED' && a.startsAt.getTime() < now),
+  );
+
+  const guardians = person ? activeGuardians(person.guardians) : [];
+  const primary = person ? primaryGuardian(person.guardians) : null;
+  const phone = primary?.phone?.trim() || dossier.patientPhone;
+  const email = primary?.email?.trim() || dossier.patientEmail;
+  const holderLabel = primary
+    ? `${primary.name || GUARDIAN_ROLE_LABELS[primary.role]} (${GUARDIAN_ROLE_LABELS[primary.role].toLowerCase()})`
+    : person?.contactName || null;
+
+  const agendaFact: PatientFact = lastNote
+    ? {
+        label: 'Última sesión',
+        value: `${
+          lastBehavior
+            ? `${SESSION_BEHAVIOR_FACES[lastBehavior]} ${SESSION_BEHAVIOR_LABELS[lastBehavior]} · `
+            : ''
+        }${fmtShort.format(lastNote.createdAt)}`,
+        sub: nextAppointment ? `Próxima: ${fmt.format(nextAppointment.startsAt)}` : null,
+      }
+    : nextAppointment
+      ? { label: 'Próxima cita', value: fmt.format(nextAppointment.startsAt) }
+      : {
+          label: 'Próxima cita',
+          value: dossier.appointments.length > 0 ? 'Sin cita próxima' : 'Sin citas',
+          tone: 'muted',
+          action: ctx.canWriteAppointments ? (
+            <Link
+              href={scheduleHref}
+              prefetch={false}
+              className="text-[13px] font-semibold text-brand-700 hover:underline"
+            >
+              Agendar →
+            </Link>
+          ) : undefined,
+        };
 
   const facts: PatientFact[] = person
     ? [
-        { label: 'Edad', value: age ?? '—' },
         {
-          label: 'Nacimiento',
-          value: person.birthDate ? fmtDay.format(dateFromKey(person.birthDate)) : '—',
-        },
-        { label: 'Tutores', value: guardianNames(person.guardians) || person.contactName || '—' },
-        {
-          label: 'Última sesión',
-          value: lastNote
-            ? `${
-                lastBehavior
-                  ? `${SESSION_BEHAVIOR_FACES[lastBehavior]} ${SESSION_BEHAVIOR_LABELS[lastBehavior]} · `
-                  : ''
-              }${fmtShort.format(lastNote.createdAt)}`
-            : '—',
+          label: 'Edad',
+          value: age ?? 'Sin fecha de nacimiento',
+          emphasis: Boolean(age),
+          tone: age ? 'default' : 'muted',
+          sub: person.birthDate ? `Nació el ${fmtDay.format(dateFromKey(person.birthDate))}` : null,
         },
         {
-          label: 'A tener en cuenta',
-          value: watchouts.length > 0 ? watchouts.join(' · ') : 'Nada anotado',
-          tone: watchouts.length > 0 ? 'warn' : 'muted',
+          label: 'Tutores',
+          value:
+            guardians.length > 0
+              ? guardians
+                  .map((g) => `${GUARDIAN_ROLE_LABELS[g.role]}: ${g.name || '—'}`)
+                  .join(' · ')
+              : person.contactName || '—',
+          sub: holderLabel ? `Titular del teléfono: ${holderLabel}` : null,
           wide: true,
         },
+        {
+          label: 'Contacto',
+          value: phone ? formatPhoneDisplay(phone) : '—',
+          sub: email ?? null,
+        },
+        agendaFact,
       ]
     : [
-        { label: 'Teléfono', value: dossier.patientPhone ?? '—' },
+        {
+          label: 'Teléfono',
+          value: dossier.patientPhone ? formatPhoneDisplay(dossier.patientPhone) : '—',
+        },
         { label: 'Email', value: dossier.patientEmail ?? '—' },
-        { label: 'Citas', value: String(dossier.appointments.length) },
         {
           label: 'Última visita',
-          value: pastAppointments[0] ? fmtShort.format(pastAppointments[0].startsAt) : '—',
+          value: lastPast ? fmtShort.format(lastPast.startsAt) : '—',
+          tone: lastPast ? 'default' : 'muted',
         },
-        {
-          label: 'Próxima cita',
-          value: nextAppointment ? fmt.format(nextAppointment.startsAt) : '—',
-          wide: true,
-        },
+        agendaFact,
       ];
 
   const previous: PreviousNote | null = lastNote
@@ -299,61 +369,151 @@ export default async function PacienteDossierPage({
     tab === 'visita' && hasEsign && person
       ? await listPatientConsents(ctx.tenantId, person.id).catch(() => [])
       : [];
+  const activity =
+    tab === 'actividad'
+      ? await listPatientActivity(ctx.tenantId, {
+          patientId: person?.id ?? null,
+          patientKey,
+          chargeIds: charges.map((c) => c.id),
+        }).catch(() => [])
+      : [];
 
+  // Lo que queda por hacer hoy con este paciente, en una línea cada cosa.
+  const pendingItems: TodayItem[] = [];
+  if (hasAnamnesis && pendingAnamnesis > 0) {
+    pendingItems.push({
+      label: `Anamnesis: ${pendingAnamnesis} sin contestar`,
+      href: hrefFor('anamnesis'),
+      tone: 'warn',
+    });
+  }
+  if (hasEsign && person) {
+    const signed = consents.some((c) => c.status === 'SIGNED');
+    const sent = consents.some((c) => c.status === 'SENT');
+    if (!signed) {
+      pendingItems.push({
+        label: sent ? 'Consentimiento pendiente de firma' : 'Consentimiento sin enviar',
+        href: '#consentimiento',
+        tone: 'warn',
+      });
+    }
+  }
+  if (billingTotals.dueCount > 0) {
+    pendingItems.push({
+      label: `${billingTotals.dueCount} ${billingTotals.dueCount === 1 ? 'cobro pendiente' : 'cobros pendientes'}`,
+      href: hrefFor('contable'),
+      tone: 'info',
+    });
+  }
+
+  const alertItems = template.filter((i) => i.alert);
   const showAside = tab === 'visita';
+  const historyNotes: HistoryNoteView[] = visibleNotes.map((n) => ({
+    id: n.id,
+    whenLabel: fmt.format(n.createdAt),
+    professionalId: n.professionalId,
+    professionalName: n.professionalName,
+    behavior: isSessionBehavior(n.sessionBehavior) ? n.sessionBehavior : null,
+    isPrivate: n.private,
+    summary: n.summary,
+    symptoms: n.symptoms,
+    examination: n.examination,
+    treatmentPerformed: n.treatmentPerformed,
+    observations: n.observations,
+    nextSteps: n.nextSteps,
+  }));
 
   return (
     <>
       <AgendaNav active="pacientes" ctx={{ canManageProfessionals: ctx.canManageProfessionals }} />
 
-      <div className="mt-4 flex flex-col gap-3.5 md:mt-5 md:gap-5">
+      <div className="mt-4 flex flex-col gap-3.5 md:mt-5 md:gap-4">
         <PatientHeader
-          eyebrow="Agenda · Paciente"
-          icon={person ? <Baby className="h-5 w-5" /> : <User className="h-5 w-5" />}
+          id={HEADER_ID}
+          breadcrumb={[
+            { label: 'Agenda', href: '/dashboard/agenda' },
+            { label: 'Pacientes', href: '/dashboard/agenda/pacientes' },
+            { label: dossier.patientName },
+          ]}
+          initials={initialsOf(dossier.patientName)}
           name={dossier.patientName}
+          pediatric={Boolean(person && pediatric)}
           badges={
             <>
-              {priority !== 'NORMAL' && (
-                <Badge tone={priority === 'VERY_HIGH' ? 'danger' : 'warn'}>
-                  {PRIORITY_LABELS[priority]}
+              {priority.level !== 'NORMAL' && (
+                <Badge
+                  tone={priority.level === 'VERY_HIGH' ? 'danger' : 'warn'}
+                  title={priority.reason ?? undefined}
+                >
+                  {PRIORITY_LABELS[priority.level]}
+                  {priority.source === 'AGE' ? ' · por edad' : ''}
                 </Badge>
               )}
               {person?.googleReview && (
-                <Badge tone="warn" title="Dejó reseña en Google">
-                  <Star className="h-3 w-3 fill-amber-500 text-amber-500" /> Reseña
+                <Badge tone="warn" title="La familia dejó reseña en Google">
+                  <Star className="h-3 w-3 fill-amber-500 text-amber-500" /> Reseña en Google
                 </Badge>
               )}
             </>
           }
-          action={
-            person && ctx.canWriteAppointments ? (
-              <PatientDialog
-                mode="edit"
-                patient={{
-                  id: person.id,
-                  firstName: person.firstName,
-                  lastName: person.lastName,
-                  birthDate: person.birthDate,
-                  guardians: person.guardians,
-                  contactPhone: person.contactPhone,
-                  contactName: person.contactName,
-                  notes: person.notes,
-                }}
-                trigger={
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    aria-label="Editar"
-                    className="md:h-11 md:w-auto md:px-4"
-                  >
-                    <Pencil className="h-4 w-4" />
-                    <span className="hidden md:inline">Editar</span>
-                  </Button>
-                }
-              />
-            ) : undefined
+          actions={
+            <>
+              {phone && (
+                <Button asChild variant="secondary" size="sm">
+                  <a href={`tel:${phoneDigits(phone).replace(/^/, '+')}`}>
+                    <Phone className="h-4 w-4" />
+                    <span className="hidden sm:inline">Llamar</span>
+                  </a>
+                </Button>
+              )}
+              {phone && (
+                <Button asChild variant="secondary" size="sm">
+                  <a href={`https://wa.me/${phoneDigits(phone)}`} target="_blank" rel="noreferrer">
+                    <MessageCircle className="h-4 w-4" />
+                    <span className="hidden sm:inline">WhatsApp</span>
+                  </a>
+                </Button>
+              )}
+              {ctx.canWriteAppointments && (
+                <Button asChild variant="soft" size="sm">
+                  <Link href={scheduleHref} prefetch={false}>
+                    <CalendarPlus className="h-4 w-4" />
+                    <span className="hidden sm:inline">Agendar</span>
+                  </Link>
+                </Button>
+              )}
+              {person && ctx.canWriteAppointments && (
+                <PatientDialog
+                  mode="edit"
+                  patient={{
+                    id: person.id,
+                    firstName: person.firstName,
+                    lastName: person.lastName,
+                    birthDate: person.birthDate,
+                    guardians: person.guardians,
+                    contactPhone: person.contactPhone,
+                    contactName: person.contactName,
+                    notes: person.notes,
+                  }}
+                  alertItems={alertItems}
+                  answers={person.anamnesis}
+                  trigger={
+                    <Button variant="secondary" size="sm" aria-label="Editar datos del paciente">
+                      <Pencil className="h-4 w-4" />
+                      <span className="hidden sm:inline">Editar</span>
+                    </Button>
+                  }
+                />
+              )}
+            </>
           }
           facts={facts}
+        />
+
+        <PatientAlertsBanner
+          items={watchouts}
+          pendingAnamnesis={hasAnamnesis ? pendingAnamnesis : 0}
+          anamnesisHref={hrefFor('anamnesis')}
         />
 
         {person?.needsHumanReview && (
@@ -367,7 +527,13 @@ export default async function PacienteDossierPage({
           />
         )}
 
-        <PatientTabs items={tabItems} active={tab} hrefFor={hrefFor} />
+        <PatientTabs
+          items={tabItems}
+          active={tab}
+          hrefFor={hrefFor}
+          headerId={HEADER_ID}
+          identity={{ name: dossier.patientName, chips: watchouts.map(formatWatchout) }}
+        />
 
         <div
           className={
@@ -377,23 +543,31 @@ export default async function PacienteDossierPage({
           }
         >
           <Card className="min-w-0">
-            {tab === 'visita' &&
-              (canWriteToday && professionalIdForNote ? (
-                <>
-                  {hasAnamnesis && pendingAnamnesis > 0 && (
-                    <Link
-                      href={hrefFor('anamnesis')}
-                      prefetch={false}
-                      className="mx-4 mt-4 flex min-h-12 items-center justify-between gap-2 rounded-[14px] border border-dashed border-amber-300 bg-amber-50 px-3.5 text-[14px] font-semibold text-amber-700 lg:hidden"
-                    >
-                      <span>Anamnesis: {pendingAnamnesis} sin contestar</span>
-                      <span className="whitespace-nowrap">Completar →</span>
-                    </Link>
-                  )}
+            {tab === 'visita' && (
+              <>
+                <TodayAppointmentCard
+                  appointment={
+                    todaysAppointment
+                      ? {
+                          id: todaysAppointment.id,
+                          timeLabel: fmtTime.format(todaysAppointment.startsAt),
+                          professionalName: todaysAppointment.professionalName,
+                          treatmentName: todaysAppointment.treatmentName,
+                          status: todaysAppointment.status,
+                          isFirstVisit: pediatric && todaysAppointment.isFirstVisit,
+                        }
+                      : null
+                  }
+                  pendingItems={pendingItems}
+                  scheduleHref={scheduleHref}
+                  canWrite={ctx.canWriteAppointments}
+                />
+                {canWriteToday && professionalIdForNote ? (
                   <ClinicalNoteForm
                     patientKey={dossier.patientKey}
                     patientName={dossier.patientName}
                     professionalId={professionalIdForNote}
+                    professionals={ctx.professional ? [] : activeProfessionals}
                     template={pediatric ? 'PEDIATRIC' : 'DEFAULT'}
                     title="Nota de hoy"
                     subtitle={
@@ -412,14 +586,14 @@ export default async function PacienteDossierPage({
                       }))}
                     defaultAppointmentId={seedAppointment?.id ?? todaysAppointment?.id ?? null}
                   />
-                </>
-              ) : (
-                <EmptyState
-                  icon={<NotebookPen className="h-5 w-5" />}
-                  title="La nota de hoy la escribe el profesional"
-                  description="Tu rol permite consultar la ficha. La historia y las citas están en sus pestañas."
-                />
-              ))}
+                ) : (
+                  <p className="px-4 py-4 text-[13px] text-zinc-600 md:px-6">
+                    La nota de hoy la escribe el profesional que atiende. La historia está en su
+                    pestaña.
+                  </p>
+                )}
+              </>
+            )}
 
             {tab === 'anamnesis' && person && (
               <AnamnesisCard
@@ -427,125 +601,59 @@ export default async function PacienteDossierPage({
                 template={template}
                 answers={person.anamnesis}
                 canEdit={ctx.canWriteClinicalNotes}
+                updatedAtLabel={
+                  person.anamnesisUpdatedAt ? fmt.format(person.anamnesisUpdatedAt) : null
+                }
+                updatedBy={person.anamnesisUpdatedByEmail}
               />
             )}
 
             {tab === 'historia' && (
-              <div className="p-4 md:p-6">
-                <h2 className="mb-4 text-[18px] font-bold tracking-tight text-zinc-900">
-                  Historia clínica{' '}
-                  <span className="text-[13px] font-medium text-zinc-500">
-                    · la más reciente arriba
-                  </span>
-                </h2>
-                {visibleNotes.length === 0 ? (
-                  <EmptyState
-                    icon={<History className="h-5 w-5" />}
-                    title="Todavía no hay notas"
-                    description="Después de atender al paciente, anota aquí el diagnóstico y lo que toca la próxima vez."
-                  />
-                ) : (
-                  <ol className="flex flex-col">
-                    {visibleNotes.map((n, idx) => {
-                      const behavior = isSessionBehavior(n.sessionBehavior)
-                        ? n.sessionBehavior
-                        : null;
-                      const last = idx === visibleNotes.length - 1;
-                      return (
-                        <li key={n.id} className="grid grid-cols-[18px_minmax(0,1fr)] gap-3">
-                          <div className="flex flex-col items-center">
-                            <span
-                              aria-hidden
-                              className="mt-1 h-3 w-3 rounded-full bg-brand-500 ring-4 ring-brand-100"
-                            />
-                            {!last && (
-                              <span
-                                aria-hidden
-                                className="mt-1.5 w-0.5 flex-1 bg-[--color-border]"
-                              />
-                            )}
-                          </div>
-                          <div className="flex min-w-0 flex-col gap-1.5 pb-6">
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-                              <span className="text-[13px] font-bold text-zinc-900">
-                                {fmt.format(n.createdAt)}
-                              </span>
-                              <span className="text-[12px] text-zinc-500">
-                                {n.professionalName}
-                              </span>
-                              {behavior && (
-                                <Badge tone="neutral" title="Cómo se portó en la sesión">
-                                  <span aria-hidden>{SESSION_BEHAVIOR_FACES[behavior]}</span>{' '}
-                                  {SESSION_BEHAVIOR_LABELS[behavior]}
-                                </Badge>
-                              )}
-                              {n.private && (
-                                <Badge tone="neutral">
-                                  <Lock className="mr-1 h-3 w-3" /> Privada
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="text-[15px] font-semibold text-zinc-900">
-                              <span className="text-zinc-500">
-                                {pediatric ? 'Diagnóstico: ' : 'Motivo: '}
-                              </span>
-                              {n.summary}
-                            </p>
-                            {n.symptoms && (
-                              <p className="whitespace-pre-line text-[13px] leading-relaxed text-zinc-700">
-                                <strong>Síntomas:</strong> {n.symptoms}
-                              </p>
-                            )}
-                            {n.examination && (
-                              <p className="whitespace-pre-line text-[13px] leading-relaxed text-zinc-700">
-                                <strong>Exploración:</strong> {n.examination}
-                              </p>
-                            )}
-                            {n.treatmentPerformed && (
-                              <p className="text-[13px] leading-relaxed text-zinc-700">
-                                <strong>{pediatric ? 'Tratamiento' : 'Se hizo'}:</strong>{' '}
-                                {n.treatmentPerformed}
-                              </p>
-                            )}
-                            {n.observations && (
-                              <p className="whitespace-pre-line text-[13px] leading-relaxed text-zinc-600">
-                                {n.observations}
-                              </p>
-                            )}
-                            {n.nextSteps && (
-                              <p className="mt-1 rounded-[10px] bg-brand-50 p-2.5 text-[13px] text-brand-800">
-                                <strong>Próximo paso:</strong> {n.nextSteps}
-                              </p>
-                            )}
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ol>
-                )}
-              </div>
+              <HistoryTimeline
+                notes={historyNotes}
+                pediatric={pediatric}
+                writeHref={canWriteToday ? hrefFor('visita') : null}
+              />
             )}
 
             {tab === 'citas' && (
               <div className="flex flex-col gap-2.5 p-4 md:p-6">
-                <h2 className="mb-1.5 text-[18px] font-bold tracking-tight text-zinc-900">
-                  Citas{' '}
-                  <span className="text-[13px] font-medium text-zinc-500">
-                    · {dossier.appointments.length} en total
-                  </span>
-                </h2>
+                <div className="mb-1.5 flex flex-wrap items-center gap-3">
+                  <h2 className="flex-1 text-[18px] font-bold tracking-tight text-zinc-900">
+                    Citas{' '}
+                    <span className="text-[13px] font-medium text-zinc-600">
+                      · {dossier.appointments.length} en total
+                    </span>
+                  </h2>
+                  {ctx.canWriteAppointments && dossier.appointments.length > 0 && (
+                    <Button asChild size="sm" variant="secondary">
+                      <Link href={scheduleHref} prefetch={false}>
+                        <CalendarPlus className="h-4 w-4" /> Agendar cita
+                      </Link>
+                    </Button>
+                  )}
+                </div>
                 {dossier.appointments.length === 0 ? (
                   <EmptyState
                     icon={<CalendarDays className="h-5 w-5" />}
                     title="Todavía sin citas"
-                    description="Cuando se le dé hora desde el calendario, aparece aquí."
+                    description="Desde aquí se le da la primera hora con sus datos ya puestos."
+                    action={
+                      ctx.canWriteAppointments ? (
+                        <Button asChild>
+                          <Link href={scheduleHref} prefetch={false}>
+                            <CalendarPlus className="h-4 w-4" /> Agendar cita
+                          </Link>
+                        </Button>
+                      ) : undefined
+                    }
                   />
                 ) : (
                   <ul className="flex flex-col gap-2.5">
                     {dossier.appointments.map((a) => (
                       <li
                         key={a.id}
-                        className="flex items-start gap-2.5 rounded-[14px] border border-[--color-border] p-3"
+                        className="flex items-start gap-2.5 rounded-[14px] border border-(--color-border) p-3"
                       >
                         <span
                           aria-hidden
@@ -556,7 +664,7 @@ export default async function PacienteDossierPage({
                           <p className="text-[14px] font-semibold text-zinc-800">
                             {fmt.format(a.startsAt)}
                           </p>
-                          <p className="mt-0.5 truncate text-[12px] text-zinc-500">
+                          <p className="mt-0.5 truncate text-[12px] text-zinc-600">
                             {a.professionalName}
                             {a.treatmentName ? ` · ${a.treatmentName}` : ''}
                             {pediatric && a.isFirstVisit ? ' · 1ª visita' : ''}
@@ -579,60 +687,51 @@ export default async function PacienteDossierPage({
                 canWrite={ctx.canWriteAppointments}
               />
             )}
+
+            {tab === 'actividad' && (
+              <div className="p-4 md:p-6">
+                <h2 className="mb-1 text-[18px] font-bold tracking-tight text-zinc-900">
+                  Actividad
+                </h2>
+                <p className="mb-4 text-[13px] text-zinc-600">
+                  Quién cambió qué en esta ficha y cuándo. Datos, anamnesis, notas, consentimiento y
+                  cobros.
+                </p>
+                {activity.length === 0 ? (
+                  <EmptyState
+                    icon={<Activity className="h-5 w-5" />}
+                    title="Sin actividad registrada"
+                    description="A partir de ahora, cada cambio en la ficha queda anotado aquí con su autor."
+                  />
+                ) : (
+                  <ol className="divide-y divide-(--color-border-subtle)">
+                    {activity.map((entry) => (
+                      <li
+                        key={entry.id}
+                        className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-2.5"
+                      >
+                        <span className="w-[150px] shrink-0 text-[12px] tabular-nums text-zinc-600">
+                          {fmt.format(entry.createdAt)}
+                        </span>
+                        <span className="min-w-0 flex-1 text-[14px] text-zinc-800">
+                          {describeActivity(entry)}
+                        </span>
+                        <span className="text-[12px] text-zinc-600">
+                          {entry.actorEmail ?? 'Asistente / sistema'}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
+            )}
           </Card>
 
           {showAside && (
-            <aside className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-[84px]">
-              {hasAnamnesis && person && (
-                <div className="hidden flex-col gap-2.5 rounded-[22px] border border-[--color-border] bg-white p-[18px] shadow-[var(--shadow-soft)] lg:flex">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[12px] font-bold uppercase tracking-[0.14em] text-zinc-400">
-                      Anamnesis
-                    </span>
-                    <span className="text-[12px] font-semibold text-zinc-500">
-                      {answered} de {template.length} contestados
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {template
-                      .filter((i) => person.anamnesis[i.key]?.value === true)
-                      .map((i) => (
-                        <span
-                          key={i.key}
-                          className="inline-flex items-center gap-1 rounded-full bg-brand-100 px-2.5 py-[3px] text-[12px] font-semibold text-brand-700"
-                        >
-                          {i.label}
-                          {person.anamnesis[i.key]?.detail.trim() && (
-                            <span className="font-medium text-brand-600">
-                              {person.anamnesis[i.key]?.detail.trim()}
-                            </span>
-                          )}
-                        </span>
-                      ))}
-                    {answered === 0 && (
-                      <span className="text-[12px] text-zinc-400">Sin datos todavía</span>
-                    )}
-                  </div>
-                  <Link
-                    href={hrefFor('anamnesis')}
-                    prefetch={false}
-                    className={
-                      pendingAnamnesis > 0
-                        ? 'flex min-h-11 items-center justify-between gap-2 rounded-[14px] border border-dashed border-amber-300 bg-amber-50 px-3 text-[13px] font-semibold text-amber-700'
-                        : 'flex min-h-11 items-center justify-between gap-2 rounded-[14px] border border-[--color-border] bg-[#fbfcfc] px-3 text-[13px] font-semibold text-zinc-600'
-                    }
-                  >
-                    {pendingAnamnesis > 0
-                      ? `${pendingAnamnesis} sin contestar`
-                      : 'Anamnesis completa'}
-                    <span>{pendingAnamnesis > 0 ? 'Completar →' : 'Ver →'}</span>
-                  </Link>
-                </div>
-              )}
-
+            <aside className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-[132px]">
               {lastNote && (
-                <div className="hidden flex-col gap-2 rounded-[22px] border border-[--color-border] bg-white p-[18px] shadow-[var(--shadow-soft)] lg:flex">
-                  <span className="text-[12px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+                <div className="hidden flex-col gap-2 rounded-[22px] border border-(--color-border) bg-white p-[18px] shadow-[var(--shadow-soft)] lg:flex">
+                  <span className="text-[12px] font-bold uppercase tracking-[0.14em] text-zinc-600">
                     Última visita · {fmtShort.format(lastNote.createdAt)}
                   </span>
                   <p className="text-[14px] font-semibold text-zinc-900">{lastNote.summary}</p>
@@ -650,12 +749,12 @@ export default async function PacienteDossierPage({
                 </div>
               )}
 
-              {person && (
+              {person && careProfile && (
                 <Card>
                   <CardTopbar
                     icon={<Star className="h-4 w-4" />}
-                    title="Marcas"
-                    subtitle="Prioridad y reseña: lo leen los asistentes"
+                    title="Prioridad y reseña"
+                    subtitle="Lo leen los asistentes"
                     tone="honey"
                   />
                   <CardContent>
@@ -664,8 +763,7 @@ export default async function PacienteDossierPage({
                       priorityFlag={person.priorityFlag}
                       priorityReason={person.priorityReason}
                       googleReview={person.googleReview}
-                      computedPriority={priority}
-                      lastBehavior={lastBehavior}
+                      priority={priority}
                       canEdit={ctx.canWriteAppointments}
                     />
                   </CardContent>
@@ -679,11 +777,15 @@ export default async function PacienteDossierPage({
                   canWrite={ctx.canWriteAppointments}
                   defaults={{
                     name:
-                      person.guardians.find((g) => g.role !== 'NINGUNO' && g.name.trim())?.name ??
-                      person.contactName ??
+                      primary?.name ||
+                      guardians.find((g) => g.name.trim())?.name ||
+                      person.contactName ||
                       '',
-                    phone: person.contactPhone ?? '',
-                    email: person.contactEmail ?? '',
+                    phone: phone ?? '',
+                    email: email ?? '',
+                    relation: primary
+                      ? GUARDIAN_ROLE_LABELS[primary.role]
+                      : (guardians[0] && GUARDIAN_ROLE_LABELS[guardians[0].role]) || null,
                   }}
                   consents={consents.map((c) => ({
                     id: c.id,
@@ -694,6 +796,7 @@ export default async function PacienteDossierPage({
                     signedAt: c.signedAt?.toISOString() ?? null,
                     signingUrl: c.signingUrl,
                     hasPdf: Boolean(c.pdfKey),
+                    whatsappSent: Boolean(c.whatsappMessageId),
                     error: c.error,
                   }))}
                 />

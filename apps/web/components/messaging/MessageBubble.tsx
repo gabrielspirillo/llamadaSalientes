@@ -152,7 +152,7 @@ export function MessageBubble(props: MessageBubbleProps) {
   if (message.kind === 'SYSTEM' && !deleted) {
     return (
       <li className="flex justify-center px-4 py-1.5">
-        <span className="inline-flex max-w-[80%] items-center gap-1.5 rounded-full bg-white/70 px-3 py-1 text-[13px] text-zinc-500 ring-1 ring-[--color-border-subtle]">
+        <span className="inline-flex max-w-[80%] items-center gap-1.5 rounded-full bg-white/70 px-3 py-1 text-[13px] text-zinc-500 ring-1 ring-(--color-border-subtle)">
           <Sparkles className="h-3 w-3 shrink-0 text-brand-400" />
           <span className="truncate">{message.body}</span>
         </span>
@@ -269,7 +269,7 @@ export function MessageBubble(props: MessageBubbleProps) {
                 ? 'border border-brand-200 bg-[linear-gradient(120deg,#effaf5,#e6f5ef)] shadow-[var(--shadow-soft)]'
                 : isOwn
                   ? 'bg-[linear-gradient(135deg,#f1faf6,#e7f5ef)] ring-1 ring-brand-200/70'
-                  : 'bg-white ring-1 ring-[--color-border-subtle]',
+                  : 'bg-white ring-1 ring-(--color-border-subtle)',
               message.failed && 'ring-2 ring-rose-300',
               compact && 'py-1.5',
             )}
@@ -336,7 +336,7 @@ export function MessageBubble(props: MessageBubbleProps) {
       {!deleted && !editing && (
         <div
           className={cn(
-            'absolute -top-3 right-3 z-10 hidden items-center gap-0.5 rounded-full border border-[--color-border] bg-white/95 p-1 shadow-[var(--shadow-lifted)] backdrop-blur-xl',
+            'absolute -top-3 right-3 z-10 hidden items-center gap-0.5 rounded-full border border-(--color-border) bg-white/95 p-1 shadow-[var(--shadow-lifted)] backdrop-blur-xl',
             'group-hover:flex group-focus-within:flex',
           )}
         >
@@ -392,7 +392,7 @@ export function MessageBubble(props: MessageBubbleProps) {
 
       {/* Paleta completa de reacciones */}
       {emojiOpen && (
-        <div className="absolute right-3 top-6 z-20 flex animate-zoom-in items-center gap-0.5 rounded-full border border-[--color-border] bg-white p-1.5 shadow-[var(--shadow-lifted)]">
+        <div className="absolute right-3 top-6 z-20 flex animate-zoom-in items-center gap-0.5 rounded-full border border-(--color-border) bg-white p-1.5 shadow-[var(--shadow-lifted)]">
           {REACTION_EMOJIS.map((emoji) => (
             <button
               key={emoji}
@@ -483,7 +483,7 @@ function ReactionRow({
               'transition-all duration-200 hover:-translate-y-0.5',
               mine
                 ? 'bg-brand-100 text-brand-800 ring-1 ring-brand-300 shadow-[0_6px_14px_-10px_rgba(55,118,106,0.9)]'
-                : 'bg-white text-zinc-600 ring-1 ring-[--color-border] hover:ring-brand-200 hover:shadow-[var(--shadow-soft)]',
+                : 'bg-white text-zinc-600 ring-1 ring-(--color-border) hover:ring-brand-200 hover:shadow-[var(--shadow-soft)]',
             )}
             title={`${r.count} ${r.count === 1 ? 'persona' : 'personas'}`}
           >
@@ -498,7 +498,7 @@ function ReactionRow({
           onClick={onAdd}
           aria-label="Añadir una reacción"
           title="Añadir una reacción"
-          className="press inline-flex h-[26px] w-[26px] items-center justify-center rounded-full bg-white text-zinc-400 opacity-0 ring-1 ring-[--color-border] transition-all duration-200 hover:-translate-y-0.5 hover:text-brand-600 hover:ring-brand-200 group-hover:opacity-100 group-focus-within:opacity-100"
+          className="press inline-flex h-[26px] w-[26px] items-center justify-center rounded-full bg-white text-zinc-400 opacity-0 ring-1 ring-(--color-border) transition-all duration-200 hover:-translate-y-0.5 hover:text-brand-600 hover:ring-brand-200 group-hover:opacity-100 group-focus-within:opacity-100"
         >
           <Plus className="h-3.5 w-3.5" />
         </button>
@@ -539,7 +539,7 @@ function AttachmentGrid({
               target="_blank"
               rel="noreferrer"
               className={cn(
-                'group/img relative block overflow-hidden rounded-[14px] ring-1 ring-[--color-border]',
+                'group/img relative block overflow-hidden rounded-[14px] ring-1 ring-(--color-border)',
                 shown.length === 3 && i === 0 && 'col-span-2',
               )}
             >
@@ -580,7 +580,7 @@ function AttachmentGrid({
           href={attachmentUrl(a)}
           target="_blank"
           rel="noreferrer"
-          className="group/file flex items-center gap-2.5 rounded-[16px] border border-[--color-border] bg-white px-3 py-2.5 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-[var(--shadow-soft)]"
+          className="group/file flex items-center gap-2.5 rounded-[16px] border border-(--color-border) bg-white px-3 py-2.5 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-[var(--shadow-soft)]"
         >
           <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-[linear-gradient(135deg,#e7f5ef,#ddf3ea)] text-brand-700">
             <FileText className="h-4 w-4" />

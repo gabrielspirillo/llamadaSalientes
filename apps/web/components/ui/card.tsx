@@ -6,7 +6,7 @@ const cardVariants = cva('relative rounded-[22px] transition-all duration-300', 
   variants: {
     tone: {
       /* Superficie base: blanca sobre canvas pastel */
-      default: 'bg-white border border-[--color-border] shadow-[var(--shadow-soft)]',
+      default: 'bg-white border border-(--color-border) shadow-[var(--shadow-soft)]',
       /* Vidrio esmerilado — para paneles sobre gradientes */
       glass: 'glass shadow-[var(--shadow-soft)]',
       /* Tarjetas pastel tipo tablero (referencia weihu) */
@@ -86,7 +86,7 @@ export const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<
     <div
       ref={ref}
       className={cn(
-        'mt-4 flex items-center justify-between border-t border-[--color-border-subtle] p-5 pt-4 sm:p-6 sm:pt-4',
+        'mt-4 flex items-center justify-between border-t border-(--color-border-subtle) p-5 pt-4 sm:p-6 sm:pt-4',
         className,
       )}
       {...props}

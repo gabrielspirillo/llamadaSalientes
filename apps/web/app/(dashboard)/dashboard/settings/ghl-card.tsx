@@ -103,7 +103,7 @@ function DisconnectedState() {
                     value={pit}
                     onChange={(e) => setPit(e.target.value)}
                     placeholder="pit-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                    className="mt-1.5 w-full h-10 rounded-lg border border-[--color-border] px-3 text-sm font-mono"
+                    className="mt-1.5 w-full h-10 rounded-lg border border-(--color-border) px-3 text-sm font-mono"
                   />
                 </div>
                 <div>
@@ -115,7 +115,7 @@ function DisconnectedState() {
                     value={locationId}
                     onChange={(e) => setLocationId(e.target.value)}
                     placeholder="abc123XYZ..."
-                    className="mt-1.5 w-full h-10 rounded-lg border border-[--color-border] px-3 text-sm font-mono"
+                    className="mt-1.5 w-full h-10 rounded-lg border border-(--color-border) px-3 text-sm font-mono"
                   />
                   <p className="text-xs text-zinc-500 mt-1.5">
                     Lo encuentras en GoHighLevel → Settings → Business Profile, o en la URL después

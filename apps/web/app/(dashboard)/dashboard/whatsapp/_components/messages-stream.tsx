@@ -163,7 +163,7 @@ function MessageBubble({
     ? 'mx-auto bg-amber-50 border border-amber-200 rounded-2xl'
     : isOutbound
       ? 'ml-auto rounded-2xl rounded-br-md bg-[linear-gradient(135deg,#10b981,#34d399)] text-white shadow-[0_8px_20px_-12px_rgba(16,185,129,0.9)]'
-      : 'mr-auto rounded-2xl rounded-bl-md bg-white border border-[--color-border] shadow-[var(--shadow-soft)]';
+      : 'mr-auto rounded-2xl rounded-bl-md bg-white border border-(--color-border) shadow-[var(--shadow-soft)]';
   const authorEmail = m.senderUserId ? (senderUserEmails[m.senderUserId] ?? null) : null;
   const timestamp = useMemo(() => new Date(m.createdAt).toLocaleString(), [m.createdAt]);
 
@@ -220,7 +220,7 @@ function MessageBubble({
 
 function TypingBubble() {
   return (
-    <li className="mr-auto max-w-[60%] animate-fade-up rounded-2xl rounded-bl-md border border-[--color-border] bg-white px-3.5 py-2.5 shadow-[var(--shadow-soft)]">
+    <li className="mr-auto max-w-[60%] animate-fade-up rounded-2xl rounded-bl-md border border-(--color-border) bg-white px-3.5 py-2.5 shadow-[var(--shadow-soft)]">
       <div className="flex items-center gap-2 text-zinc-500">
         <span className="text-[12px] font-medium">Agente escribiendo</span>
         <span className="inline-flex gap-1">

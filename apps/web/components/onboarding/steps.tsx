@@ -179,7 +179,7 @@ export function StepHours({ form, mutate, errors }: StepProps) {
         </Button>
       </div>
 
-      <div className="flex flex-col divide-y divide-[--color-border-subtle]">
+      <div className="flex flex-col divide-y divide-(--color-border-subtle)">
         {DAYS.map((day) => {
           const row = form.hours[day];
           return (
@@ -265,7 +265,7 @@ export function StepTreatments({ form, mutate, errors }: StepProps) {
             key={t.id}
             className={cn(
               'rounded-2xl border bg-white',
-              hasError ? 'border-rose-200' : 'border-[--color-border]',
+              hasError ? 'border-rose-200' : 'border-(--color-border)',
             )}
           >
             <div className="flex items-center gap-2 p-3.5">
@@ -300,7 +300,7 @@ export function StepTreatments({ form, mutate, errors }: StepProps) {
             </div>
 
             {isOpen && (
-              <div className="flex flex-col gap-4 border-t border-[--color-border-subtle] p-4">
+              <div className="flex flex-col gap-4 border-t border-(--color-border-subtle) p-4">
                 <Field label="Nombre" required error={errors[`treatments.${i}.name`]}>
                   <Input
                     value={t.name}
@@ -400,7 +400,7 @@ export function StepFaqs({ form, mutate, errors }: StepProps) {
             key={f.id}
             className={cn(
               'flex flex-col gap-4 rounded-2xl border bg-white p-4',
-              hasError ? 'border-rose-200' : 'border-[--color-border]',
+              hasError ? 'border-rose-200' : 'border-(--color-border)',
             )}
           >
             <div className="flex items-center justify-between">

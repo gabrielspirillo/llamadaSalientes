@@ -514,6 +514,18 @@ export async function saveClinicalNoteAction(
     }
     await assertProfessionalInScope(ctx, input.professionalId);
     await saveClinicalNote(ctx, input, noteId);
+    await recordAudit({
+      tenantId: ctx.tenantId,
+      actorUserId: ctx.userId,
+      action: noteId ? 'update' : 'create',
+      entity: 'clinical_note',
+      entityId: noteId ?? null,
+      after: {
+        patientKey: input.patientKey,
+        appointmentId: input.appointmentId ?? null,
+        private: Boolean(input.private),
+      },
+    }).catch(() => undefined);
     revalidatePath('/dashboard/agenda/pacientes');
     revalidatePath(`/dashboard/agenda/pacientes/${encodeURIComponent(input.patientKey)}`);
     return { ok: true };
@@ -574,6 +586,18 @@ export async function updatePatientAction(
   try {
     const ctx = await requireAgendaWriter();
     await updatePatient({ tenantId: ctx.tenantId, userId: ctx.userId }, patientId, input);
+    await recordAudit({
+      tenantId: ctx.tenantId,
+      actorUserId: ctx.userId,
+      action: 'update',
+      entity: 'patient',
+      entityId: patientId,
+      after: {
+        field: 'datos',
+        patientKey: `pat:${patientId}`,
+        anamnesis: Boolean(input.anamnesisPatch && Object.keys(input.anamnesisPatch).length),
+      },
+    }).catch(() => undefined);
     revalidatePatient(patientId);
     return { ok: true };
   } catch (err) {
@@ -592,6 +616,14 @@ export async function saveAnamnesisAction(
       throw new AgendaForbiddenError('Tu rol no permite escribir historia clínica.');
     }
     await saveAnamnesis({ tenantId: ctx.tenantId, userId: ctx.userId }, patientId, answers);
+    await recordAudit({
+      tenantId: ctx.tenantId,
+      actorUserId: ctx.userId,
+      action: 'update',
+      entity: 'patient',
+      entityId: patientId,
+      after: { field: 'anamnesis', patientKey: `pat:${patientId}` },
+    }).catch(() => undefined);
     revalidatePatient(patientId);
     return { ok: true };
   } catch (err) {
@@ -606,6 +638,19 @@ export async function setPatientMarksAction(
   try {
     const ctx = await requireAgendaWriter();
     await setPatientMarks({ tenantId: ctx.tenantId, userId: ctx.userId }, patientId, input);
+    await recordAudit({
+      tenantId: ctx.tenantId,
+      actorUserId: ctx.userId,
+      action: 'update',
+      entity: 'patient',
+      entityId: patientId,
+      after: {
+        field: input.needsHumanReview === false ? 'revision' : 'marcas',
+        patientKey: `pat:${patientId}`,
+        priorityFlag: input.priorityFlag,
+        googleReview: input.googleReview,
+      },
+    }).catch(() => undefined);
     revalidatePatient(patientId);
     return { ok: true };
   } catch (err) {
@@ -631,6 +676,14 @@ export async function sendConsentAction(
       guardian,
       sentByUserId: ctx.userId,
     });
+    await recordAudit({
+      tenantId: ctx.tenantId,
+      actorUserId: ctx.userId,
+      action: 'create',
+      entity: 'patient_consent',
+      entityId: result.consentId,
+      after: { patientKey: `pat:${patientId}`, whatsappSent: result.whatsappSent },
+    }).catch(() => undefined);
     revalidatePatient(patientId);
     return {
       ok: true,
@@ -706,7 +759,12 @@ export async function registerPaymentAction(input: {
       action: 'update',
       entity: 'patient_charge',
       entityId: result.chargeId,
-      after: { amountCents, paymentMethod: input.paymentMethod, paidOn: input.paidOn },
+      after: {
+        patientKey: result.patientKey,
+        amountCents,
+        paymentMethod: input.paymentMethod,
+        paidOn: input.paidOn,
+      },
     }).catch(() => undefined);
     revalidatePath(`/dashboard/agenda/pacientes/${encodeURIComponent(result.patientKey)}`);
     return { ok: true, data: { chargeId: result.chargeId } };

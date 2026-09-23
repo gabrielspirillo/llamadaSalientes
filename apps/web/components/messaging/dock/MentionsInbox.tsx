@@ -56,7 +56,7 @@ export function MentionsInbox({
         <li
           key={m.id}
           style={{ ['--i' as string]: i }}
-          className="rounded-2xl bg-white p-3 ring-1 ring-[--color-border] transition-shadow hover:shadow-[0_10px_24px_-18px_rgba(22,26,25,0.5)]"
+          className="rounded-2xl bg-white p-3 ring-1 ring-(--color-border) transition-shadow hover:shadow-[0_10px_24px_-18px_rgba(22,26,25,0.5)]"
         >
           <div className="flex items-center gap-2">
             <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-brand-100 text-brand-600">

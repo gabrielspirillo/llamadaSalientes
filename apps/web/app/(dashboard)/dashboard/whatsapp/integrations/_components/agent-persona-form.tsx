@@ -38,7 +38,7 @@ export function AgentPersonaForm({ initial }: Props) {
           onChange={(e) => setAgentName(e.target.value)}
           maxLength={60}
           placeholder="Por ejemplo: Lucía"
-          className="mt-1 w-full rounded-lg border border-[--color-border] px-3 py-1.5 text-sm"
+          className="mt-1 w-full rounded-lg border border-(--color-border) px-3 py-1.5 text-sm"
         />
       </label>
       <label className="block">
@@ -51,7 +51,7 @@ export function AgentPersonaForm({ initial }: Props) {
           maxLength={2000}
           rows={5}
           placeholder="Por ejemplo: tono cálido y cercano. Menciona la promoción de blanqueamiento cuando encaje. Trata de usted a las personas mayores."
-          className="mt-1 w-full rounded-lg border border-[--color-border] px-3 py-1.5 text-sm"
+          className="mt-1 w-full rounded-lg border border-(--color-border) px-3 py-1.5 text-sm"
         />
         <span className="mt-1 block text-[12px] text-zinc-500">
           Afina el tono y el foco del agente. No anula las reglas de seguridad, los datos oficiales

@@ -2,7 +2,7 @@ import { cn } from '@/lib/cn';
 import * as React from 'react';
 
 const fieldBase = [
-  'w-full rounded-[14px] border border-[--color-border] bg-white text-sm text-zinc-900',
+  'w-full rounded-[14px] border border-(--color-border) bg-white text-sm text-zinc-900',
   'placeholder:text-zinc-400',
   'transition-[border-color,box-shadow,background-color] duration-300',
   'hover:border-brand-200',

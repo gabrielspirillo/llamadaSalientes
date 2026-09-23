@@ -10,7 +10,7 @@ import type { CalendarBlock, CalendarItem } from '@/lib/agenda/view';
 import { formatDateKeyLong, formatDateKeyShort } from '@/lib/agenda/view';
 import { cn } from '@/lib/cn';
 import { CalendarDays, ChevronLeft, ChevronRight, Plus, Users } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import * as React from 'react';
 import {
   AppointmentDialog,
@@ -54,6 +54,15 @@ export interface CalendarViewProps {
   /** Un profesional con agenda propia no elige: siempre ve la suya. */
   lockedToProfessional: boolean;
   todayKey: string;
+  /**
+   * Abrir el alta de cita ya rellena con este paciente (se llega desde su
+   * ficha con `?paciente=`). Se abre una vez y la URL se limpia al cerrar.
+   */
+  newAppointmentFor?: {
+    patientId: string | null;
+    patientName: string;
+    patientPhone: string | null;
+  } | null;
 }
 
 /** Alto en píxeles de una hora de rejilla. */
@@ -93,11 +102,42 @@ export function CalendarView(props: CalendarViewProps) {
     lockedToProfessional,
     todayKey,
     timezone,
+    newAppointmentFor = null,
   } = props;
 
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [seed, setSeed] = React.useState<AppointmentDialogSeed | null>(null);
+  const openedFromPatient = React.useRef(false);
+
+  // Desde la ficha del paciente: el alta se abre sola, con su nombre y su
+  // teléfono puestos, sobre el día que se está mirando.
+  React.useEffect(() => {
+    if (!newAppointmentFor || !canWrite || openedFromPatient.current) return;
+    const professionalId =
+      selectedProfessionalId !== 'all' ? selectedProfessionalId : (professionals[0]?.id ?? '');
+    if (!professionalId) return;
+    openedFromPatient.current = true;
+    setSeed({
+      professionalId,
+      dateKey,
+      startMinute: Math.max(dayWindow.startMinute, 9 * 60),
+      patientId: newAppointmentFor.patientId,
+      patientName: newAppointmentFor.patientName,
+      patientPhone: newAppointmentFor.patientPhone,
+    });
+  }, [newAppointmentFor, canWrite, selectedProfessionalId, professionals, dateKey, dayWindow]);
+
+  function closeDialog() {
+    setSeed(null);
+    if (openedFromPatient.current && searchParams.get('paciente')) {
+      const next = new URLSearchParams(searchParams.toString());
+      next.delete('paciente');
+      const qs = next.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname);
+    }
+  }
   const [openItem, setOpenItem] = React.useState<CalendarItem | null>(null);
 
   const hours = React.useMemo(() => {
@@ -190,7 +230,7 @@ export function CalendarView(props: CalendarViewProps) {
     <>
       <Card className="overflow-hidden">
         {/* Barra de control */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[--color-border-subtle] p-4 sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-(--color-border-subtle) p-4 sm:p-5">
           <div className="flex items-center gap-2">
             <IconButton label="Anterior" onClick={() => shiftDays(view === 'week' ? -7 : -1)}>
               <ChevronLeft className="h-4 w-4" />
@@ -290,14 +330,14 @@ export function CalendarView(props: CalendarViewProps) {
             <div className="min-w-[640px]">
               {/* Cabecera de columnas */}
               <div
-                className="grid border-b border-[--color-border-subtle]"
+                className="grid border-b border-(--color-border-subtle)"
                 style={{
                   gridTemplateColumns: `64px repeat(${columns.length}, minmax(150px, 1fr))`,
                 }}
               >
                 <div />
                 {columns.map((c) => (
-                  <div key={c.key} className="border-l border-[--color-border-subtle] px-3 py-2">
+                  <div key={c.key} className="border-l border-(--color-border-subtle) px-3 py-2">
                     <div className="flex items-center gap-2">
                       <span
                         aria-hidden
@@ -348,7 +388,7 @@ export function CalendarView(props: CalendarViewProps) {
                 {columns.map((column) => (
                   <div
                     key={column.key}
-                    className="relative border-l border-[--color-border-subtle]"
+                    className="relative border-l border-(--color-border-subtle)"
                     style={{ height: gridHeight }}
                     onClick={(e) => handleGridClick(column, e)}
                     onKeyDown={(e) => {
@@ -369,7 +409,7 @@ export function CalendarView(props: CalendarViewProps) {
                       <div
                         key={h}
                         aria-hidden
-                        className="absolute inset-x-0 border-t border-[--color-border-subtle]"
+                        className="absolute inset-x-0 border-t border-(--color-border-subtle)"
                         style={{ top: minutesToTop(h, dayWindow.startMinute) }}
                       />
                     ))}
@@ -477,7 +517,7 @@ export function CalendarView(props: CalendarViewProps) {
           professionals={professionals.filter((p) => p.agendaEnabled)}
           treatments={treatments}
           patients={patients}
-          onClose={() => setSeed(null)}
+          onClose={closeDialog}
         />
       )}
 

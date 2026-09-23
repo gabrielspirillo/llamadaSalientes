@@ -101,7 +101,7 @@ export function TreatmentsPicker({
               key={t.id}
               className={cn(
                 'flex items-center justify-between gap-3 rounded-[14px] border p-3 transition-colors',
-                isOn ? 'border-brand-200 bg-brand-50/50' : 'border-[--color-border] bg-white',
+                isOn ? 'border-brand-200 bg-brand-50/50' : 'border-(--color-border) bg-white',
               )}
             >
               <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5">

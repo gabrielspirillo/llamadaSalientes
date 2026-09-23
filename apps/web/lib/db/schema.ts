@@ -2137,6 +2137,11 @@ export const patients = pgTable(
     needsHumanReview: boolean('needs_human_review').notNull().default(false),
     reviewReason: text('review_reason'),
     notes: text('notes'),
+    /** Quién contestó la anamnesis por última vez y cuándo (migración 0035). */
+    anamnesisUpdatedAt: timestamp('anamnesis_updated_at', { withTimezone: true }),
+    anamnesisUpdatedByUserId: uuid('anamnesis_updated_by_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
     active: boolean('active').notNull().default(true),
     createdByUserId: uuid('created_by_user_id').references(() => users.id, {
       onDelete: 'set null',

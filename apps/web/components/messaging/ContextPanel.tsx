@@ -446,7 +446,7 @@ function MetricTile({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[16px] bg-white/85 px-3 py-2.5 text-left ring-1 ring-[--color-border-subtle] transition-shadow duration-300 hover:shadow-[var(--shadow-soft)]">
+    <div className="rounded-[16px] bg-white/85 px-3 py-2.5 text-left ring-1 ring-(--color-border-subtle) transition-shadow duration-300 hover:shadow-[var(--shadow-soft)]">
       <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-500">
         <span className="text-brand-500">{icon}</span>
         {label}
@@ -472,7 +472,7 @@ function PreferenceRow({
   onCheckedChange: (on: boolean) => void;
 }) {
   return (
-    <div className="flex items-center gap-2.5 rounded-[16px] bg-white/85 px-3 py-2.5 ring-1 ring-[--color-border-subtle]">
+    <div className="flex items-center gap-2.5 rounded-[16px] bg-white/85 px-3 py-2.5 ring-1 ring-(--color-border-subtle)">
       <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[11px] bg-brand-50 text-brand-600">
         {icon}
       </span>
@@ -492,7 +492,7 @@ function FileBucketRow({ bucket }: { bucket: FileBucket }) {
   const totalBytes = bucket.items.reduce((n, a) => n + (a.size || 0), 0);
 
   return (
-    <div className="overflow-hidden rounded-[16px] bg-white/85 ring-1 ring-[--color-border-subtle]">
+    <div className="overflow-hidden rounded-[16px] bg-white/85 ring-1 ring-(--color-border-subtle)">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -523,7 +523,7 @@ function FileBucketRow({ bucket }: { bucket: FileBucket }) {
       </button>
 
       {open && (
-        <ul className="animate-fade-down space-y-1 border-t border-[--color-border-subtle] p-2">
+        <ul className="animate-fade-down space-y-1 border-t border-(--color-border-subtle) p-2">
           {bucket.items.slice(0, 12).map((att) => (
             <li key={att.key}>
               <a

@@ -198,6 +198,13 @@ Todo el front comparte un único lenguaje visual. **No inventes estilos nuevos: 
 - `feedback.tsx` — `EmptyState`, `Skeleton`, `SkeletonRows`, `Callout`, `SectionTitle`.
 
 **Reglas**:
+- ⚠️ **Tailwind 4: una variable CSS en una utilidad va entre paréntesis**,
+  `border-(--color-border)`, `ring-(--color-border)`, `bg-(--color-canvas)`.
+  La forma de Tailwind 3, `border-[--color-border]`, compila a
+  `border-color: --color-border` (inválido), el navegador la descarta y el
+  borde cae a `currentColor`: **todas las tarjetas salían con borde negro de
+  1px** hasta el 2026-09-23, cuando se reemplazaron 300+ usos. Para un color
+  del `@theme` también vale la utilidad directa (`border-border`).
 - Sin dependencias de animación (nada de framer-motion): CSS + IntersectionObserver.
 - `prefers-reduced-motion` desactiva todo el movimiento (ya está en globals.css).
 - Las reglas de `[data-reveal]` viven bajo `html.js`; la clase la pone un script inline del layout raíz para que sin JS el contenido igual se vea.
@@ -785,6 +792,60 @@ las mismas pestañas con sus datos de contacto.
 - **Anamnesis**: lo pendiente primero y en ámbar, barra de progreso. El orden
   se fija con lo guardado, no con el borrador: una fila que salta al
   contestarla es lo peor que le puede pasar a quien está tecleando.
+
+**Revisión del 2026-09-23 (52 correcciones)**, lo que cambió de forma y por qué:
+
+- **Cabecera**: migas clicables (Agenda › Pacientes › nombre) en vez del
+  eyebrow; avatar con **iniciales** y el bebé como marca pequeña de
+  "pediátrico"; acciones rápidas **Llamar · WhatsApp · Agendar · Editar**;
+  tira con jerarquía (la edad grande, el nacimiento debajo), tutores con su
+  relación y el **titular del teléfono**, contacto formateado
+  (`formatPhoneDisplay`, `lib/patients/names.ts`) y "Próxima cita / Agendar"
+  cuando no hay última sesión. Los nombres se guardan en **Title Case**
+  (`titleCaseName`, en `createPatient`/`updatePatient`, también los tutores).
+- **"A tener en cuenta" es un banner** (`patient-alerts-banner.tsx`) con chips,
+  no una columna que se cortaba. Las alertas se editan también desde el
+  diálogo del paciente ("Alertas clínicas" = ítems con `alert`, vía
+  `anamnesisPatch` de `updatePatient`).
+- **Prioridad con fuente**: `describePriority()` dice si es por edad, a mano o
+  las dos; la cabecera pinta "Prioritario · por edad" y la tarjeta
+  "Prioridad y reseña" lo explica, así la casilla manual sin marcar deja de
+  parecer un error. La reseña es un interruptor con estado, no una estrella.
+- **Pestañas subrayadas y pegadas** (`patient-tabs.tsx`, cliente): se
+  distinguen de las píldoras del módulo; cambio optimista con línea de carga
+  (`useTransition` + `router.push`); al perder de vista la cabecera muestran
+  nombre + alertas. Pestaña nueva **Actividad** (`lib/patients/activity.ts`):
+  lee `audit_logs` por `after->>'patientKey'`; **toda acción sobre un paciente
+  deja `patientKey` en `after`** (datos, anamnesis, marcas, nota, consentimiento,
+  cobro, comprobante). Sin eso no aparece en la ficha.
+- **Visita de hoy**: arriba la tarjeta "Hoy" (`today-appointment-card.tsx`)
+  con la cita, su estado y los botones Llegó · En gabinete · Atendida, más lo
+  pendiente (anamnesis, consentimiento, cobros). La nota siempre se puede
+  escribir si el rol lo permite: cuando quien teclea no es profesional
+  (recepción, Futura) el formulario pregunta **quién firma**.
+- **Anamnesis**: bloques (`group`), nombre completo de siglas (`fullName`),
+  texto guía (`hint`), tres estados visibles (sí / no / **Sin contestar**),
+  aviso de contradicción (`anamnesisConflicts`: un `exclusive` en sí con una
+  alerta en sí), sin barra de progreso, guardar pegado abajo, y **quién la
+  guardó y cuándo** (`patients.anamnesis_updated_at/_by`, migración `0035`).
+  La plantilla de Respinens se enriqueció por clave en `0035`; **"PA" quedó
+  sin nombre completo** porque no sabemos qué significa para la clínica.
+- **Tutores** (`guardianSchema`): relación libre (Mamá, Papá, Abuela, Abuelo,
+  Tutor/a legal, Otro), teléfono, email y canal preferido por tutor, y
+  `primary` = titular del teléfono de la ficha. El contacto (`contact_id`) se
+  deriva del titular (`contactFromInput`), y el consentimiento va a él. Hasta
+  4 tutores.
+- **Consentimiento** (`consent-card.tsx`): estado real (creado / enviado por
+  WhatsApp / firmado, según `whatsapp_message_id`), aviso con **Conectar
+  WhatsApp** cuando no hay conector, y con uno pendiente el primario es
+  "Comprobar firma", no "Enviar" otro. Las acciones van bajo la cabecera de la
+  tarjeta, no encima del título.
+- **Agendar desde la ficha**: `/dashboard/agenda?paciente=<key>` abre el alta
+  de cita con el paciente puesto (`newAppointmentFor` en `CalendarView`).
+- **Global**: un solo indicador de impersonación (chip ámbar persistente en el
+  topbar, `impersonation-chip.tsx`; el banner se borró), el saludo con nombre
+  pasó del topbar al Home, `<main>` lleva `pb-28` para que el dock de chat no
+  tape nada, y el sidebar plegado suma `title` a cada ítem.
 
 **Contable** (migración `0034_cobros_paciente.sql`, tablas `patient_charges` y
 `patient_charge_files`): Facturado / Cobrado / Pendiente, y por cada cita el

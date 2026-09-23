@@ -210,7 +210,7 @@ export function RemindersPipeline({
           placeholder="Buscar paciente, tratamiento o cita…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="h-11 w-full max-w-sm rounded-[14px] border border-[--color-border] bg-white px-4 text-sm transition-[border-color,box-shadow] duration-300 placeholder:text-zinc-400 hover:border-brand-200 focus-visible:border-brand-400 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/12"
+          className="h-11 w-full max-w-sm rounded-[14px] border border-(--color-border) bg-white px-4 text-sm transition-[border-color,box-shadow] duration-300 placeholder:text-zinc-400 hover:border-brand-200 focus-visible:border-brand-400 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/12"
         />
         <span className="text-xs text-zinc-500">{filtered.length} recordatorios</span>
         <span className="ml-auto text-[12px] text-zinc-500">
@@ -230,7 +230,7 @@ export function RemindersPipeline({
               {/* Scroll vertical interno por columna: ~4 tarjetas visibles. */}
               <div className="flex flex-col gap-3 overflow-y-auto pr-1" style={{ maxHeight: 520 }}>
                 {items.length === 0 ? (
-                  <div className="rounded-[18px] border border-dashed border-[--color-border-strong] p-5 text-center text-[12px] text-zinc-500">
+                  <div className="rounded-[18px] border border-dashed border-(--color-border-strong) p-5 text-center text-[12px] text-zinc-500">
                     Sin recordatorios
                   </div>
                 ) : (

@@ -109,7 +109,7 @@ async function TeamAnalytics({
   return (
     <>
       <div className="flex justify-end mb-4">
-        <div className="inline-flex items-center rounded-full border border-[--color-border] bg-white p-1 text-xs">
+        <div className="inline-flex items-center rounded-full border border-(--color-border) bg-white p-1 text-xs">
           <RangePill
             href="/dashboard/analytics?tab=team&range=today"
             active={range === 'today'}
@@ -154,7 +154,7 @@ async function InboundAnalytics({
   return (
     <>
       <div className="flex justify-end mb-4">
-        <div className="inline-flex items-center rounded-full border border-[--color-border] bg-white p-1 text-xs">
+        <div className="inline-flex items-center rounded-full border border-(--color-border) bg-white p-1 text-xs">
           <RangePill
             href="/dashboard/analytics?tab=inbound&range=today"
             active={range === 'today'}
@@ -296,7 +296,7 @@ async function InboundAnalytics({
               />
               <div className="px-4 pb-5 sm:px-6 sm:pb-6">
                 <IntentDonut data={data.intents} />
-                <div className="mt-4 border-t border-[--color-border-subtle] pt-4">
+                <div className="mt-4 border-t border-(--color-border-subtle) pt-4">
                   <IntentBarList data={data.intents} />
                 </div>
               </div>

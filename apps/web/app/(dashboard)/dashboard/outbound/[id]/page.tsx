@@ -89,7 +89,7 @@ export default async function OutboundCampaignDetail({
       <Card>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="text-zinc-500 border-b border-[--color-border-subtle]">
+            <thead className="text-zinc-500 border-b border-(--color-border-subtle)">
               <tr>
                 <th className="text-left font-medium px-4 sm:px-5 py-3">Teléfono</th>
                 <th className="text-left font-medium px-4 sm:px-5 py-3 hidden sm:table-cell">
@@ -106,7 +106,7 @@ export default async function OutboundCampaignDetail({
             </thead>
             <tbody>
               {targets.map((t) => (
-                <tr key={t.id} className="border-b border-[--color-border-subtle] last:border-0">
+                <tr key={t.id} className="border-b border-(--color-border-subtle) last:border-0">
                   <td className="px-4 sm:px-5 py-3 font-mono text-xs">{t.toNumber}</td>
                   <td className="px-4 sm:px-5 py-3 hidden sm:table-cell">{t.patientName ?? '—'}</td>
                   <td className="px-4 sm:px-5 py-3">{targetStatusBadge(t.status)}</td>

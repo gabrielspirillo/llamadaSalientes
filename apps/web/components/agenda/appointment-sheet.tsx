@@ -119,7 +119,7 @@ export function AppointmentSheet({
                       'rounded-full px-3 py-1 text-[12px] font-semibold transition-colors',
                       item.status === s
                         ? 'bg-brand-600 text-white'
-                        : 'bg-white text-zinc-600 ring-1 ring-[--color-border] hover:bg-brand-50',
+                        : 'bg-white text-zinc-600 ring-1 ring-(--color-border) hover:bg-brand-50',
                     )}
                   >
                     {STATUS_LABELS[s]}
@@ -138,7 +138,7 @@ export function AppointmentSheet({
           )}
 
           {canWrite && showReschedule && (
-            <div className="rounded-[14px] border border-[--color-border] p-3">
+            <div className="rounded-[14px] border border-(--color-border) p-3">
               <p className="mb-2 text-[12px] font-bold uppercase tracking-wide text-zinc-500">
                 Mover la cita
               </p>
@@ -227,7 +227,7 @@ export function AppointmentSheet({
             </p>
           )}
 
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[--color-border-subtle] pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-(--color-border-subtle) pt-4">
             <div className="flex flex-wrap gap-2">
               <Button asChild variant="soft" size="sm">
                 <Link href={`/dashboard/agenda/pacientes/${encodeURIComponent(item.patientKey)}`}>

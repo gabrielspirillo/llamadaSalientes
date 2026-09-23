@@ -30,7 +30,10 @@ export type AuditEntity =
   | 'professional_schedule'
   | 'agenda_appointment'
   // Cobros por cita (migración 0034).
-  | 'patient_charge';
+  | 'patient_charge'
+  // Historia clínica y consentimiento: entran en la actividad de la ficha.
+  | 'clinical_note'
+  | 'patient_consent';
 
 export async function recordAudit(input: {
   tenantId: string;

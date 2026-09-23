@@ -29,7 +29,7 @@ export function ConfigurationTabs({
   const TABS = showModulesTab ? [...BASE_TABS, MODULES_TAB] : BASE_TABS;
   return (
     <div className="mb-6">
-      <nav className="scrollbar-none inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-[--color-border] bg-white/70 p-1 backdrop-blur-xl">
+      <nav className="scrollbar-none inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-(--color-border) bg-white/70 p-1 backdrop-blur-xl">
         {TABS.map((t) => {
           const Icon = t.icon;
           const isActive = t.key === active;

@@ -216,7 +216,7 @@ export function OnboardingWizard({
                       ? 'bg-[linear-gradient(120deg,#37766a,#5fa896)] text-white'
                       : active
                         ? 'bg-white text-brand-700 ring-2 ring-brand-400 animate-pulse-ring'
-                        : 'bg-white/70 text-zinc-400 ring-1 ring-[--color-border]'
+                        : 'bg-white/70 text-zinc-400 ring-1 ring-(--color-border)'
                   }`}
                 >
                   {done ? <Check className="h-3.5 w-3.5" /> : st.n}
@@ -272,7 +272,7 @@ export function OnboardingWizard({
       )}
 
       {/* Navegación */}
-      <footer className="sticky bottom-0 mt-8 flex items-center justify-between gap-3 rounded-t-[22px] border-t border-[--color-border-subtle] bg-white/80 py-4 backdrop-blur-xl">
+      <footer className="sticky bottom-0 mt-8 flex items-center justify-between gap-3 rounded-t-[22px] border-t border-(--color-border-subtle) bg-white/80 py-4 backdrop-blur-xl">
         {step === 1 ? (
           <Button variant="ghost" onClick={exit} disabled={submitting} type="button">
             <LogOut className="h-4 w-4" /> Salir

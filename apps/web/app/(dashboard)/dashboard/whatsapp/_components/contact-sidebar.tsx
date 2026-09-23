@@ -185,7 +185,7 @@ export function ContactSidebar({
   const assignedMember = members.find((m) => m.userId === assignedUserId);
 
   return (
-    <aside className="flex w-full flex-col gap-4 overflow-y-auto border-t border-[--color-border-subtle] bg-[linear-gradient(180deg,#fafdfb,#f6f5fb)] p-4 lg:w-80 lg:shrink-0 lg:border-l lg:border-t-0">
+    <aside className="flex w-full flex-col gap-4 overflow-y-auto border-t border-(--color-border-subtle) bg-[linear-gradient(180deg,#fafdfb,#f6f5fb)] p-4 lg:w-80 lg:shrink-0 lg:border-l lg:border-t-0">
       {error && (
         <div className="animate-fade-down rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-[13px] text-rose-700">
           {error}
@@ -193,7 +193,7 @@ export function ContactSidebar({
       )}
 
       {/* Contacto */}
-      <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-4">
+      <div className="rounded-[22px] border border-(--color-border) bg-white shadow-[var(--shadow-soft)] p-4">
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[linear-gradient(135deg,#a7f3d0,#6ee7b7)] text-[16px] font-bold text-emerald-800 ring-2 ring-white">
             {(contact.name ?? contact.phoneE164).slice(0, 2).toUpperCase()}
@@ -207,7 +207,7 @@ export function ContactSidebar({
         </div>
         <Link
           href={`/dashboard/whatsapp/contacts/${contact.id}`}
-          className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-[--color-border] bg-white px-3 py-2 text-[13px] font-semibold text-zinc-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:text-brand-700"
+          className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-(--color-border) bg-white px-3 py-2 text-[13px] font-semibold text-zinc-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:text-brand-700"
         >
           Ver detalles del contacto
         </Link>
@@ -276,7 +276,7 @@ export function ContactSidebar({
       ) : null}
 
       {/* Citas */}
-      <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-4">
+      <div className="rounded-[22px] border border-(--color-border) bg-white shadow-[var(--shadow-soft)] p-4">
         <p className="text-[15px] font-bold tracking-tight text-zinc-900">Citas</p>
         {appointments.length === 0 ? (
           <p className="mt-2 text-xs text-zinc-500">
@@ -318,7 +318,7 @@ export function ContactSidebar({
       </div>
 
       {/* Agente IA */}
-      <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-4">
+      <div className="rounded-[22px] border border-(--color-border) bg-white shadow-[var(--shadow-soft)] p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[15px] font-bold tracking-tight text-zinc-900">Agente Virtual</p>
@@ -349,13 +349,13 @@ export function ContactSidebar({
       </div>
 
       {/* Asignación */}
-      <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-4">
+      <div className="rounded-[22px] border border-(--color-border) bg-white shadow-[var(--shadow-soft)] p-4">
         <p className="text-[15px] font-bold tracking-tight text-zinc-900">Asignar a</p>
         <select
           value={assignedUserId ?? ''}
           onChange={(e) => handleAssign(e.target.value || null)}
           disabled={pending}
-          className="mt-2 w-full rounded-lg border border-[--color-border] px-2 py-1.5 text-sm focus:border-zinc-400 focus:outline-none disabled:bg-zinc-50"
+          className="mt-2 w-full rounded-lg border border-(--color-border) px-2 py-1.5 text-sm focus:border-zinc-400 focus:outline-none disabled:bg-zinc-50"
         >
           <option value="">Sin asignar</option>
           {members.map((m) => (
@@ -372,7 +372,7 @@ export function ContactSidebar({
       </div>
 
       {/* Etiquetas */}
-      <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-4">
+      <div className="rounded-[22px] border border-(--color-border) bg-white shadow-[var(--shadow-soft)] p-4">
         <div className="flex items-center justify-between">
           <p className="text-[15px] font-bold tracking-tight text-zinc-900">Etiquetas</p>
           <button
@@ -392,14 +392,14 @@ export function ContactSidebar({
               onChange={(e) => setNewTagLabel(e.target.value)}
               placeholder="Nombre de la etiqueta"
               maxLength={40}
-              className="w-full rounded-lg border border-[--color-border] px-2 py-1.5 text-xs focus:border-zinc-400 focus:outline-none"
+              className="w-full rounded-lg border border-(--color-border) px-2 py-1.5 text-xs focus:border-zinc-400 focus:outline-none"
             />
             <div className="flex items-center gap-2">
               <input
                 type="color"
                 value={newTagColor}
                 onChange={(e) => setNewTagColor(e.target.value)}
-                className="h-7 w-10 cursor-pointer rounded border border-[--color-border]"
+                className="h-7 w-10 cursor-pointer rounded border border-(--color-border)"
               />
               <button
                 type="submit"

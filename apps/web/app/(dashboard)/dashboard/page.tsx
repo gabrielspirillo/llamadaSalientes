@@ -8,9 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Reveal } from '@/components/ui/motion';
 import { Avatar } from '@/components/ui/stat';
+import { resolveTimezone } from '@/lib/agenda/queries';
 import { formatDuration, getDashboardStats, getUpcomingAppointments } from '@/lib/data/calls-list';
 import { getDemoUpcoming } from '@/lib/demo-data';
 import { getCurrentTenant } from '@/lib/tenant';
+import { currentUser } from '@clerk/nextjs/server';
 import { ArrowRight, CalendarClock, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
@@ -21,6 +23,20 @@ export default async function DashboardOverview({
 }) {
   const { tenant } = await getCurrentTenant();
   const demo = (await searchParams).demo === '1';
+  // El saludo con nombre y hora vivía en el topbar, donde gastaba sitio en
+  // todas las pantallas de trabajo. Aquí es el único lugar donde aporta.
+  const [user, timezone] = await Promise.all([
+    currentUser().catch(() => null),
+    resolveTimezone(tenant.id, null).catch(() => 'Europe/Madrid'),
+  ]);
+  const hour = Number(
+    new Intl.DateTimeFormat('en-US', { hour: 'numeric', hourCycle: 'h23', timeZone: timezone })
+      .formatToParts(new Date())
+      .find((p) => p.type === 'hour')?.value ?? '12',
+  );
+  const saludo =
+    hour < 6 || hour >= 20 ? 'Buenas noches' : hour < 13 ? 'Buenos días' : 'Buenas tardes';
+  const firstName = user?.firstName ?? user?.fullName?.split(' ')[0] ?? '';
   // Las dos sólo dependen del tenant: encadenarlas sumaba un round-trip a cada
   // carga del home, y este se repite con el refresco automático.
   const [upcoming, stats] = demo
@@ -46,8 +62,8 @@ export default async function DashboardOverview({
     <>
       <PageHeader
         eyebrow="Panel general"
-        title={`Buenas, ${clinicName}`}
-        description="Resumen en directo de tu clínica: llamadas, citas y huecos recuperados."
+        title={`${saludo}, ${firstName || clinicName}`}
+        description={`Resumen en directo de ${tenant.name}: llamadas, citas y huecos recuperados.`}
         icon={<Sparkles className="h-5 w-5" />}
         demoBadge={demo}
         actions={
@@ -93,7 +109,7 @@ export default async function DashboardOverview({
       {/* Próximas citas — cuáles son, no solo cuántas */}
       <Reveal>
         <Card className="mb-6 overflow-hidden">
-          <div className="flex items-center justify-between gap-3 border-b border-[--color-border-subtle] px-5 py-3.5">
+          <div className="flex items-center justify-between gap-3 border-b border-(--color-border-subtle) px-5 py-3.5">
             <h3 className="inline-flex items-center gap-2 text-[14px] font-bold tracking-tight text-zinc-800">
               <span className="inline-flex h-7 w-7 items-center justify-center rounded-[10px] bg-brand-100 text-brand-700">
                 <CalendarClock className="h-4 w-4" />
@@ -112,7 +128,7 @@ export default async function DashboardOverview({
               Todavía no hay citas reservadas. Cuando el asistente dé una cita, aparecerá aquí.
             </p>
           ) : (
-            <ul className="divide-y divide-[--color-border-subtle]">
+            <ul className="divide-y divide-(--color-border-subtle)">
               {upcoming.slice(0, 6).map((a) => (
                 <li
                   key={a.callId}

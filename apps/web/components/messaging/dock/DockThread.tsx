@@ -256,7 +256,7 @@ export function DockThread({ channelId }: { channelId: string }) {
                         ? 'rounded-br-[6px] bg-[linear-gradient(135deg,#2e5f56,#479183_60%,#5fa896)] text-white shadow-[0_10px_22px_-14px_rgba(55,118,106,0.95)]'
                         : isSystem
                           ? 'rounded-bl-[6px] bg-brand-50 text-brand-800 ring-1 ring-brand-100'
-                          : 'rounded-bl-[6px] bg-white text-zinc-800 shadow-[0_1px_2px_rgba(22,26,25,0.05)] ring-1 ring-[--color-border]',
+                          : 'rounded-bl-[6px] bg-white text-zinc-800 shadow-[0_1px_2px_rgba(22,26,25,0.05)] ring-1 ring-(--color-border)',
                       m.pending && 'opacity-60',
                       m.failed && 'ring-1 ring-rose-300',
                     )}
@@ -273,7 +273,7 @@ export function DockThread({ channelId }: { channelId: string }) {
         )}
 
         {peers.length > 0 && (
-          <p className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[12px] font-medium text-zinc-500 shadow-[var(--shadow-soft)] ring-1 ring-[--color-border-subtle]">
+          <p className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[12px] font-medium text-zinc-500 shadow-[var(--shadow-soft)] ring-1 ring-(--color-border-subtle)">
             <TypingDots />
             {peers.length === 1
               ? `${peers[0]?.name} está escribiendo…`
@@ -302,7 +302,7 @@ export function DockThread({ channelId }: { channelId: string }) {
           }}
           placeholder="Escribe un mensaje…"
           aria-label="Mensaje"
-          className="h-10 min-w-0 flex-1 rounded-full border border-[--color-border] bg-white px-4 text-[14px] outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-300"
+          className="h-10 min-w-0 flex-1 rounded-full border border-(--color-border) bg-white px-4 text-[14px] outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-300"
         />
         <button
           type="button"
@@ -394,12 +394,12 @@ function DockEventCard({ message, hour }: { message: ImMessageDTO; hour: string 
         href={link}
         className={cn(
           cardClass,
-          'border-[--color-border] hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]',
+          'border-(--color-border) hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]',
         )}
       >
         {inner}
       </Link>
     );
   }
-  return <div className={cn(cardClass, 'border-[--color-border]')}>{inner}</div>;
+  return <div className={cn(cardClass, 'border-(--color-border)')}>{inner}</div>;
 }

@@ -221,7 +221,7 @@ export function MessageThread({
       }}
     >
       {/* Cabecera */}
-      <header className="relative flex shrink-0 items-center gap-3 border-b border-[--color-border-subtle] bg-[linear-gradient(180deg,#ffffff,#fbfcfc)] px-3 py-3 sm:px-4">
+      <header className="relative flex shrink-0 items-center gap-3 border-b border-(--color-border-subtle) bg-[linear-gradient(180deg,#ffffff,#fbfcfc)] px-3 py-3 sm:px-4">
         <span
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 h-full bg-[radial-gradient(70%_140%_at_0%_0%,rgba(95,168,150,0.10),transparent_65%)]"
@@ -284,7 +284,7 @@ export function MessageThread({
           </span>
         )}
 
-        <div className="relative flex shrink-0 items-center gap-0.5 rounded-full bg-white/80 p-1 ring-1 ring-[--color-border-subtle]">
+        <div className="relative flex shrink-0 items-center gap-0.5 rounded-full bg-white/80 p-1 ring-1 ring-(--color-border-subtle)">
           <button
             type="button"
             onClick={onToggleContext}
@@ -364,11 +364,11 @@ export function MessageThread({
                   <Fragment key={m.id}>
                     {newDay && (
                       <li className="my-3 flex items-center gap-3 px-4">
-                        <span className="h-px flex-1 bg-[--color-border]" />
-                        <span className="rounded-full bg-white px-3 py-0.5 text-[12px] font-bold uppercase tracking-[0.1em] text-zinc-500 ring-1 ring-[--color-border]">
+                        <span className="h-px flex-1 bg-(--color-border)" />
+                        <span className="rounded-full bg-white px-3 py-0.5 text-[12px] font-bold uppercase tracking-[0.1em] text-zinc-500 ring-1 ring-(--color-border)">
                           {formatDayDivider(m.createdAt)}
                         </span>
-                        <span className="h-px flex-1 bg-[--color-border]" />
+                        <span className="h-px flex-1 bg-(--color-border)" />
                       </li>
                     )}
 
@@ -417,7 +417,7 @@ export function MessageThread({
         {typingNames.length > 0 && (
           <div className="flex animate-fade-up items-center gap-2 px-4 py-2">
             <AvatarStack names={typingNames} max={3} size={22} />
-            <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[13px] font-medium text-zinc-600 shadow-[var(--shadow-soft)] ring-1 ring-[--color-border-subtle]">
+            <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[13px] font-medium text-zinc-600 shadow-[var(--shadow-soft)] ring-1 ring-(--color-border-subtle)">
               <TypingDots />
               {typingLabel(typingNames)}
             </span>
@@ -440,7 +440,7 @@ export function MessageThread({
       )}
 
       {/* Composer */}
-      <div className="shrink-0 border-t border-[--color-border-subtle] bg-white/70 p-3 backdrop-blur-xl">
+      <div className="shrink-0 border-t border-(--color-border-subtle) bg-white/70 p-3 backdrop-blur-xl">
         {composer}
       </div>
 

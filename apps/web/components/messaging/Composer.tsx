@@ -420,8 +420,8 @@ export function Composer({
     <div className={cn('relative', className)}>
       {/* Popover de comandos / menciones */}
       {menu && options.length > 0 && (
-        <div className="absolute bottom-full left-0 right-0 z-30 mb-2 animate-zoom-in overflow-hidden rounded-[18px] border border-[--color-border] bg-white shadow-[var(--shadow-lifted)]">
-          <div className="flex items-center gap-1.5 border-b border-[--color-border-subtle] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">
+        <div className="absolute bottom-full left-0 right-0 z-30 mb-2 animate-zoom-in overflow-hidden rounded-[18px] border border-(--color-border) bg-white shadow-[var(--shadow-lifted)]">
+          <div className="flex items-center gap-1.5 border-b border-(--color-border-subtle) px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">
             {menu.kind === '/' ? <Zap className="h-3 w-3" /> : <AtSign className="h-3 w-3" />}
             {menu.kind === '/' ? 'Comandos' : 'Mencionar a'}
           </div>
@@ -445,7 +445,7 @@ export function Composer({
                     <span className="block truncate text-[13px] text-zinc-500">{opt.hint}</span>
                   </span>
                   {i === activeIndex && (
-                    <span className="shrink-0 rounded-md bg-white px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zinc-500 ring-1 ring-[--color-border]">
+                    <span className="shrink-0 rounded-md bg-white px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zinc-500 ring-1 ring-(--color-border)">
                       Enter
                     </span>
                   )}
@@ -462,7 +462,7 @@ export function Composer({
           {attachments.map((a) => (
             <span
               key={a.key}
-              className="inline-flex animate-pop items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[13px] font-medium text-zinc-700 ring-1 ring-[--color-border]"
+              className="inline-flex animate-pop items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[13px] font-medium text-zinc-700 ring-1 ring-(--color-border)"
             >
               <FileText className="h-3 w-3 text-brand-500" />
               <span className="max-w-[160px] truncate">{a.name}</span>
@@ -488,7 +488,7 @@ export function Composer({
       {/* Caja */}
       <div
         className={cn(
-          'relative flex items-end gap-1 rounded-[22px] border border-[--color-border] bg-white p-2 shadow-[var(--shadow-soft)]',
+          'relative flex items-end gap-1 rounded-[22px] border border-(--color-border) bg-white p-2 shadow-[var(--shadow-soft)]',
           // La caja se enfoca sola al entrar en un canal: un halo de color ahí
           // hace que la pantalla parezca pulsada nada más abrirla. Queda una
           // pista sobria, que quien navega con teclado necesita ver el foco.
@@ -552,7 +552,7 @@ export function Composer({
           {emojiOpen && (
             <div
               data-composer-emoji
-              className="absolute bottom-full right-0 z-30 mb-2 grid w-[228px] animate-zoom-in grid-cols-6 gap-0.5 rounded-[18px] border border-[--color-border] bg-white p-2 shadow-[var(--shadow-lifted)]"
+              className="absolute bottom-full right-0 z-30 mb-2 grid w-[228px] animate-zoom-in grid-cols-6 gap-0.5 rounded-[18px] border border-(--color-border) bg-white p-2 shadow-[var(--shadow-lifted)]"
             >
               {REACTION_EMOJIS.map((emoji) => (
                 <button

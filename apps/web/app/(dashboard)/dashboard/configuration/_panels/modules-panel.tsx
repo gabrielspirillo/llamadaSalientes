@@ -39,9 +39,9 @@ export async function ModulesPanel() {
         </p>
       </div>
 
-      <div className="overflow-x-auto rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)]">
+      <div className="overflow-x-auto rounded-[22px] border border-(--color-border) bg-white shadow-[var(--shadow-soft)]">
         <table className="w-full text-sm">
-          <thead className="border-b border-[--color-border] bg-[#fafbfb] text-left text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">
+          <thead className="border-b border-(--color-border) bg-[#fafbfb] text-left text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">
             <tr>
               <th className="px-4 py-3">Tenant</th>
               {MODULE_KEYS.map((key) => (
@@ -51,7 +51,7 @@ export async function ModulesPanel() {
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-[--color-border-subtle]">
+          <tbody className="divide-y divide-(--color-border-subtle)">
             {rows.map((row) => {
               const modules = (row.enabledModules ?? {}) as EnabledModules;
               const isDemo = row.id === FUTURA_TENANT_ID;

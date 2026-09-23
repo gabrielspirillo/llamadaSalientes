@@ -128,7 +128,7 @@ export default async function FuturaPanelPage() {
       </div>
 
       {clinics.length === 0 ? (
-        <div className="rounded-[22px] border border-[--color-border] bg-white p-12 text-center text-[14px] text-zinc-500 shadow-[var(--shadow-soft)]">
+        <div className="rounded-[22px] border border-(--color-border) bg-white p-12 text-center text-[14px] text-zinc-500 shadow-[var(--shadow-soft)]">
           Todavía no hay clínicas registradas.
         </div>
       ) : (
@@ -145,7 +145,7 @@ export default async function FuturaPanelPage() {
               <div
                 key={c.id}
                 className={`rounded-[22px] border bg-white p-5 shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[var(--shadow-lifted)] ${
-                  needsAttention ? 'border-brand-200' : 'border-[--color-border]'
+                  needsAttention ? 'border-brand-200' : 'border-(--color-border)'
                 }`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -154,7 +154,7 @@ export default async function FuturaPanelPage() {
                       <img
                         src={c.logoUrl}
                         alt=""
-                        className="h-10 w-10 shrink-0 rounded-xl border border-[--color-border] bg-white object-contain p-1"
+                        className="h-10 w-10 shrink-0 rounded-xl border border-(--color-border) bg-white object-contain p-1"
                       />
                     )}
                     <div className="min-w-0">
@@ -201,7 +201,7 @@ export default async function FuturaPanelPage() {
                 </div>
 
                 {/* Módulos por clínica */}
-                <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-[--color-border-subtle] pt-4">
+                <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-(--color-border-subtle) pt-4">
                   <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">
                     Módulos
                   </span>
@@ -238,7 +238,7 @@ function StatCard({
     tone === 'success' ? 'from-emerald-50' : tone === 'accent' ? 'from-brand-50' : 'from-zinc-50';
   return (
     <div
-      className={`rounded-[22px] border border-[--color-border] bg-gradient-to-br ${ring} to-white p-5 shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-lifted)]`}
+      className={`rounded-[22px] border border-(--color-border) bg-gradient-to-br ${ring} to-white p-5 shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-lifted)]`}
     >
       <p className="text-[14px] font-medium text-zinc-500">{label}</p>
       <p className="mt-2 text-[34px] font-bold leading-none tracking-tight tabular-nums text-zinc-900">

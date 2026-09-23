@@ -1,5 +1,6 @@
 import 'server-only';
 import { and, asc, count, eq, inArray, or, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { z } from 'zod';
 
 import { normalizePatientPhone, patientKeyForPerson } from '@/lib/agenda/patients';
@@ -10,6 +11,7 @@ import {
   guardiansSchema,
   parseAnamnesisAnswers,
   parseGuardians,
+  primaryGuardian,
 } from '@/lib/care-profile/policy';
 import { db } from '@/lib/db/client';
 import {
@@ -17,8 +19,10 @@ import {
   clinicalNotes,
   patientConsents,
   patients,
+  users,
   whatsappContacts,
 } from '@/lib/db/schema';
+import { titleCaseName } from '@/lib/patients/names';
 import { upsertPatientRecord } from '@/lib/patients/registry';
 
 /**
@@ -54,6 +58,11 @@ export const patientInputSchema = z.object({
   /** Nombre del titular del teléfono, si se sabe. */
   contactName: z.string().trim().max(160).optional().or(z.literal('')),
   notes: z.string().trim().max(2000).optional().or(z.literal('')),
+  /**
+   * Respuestas de anamnesis que se guardan junto con los datos: las alertas
+   * clínicas del diálogo de edición. Se fusionan con lo que ya había.
+   */
+  anamnesisPatch: anamnesisAnswersSchema.optional(),
 });
 export type PatientInput = z.infer<typeof patientInputSchema>;
 
@@ -87,6 +96,9 @@ export interface PatientPerson {
   needsHumanReview: boolean;
   reviewReason: string | null;
   notes: string | null;
+  /** Quién contestó la anamnesis por última vez y cuándo. */
+  anamnesisUpdatedAt: Date | null;
+  anamnesisUpdatedByEmail: string | null;
   active: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -100,12 +112,22 @@ export interface PatientScope {
   userId: string | null;
 }
 
-const SELECT = {
-  patient: patients,
-  contactPhone: whatsappContacts.phoneE164,
-  contactName: whatsappContacts.name,
-  contactEmail: whatsappContacts.email,
-};
+// El alias de `users` (quién guardó la anamnesis) se crea al usarlo, no al
+// importar: hay tests que sustituyen el esquema por un mock parcial y un
+// `alias()` a nivel de módulo reventaba al cargar este archivo.
+function anamnesisUserAlias() {
+  return alias(users, 'anamnesis_user');
+}
+
+function selectWith(anamnesisUser: ReturnType<typeof anamnesisUserAlias>) {
+  return {
+    patient: patients,
+    contactPhone: whatsappContacts.phoneE164,
+    contactName: whatsappContacts.name,
+    contactEmail: whatsappContacts.email,
+    anamnesisUpdatedByEmail: anamnesisUser.email,
+  };
+}
 
 export function patientFullName(p: { firstName: string; lastName: string | null }): string {
   return [p.firstName, p.lastName]
@@ -119,6 +141,7 @@ function toPerson(row: {
   contactPhone: string | null;
   contactName: string | null;
   contactEmail: string | null;
+  anamnesisUpdatedByEmail: string | null;
 }): PatientPerson {
   const p = row.patient;
   return {
@@ -137,6 +160,8 @@ function toPerson(row: {
     needsHumanReview: p.needsHumanReview,
     reviewReason: p.reviewReason,
     notes: p.notes,
+    anamnesisUpdatedAt: p.anamnesisUpdatedAt,
+    anamnesisUpdatedByEmail: row.anamnesisUpdatedByEmail,
     active: p.active,
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
@@ -159,10 +184,12 @@ export async function getPatientPerson(
   tenantId: string,
   patientId: string,
 ): Promise<PatientPerson | null> {
+  const anamnesisUser = anamnesisUserAlias();
   const rows = await db
-    .select(SELECT)
+    .select(selectWith(anamnesisUser))
     .from(patients)
     .leftJoin(whatsappContacts, eq(whatsappContacts.id, patients.contactId))
+    .leftJoin(anamnesisUser, eq(anamnesisUser.id, patients.anamnesisUpdatedByUserId))
     .where(and(eq(patients.tenantId, tenantId), eq(patients.id, patientId)))
     .limit(1);
   const row = rows[0];
@@ -176,10 +203,12 @@ export async function getPatientPersons(
   const ids = [...new Set(patientIds.filter(Boolean))];
   const out = new Map<string, PatientPerson>();
   if (ids.length === 0) return out;
+  const anamnesisUser = anamnesisUserAlias();
   const rows = await db
-    .select(SELECT)
+    .select(selectWith(anamnesisUser))
     .from(patients)
     .leftJoin(whatsappContacts, eq(whatsappContacts.id, patients.contactId))
+    .leftJoin(anamnesisUser, eq(anamnesisUser.id, patients.anamnesisUpdatedByUserId))
     .where(and(eq(patients.tenantId, tenantId), inArray(patients.id, ids)));
   for (const row of rows) out.set(row.patient.id, toPerson(row));
   return out;
@@ -200,10 +229,12 @@ export async function listPatientPersons(
     );
     if (filter) where.push(filter);
   }
+  const anamnesisUser = anamnesisUserAlias();
   const rows = await db
-    .select(SELECT)
+    .select(selectWith(anamnesisUser))
     .from(patients)
     .leftJoin(whatsappContacts, eq(whatsappContacts.id, patients.contactId))
+    .leftJoin(anamnesisUser, eq(anamnesisUser.id, patients.anamnesisUpdatedByUserId))
     .where(and(...where))
     .orderBy(asc(patients.lastName), asc(patients.firstName))
     .limit(opts.limit ?? 300);
@@ -217,10 +248,12 @@ export async function listPatientsForPhone(
 ): Promise<PatientPerson[]> {
   const phoneE164 = normalizePatientPhone(phone);
   if (!phoneE164) return [];
+  const anamnesisUser = anamnesisUserAlias();
   const rows = await db
-    .select(SELECT)
+    .select(selectWith(anamnesisUser))
     .from(patients)
     .innerJoin(whatsappContacts, eq(whatsappContacts.id, patients.contactId))
+    .leftJoin(anamnesisUser, eq(anamnesisUser.id, patients.anamnesisUpdatedByUserId))
     .where(
       and(
         eq(patients.tenantId, tenantId),
@@ -253,6 +286,46 @@ async function resolveContactId(
   return record?.id ?? null;
 }
 
+/**
+ * Los tutores como se guardan: nombres en mayúscula inicial, como mucho un
+ * titular del teléfono (el primero marcado; si nadie lo está y hay uno solo
+ * con teléfono, es él).
+ */
+function normalizeGuardians(list: Guardian[] | undefined): Guardian[] {
+  if (!list) return [];
+  let primarySeen = false;
+  const out = list.map((g) => {
+    const primary = Boolean(g.primary) && !primarySeen && g.role !== 'NINGUNO';
+    if (primary) primarySeen = true;
+    return {
+      role: g.role,
+      name: titleCaseName(g.name),
+      phone: emptyToNull(g.phone) ?? undefined,
+      email: emptyToNull(g.email)?.toLowerCase() ?? undefined,
+      channel: g.channel ?? null,
+      primary,
+    };
+  });
+  if (!primarySeen) {
+    const withPhone = out.filter((g) => g.role !== 'NINGUNO' && g.phone);
+    if (withPhone.length === 1 && withPhone[0]) withPhone[0].primary = true;
+  }
+  return out;
+}
+
+/**
+ * El teléfono y el nombre del contacto de la ficha salen del titular marcado
+ * entre los tutores; si nadie lo está, de lo que llegue suelto (es lo que
+ * mandan los asistentes, que no saben de tutores).
+ */
+function contactFromInput(input: PatientInput, guardians: Guardian[]) {
+  const primary = primaryGuardian(guardians);
+  return {
+    phone: primary?.phone?.trim() || input.contactPhone,
+    name: primary?.name.trim() || titleCaseName(input.contactName),
+  };
+}
+
 function checkBirthDate(value: string | null | undefined): string | null {
   const v = value?.trim();
   if (!v) return null;
@@ -268,17 +341,23 @@ export async function createPatient(
 ): Promise<PatientPerson> {
   const input = patientInputSchema.parse(raw);
   const birthDate = checkBirthDate(input.birthDate);
-  const contactId = await resolveContactId(scope.tenantId, input.contactPhone, input.contactName);
+  const guardians = normalizeGuardians(input.guardians);
+  const contact = contactFromInput(input, guardians);
+  const contactId = await resolveContactId(scope.tenantId, contact.phone, contact.name);
 
   const [row] = await db
     .insert(patients)
     .values({
       tenantId: scope.tenantId,
       contactId,
-      firstName: input.firstName,
-      lastName: emptyToNull(input.lastName),
+      firstName: titleCaseName(input.firstName),
+      lastName: emptyToNull(titleCaseName(input.lastName)),
       birthDate,
-      guardians: input.guardians ?? [],
+      guardians,
+      anamnesis: input.anamnesisPatch ?? {},
+      ...(input.anamnesisPatch && Object.keys(input.anamnesisPatch).length > 0
+        ? { anamnesisUpdatedAt: new Date(), anamnesisUpdatedByUserId: scope.userId }
+        : {}),
       notes: emptyToNull(input.notes),
       createdByUserId: scope.userId,
     })
@@ -301,21 +380,32 @@ export async function updatePatient(
   const current = await getPatientPerson(scope.tenantId, patientId);
   if (!current) throw new PatientValidationError('Ese paciente no existe en esta clínica.');
 
+  const guardians = input.guardians ? normalizeGuardians(input.guardians) : current.guardians;
+  const contact = contactFromInput(input, guardians);
   // Sin teléfono en el formulario se conserva el contacto que había: vaciar el
   // campo no es "desvincular", es "no lo cambio".
   const contactId =
-    (await resolveContactId(scope.tenantId, input.contactPhone, input.contactName)) ??
-    current.contactId;
+    (await resolveContactId(scope.tenantId, contact.phone, contact.name)) ?? current.contactId;
+
+  const patch = input.anamnesisPatch;
+  const anamnesisChanged = Boolean(patch && Object.keys(patch).length > 0);
 
   await db
     .update(patients)
     .set({
       contactId,
-      firstName: input.firstName,
-      lastName: emptyToNull(input.lastName),
+      firstName: titleCaseName(input.firstName),
+      lastName: emptyToNull(titleCaseName(input.lastName)),
       birthDate,
-      guardians: input.guardians ?? current.guardians,
+      guardians,
       notes: emptyToNull(input.notes),
+      ...(anamnesisChanged && patch
+        ? {
+            anamnesis: { ...current.anamnesis, ...patch },
+            anamnesisUpdatedAt: new Date(),
+            anamnesisUpdatedByUserId: scope.userId,
+          }
+        : {}),
       updatedAt: new Date(),
     })
     .where(and(eq(patients.tenantId, scope.tenantId), eq(patients.id, patientId)));
@@ -337,7 +427,12 @@ export async function saveAnamnesis(
 
   const [row] = await db
     .update(patients)
-    .set({ anamnesis: parsed.data, updatedAt: new Date() })
+    .set({
+      anamnesis: parsed.data,
+      anamnesisUpdatedAt: new Date(),
+      anamnesisUpdatedByUserId: scope.userId,
+      updatedAt: new Date(),
+    })
     .where(and(eq(patients.tenantId, scope.tenantId), eq(patients.id, patientId)))
     .returning({ id: patients.id });
   if (!row) throw new PatientValidationError('Ese paciente no existe en esta clínica.');

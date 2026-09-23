@@ -1,5 +1,4 @@
 import { DashboardOverlays } from '@/components/dashboard/dashboard-overlays';
-import { ImpersonationBanner } from '@/components/dashboard/impersonation-banner';
 import { ScrollReset } from '@/components/dashboard/scroll-reset';
 import { DashboardSidebar } from '@/components/dashboard/sidebar';
 import { DashboardTopbar } from '@/components/dashboard/topbar';
@@ -121,7 +120,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
           agendaOnly={agendaOnly}
         />
         <div className="flex min-w-0 flex-1 flex-col">
-          {tenantCtx?.impersonating && <ImpersonationBanner clinicName={tenantCtx.tenant.name} />}
           <DashboardTopbar
             enabledModules={enabledModules}
             isSuperAdmin={isSuperAdmin}
@@ -132,7 +130,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             agendaOnly={agendaOnly}
           />
           {/* La key por ruta re-dispara la animación de entrada en cada navegación. */}
-          <main className="enter-page flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-9">
+          <main className="enter-page flex-1 px-4 pb-28 pt-6 sm:px-6 sm:pt-8 lg:px-9">
             <div className="mx-auto w-full max-w-[1480px]">{children}</div>
           </main>
         </div>

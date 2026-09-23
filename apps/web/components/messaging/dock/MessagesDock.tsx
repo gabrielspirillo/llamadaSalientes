@@ -141,7 +141,7 @@ export function MessagesDock() {
                 setView('thread');
                 setDockOpen(true);
               }}
-              className="press hidden max-w-[240px] animate-slide-right items-center gap-2.5 rounded-[18px] bg-white/90 py-2 pl-2.5 pr-3 text-left shadow-[0_20px_46px_-24px_rgba(22,26,25,0.6)] ring-1 ring-[--color-border-subtle] backdrop-blur-xl transition-transform duration-300 hover:-translate-y-0.5 sm:inline-flex"
+              className="press hidden max-w-[240px] animate-slide-right items-center gap-2.5 rounded-[18px] bg-white/90 py-2 pl-2.5 pr-3 text-left shadow-[0_20px_46px_-24px_rgba(22,26,25,0.6)] ring-1 ring-(--color-border-subtle) backdrop-blur-xl transition-transform duration-300 hover:-translate-y-0.5 sm:inline-flex"
             >
               <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[11px] bg-[linear-gradient(135deg,#e7f5ef,#ddf3ea)] text-brand-700">
                 {peek.kind === 'DM' ? (
@@ -293,7 +293,7 @@ export function MessagesDock() {
                                 c.id === current?.id ? 'bg-brand-50' : 'hover:bg-zinc-100/70',
                               )}
                             >
-                              <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white text-brand-600 ring-1 ring-[--color-border]">
+                              <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white text-brand-600 ring-1 ring-(--color-border)">
                                 {c.kind === 'DM' ? (
                                   <MessageSquare className="h-3 w-3" />
                                 ) : (
@@ -443,7 +443,7 @@ function DockSettings({
     <div className="scrollbar-none min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
       <p className="px-1 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Avisos</p>
 
-      <div className="flex items-center gap-3 rounded-2xl bg-white p-3 ring-1 ring-[--color-border]">
+      <div className="flex items-center gap-3 rounded-2xl bg-white p-3 ring-1 ring-(--color-border)">
         <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-100 text-brand-600">
           <Volume2 className="h-4 w-4" />
         </span>
@@ -456,7 +456,7 @@ function DockSettings({
         <Switch checked={soundEnabled} onCheckedChange={setSoundEnabled} label="Sonido" />
       </div>
 
-      <div className="flex items-center gap-3 rounded-2xl bg-white p-3 ring-1 ring-[--color-border]">
+      <div className="flex items-center gap-3 rounded-2xl bg-white p-3 ring-1 ring-(--color-border)">
         <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
           <BellRing className="h-4 w-4" />
         </span>
@@ -469,7 +469,7 @@ function DockSettings({
         <Switch checked={toastsEnabled} onCheckedChange={setToastsEnabled} label="Avisos" />
       </div>
 
-      <div className="rounded-2xl bg-white p-3 ring-1 ring-[--color-border]">
+      <div className="rounded-2xl bg-white p-3 ring-1 ring-(--color-border)">
         <div className="flex items-center gap-3">
           <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-600">
             <MessageSquare className="h-4 w-4" />
@@ -516,7 +516,7 @@ function DockSettings({
         Cuando no estás delante
       </p>
 
-      <div className="rounded-2xl bg-white p-3 ring-1 ring-[--color-border]">
+      <div className="rounded-2xl bg-white p-3 ring-1 ring-(--color-border)">
         <div className="flex items-center gap-3">
           <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
             <Smartphone className="h-4 w-4" />
@@ -547,7 +547,7 @@ function DockSettings({
         </div>
       </div>
 
-      <div className="rounded-2xl bg-white p-3 ring-1 ring-[--color-border]">
+      <div className="rounded-2xl bg-white p-3 ring-1 ring-(--color-border)">
         <div className="flex items-center gap-3">
           <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-zinc-600">
             <Moon className="h-4 w-4" />

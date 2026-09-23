@@ -1,5 +1,8 @@
+'use client';
+
 import { cn } from '@/lib/cn';
 import {
+  Activity,
   CalendarDays,
   ClipboardList,
   History,
@@ -7,11 +10,19 @@ import {
   NotebookPen,
   Receipt,
 } from 'lucide-react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import * as React from 'react';
 
-export type PatientTab = 'visita' | 'anamnesis' | 'historia' | 'citas' | 'contable';
+export type PatientTab = 'visita' | 'anamnesis' | 'historia' | 'citas' | 'contable' | 'actividad';
 
-export const PATIENT_TABS: PatientTab[] = ['visita', 'anamnesis', 'historia', 'citas', 'contable'];
+export const PATIENT_TABS: PatientTab[] = [
+  'visita',
+  'anamnesis',
+  'historia',
+  'citas',
+  'contable',
+  'actividad',
+];
 
 export function isPatientTab(value: unknown): value is PatientTab {
   return typeof value === 'string' && (PATIENT_TABS as string[]).includes(value);
@@ -36,91 +47,158 @@ const ICONS: Record<PatientTab, LucideIcon> = {
   historia: History,
   citas: CalendarDays,
   contable: Receipt,
+  actividad: Activity,
 };
 
 /**
- * Las pestañas de la ficha. Se resuelven por URL (`?tab=`) y no con Radix:
- * cada pestaña es contenido de servidor y sólo se pinta la activa.
+ * Las pestañas de la ficha. Son subrayadas, no píldoras: las píldoras son la
+ * navegación del módulo (Calendario · Pacientes · Profesionales) y se
+ * confundían con éstas.
  *
- * En escritorio son píldoras en fila, alineadas a la izquierda. En móvil
- * ocupan el ancho, con icono encima del texto, y quedan pegadas bajo el
- * topbar al hacer scroll: la médica cambia de pestaña con el pulgar sin volver
- * arriba.
+ * Cada pestaña es contenido de servidor que se resuelve por URL (`?tab=`), así
+ * que el cambio es una navegación: se marca la pestaña al instante
+ * (optimista) y una línea animada dice que se está cargando. La barra queda
+ * pegada bajo el topbar y, cuando la cabecera sale de pantalla, enseña el
+ * nombre y las alertas para no perder de quién se está leyendo.
  */
 export function PatientTabs({
   items,
   active,
   hrefFor,
+  headerId,
+  identity,
 }: {
   items: PatientTabItem[];
   active: PatientTab;
   hrefFor: (tab: PatientTab) => string;
+  /** Id de la cabecera: cuando deja de verse, aparece la identidad compacta. */
+  headerId?: string;
+  identity?: { name: string; chips: string[] };
 }) {
+  const router = useRouter();
+  const [pending, startTransition] = React.useTransition();
+  const [optimistic, setOptimistic] = React.useOptimistic(active);
+  const [compact, setCompact] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!headerId) return;
+    const el = document.getElementById(headerId);
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(([entry]) => setCompact(!(entry?.isIntersecting ?? true)), {
+      rootMargin: '-68px 0px 0px 0px',
+      threshold: 0,
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [headerId]);
+
+  function go(tab: PatientTab, href: string) {
+    if (tab === active) return;
+    startTransition(() => {
+      setOptimistic(tab);
+      router.push(href);
+    });
+  }
+
   return (
-    <nav
-      aria-label="Secciones de la ficha"
+    <div
       className={cn(
-        'scrollbar-none sticky top-[68px] z-10 flex w-full items-center gap-0.5 overflow-x-auto rounded-[20px] border border-[--color-border] bg-white/[.92] p-1 backdrop-blur-xl',
-        'shadow-[0_10px_24px_-16px_rgba(20,33,29,0.5)]',
-        'md:static md:w-auto md:gap-1 md:self-start md:rounded-full md:shadow-none',
+        'sticky top-[68px] z-10 -mx-4 border-b border-(--color-border) bg-white/[.94] px-4 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-9 lg:px-9',
+        compact && 'shadow-[0_10px_24px_-18px_rgba(20,33,29,0.45)]',
       )}
+      aria-busy={pending || undefined}
     >
-      {items.map((it) => {
-        const isActive = it.value === active;
-        const Icon = ICONS[it.value];
-        const countTone = isActive
-          ? 'bg-white/20 text-white'
-          : it.warn
-            ? 'bg-amber-100 text-amber-700'
-            : 'bg-zinc-100 text-zinc-500';
-        return (
-          <Link
-            key={it.value}
-            href={hrefFor(it.value)}
-            prefetch={false}
-            aria-current={isActive ? 'page' : undefined}
-            className={cn(
-              'relative flex min-h-[58px] min-w-0 flex-1 flex-col items-center justify-center gap-[3px] whitespace-nowrap rounded-2xl px-0.5 text-[11.5px] font-semibold transition-all duration-300',
-              'md:min-h-[40px] md:flex-none md:flex-row md:gap-1.5 md:rounded-full md:px-4 md:text-[14px]',
-              isActive
-                ? 'bg-[linear-gradient(120deg,#37766a,#5fa896)] text-white shadow-[0_6px_18px_-8px_rgba(55,118,106,0.8)]'
-                : 'text-zinc-500 hover:text-brand-700',
-            )}
-          >
-            <Icon className="h-[18px] w-[18px] shrink-0 md:hidden" aria-hidden />
-            <span className="max-w-full truncate">
-              {it.shortLabel ? (
-                <>
-                  <span className="md:hidden">{it.shortLabel}</span>
-                  <span className="hidden md:inline">{it.label}</span>
-                </>
-              ) : (
-                it.label
-              )}
+      {identity && (
+        <div
+          className={cn(
+            'flex items-center gap-2 overflow-hidden transition-[max-height,opacity,padding] duration-300',
+            compact ? 'max-h-12 pt-2 opacity-100' : 'max-h-0 opacity-0',
+          )}
+          aria-hidden={!compact}
+        >
+          <span className="truncate text-[14px] font-bold text-zinc-900">{identity.name}</span>
+          {identity.chips.slice(0, 3).map((chip) => (
+            <span
+              key={chip}
+              className="hidden shrink-0 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-800 ring-1 ring-rose-200 sm:inline"
+            >
+              {chip}
             </span>
-            {it.count && (
-              <span
-                className={cn(
-                  'hidden rounded-full px-1.5 py-px text-[10px] font-bold tabular-nums md:inline',
-                  countTone,
+          ))}
+        </div>
+      )}
+      <nav
+        aria-label="Secciones de la ficha"
+        className="scrollbar-none -mb-px flex items-stretch gap-1 overflow-x-auto md:gap-2"
+      >
+        {items.map((it) => {
+          const isActive = it.value === optimistic;
+          const Icon = ICONS[it.value];
+          const countTone = it.warn
+            ? 'bg-amber-100 text-amber-800'
+            : isActive
+              ? 'bg-brand-100 text-brand-800'
+              : 'bg-zinc-100 text-zinc-600';
+          return (
+            <a
+              key={it.value}
+              href={hrefFor(it.value)}
+              onClick={(e) => {
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+                e.preventDefault();
+                go(it.value, hrefFor(it.value));
+              }}
+              aria-current={isActive ? 'page' : undefined}
+              className={cn(
+                'relative flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-[3px] whitespace-nowrap px-1 pb-2 pt-2 text-[11.5px] font-semibold transition-colors',
+                'md:min-h-11 md:flex-none md:flex-row md:gap-1.5 md:px-2 md:pb-2.5 md:text-[14px]',
+                isActive ? 'text-brand-800' : 'text-zinc-600 hover:text-zinc-900',
+              )}
+            >
+              <Icon className="h-[18px] w-[18px] shrink-0 md:hidden" aria-hidden />
+              <span className="max-w-full truncate">
+                {it.shortLabel ? (
+                  <>
+                    <span className="md:hidden">{it.shortLabel}</span>
+                    <span className="hidden md:inline">{it.label}</span>
+                  </>
+                ) : (
+                  it.label
                 )}
-              >
-                {it.count}
               </span>
-            )}
-            {it.mobileCount && (
+              {it.count && (
+                <span
+                  className={cn(
+                    'hidden rounded-full px-1.5 py-px text-[11px] font-bold tabular-nums md:inline',
+                    countTone,
+                  )}
+                >
+                  {it.count}
+                </span>
+              )}
+              {it.mobileCount && (
+                <span
+                  className={cn(
+                    'absolute right-1 top-1 rounded-full px-1.5 py-px text-[10px] font-bold tabular-nums md:hidden',
+                    countTone,
+                  )}
+                >
+                  {it.mobileCount}
+                </span>
+              )}
               <span
+                aria-hidden
                 className={cn(
-                  'absolute right-1.5 top-1 rounded-full px-1.5 py-px text-[10px] font-bold tabular-nums md:hidden',
-                  countTone,
+                  'absolute inset-x-1 bottom-0 h-[3px] rounded-t-full transition-colors md:inset-x-0',
+                  isActive ? 'bg-[linear-gradient(90deg,#37766a,#5fa896)]' : 'bg-transparent',
+                  isActive && pending && 'animate-pulse',
                 )}
-              >
-                {it.mobileCount}
-              </span>
-            )}
-          </Link>
-        );
-      })}
-    </nav>
+              />
+            </a>
+          );
+        })}
+      </nav>
+      {pending && <output className="sr-only">Cargando la pestaña</output>}
+    </div>
   );
 }

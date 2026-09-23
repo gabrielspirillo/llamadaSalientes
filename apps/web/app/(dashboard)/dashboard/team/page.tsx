@@ -106,7 +106,7 @@ export default async function TeamPage() {
       )}
 
       <Card>
-        <div className="divide-y divide-[--color-border-subtle]">
+        <div className="divide-y divide-(--color-border-subtle)">
           {memberships.data.length === 0 && invitations.data.length === 0 ? (
             <EmptyState
               icon={<MailPlus className="h-5 w-5" />}
