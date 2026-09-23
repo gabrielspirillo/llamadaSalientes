@@ -1,5 +1,6 @@
 'use client';
 
+import type { PatientTab, PatientTabItem } from '@/lib/agenda/patient-tabs';
 import { cn } from '@/lib/cn';
 import {
   Activity,
@@ -13,33 +14,7 @@ import {
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
-export type PatientTab = 'visita' | 'anamnesis' | 'historia' | 'citas' | 'contable' | 'actividad';
-
-export const PATIENT_TABS: PatientTab[] = [
-  'visita',
-  'anamnesis',
-  'historia',
-  'citas',
-  'contable',
-  'actividad',
-];
-
-export function isPatientTab(value: unknown): value is PatientTab {
-  return typeof value === 'string' && (PATIENT_TABS as string[]).includes(value);
-}
-
-export interface PatientTabItem {
-  value: PatientTab;
-  label: string;
-  /** Etiqueta corta para móvil ("Hoy"). */
-  shortLabel?: string;
-  /** Contador de escritorio ("9/14", "3"). */
-  count?: string | null;
-  /** Contador de móvil: sólo lo que pide acción. Sin él, en móvil no hay contador. */
-  mobileCount?: string | null;
-  /** El contador avisa (ámbar): anamnesis a medias, cobros pendientes. */
-  warn?: boolean;
-}
+export type { PatientTab, PatientTabItem } from '@/lib/agenda/patient-tabs';
 
 const ICONS: Record<PatientTab, LucideIcon> = {
   visita: NotebookPen,
