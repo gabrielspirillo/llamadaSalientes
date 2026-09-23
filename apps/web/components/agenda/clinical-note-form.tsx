@@ -53,6 +53,7 @@ export function ClinicalNoteForm({
   title = 'Nueva nota clínica',
   subtitle,
   previous = null,
+  professionals = [],
 }: {
   patientKey: string;
   patientName: string;
@@ -63,6 +64,11 @@ export function ClinicalNoteForm({
   title?: string;
   subtitle?: string;
   previous?: PreviousNote | null;
+  /**
+   * Quién firma, cuando quien teclea no es profesional (recepción, Futura) y
+   * la nota no cuelga de una cita. Con uno solo no se pregunta.
+   */
+  professionals?: { id: string; fullName: string }[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
@@ -72,6 +78,7 @@ export function ClinicalNoteForm({
   const pediatric = template === 'PEDIATRIC';
 
   const [appointmentId, setAppointmentId] = React.useState(defaultAppointmentId ?? '');
+  const [signerId, setSignerId] = React.useState(professionalId);
   const [symptoms, setSymptoms] = React.useState('');
   const [examination, setExamination] = React.useState('');
   const [summary, setSummary] = React.useState('');
@@ -101,7 +108,7 @@ export function ClinicalNoteForm({
     startTransition(async () => {
       const result = await saveClinicalNoteAction({
         appointmentId: appointmentId || null,
-        professionalId: linked?.professionalId ?? professionalId,
+        professionalId: linked?.professionalId ?? signerId ?? professionalId,
         patientKey,
         patientName,
         summary,
@@ -136,7 +143,7 @@ export function ClinicalNoteForm({
       <div className="flex flex-wrap items-center gap-2.5">
         <div className="min-w-[200px] flex-1">
           <h2 className="text-[18px] font-bold tracking-tight text-zinc-900">{title}</h2>
-          {subtitle && <p className="mt-0.5 text-[13px] text-zinc-500">{subtitle}</p>}
+          {subtitle && <p className="mt-0.5 text-[13px] text-zinc-600">{subtitle}</p>}
         </div>
         {previous && (
           <Button variant="soft" size="sm" onClick={copyPrevious} className="min-h-11 md:min-h-9">
@@ -167,6 +174,19 @@ export function ClinicalNoteForm({
             {appointments.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+      )}
+
+      {professionals.length > 1 && !appointmentId && (
+        <div className="grid gap-1.5">
+          <Label htmlFor="cn-signer">Profesional que firma</Label>
+          <Select id="cn-signer" value={signerId} onChange={(e) => setSignerId(e.target.value)}>
+            {professionals.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.fullName}
               </option>
             ))}
           </Select>
@@ -250,7 +270,7 @@ export function ClinicalNoteForm({
               : 'Revisión en 6 meses; presupuestar endodoncia'
           }
         />
-        <p className="text-[12px] text-zinc-500">
+        <p className="text-[12px] text-zinc-600">
           Esto es lo que recepción y los agentes virtuales pueden usar para el seguimiento.
         </p>
       </div>
@@ -269,7 +289,7 @@ export function ClinicalNoteForm({
                   'inline-flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3 text-[14px] font-semibold ring-1 transition-colors',
                   behavior === b
                     ? 'bg-brand-600 text-white ring-brand-600'
-                    : 'bg-white text-zinc-700 ring-[--color-border] hover:bg-brand-50',
+                    : 'bg-white text-zinc-700 ring-(--color-border) hover:bg-brand-50',
                 )}
               >
                 <span aria-hidden className="text-[17px] leading-none">
@@ -300,7 +320,7 @@ export function ClinicalNoteForm({
 
       <div
         className={cn(
-          'sticky bottom-0 -mx-4 -mb-4 flex items-center justify-end gap-2 border-t border-[--color-border] bg-white/[.92] px-4 py-3 backdrop-blur-xl',
+          'sticky bottom-0 -mx-4 -mb-4 flex items-center justify-end gap-2 border-t border-(--color-border) bg-white/[.92] px-4 py-3 pr-24 backdrop-blur-xl',
           'md:static md:m-0 md:bg-transparent md:px-0 md:pb-0 md:pt-3.5 md:backdrop-blur-none',
         )}
       >

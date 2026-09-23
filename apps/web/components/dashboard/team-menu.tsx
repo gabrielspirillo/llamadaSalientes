@@ -140,7 +140,7 @@ export function TeamMenu() {
 
       {open && (
         <div className="absolute right-0 top-full z-50 mt-2 w-[300px] animate-fade-down overflow-hidden rounded-[20px] border border-white/60 bg-white/95 shadow-[0_30px_70px_-28px_rgba(20,33,29,0.6)] backdrop-blur-2xl">
-          <div className="flex items-center justify-between border-b border-[--color-border-subtle] px-4 py-3">
+          <div className="flex items-center justify-between border-b border-(--color-border-subtle) px-4 py-3">
             <span className="inline-flex items-center gap-2 text-[13px] font-bold tracking-tight text-zinc-900">
               <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-brand-100 text-brand-700">
                 <Users className="h-3.5 w-3.5" />
@@ -169,7 +169,7 @@ export function TeamMenu() {
           <Link
             href="/dashboard/team"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-2 border-t border-[--color-border-subtle] px-4 py-3 text-[13px] font-semibold text-brand-700 transition-colors hover:bg-brand-50"
+            className="flex items-center gap-2 border-t border-(--color-border-subtle) px-4 py-3 text-[13px] font-semibold text-brand-700 transition-colors hover:bg-brand-50"
           >
             <UserPlus className="h-4 w-4" />
             Invitar a alguien al equipo
@@ -297,7 +297,7 @@ function TeamRow({
                   if (e.key === 'Escape') setTaskOpen(false);
                 }}
                 placeholder={`Tarea para ${name.split(' ')[0]}…`}
-                className="h-9 min-w-0 flex-1 rounded-full border border-[--color-border] bg-white px-3 text-[13px] outline-none transition-colors placeholder:text-zinc-400 focus:border-brand-300"
+                className="h-9 min-w-0 flex-1 rounded-full border border-(--color-border) bg-white px-3 text-[13px] outline-none transition-colors placeholder:text-zinc-400 focus:border-brand-300"
               />
               <button
                 type="button"

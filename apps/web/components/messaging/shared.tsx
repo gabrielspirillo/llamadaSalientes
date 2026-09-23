@@ -500,7 +500,7 @@ function parseInline(
       out.push(
         <code
           key={key}
-          className="rounded-md border border-[--color-border] bg-[#fbfaff] px-1.5 py-0.5 font-mono text-[0.86em] text-brand-700"
+          className="rounded-md border border-(--color-border) bg-[#fbfaff] px-1.5 py-0.5 font-mono text-[0.86em] text-brand-700"
         >
           {token.slice(1, -1)}
         </code>,
@@ -656,7 +656,7 @@ export function RichText({
           return (
             <pre
               key={key}
-              className="scrollbar-none overflow-x-auto rounded-[14px] border border-[--color-border] bg-[#fbfaff] p-3 font-mono text-[13px] leading-relaxed text-zinc-700"
+              className="scrollbar-none overflow-x-auto rounded-[14px] border border-(--color-border) bg-[#fbfaff] p-3 font-mono text-[13px] leading-relaxed text-zinc-700"
             >
               <code>{block.lines.join('\n')}</code>
             </pre>

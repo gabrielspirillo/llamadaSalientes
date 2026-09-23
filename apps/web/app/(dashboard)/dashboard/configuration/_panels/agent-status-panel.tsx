@@ -72,7 +72,7 @@ function ConnectionCard({
   connected: boolean;
 }) {
   return (
-    <div className="group relative overflow-hidden rounded-[22px] border border-[--color-border] bg-white p-5 shadow-[var(--shadow-soft)] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1 hover:shadow-[var(--shadow-lifted)]">
+    <div className="group relative overflow-hidden rounded-[22px] border border-(--color-border) bg-white p-5 shadow-[var(--shadow-soft)] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1 hover:shadow-[var(--shadow-lifted)]">
       <div className="flex items-start justify-between gap-3">
         <span
           className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl transition-transform duration-500 group-hover:-rotate-6 group-hover:scale-110 ${tint}`}
@@ -181,7 +181,7 @@ export async function AgentStatusPanel() {
       </div>
 
       {/* Nota */}
-      <div className="flex items-start gap-3 rounded-[22px] border border-[--color-border] bg-[#fafbfb] p-4 sm:p-5">
+      <div className="flex items-start gap-3 rounded-[22px] border border-(--color-border) bg-[#fafbfb] p-4 sm:p-5">
         <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand-400" />
         <p className="text-[14px] leading-relaxed text-zinc-600">
           Estas conexiones las configura y las mantiene el equipo de{' '}

@@ -75,7 +75,7 @@ export function BoardColumn({
           <ChevronRight className="h-3.5 w-3.5 text-zinc-400" />
           {title}
           {typeof count === 'number' && (
-            <span className="ml-1 rounded-full bg-white px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-zinc-500 ring-1 ring-[--color-border]">
+            <span className="ml-1 rounded-full bg-white px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-zinc-500 ring-1 ring-(--color-border)">
               {count}
             </span>
           )}

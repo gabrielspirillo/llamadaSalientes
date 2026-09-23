@@ -75,7 +75,7 @@ export default async function CallDetailPage({
     <>
       <Link
         href="/dashboard/calls"
-        className="group mb-6 inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3.5 py-1.5 text-[14px] font-semibold text-zinc-500 ring-1 ring-[--color-border] transition-all duration-300 hover:text-brand-700 hover:ring-brand-200"
+        className="group mb-6 inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3.5 py-1.5 text-[14px] font-semibold text-zinc-500 ring-1 ring-(--color-border) transition-all duration-300 hover:text-brand-700 hover:ring-brand-200"
       >
         <ArrowLeft className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-1" />
         Volver a llamadas
@@ -138,7 +138,7 @@ export default async function CallDetailPage({
                 subtitle="Diálogo completo entre el agente y el paciente"
                 action={transcript ? <Badge tone="info">cifrada · AES-256</Badge> : undefined}
               />
-              <div className="border-t border-[--color-border-subtle] px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5 max-h-[60vh] sm:max-h-[480px] overflow-y-auto">
+              <div className="border-t border-(--color-border-subtle) px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5 max-h-[60vh] sm:max-h-[480px] overflow-y-auto">
                 {transcriptTurns.length === 0 ? (
                   <div className="text-center py-8 text-sm text-zinc-500">
                     La transcripción aparecerá en cuanto termine de procesarse la llamada.

@@ -193,30 +193,32 @@ export function BillingPanel({
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-[180px] flex-1">
           <h2 className="text-[18px] font-bold tracking-tight text-zinc-900">Contable</h2>
-          <p className="mt-0.5 text-[13px] text-zinc-500">
+          <p className="mt-0.5 text-[13px] text-zinc-600">
             Pagos, facturas y comprobantes de cada cita
           </p>
         </div>
-        {canWrite && (
-          <Button
-            onClick={openFirstDue}
-            disabled={lines.length === 0 || pending}
-            className="h-11 w-full md:w-auto"
-          >
+        {canWrite && lines.length > 0 && (
+          <Button onClick={openFirstDue} disabled={pending} className="h-11 w-full md:w-auto">
             <Plus className="h-4 w-4" /> Registrar pago
           </Button>
         )}
       </div>
 
-      <dl className="grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-[--color-border-subtle] bg-[--color-border-subtle]">
-        <Total label="Facturado" value={formatCents(totals.billedCents)} />
-        <Total label="Cobrado" value={formatCents(totals.paidCents)} tone="paid" />
-        <Total
-          label="Pendiente"
-          value={formatCents(totals.dueCents)}
-          tone={totals.dueCents > 0 ? 'due' : 'default'}
-        />
-      </dl>
+      {lines.length > 0 && (
+        <dl className="grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-(--color-border-subtle) bg-(--color-border-subtle)">
+          <Total label="Facturado" value={formatCents(totals.billedCents)} />
+          <Total
+            label="Cobrado"
+            value={formatCents(totals.paidCents)}
+            tone={totals.paidCents > 0 ? 'paid' : 'default'}
+          />
+          <Total
+            label="Pendiente"
+            value={formatCents(totals.dueCents)}
+            tone={totals.dueCents > 0 ? 'due' : 'default'}
+          />
+        </dl>
+      )}
 
       {notice && (
         <p
@@ -268,7 +270,7 @@ export function BillingPanel({
                 value={form.amount}
                 onChange={(e) => setForm({ ...form, amount: e.target.value })}
                 placeholder="45,00"
-                className="h-11 rounded-[14px] border border-[--color-border] bg-white px-3.5 text-[16px] text-zinc-900 outline-none focus-visible:border-brand-400 focus-visible:ring-4 focus-visible:ring-brand-500/12"
+                className="h-11 rounded-[14px] border border-(--color-border) bg-white px-3.5 text-[16px] text-zinc-900 outline-none focus-visible:border-brand-400 focus-visible:ring-4 focus-visible:ring-brand-500/12"
               />
             </label>
             <label className="flex flex-col gap-1.5">
@@ -277,7 +279,7 @@ export function BillingPanel({
                 type="date"
                 value={form.paidOn}
                 onChange={(e) => setForm({ ...form, paidOn: e.target.value })}
-                className="h-11 rounded-[14px] border border-[--color-border] bg-white px-3.5 text-[16px] text-zinc-900 outline-none focus-visible:border-brand-400 focus-visible:ring-4 focus-visible:ring-brand-500/12"
+                className="h-11 rounded-[14px] border border-(--color-border) bg-white px-3.5 text-[16px] text-zinc-900 outline-none focus-visible:border-brand-400 focus-visible:ring-4 focus-visible:ring-brand-500/12"
               />
             </label>
           </div>
@@ -296,7 +298,7 @@ export function BillingPanel({
                       'min-h-11 whitespace-nowrap rounded-xl px-2.5 text-[14px] font-semibold ring-1 transition-colors',
                       active
                         ? 'bg-brand-600 text-white ring-brand-600'
-                        : 'bg-white text-zinc-700 ring-[--color-border] hover:bg-brand-100/60',
+                        : 'bg-white text-zinc-700 ring-(--color-border) hover:bg-brand-100/60',
                     )}
                   >
                     {PAYMENT_METHOD_LABELS[m]}
@@ -344,7 +346,7 @@ export function BillingPanel({
         <EmptyState
           icon={<Receipt className="h-5 w-5" />}
           title="Nada que cobrar todavía"
-          description="Cuando el paciente tenga citas, aquí se registra el pago de cada una y se guardan sus comprobantes."
+          description="Para registrar un pago hace falta una cita. Cuando el paciente tenga alguna, aquí se cobra cada una y se guardan sus comprobantes."
         />
       ) : (
         <ul className="flex flex-col gap-2.5">
@@ -353,7 +355,7 @@ export function BillingPanel({
             return (
               <li
                 key={line.key}
-                className="flex flex-col gap-2.5 rounded-2xl border border-[--color-border] p-3.5"
+                className="flex flex-col gap-2.5 rounded-2xl border border-(--color-border) p-3.5"
               >
                 <div className="flex flex-wrap items-start gap-2 md:gap-3">
                   <div className="min-w-[180px] flex-1">
@@ -364,7 +366,7 @@ export function BillingPanel({
                     <span
                       className={cn(
                         'text-[15px] font-bold',
-                        line.amountCents === null ? 'text-zinc-400' : 'text-zinc-900',
+                        line.amountCents === null ? 'text-zinc-500' : 'text-zinc-900',
                       )}
                     >
                       {line.amountCents === null ? 'Sin importe' : formatCents(line.amountCents)}
@@ -410,7 +412,7 @@ export function BillingPanel({
                     )}
                     <label
                       className={cn(
-                        'inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-full border border-[--color-border] bg-white px-3.5 text-[13px] font-semibold text-zinc-800 hover:border-brand-200 hover:text-brand-700',
+                        'inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-full border border-(--color-border) bg-white px-3.5 text-[13px] font-semibold text-zinc-800 hover:border-brand-200 hover:text-brand-700',
                         uploading === line.key && 'pointer-events-none opacity-60',
                       )}
                     >
@@ -453,7 +455,7 @@ function Total({
 }) {
   return (
     <div className="flex flex-col gap-[3px] bg-[#fbfcfc] px-3.5 py-3">
-      <dt className="text-[12px] text-zinc-500">{label}</dt>
+      <dt className="text-[12px] font-semibold text-zinc-600">{label}</dt>
       <dd
         className={cn(
           'text-[15px] font-bold tabular-nums md:text-[18px]',

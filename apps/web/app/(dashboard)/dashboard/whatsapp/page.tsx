@@ -176,7 +176,7 @@ export default async function WhatsappConversationsPage() {
         </Card>
       ) : (
         <Card className="overflow-hidden">
-          <ul className="stagger divide-y divide-[--color-border-subtle]">
+          <ul className="stagger divide-y divide-(--color-border-subtle)">
             {rows.map((r, i) => {
               const badge = statusBadge(r);
               const preview = previewMap.get(r.id);

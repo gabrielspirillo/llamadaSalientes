@@ -73,7 +73,7 @@ function PeoplePicker({
         aria-label="Buscar a alguien del equipo"
         className="h-10"
       />
-      <ul className="max-h-52 space-y-0.5 overflow-y-auto rounded-2xl border border-[--color-border] bg-white/70 p-1.5">
+      <ul className="max-h-52 space-y-0.5 overflow-y-auto rounded-2xl border border-(--color-border) bg-white/70 p-1.5">
         {list.length === 0 && (
           <li className="px-2 py-6 text-center text-[13px] text-zinc-500">{emptyLabel}</li>
         )}
@@ -313,7 +313,7 @@ function KindOption({
         'press rounded-2xl border p-3 text-left transition-all',
         active
           ? 'border-brand-300 bg-brand-50 shadow-[var(--shadow-soft)]'
-          : 'border-[--color-border] bg-white/70 hover:bg-zinc-50',
+          : 'border-(--color-border) bg-white/70 hover:bg-zinc-50',
         disabled && 'cursor-not-allowed opacity-50',
       )}
     >
@@ -407,7 +407,7 @@ export function ChannelMembersDialog({
             <Label>
               Dentro <span className="font-normal text-zinc-500">· {members.length}</span>
             </Label>
-            <ul className="max-h-44 space-y-0.5 overflow-y-auto rounded-2xl border border-[--color-border] bg-white/70 p-1.5">
+            <ul className="max-h-44 space-y-0.5 overflow-y-auto rounded-2xl border border-(--color-border) bg-white/70 p-1.5">
               {members.length === 0 && (
                 <li className="px-2 py-6 text-center text-[13px] text-zinc-500">
                   Sin miembros cargados.

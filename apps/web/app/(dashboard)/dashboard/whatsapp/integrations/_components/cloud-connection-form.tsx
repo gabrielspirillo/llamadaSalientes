@@ -55,7 +55,7 @@ export function CloudConnectionForm({ initial }: Props) {
           value={phoneNumberId}
           onChange={(e) => setPhoneNumberId(e.target.value)}
           required
-          className="w-full rounded-lg border border-[--color-border] px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
+          className="w-full rounded-lg border border-(--color-border) px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
         />
       </div>
       <div>
@@ -68,7 +68,7 @@ export function CloudConnectionForm({ initial }: Props) {
           value={wabaId}
           onChange={(e) => setWabaId(e.target.value)}
           required
-          className="w-full rounded-lg border border-[--color-border] px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
+          className="w-full rounded-lg border border-(--color-border) px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
         />
       </div>
       <div>
@@ -82,7 +82,7 @@ export function CloudConnectionForm({ initial }: Props) {
           onChange={(e) => setAccessToken(e.target.value)}
           required
           placeholder={initial ? 'Vuelve a pegarlo para actualizarlo' : ''}
-          className="w-full rounded-lg border border-[--color-border] px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
+          className="w-full rounded-lg border border-(--color-border) px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
         />
       </div>
       <div>
@@ -95,7 +95,7 @@ export function CloudConnectionForm({ initial }: Props) {
           value={appSecret}
           onChange={(e) => setAppSecret(e.target.value)}
           required
-          className="w-full rounded-lg border border-[--color-border] px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
+          className="w-full rounded-lg border border-(--color-border) px-3 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
         />
       </div>
 

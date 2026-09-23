@@ -334,6 +334,9 @@ const NavLink = React.memo(function NavLink({
       onBlur={() => setHovered(false)}
       aria-current={active ? 'page' : undefined}
       aria-label={nombreAccesible}
+      // Plegado sólo se ven iconos: el tooltip nativo suma al HoverLabel para
+      // que el nombre aparezca aunque el hover no llegue a dibujarse.
+      title={collapsed ? item.label : undefined}
       className={cn(ROW_BASE, active ? ROW_ACTIVE : ROW_IDLE)}
     >
       {surface === 'rail' && <ActiveRail active={active} />}

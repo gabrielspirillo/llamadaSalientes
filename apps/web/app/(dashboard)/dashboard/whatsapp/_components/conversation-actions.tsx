@@ -49,7 +49,7 @@ export function ConversationActions({ conversationId, status, urgentFlag }: Prop
         className={`rounded-full border px-3.5 py-1.5 text-[13px] font-semibold transition-all duration-300 hover:-translate-y-0.5 active:scale-95 ${
           urgentFlag
             ? 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100'
-            : 'border-[--color-border] bg-white text-zinc-700 hover:border-brand-200 hover:text-brand-700'
+            : 'border-(--color-border) bg-white text-zinc-700 hover:border-brand-200 hover:text-brand-700'
         } disabled:opacity-50`}
       >
         {urgentFlag ? 'Quitar urgente' : 'Marcar urgente'}

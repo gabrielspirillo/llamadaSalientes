@@ -66,8 +66,8 @@ export function ContactHistoryTabs({
   const [tab, setTab] = useState<Tab>('atributos');
 
   return (
-    <div className="rounded-2xl border border-[--color-border] bg-white">
-      <div className="flex border-b border-[--color-border-subtle]">
+    <div className="rounded-2xl border border-(--color-border) bg-white">
+      <div className="flex border-b border-(--color-border-subtle)">
         {(['atributos', 'historial', 'notas', 'combinar'] as Tab[]).map((t) => (
           <button
             key={t}
@@ -129,7 +129,7 @@ function Atributos({
             {appointments.map((a) => (
               <li
                 key={a.id}
-                className="rounded-lg border border-[--color-border-subtle] bg-zinc-50 px-3 py-2 text-sm"
+                className="rounded-lg border border-(--color-border-subtle) bg-zinc-50 px-3 py-2 text-sm"
               >
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-zinc-900">{a.treatment ?? 'Cita'}</span>
@@ -291,7 +291,7 @@ function Notas({ contactId, notes }: { contactId: string; notes: NoteItem[] }) {
   return (
     <div className="space-y-4">
       <div className="rounded-xl bg-zinc-50 p-3">
-        <div className="mb-2 flex items-center gap-1 border-b border-[--color-border] pb-2">
+        <div className="mb-2 flex items-center gap-1 border-b border-(--color-border) pb-2">
           <ToolbarButton onClick={() => applyWrap('**')} title="Negrita">
             <span className="font-bold">B</span>
           </ToolbarButton>
@@ -467,7 +467,7 @@ function Combinar({ contactId }: { contactId: string }) {
           setSelected(null);
         }}
         placeholder="Buscar por nombre o teléfono…"
-        className="w-full rounded-lg border border-[--color-border] px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+        className="w-full rounded-lg border border-(--color-border) px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
       />
       {searching && <p className="text-[12px] text-zinc-500">Buscando…</p>}
       {!searching && query.trim().length >= 2 && results.length === 0 && (

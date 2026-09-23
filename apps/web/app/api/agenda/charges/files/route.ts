@@ -15,6 +15,7 @@ import {
   ensureChargeForAppointment,
 } from '@/lib/agenda/charges';
 import { AgendaValidationError } from '@/lib/agenda/service';
+import { recordAudit } from '@/lib/audit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -94,6 +95,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       mimeType: mime,
       body: Buffer.from(await file.arrayBuffer()),
     });
+    await recordAudit({
+      tenantId: ctx.tenantId,
+      actorUserId: ctx.userId,
+      action: 'update',
+      entity: 'patient_charge',
+      entityId: targetChargeId,
+      after: { patientKey: result.patientKey, file: file.name || 'comprobante' },
+    }).catch(() => undefined);
     revalidatePath(`/dashboard/agenda/pacientes/${encodeURIComponent(result.patientKey)}`);
     return NextResponse.json({ id: result.id, chargeId: targetChargeId }, { status: 201 });
   } catch (err) {

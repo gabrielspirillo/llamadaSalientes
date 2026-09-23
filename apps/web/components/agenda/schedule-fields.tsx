@@ -72,8 +72,8 @@ export function ScheduleFields({
               className={cn(
                 'flex flex-wrap items-center gap-3 rounded-[14px] border p-2.5',
                 indexes.length > 0
-                  ? 'border-[--color-border] bg-white'
-                  : 'border-dashed border-[--color-border] bg-zinc-50/60',
+                  ? 'border-(--color-border) bg-white'
+                  : 'border-dashed border-(--color-border) bg-zinc-50/60',
               )}
             >
               <span className="w-24 shrink-0 text-[14px] font-bold text-zinc-800">

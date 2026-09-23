@@ -19,7 +19,7 @@ const buttonVariants = cva(
           'sheen text-white bg-[linear-gradient(120deg,#37766a_0%,#479183_45%,#5fa896_100%)] shadow-[0_8px_24px_-10px_rgba(55,118,106,0.75)] hover:shadow-[0_16px_34px_-12px_rgba(55,118,106,0.8)] hover:-translate-y-0.5',
         /* Secundaria: superficie blanca con borde suave */
         secondary:
-          'bg-white text-zinc-800 border border-[--color-border] shadow-[0_1px_2px_rgba(20,33,29,0.04)] hover:border-brand-200 hover:text-brand-700 hover:shadow-[0_10px_22px_-14px_rgba(20,33,29,0.45)] hover:-translate-y-0.5',
+          'bg-white text-zinc-800 border border-(--color-border) shadow-[0_1px_2px_rgba(20,33,29,0.04)] hover:border-brand-200 hover:text-brand-700 hover:shadow-[0_10px_22px_-14px_rgba(20,33,29,0.45)] hover:-translate-y-0.5',
         /* Suave: pastel de marca, para acciones frecuentes no destructivas */
         soft: 'bg-brand-50 text-brand-700 hover:bg-brand-100 hover:-translate-y-0.5',
         ghost: 'text-zinc-600 hover:bg-zinc-100 hover:text-brand-700',

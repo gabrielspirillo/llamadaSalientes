@@ -283,7 +283,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
       : 'Escribe un mensaje. Usa "/" para respuestas rápidas.';
 
   return (
-    <div className="relative rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)]">
+    <div className="relative rounded-[22px] border border-(--color-border) bg-white shadow-[var(--shadow-soft)]">
       {error && (
         <div className="animate-fade-down border-b border-rose-100 bg-rose-50 px-3 py-2 text-[13px] text-rose-700">
           {error}
@@ -291,7 +291,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
       )}
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 border-b border-[--color-border-subtle] px-2 pt-2">
+      <div className="flex items-center gap-1 border-b border-(--color-border-subtle) px-2 pt-2">
         <button
           type="button"
           onClick={() => setMode('reply')}
@@ -318,8 +318,8 @@ export function MessageComposer({ conversationId, disabled }: Props) {
 
       {/* Slash command popup */}
       {slashOpen && slashResults.length > 0 && (
-        <div className="absolute bottom-full left-3 right-3 z-20 mb-1 max-h-60 overflow-y-auto rounded-2xl border border-[--color-border] bg-white shadow-lg">
-          <p className="border-b border-[--color-border-subtle] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">
+        <div className="absolute bottom-full left-3 right-3 z-20 mb-1 max-h-60 overflow-y-auto rounded-2xl border border-(--color-border) bg-white shadow-lg">
+          <p className="border-b border-(--color-border-subtle) px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">
             Respuestas rápidas · ↑↓ para navegar, Enter para usar
           </p>
           <ul>
@@ -343,13 +343,13 @@ export function MessageComposer({ conversationId, disabled }: Props) {
 
       {/* Audio preview */}
       {audioBlob && (
-        <div className="flex items-center gap-2 border-b border-[--color-border-subtle] bg-[#fafbfb] px-3 py-2">
+        <div className="flex items-center gap-2 border-b border-(--color-border-subtle) bg-[#fafbfb] px-3 py-2">
           {/* biome-ignore lint/a11y/useMediaCaption: previsualización de la nota de voz que se acaba de grabar */}
           <audio src={URL.createObjectURL(audioBlob)} controls className="h-8 flex-1" />
           <button
             type="button"
             onClick={discardAudio}
-            className="rounded-full border border-[--color-border] bg-white px-3 py-1.5 text-[13px] font-semibold text-zinc-700 transition-all duration-300 hover:border-brand-200 hover:text-brand-700 active:scale-95"
+            className="rounded-full border border-(--color-border) bg-white px-3 py-1.5 text-[13px] font-semibold text-zinc-700 transition-all duration-300 hover:border-brand-200 hover:text-brand-700 active:scale-95"
           >
             Descartar
           </button>
@@ -377,7 +377,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
           className={`w-full resize-none rounded-lg border px-3 py-2 text-sm focus:outline-none disabled:bg-zinc-50 ${
             isNote
               ? 'border-amber-200 bg-amber-50 focus:border-amber-400'
-              : 'border-[--color-border] bg-white focus:border-zinc-400'
+              : 'border-(--color-border) bg-white focus:border-zinc-400'
           }`}
         />
 
@@ -498,7 +498,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
 
       {/* Emoji popover */}
       {emojiOpen && (
-        <div className="absolute bottom-full left-3 z-20 mb-1 grid w-72 grid-cols-10 gap-1 rounded-2xl border border-[--color-border] bg-white p-2 shadow-lg">
+        <div className="absolute bottom-full left-3 z-20 mb-1 grid w-72 grid-cols-10 gap-1 rounded-2xl border border-(--color-border) bg-white p-2 shadow-lg">
           {EMOJIS.map((e) => (
             <button
               key={e}

@@ -116,7 +116,7 @@ export function ThreadPanel({
       />
 
       <aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[440px] animate-slide-right flex-col border-l border-white/60 bg-white shadow-[0_40px_90px_-30px_rgba(22,26,25,0.5)]">
-        <header className="flex shrink-0 items-center gap-3 border-b border-[--color-border-subtle] px-4 py-3.5">
+        <header className="flex shrink-0 items-center gap-3 border-b border-(--color-border-subtle) px-4 py-3.5">
           <span
             className={cn('inline-flex h-9 w-9 items-center justify-center rounded-xl', tone.chip)}
           >
@@ -140,13 +140,13 @@ export function ThreadPanel({
           <ul className="space-y-0">{renderRow(parent, true)}</ul>
 
           <div className="my-3 flex items-center gap-3 px-4">
-            <span className="h-px flex-1 bg-[--color-border]" />
+            <span className="h-px flex-1 bg-(--color-border)" />
             <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-zinc-500">
               {replies.length === 0
                 ? 'Sin respuestas'
                 : `${replies.length} ${replies.length === 1 ? 'respuesta' : 'respuestas'}`}
             </span>
-            <span className="h-px flex-1 bg-[--color-border]" />
+            <span className="h-px flex-1 bg-(--color-border)" />
           </div>
 
           {loading ? (
@@ -162,7 +162,7 @@ export function ThreadPanel({
           )}
         </div>
 
-        <div className="shrink-0 border-t border-[--color-border-subtle] bg-white/70 p-3 backdrop-blur-xl">
+        <div className="shrink-0 border-t border-(--color-border-subtle) bg-white/70 p-3 backdrop-blur-xl">
           <Composer
             compact
             channelName="el hilo"

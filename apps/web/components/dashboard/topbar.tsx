@@ -4,6 +4,7 @@ import { DashboardSidebarMobile } from '@/components/dashboard/sidebar';
 import { TeamMenu } from '@/components/dashboard/team-menu';
 import { useMessaging } from '@/components/messaging/MessagingProvider';
 import { MentionsInbox } from '@/components/messaging/dock/MentionsInbox';
+import { ImpersonationChip } from '@/components/dashboard/impersonation-chip';
 import { StatusDot } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/feedback';
 import { Avatar } from '@/components/ui/stat';
@@ -64,15 +65,6 @@ const KIND_DOT: Record<Notification['kind'], string> = {
   otro: 'bg-zinc-400',
 };
 
-/** Saludo según la hora local — pequeño detalle que humaniza el panel. */
-function greeting(): string {
-  const h = new Date().getHours();
-  if (h < 6) return 'Buenas noches';
-  if (h < 13) return 'Buenos días';
-  if (h < 20) return 'Buenas tardes';
-  return 'Buenas noches';
-}
-
 export function DashboardTopbar({
   enabledModules,
   isSuperAdmin = false,
@@ -95,12 +87,7 @@ export function DashboardTopbar({
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [hello, setHello] = useState('Hola');
   const { user } = useUser();
-
-  // El saludo depende de la hora del cliente: se calcula tras montar para
-  // evitar desajustes de hidratación con el render del servidor.
-  useEffect(() => setHello(greeting()), []);
 
   // Cmd-K abre el buscador
   useEffect(() => {
@@ -157,14 +144,6 @@ export function DashboardTopbar({
             )}
           </Link>
 
-          {/* Saludo — equivalente al "Welcome, …" de la referencia */}
-          <div className="hidden min-w-0 lg:block">
-            <p className="text-[14px] font-medium leading-none text-white/70">{hello},</p>
-            <p className="mt-1.5 truncate text-[22px] font-extrabold leading-none tracking-tight text-white">
-              {firstName || 'bienvenido'}
-            </p>
-          </div>
-
           {/* Buscador — pastilla ancha como en el tablero de referencia */}
           <button
             type="button"
@@ -183,12 +162,7 @@ export function DashboardTopbar({
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
-          {impersonatingClinic && (
-            <span className="hidden max-w-[220px] items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-[12px] font-semibold text-white ring-1 ring-white/20 sm:inline-flex">
-              <StatusDot tone="success" />
-              <span className="truncate">Gestionando: {impersonatingClinic}</span>
-            </span>
-          )}
+          {impersonatingClinic && <ImpersonationChip clinicName={impersonatingClinic} />}
 
           <button
             type="button"
@@ -314,7 +288,7 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
         onClick={onClose}
       />
       <div className="w-[620px] max-w-[95vw] animate-pop overflow-hidden rounded-[26px] border border-white/70 bg-white/90 shadow-[0_40px_90px_-30px_rgba(20,33,29,0.4)] backdrop-blur-2xl">
-        <div className="relative flex items-center gap-3 border-b border-[--color-border-subtle] px-5 py-4">
+        <div className="relative flex items-center gap-3 border-b border-(--color-border-subtle) px-5 py-4">
           <span
             aria-hidden
             className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(95,168,150,0.12),transparent_70%)]"
@@ -363,7 +337,7 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
                     onClick={() => onPick(h.href)}
                     className="group flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-all duration-200 hover:bg-zinc-50"
                   >
-                    <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-brand-600 ring-1 ring-[--color-border] transition-transform duration-300 group-hover:scale-110">
+                    <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-brand-600 ring-1 ring-(--color-border) transition-transform duration-300 group-hover:scale-110">
                       {h.kind === 'call' ? (
                         <Phone className="h-4 w-4" />
                       ) : h.kind === 'contact' ? (
@@ -396,7 +370,7 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
           )}
         </div>
 
-        <div className="flex items-center justify-between border-t border-[--color-border-subtle] bg-[#fafbfb] px-5 py-2.5 text-[12px] text-zinc-500">
+        <div className="flex items-center justify-between border-t border-(--color-border-subtle) bg-[#fafbfb] px-5 py-2.5 text-[12px] text-zinc-500">
           <span>↵ para abrir · Esc para cerrar</span>
           <span className="tabular-nums">{hits.length} resultados</span>
         </div>
@@ -525,7 +499,7 @@ function NotificationsBell({
           data-notif-panel
           className="fixed left-2 right-2 z-50 mt-2 flex max-h-[75vh] animate-fade-down flex-col overflow-hidden rounded-[24px] border border-white/60 bg-white shadow-[0_40px_90px_-30px_rgba(20,33,29,0.5)] sm:absolute sm:left-auto sm:right-0 sm:max-h-[70vh] sm:w-[390px] sm:max-w-[calc(100vw-1rem)]"
         >
-          <div className="relative flex shrink-0 items-center justify-between border-b border-[--color-border-subtle] px-5 py-3.5">
+          <div className="relative flex shrink-0 items-center justify-between border-b border-(--color-border-subtle) px-5 py-3.5">
             <span
               aria-hidden
               className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(95,168,150,0.12),transparent_70%)]"
@@ -552,7 +526,7 @@ function NotificationsBell({
           </div>
 
           {messagingReady && (
-            <div className="flex shrink-0 gap-1 border-b border-[--color-border-subtle] px-3 py-2">
+            <div className="flex shrink-0 gap-1 border-b border-(--color-border-subtle) px-3 py-2">
               <BellTab
                 active={tab === 'calls'}
                 onClick={() => setTab('calls')}
@@ -628,7 +602,7 @@ function NotificationsBell({
             )}
           </div>
 
-          <div className="shrink-0 border-t border-[--color-border-subtle] bg-[#fafbfb]">
+          <div className="shrink-0 border-t border-(--color-border-subtle) bg-[#fafbfb]">
             <Link
               href={
                 messagingReady && tab === 'mentions' ? '/dashboard/messages' : '/dashboard/calls'

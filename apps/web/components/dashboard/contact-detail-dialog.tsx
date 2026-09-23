@@ -414,7 +414,7 @@ export function ContactDetailDialog({
         </header>
 
         {/* ── Pestañas ───────────────────────────────────────────────────── */}
-        <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-y border-[--color-border-subtle] bg-white/60 px-3 sm:px-5">
+        <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-y border-(--color-border-subtle) bg-white/60 px-3 sm:px-5">
           <Tab
             active={tab === 'resumen'}
             onClick={() => setTab('resumen')}
@@ -636,7 +636,7 @@ function ResumenTab({
         <Link
           href={waHref}
           onClick={onClose}
-          className="group flex items-center gap-3 rounded-[18px] border border-[--color-border] bg-white p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-[var(--shadow-soft)]"
+          className="group flex items-center gap-3 rounded-[18px] border border-(--color-border) bg-white p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-[var(--shadow-soft)]"
         >
           <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-[linear-gradient(135deg,#e7f5ef,#ddf3ea)] text-brand-700">
             <MessageCircle className="h-5 w-5" />
@@ -710,7 +710,7 @@ function CallCard({ call, onClose }: { call: Call; onClose: () => void }) {
     <Link
       href={`/dashboard/calls/${call.id}`}
       onClick={onClose}
-      className="group block rounded-[16px] border border-[--color-border] bg-white p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-[var(--shadow-soft)]"
+      className="group block rounded-[16px] border border-(--color-border) bg-white p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-[var(--shadow-soft)]"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -762,7 +762,7 @@ function ApptsList({ appointments }: { appointments: Appointment[] }) {
         return (
           <div
             key={a.id}
-            className="flex items-start gap-3 rounded-[16px] border border-[--color-border] bg-white p-4"
+            className="flex items-start gap-3 rounded-[16px] border border-(--color-border) bg-white p-4"
           >
             <span
               className={cn(
@@ -830,7 +830,7 @@ function TaskRow({ task }: { task: PatientTask }) {
   const done = task.status === 'DONE';
   const p = PRIORITY[task.priority];
   return (
-    <li className="flex items-center gap-2.5 rounded-[14px] border border-[--color-border] bg-white px-3 py-2.5">
+    <li className="flex items-center gap-2.5 rounded-[14px] border border-(--color-border) bg-white px-3 py-2.5">
       {done ? (
         <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
           <Check className="h-3 w-3" />
@@ -902,7 +902,7 @@ function DatosTab({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-2 border-t border-[--color-border-subtle] pt-4">
+      <div className="flex flex-wrap items-center gap-2 border-t border-(--color-border-subtle) pt-4">
         <Button asChild variant="secondary" size="sm">
           <a
             href={`https://app.gohighlevel.com/contacts/detail/${contactId}`}
@@ -1047,7 +1047,7 @@ function Kpi({
           ? 'text-zinc-400'
           : 'text-zinc-900';
   return (
-    <div className="rounded-[14px] bg-white/85 px-3 py-2 ring-1 ring-[--color-border-subtle]">
+    <div className="rounded-[14px] bg-white/85 px-3 py-2 ring-1 ring-(--color-border-subtle)">
       <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-400">
         <span className="text-brand-500">{icon}</span>
         {label}
@@ -1124,7 +1124,7 @@ function Callout({
   body: string;
 }) {
   return (
-    <div className="flex items-start gap-3 rounded-[16px] border border-[--color-border] bg-white p-4">
+    <div className="flex items-start gap-3 rounded-[16px] border border-(--color-border) bg-white p-4">
       <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-zinc-100 text-zinc-400">
         {icon}
       </span>
@@ -1256,7 +1256,7 @@ function PatientTeamThread({ contactId, label }: { contactId: string; label: str
   }
 
   return (
-    <div className="rounded-[16px] border border-[--color-border] bg-white">
+    <div className="rounded-[16px] border border-(--color-border) bg-white">
       <ul className="max-h-72 space-y-3 overflow-y-auto px-3 py-3">
         {messages.map((m) => (
           <li key={m.id} className="text-[14px]">
@@ -1278,7 +1278,7 @@ function PatientTeamThread({ contactId, label }: { contactId: string; label: str
           e.preventDefault();
           void send();
         }}
-        className="flex items-center gap-2 border-t border-[--color-border-subtle] px-3 py-2"
+        className="flex items-center gap-2 border-t border-(--color-border-subtle) px-3 py-2"
       >
         <Input
           value={draft}

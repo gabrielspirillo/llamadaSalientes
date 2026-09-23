@@ -39,7 +39,7 @@ export default async function TreatmentsPage() {
         <Reveal>
           <Card className="overflow-hidden">
             {/* Mobile: cards */}
-            <ul className="stagger divide-y divide-[--color-border-subtle] md:hidden">
+            <ul className="stagger divide-y divide-(--color-border-subtle) md:hidden">
               {rows.map((t, i) => (
                 <li key={t.id} className="p-4" style={{ ['--i' as string]: Math.min(i, 12) }}>
                   <div className="flex items-start justify-between gap-3">

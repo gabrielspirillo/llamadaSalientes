@@ -43,7 +43,7 @@ export function Skeleton({ className }: { className?: string }) {
 /** Bloque de carga para listas: 5 filas con avatar + 2 líneas. */
 export function SkeletonRows({ rows = 5 }: { rows?: number }) {
   return (
-    <div className="divide-y divide-[--color-border-subtle]">
+    <div className="divide-y divide-(--color-border-subtle)">
       {Array.from({ length: rows }, (_, i) => `skeleton-row-${i}`).map((id) => (
         <div key={id} className="flex items-center gap-3 px-5 py-4">
           <Skeleton className="h-9 w-9 rounded-xl" />

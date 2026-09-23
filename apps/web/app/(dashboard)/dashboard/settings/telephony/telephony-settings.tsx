@@ -113,7 +113,7 @@ function ProviderTabs({
                 className={`text-left rounded-xl border p-3 transition ${
                   active
                     ? 'border-zinc-900 bg-zinc-900 text-white'
-                    : 'border-[--color-border] bg-white hover:border-zinc-400'
+                    : 'border-(--color-border) bg-white hover:border-zinc-400'
                 }`}
               >
                 <div className="flex items-center gap-2">
@@ -698,7 +698,7 @@ function InboundCard({
               <select
                 value={selected}
                 onChange={(e) => setSelected(e.target.value)}
-                className="mt-2 flex h-11 w-full rounded-[14px] border border-[--color-border] bg-white px-4 text-sm transition-[border-color,box-shadow] duration-300 hover:border-brand-200 focus-visible:border-brand-400 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/12 px-3.5 text-sm"
+                className="mt-2 flex h-11 w-full rounded-[14px] border border-(--color-border) bg-white px-4 text-sm transition-[border-color,box-shadow] duration-300 hover:border-brand-200 focus-visible:border-brand-400 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/12 px-3.5 text-sm"
               >
                 <option value="">Seleccionar…</option>
                 {numbers.map((n) => (
@@ -882,7 +882,7 @@ function HelpCard({
             </>
           )}
         </ul>
-        <div className="pt-2 border-t border-[--color-border-subtle] space-y-2">
+        <div className="pt-2 border-t border-(--color-border-subtle) space-y-2">
           <div className="text-xs text-zinc-500">URLs configuradas automáticamente:</div>
           {isZadarma ? (
             <CopyRow label="Notification URL" value={webhookUrls.zadarma.webhook} />
@@ -901,7 +901,7 @@ function HelpCard({
 function CopyRow({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <div className="flex items-center justify-between gap-2 rounded-lg bg-zinc-50 border border-[--color-border] px-2.5 py-1.5">
+    <div className="flex items-center justify-between gap-2 rounded-lg bg-zinc-50 border border-(--color-border) px-2.5 py-1.5">
       <div className="min-w-0">
         <div className="text-[11px] uppercase tracking-wide text-zinc-500">{label}</div>
         <div className="text-xs font-mono text-zinc-900 truncate">{value}</div>

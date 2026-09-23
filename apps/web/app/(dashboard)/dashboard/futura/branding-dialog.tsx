@@ -208,7 +208,7 @@ function BrandingForm({
         <div className="space-y-2">
           <Label>Logo</Label>
           <div className="flex items-center gap-4">
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[--color-border] bg-white">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-(--color-border) bg-white">
               {shownLogo ? (
                 // <img> a pelo: el logo vive en un bucket cuyo dominio es
                 // configurable por entorno, y next/image exige declarar cada

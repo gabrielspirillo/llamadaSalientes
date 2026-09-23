@@ -219,7 +219,7 @@ export function TemplatesEditor({
   const showTestVoice = true; // siempre potencialmente; el endpoint valida
 
   return (
-    <div className="rounded-[22px] border border-[--color-border] bg-white shadow-[var(--shadow-soft)] p-6 space-y-4">
+    <div className="rounded-[22px] border border-(--color-border) bg-white shadow-[var(--shadow-soft)] p-6 space-y-4">
       <div>
         <h2 className="text-[20px] font-bold tracking-tight text-zinc-900">
           Plantillas de mensaje
@@ -239,7 +239,7 @@ export function TemplatesEditor({
             className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
               activeScope === s
                 ? 'border-zinc-900 bg-zinc-900 text-white'
-                : 'border-[--color-border] bg-white text-zinc-700 hover:bg-zinc-50'
+                : 'border-(--color-border) bg-white text-zinc-700 hover:bg-zinc-50'
             }`}
           >
             {SCOPE_LABELS[s]}
@@ -248,7 +248,7 @@ export function TemplatesEditor({
       </div>
 
       {channel === 'VOICE' || activeScope === 'whatsapp_evolution' ? (
-        <div className="rounded-lg border border-[--color-border] bg-[#fafbfb] p-3 space-y-2">
+        <div className="rounded-lg border border-(--color-border) bg-[#fafbfb] p-3 space-y-2">
           <div className="text-xs uppercase tracking-wide text-zinc-500">
             Variables disponibles · haz clic para insertarlas donde tengas el cursor
           </div>
@@ -262,7 +262,7 @@ export function TemplatesEditor({
                     type="button"
                     onClick={() => insertVariable(v.path)}
                     title={v.help}
-                    className="rounded-md border border-[--color-border] bg-white px-2 py-0.5 text-xs font-mono text-zinc-700 hover:bg-zinc-900 hover:text-white transition-colors"
+                    className="rounded-md border border-(--color-border) bg-white px-2 py-0.5 text-xs font-mono text-zinc-700 hover:bg-zinc-900 hover:text-white transition-colors"
                   >
                     {`{{${v.path}}}`}
                   </button>
@@ -284,7 +284,7 @@ export function TemplatesEditor({
             <span className="text-sm font-medium text-zinc-900">Nombre de la plantilla (WABA)</span>
             <input
               type="text"
-              className="mt-1 w-full rounded-md border border-[--color-border] px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-md border border-(--color-border) px-3 py-2 text-sm"
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
               placeholder="ej: waitlist_offer_es"
@@ -301,7 +301,7 @@ export function TemplatesEditor({
             <span className="text-sm font-medium text-zinc-900">Texto libre con variables</span>
             <textarea
               ref={freeTextRef}
-              className="mt-1 w-full rounded-md border border-[--color-border] px-3 py-2 text-sm font-mono"
+              className="mt-1 w-full rounded-md border border-(--color-border) px-3 py-2 text-sm font-mono"
               rows={6}
               value={freeText}
               onChange={(e) => setFreeText(e.target.value)}
@@ -319,7 +319,7 @@ export function TemplatesEditor({
             </span>
             <textarea
               ref={voicePromptRef}
-              className="mt-1 w-full rounded-md border border-[--color-border] px-3 py-2 text-sm font-mono"
+              className="mt-1 w-full rounded-md border border-(--color-border) px-3 py-2 text-sm font-mono"
               rows={4}
               value={voicePrompt}
               onChange={(e) => setVoicePrompt(e.target.value)}
@@ -371,7 +371,7 @@ export function TemplatesEditor({
       ) : null}
 
       {preview ? (
-        <div className="rounded-lg border border-[--color-border] bg-zinc-50 p-3 text-sm">
+        <div className="rounded-lg border border-(--color-border) bg-zinc-50 p-3 text-sm">
           <div className="text-xs uppercase tracking-wide text-zinc-500 mb-2">Previsualización</div>
           {preview.renderedText ? (
             <div className="whitespace-pre-wrap text-zinc-800">{preview.renderedText}</div>
@@ -389,7 +389,7 @@ export function TemplatesEditor({
               {preview.buttons.map((b) => (
                 <span
                   key={b.id}
-                  className="rounded-full bg-white border border-[--color-border] px-3 py-1 text-xs"
+                  className="rounded-full bg-white border border-(--color-border) px-3 py-1 text-xs"
                 >
                   {b.title}
                 </span>

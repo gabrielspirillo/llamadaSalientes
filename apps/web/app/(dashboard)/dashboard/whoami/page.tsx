@@ -46,8 +46,8 @@ export default async function WhoamiPage() {
         )}
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-[--color-border] bg-white">
-        <dl className="divide-y divide-[--color-border-subtle]">
+      <div className="overflow-hidden rounded-2xl border border-(--color-border) bg-white">
+        <dl className="divide-y divide-(--color-border-subtle)">
           {rows.map((r) => (
             <div
               key={r.k}

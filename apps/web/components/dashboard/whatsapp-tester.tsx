@@ -206,7 +206,7 @@ export function WhatsappTester() {
           )}
         </div>
 
-        <div className="min-h-[300px] max-h-[52vh] space-y-4 overflow-y-auto border-t border-[--color-border-subtle] px-4 py-4 sm:min-h-[360px] sm:px-6 sm:py-5">
+        <div className="min-h-[300px] max-h-[52vh] space-y-4 overflow-y-auto border-t border-(--color-border-subtle) px-4 py-4 sm:min-h-[360px] sm:px-6 sm:py-5">
           {turns.length === 0 ? (
             <div className="flex h-[300px] flex-col items-center justify-center text-center text-sm text-zinc-400">
               <span className="mb-3 inline-flex h-12 w-12 animate-float items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#effaf5,#ddf3ea)] text-brand-500">
@@ -283,7 +283,7 @@ export function WhatsappTester() {
                   )}
 
                   {turn.meta && abierta === turn.id && (
-                    <div className="mt-2 space-y-2 rounded-2xl border border-[--color-border-subtle] bg-white/70 p-3">
+                    <div className="mt-2 space-y-2 rounded-2xl border border-(--color-border-subtle) bg-white/70 p-3">
                       {turn.meta.tools.map((t, i) => (
                         <div key={`${turn.id}-${t.name}-${i}`} className="text-[12px]">
                           <div className="flex items-center gap-1.5">
@@ -309,7 +309,7 @@ export function WhatsappTester() {
           <div ref={finalRef} />
         </div>
 
-        <div className="border-t border-[--color-border-subtle] p-4 sm:px-6">
+        <div className="border-t border-(--color-border-subtle) p-4 sm:px-6">
           {error && (
             <div className="mb-3 animate-fade-up rounded-2xl border border-rose-100 bg-rose-50/80 px-3.5 py-2.5 text-[13px] text-rose-700">
               {error}

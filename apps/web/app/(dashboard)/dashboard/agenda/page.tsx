@@ -18,7 +18,8 @@ import { describeAge } from '@/lib/care-profile/policy';
 import { getCareProfile } from '@/lib/care-profile/queries';
 import { db } from '@/lib/db/client';
 import { professionalShifts, treatments } from '@/lib/db/schema';
-import { listPatientPersons } from '@/lib/patients/persons';
+import { patientIdFromKey, phoneFromPatientKey } from '@/lib/agenda/patients';
+import { getPatientPerson, listPatientPersons } from '@/lib/patients/persons';
 import { localDateKey, zonedToUtc } from '@/lib/tasks/tz';
 import { and, asc, eq } from 'drizzle-orm';
 import { CalendarDays, Users } from 'lucide-react';
@@ -31,7 +32,7 @@ export const dynamic = 'force-dynamic';
 export default async function AgendaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; date?: string; prof?: string }>;
+  searchParams: Promise<{ view?: string; date?: string; prof?: string; paciente?: string }>;
 }) {
   const params = await searchParams;
   const ctx = await getAgendaContext();
@@ -44,6 +45,29 @@ export default async function AgendaPage({
   const view = params.view === 'week' ? 'week' : 'day';
 
   const professionalRows = await listProfessionals(ctx.tenantId);
+
+  // "Agendar" desde la ficha: la clave del paciente viene en la URL y el alta
+  // se abre ya rellena. Una clave que no resuelve a nadie no abre nada.
+  const requestedPatientKey = params.paciente?.trim() ?? '';
+  let newAppointmentFor: {
+    patientId: string | null;
+    patientName: string;
+    patientPhone: string | null;
+  } | null = null;
+  if (requestedPatientKey) {
+    const personId = patientIdFromKey(requestedPatientKey);
+    const person = personId ? await getPatientPerson(ctx.tenantId, personId) : null;
+    if (person) {
+      newAppointmentFor = {
+        patientId: person.id,
+        patientName: person.fullName,
+        patientPhone: person.contactPhone,
+      };
+    } else {
+      const phone = phoneFromPatientKey(requestedPatientKey);
+      if (phone) newAppointmentFor = { patientId: null, patientName: '', patientPhone: phone };
+    }
+  }
 
   // Un profesional restringido ve su agenda y sólo la suya: el selector ni
   // siquiera se dibuja, y el filtro no depende de lo que venga en la URL.
@@ -211,6 +235,7 @@ export default async function AgendaPage({
           window={window}
           canWrite={ctx.canWriteAppointments}
           lockedToProfessional={lockedToProfessional}
+          newAppointmentFor={newAppointmentFor}
         />
       </div>
     </>

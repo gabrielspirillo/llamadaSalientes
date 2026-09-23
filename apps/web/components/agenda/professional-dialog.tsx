@@ -707,7 +707,7 @@ function PasoTratamientos({
                 key={t.id}
                 className={cn(
                   'flex items-center justify-between gap-2 rounded-[14px] border p-2.5 transition-colors',
-                  marcado ? 'border-brand-200 bg-brand-50/50' : 'border-[--color-border] bg-white',
+                  marcado ? 'border-brand-200 bg-brand-50/50' : 'border-(--color-border) bg-white',
                 )}
               >
                 <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5">
@@ -744,7 +744,7 @@ function PasoTratamientos({
         </div>
       )}
 
-      <div className="rounded-[14px] border border-dashed border-[--color-border] p-3">
+      <div className="rounded-[14px] border border-dashed border-(--color-border) p-3">
         <p className="mb-2 text-[12px] font-bold uppercase tracking-wide text-zinc-500">
           Añadir un tratamiento al catálogo
         </p>
@@ -857,7 +857,7 @@ function PasoHuecos({
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-3 rounded-[14px] border border-[--color-border] p-3">
+      <div className="flex items-center justify-between gap-3 rounded-[14px] border border-(--color-border) p-3">
         <div>
           <p className="text-[14px] font-semibold text-zinc-800">Agenda habilitada</p>
           <p className="text-[12px] text-zinc-500">
@@ -871,7 +871,7 @@ function PasoHuecos({
         />
       </div>
 
-      <div className="flex items-center justify-between gap-3 rounded-[14px] border border-[--color-border] p-3">
+      <div className="flex items-center justify-between gap-3 rounded-[14px] border border-(--color-border) p-3">
         <div>
           <p className="text-[14px] font-semibold text-zinc-800">
             Los agentes virtuales pueden reservarle

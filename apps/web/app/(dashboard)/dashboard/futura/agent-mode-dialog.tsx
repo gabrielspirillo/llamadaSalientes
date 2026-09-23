@@ -127,7 +127,7 @@ function AgentModeForm({
         />
 
         {draftMode === 'DERIVE' && (
-          <div className="rounded-[14px] border border-[--color-border] bg-zinc-50/60 p-3">
+          <div className="rounded-[14px] border border-(--color-border) bg-zinc-50/60 p-3">
             <Label htmlFor="derive-fallback">Móvil de respaldo</Label>
             <Input
               id="derive-fallback"
@@ -180,7 +180,7 @@ function ModeOption({
       className={`w-full rounded-[14px] border p-3 text-left transition-colors ${
         selected
           ? 'border-brand-300 bg-brand-50/60 shadow-[var(--shadow-soft)]'
-          : 'border-[--color-border] bg-white hover:border-brand-200'
+          : 'border-(--color-border) bg-white hover:border-brand-200'
       }`}
     >
       <span className="block text-[14px] font-semibold text-zinc-900">{title}</span>

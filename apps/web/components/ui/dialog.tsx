@@ -66,7 +66,7 @@ export function DialogFooter({ className, ...props }: React.HTMLAttributes<HTMLD
   return (
     <div
       className={cn(
-        'mt-6 flex items-center justify-end gap-2 border-t border-[--color-border-subtle] pt-4',
+        'mt-6 flex items-center justify-end gap-2 border-t border-(--color-border-subtle) pt-4',
         className,
       )}
       {...props}
