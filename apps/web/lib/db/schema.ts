@@ -2443,6 +2443,8 @@ export const financeEntries = pgTable(
       onDelete: 'set null',
     }),
     isRecurring: boolean('is_recurring').notNull().default(false),
+    /** MONTHLY | QUARTERLY | YEARLY. Null = no se repite (migración 0037). */
+    recurrence: text('recurrence'),
     /** 'rec:<origen>:<YYYY-MM>' al replicar un recurrente. */
     dedupeKey: text('dedupe_key'),
     notes: text('notes'),

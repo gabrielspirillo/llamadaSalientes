@@ -1,5 +1,18 @@
 import 'server-only';
-import { and, asc, desc, eq, inArray, isNull, lte, notInArray, or, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  notInArray,
+  or,
+  sql,
+} from 'drizzle-orm';
 
 import { describeConcept, isChargeFileKind } from '@/lib/agenda/billing';
 import { db } from '@/lib/db/client';
@@ -16,12 +29,17 @@ import {
 } from '@/lib/db/schema';
 import { env } from '@/lib/env';
 import {
+  FINANCE_RECURRENCES,
   type FinanceKind,
+  type FinanceRecurrence,
   type FinanceStatus,
   type LedgerFile,
   type LedgerLine,
+  endOfMonthKey,
   isFinanceKind,
   isFinancePaymentMethod,
+  isFinanceRecurrence,
+  recurrenceSourceMonth,
 } from '@/lib/finance/model';
 import { mediaSignedUrl } from '@/lib/storage/media';
 
@@ -243,6 +261,11 @@ async function loadEntries(tenantId: string, w: LedgerWindow): Promise<LedgerLin
       patientKey: null,
       patientName: null,
       isRecurring: entry.isRecurring,
+      recurrence: isFinanceRecurrence(entry.recurrence)
+        ? entry.recurrence
+        : entry.isRecurring
+          ? 'MONTHLY'
+          : null,
       notes: entry.notes,
       files: files.get(entry.id) ?? [],
     }));
@@ -311,6 +334,7 @@ async function loadCharges(tenantId: string, w: LedgerWindow): Promise<LedgerLin
     patientKey: r.charge.patientKey,
     patientName: r.patientName ?? null,
     isRecurring: false,
+    recurrence: null,
     notes: null,
     files: files.get(r.charge.id) ?? [],
   }));
@@ -383,6 +407,7 @@ async function loadUnbilledAppointments(tenantId: string, w: LedgerWindow): Prom
     patientKey: r.patientKey,
     patientName: r.patientName,
     isRecurring: false,
+    recurrence: null,
     notes: null,
     files: [],
   }));
@@ -416,4 +441,101 @@ export async function financeFileSignedUrl(
   const key = rows[0]?.key;
   if (!key) return null;
   return mediaSignedUrl(key, { bucket: env.S3_BUCKET_INTERNAL, expiresInSeconds: 60 * 10 });
+}
+
+// ─── Ayudas para el alta y los ajustes ──────────────────────────────────────
+
+export interface CounterpartySuggestion {
+  name: string;
+  kind: FinanceKind;
+  /** La categoría con la que se usó la última vez, para rellenarla sola. */
+  categoryId: string | null;
+}
+
+/** Proveedores y pagadores ya usados, el más reciente primero, sin repetir. */
+export async function listCounterparties(tenantId: string): Promise<CounterpartySuggestion[]> {
+  const rows = await db
+    .select({
+      name: financeEntries.counterparty,
+      kind: financeEntries.kind,
+      categoryId: financeEntries.categoryId,
+    })
+    .from(financeEntries)
+    .where(and(eq(financeEntries.tenantId, tenantId), isNotNull(financeEntries.counterparty)))
+    .orderBy(desc(financeEntries.createdAt))
+    .limit(500);
+  const seen = new Set<string>();
+  const out: CounterpartySuggestion[] = [];
+  for (const r of rows) {
+    const name = r.name?.trim();
+    if (!name || !isFinanceKind(r.kind)) continue;
+    const key = `${r.kind}:${name.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ name, kind: r.kind, categoryId: r.categoryId });
+  }
+  return out;
+}
+
+/** Cuántos movimientos tiene cada categoría (para Ajustes). */
+export async function countEntriesByCategory(tenantId: string): Promise<Record<string, number>> {
+  const rows = await db
+    .select({ categoryId: financeEntries.categoryId, count: sql<number>`count(*)::int` })
+    .from(financeEntries)
+    .where(and(eq(financeEntries.tenantId, tenantId), isNotNull(financeEntries.categoryId)))
+    .groupBy(financeEntries.categoryId);
+  const out: Record<string, number> = {};
+  for (const r of rows) if (r.categoryId) out[r.categoryId] = r.count;
+  return out;
+}
+
+/**
+ * Los recurrentes que tocan en `monthKey` y todavía no se han traído: los
+ * mensuales del mes anterior, los trimestrales de hace tres meses, los
+ * anuales de hace doce. Es lo que decide si el botón se enseña y cuántos dice.
+ */
+export async function countRecurringCandidates(
+  tenantId: string,
+  monthKey: string,
+): Promise<{ candidates: number; alreadyCopied: number }> {
+  if (!/^\d{4}-\d{2}$/.test(monthKey)) return { candidates: 0, alreadyCopied: 0 };
+  const conditions = FINANCE_RECURRENCES.map((rec: FinanceRecurrence) => {
+    const from = `${recurrenceSourceMonth(monthKey, rec)}-01`;
+    const to = endOfMonthKey(from);
+    const byRecurrence =
+      rec === 'MONTHLY'
+        ? or(
+            eq(financeEntries.recurrence, rec),
+            and(isNull(financeEntries.recurrence), eq(financeEntries.isRecurring, true)),
+          )
+        : eq(financeEntries.recurrence, rec);
+    return and(
+      byRecurrence,
+      gte(financeEntries.occurredOn, from),
+      lte(financeEntries.occurredOn, to),
+    );
+  });
+  const sources = await db
+    .select({ id: financeEntries.id, dedupeKey: financeEntries.dedupeKey })
+    .from(financeEntries)
+    .where(and(eq(financeEntries.tenantId, tenantId), or(...conditions)));
+  if (sources.length === 0) return { candidates: 0, alreadyCopied: 0 };
+  const existing = await db
+    .select({ dedupeKey: financeEntries.dedupeKey })
+    .from(financeEntries)
+    .where(
+      and(
+        eq(financeEntries.tenantId, tenantId),
+        sql`${financeEntries.dedupeKey} like ${`rec:%:${monthKey}`}`,
+      ),
+    );
+  const copied = new Set(existing.map((e) => e.dedupeKey));
+  let candidates = 0;
+  let alreadyCopied = 0;
+  for (const src of sources) {
+    const root = /^rec:([^:]+):/.exec(src.dedupeKey ?? '')?.[1] ?? src.id;
+    if (copied.has(`rec:${root}:${monthKey}`)) alreadyCopied += 1;
+    else candidates += 1;
+  }
+  return { candidates, alreadyCopied };
 }

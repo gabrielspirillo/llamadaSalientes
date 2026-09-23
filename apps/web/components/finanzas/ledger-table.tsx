@@ -9,17 +9,21 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/feedback';
 import { Input, Select } from '@/components/ui/input';
-import { CHARGE_FILE_KIND_LABELS, RECEIPT_ACCEPT } from '@/lib/agenda/billing';
+import { RECEIPT_ACCEPT } from '@/lib/agenda/billing';
 import { cn } from '@/lib/cn';
 import {
+  DOCUMENT_KIND_GROUP_LABELS,
   FINANCE_PAYMENT_METHODS,
   FINANCE_PAYMENT_METHOD_LABELS,
+  FINANCE_RECURRENCE_LABELS,
   type FinanceBasis,
   type FinancePaymentMethod,
   type LedgerLine,
+  documentKindGroup,
   formatCents,
   formatDateKey,
   monthLabel,
+  plural,
 } from '@/lib/finance/model';
 import {
   AlertTriangle,
@@ -27,6 +31,7 @@ import {
   ExternalLink,
   FileText,
   Loader2,
+  Lock,
   Paperclip,
   Pencil,
   Receipt,
@@ -38,6 +43,7 @@ import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import {
   type EntryCategoryOption,
+  type EntryCounterpartyOption,
   EntryDialog,
   type EntryProfessionalOption,
 } from './entry-dialog';
@@ -46,28 +52,33 @@ import { uploadEntryFile } from './upload';
 /**
  * El libro: cada línea con su fecha, concepto, categoría, importe y estado.
  * Las del libro propio se editan, se marcan pagadas, reciben comprobantes y
- * (el administrador) se borran. Las que vienen de las citas se leen aquí y se
- * tocan desde la ficha del paciente, que es su dueña.
+ * (el administrador) se borran. Las que vienen de las citas se leen aquí con
+ * un candado y se tocan desde la ficha del paciente, que es su dueña.
  */
 export function LedgerTable({
   lines,
   categories,
   professionals,
+  counterparties,
   todayKey,
   basis,
   canWrite,
   canManage,
   monthKey,
+  recurring,
 }: {
   lines: LedgerLine[];
   categories: EntryCategoryOption[];
   professionals: EntryProfessionalOption[];
+  counterparties: EntryCounterpartyOption[];
   todayKey: string;
   basis: FinanceBasis;
   canWrite: boolean;
   canManage: boolean;
   /** Mes al que "traer los recurrentes": el de hoy. */
   monthKey: string;
+  /** Cuántos recurrentes tocan este mes y aún no están. */
+  recurring: { candidates: number; alreadyCopied: number };
 }) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
@@ -114,10 +125,8 @@ export function LedgerTable({
       if (r.ok) {
         setNotice(
           r.data.created === 0
-            ? r.data.skipped > 0
-              ? `Los recurrentes de ${monthLabel(monthKey)} ya estaban.`
-              : 'No hay gastos marcados como recurrentes el mes pasado.'
-            : `${r.data.created} gasto${r.data.created === 1 ? '' : 's'} traído${r.data.created === 1 ? '' : 's'} a ${monthLabel(monthKey)} como pendiente${r.data.created === 1 ? '' : 's'}.`,
+            ? `Los recurrentes de ${monthLabel(monthKey)} ya estaban cargados.`
+            : `${plural(r.data.created, 'gasto traído', 'gastos traídos')} a ${monthLabel(monthKey)} como ${r.data.created === 1 ? 'pendiente' : 'pendientes'}.`,
         );
       }
       return r;
@@ -126,12 +135,31 @@ export function LedgerTable({
 
   return (
     <div className="flex flex-col gap-3">
-      {canWrite && (
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={replicate} disabled={pending}>
-            <Repeat className="h-4 w-4" /> Traer gastos recurrentes de {monthLabel(monthKey)}
+      {canWrite && recurring.candidates > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-[16px] border border-brand-100 bg-brand-50/60 px-3.5 py-3">
+          <Repeat className="h-4 w-4 shrink-0 text-brand-700" />
+          <p className="min-w-[200px] flex-1 text-[13px] text-zinc-800">
+            <strong>
+              {plural(recurring.candidates, 'gasto recurrente', 'gastos recurrentes')}
+            </strong>{' '}
+            tocan en {monthLabel(monthKey)} y aún no están. Se copian como pendientes (alquiler,
+            cuota, seguro…) para que sólo tengas que marcarlos pagados.
+          </p>
+          <Button size="sm" onClick={replicate} disabled={pending}>
+            {pending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Repeat className="h-4 w-4" />
+            )}
+            Traer {recurring.candidates === 1 ? 'el gasto' : `los ${recurring.candidates} gastos`}
           </Button>
         </div>
+      )}
+      {canWrite && recurring.candidates === 0 && recurring.alreadyCopied > 0 && (
+        <p className="text-[12px] text-zinc-600">
+          Los {plural(recurring.alreadyCopied, 'gasto recurrente', 'gastos recurrentes')} de{' '}
+          {monthLabel(monthKey)} ya están cargados.
+        </p>
       )}
 
       {notice && (
@@ -179,16 +207,24 @@ export function LedgerTable({
                     <p className="text-[13px] font-semibold text-zinc-800">
                       {formatDateKey(date, { year: false })}
                     </p>
-                    <p className="text-[11px] text-zinc-500">
-                      {basis === 'cash' && paid ? 'pagado' : 'fecha'}
+                    <p className="text-[11px] text-zinc-600">
+                      {basis === 'cash' && paid ? (isIncome ? 'cobrado' : 'pagado') : 'fecha'}
                       {line.paidOn && line.paidOn !== line.occurredOn && basis !== 'cash'
                         ? ` · pag. ${formatDateKey(line.paidOn, { year: false })}`
                         : ''}
                     </p>
                   </div>
                   <div className="min-w-[200px] flex-1">
-                    <p className="text-[14px] font-semibold text-zinc-900">{line.concept}</p>
-                    <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-zinc-500">
+                    <p className="flex items-center gap-1.5 text-[14px] font-semibold text-zinc-900">
+                      {!isEntry && (
+                        <Lock
+                          className="h-3.5 w-3.5 shrink-0 text-zinc-500"
+                          aria-label="Cobro de cita: se edita desde la ficha del paciente"
+                        />
+                      )}
+                      <span className="min-w-0 truncate">{line.concept}</span>
+                    </p>
+                    <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-zinc-600">
                       {line.categoryName && (
                         <span>
                           {line.categoryName}
@@ -201,9 +237,10 @@ export function LedgerTable({
                       {line.paymentMethod && (
                         <span>{FINANCE_PAYMENT_METHOD_LABELS[line.paymentMethod]}</span>
                       )}
-                      {line.isRecurring && (
+                      {line.recurrence && (
                         <span className="inline-flex items-center gap-0.5">
-                          <Repeat className="h-3 w-3" /> mensual
+                          <Repeat className="h-3 w-3" />{' '}
+                          {FINANCE_RECURRENCE_LABELS[line.recurrence].toLowerCase()}
                         </span>
                       )}
                     </p>
@@ -217,10 +254,10 @@ export function LedgerTable({
                               rel="noreferrer"
                               className="inline-flex max-w-full items-center gap-1.5 rounded-[10px] bg-zinc-100 px-2.5 py-1 text-[12px] text-zinc-800 hover:bg-zinc-200"
                             >
-                              <FileText className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
+                              <FileText className="h-3.5 w-3.5 shrink-0 text-zinc-600" />
                               <span className="max-w-[160px] truncate">{f.name}</span>
-                              <span className="text-zinc-500">
-                                · {CHARGE_FILE_KIND_LABELS[f.kind]}
+                              <span className="text-zinc-600">
+                                · {DOCUMENT_KIND_GROUP_LABELS[documentKindGroup(f.kind)]}
                               </span>
                             </a>
                           </li>
@@ -233,10 +270,10 @@ export function LedgerTable({
                       className={cn(
                         'text-[15px] font-bold tabular-nums',
                         line.amountCents === null
-                          ? 'text-zinc-500'
+                          ? 'text-zinc-600'
                           : isIncome
                             ? 'text-emerald-700'
-                            : 'text-zinc-900',
+                            : 'text-amber-800',
                       )}
                     >
                       {line.amountCents === null
@@ -408,7 +445,7 @@ export function LedgerTable({
                           href={`/dashboard/agenda/pacientes/${encodeURIComponent(line.patientKey)}?tab=contable`}
                         >
                           <ExternalLink className="h-3.5 w-3.5" />
-                          {paid ? 'Ver en la ficha' : 'Cobrar desde la ficha'}
+                          {paid ? 'Abrir ficha del paciente' : 'Cobrar desde la ficha del paciente'}
                         </Link>
                       </Button>
                     )}
@@ -426,6 +463,7 @@ export function LedgerTable({
           entry={editing}
           categories={categories}
           professionals={professionals}
+          counterparties={counterparties}
           todayKey={todayKey}
           open
           onOpenChange={(o) => {

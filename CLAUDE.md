@@ -905,8 +905,10 @@ ingresos mensual). Se siembran 14 categorías de gasto y 3 de ingreso la primera
 vez (`ensureFinanceProvisioned`, idempotente por único parcial); se renombran o
 archivan, no se borran.
 
-**Caja o devengo** (`basis`, en la URL): caja cuenta lo pagado por fecha de
-pago; devengo cuenta por la fecha del gasto o de la sesión, pagado o no. Lo
+**Cobrado o facturado** (`basis`, en la URL: `cash` | `accrual`): en el panel
+se llaman así porque "caja" y "devengo" son jerga (revisión del 2026-09-23).
+Cobrado cuenta lo pagado por fecha de pago; facturado cuenta por la fecha del
+gasto o de la sesión, pagado o no. Lo
 pendiente de cobrar y de pagar es un **saldo a fecha**, no un flujo: una sesión
 de hace tres meses sin cobrar sigue pendiente aunque el período sea "este mes"
 (`openBalances`). Los períodos en curso (este mes, trimestre, año) van hasta
@@ -938,10 +940,36 @@ quien borra; `operator` (recepción) carga gastos y comprobantes y ve el libro;
 `viewer` y un profesional con acceso restringido no entran. Los cobros de las
 citas se tocan desde la ficha del paciente, nunca desde aquí.
 
-**Recurrentes**: un gasto marcado `is_recurring` se puede "traer" al mes actual
-desde Movimientos: se copia PENDIENTE con `dedupe_key = rec:<raíz>:<YYYY-MM>`,
-así que volver a pulsar no duplica (`replicateRecurring`). No hay cron: es un
-clic a principio de mes.
+**Recurrentes** (`recurrence`: MONTHLY | QUARTERLY | YEARLY, migración `0037`;
+`is_recurring` queda como bandera): desde Movimientos se "traen" al mes actual
+los que tocan (los mensuales del mes anterior, los trimestrales de hace tres,
+los anuales de hace doce): se copian PENDIENTES con
+`dedupe_key = rec:<raíz>:<YYYY-MM>`, así que volver a pulsar no duplica
+(`replicateRecurring`). El aviso sólo sale si hay candidatos
+(`countRecurringCandidates`). No hay cron: es un clic a principio de mes.
+
+**Revisión de UX del 2026-09-23** (50 puntos de una recorrida en producción),
+lo que quedó decidido: el Resultado va arriba y grande, Ingresos (verde) y
+Gastos (ámbar) debajo y el resto como KPI compactos que llevan a Movimientos
+con el filtro puesto; el estado vacío va arriba con el alta dentro y las
+tarjetas atenuadas; la variación se lee "vs. agosto 2026" (`previousLabel`
+de `resolvePeriod`); los filtros a la vista son período, tipo, estado y
+búsqueda, el resto bajo «Más filtros» y como chips; el modal tiene el pie
+fijo, validación por campo, IVA por tipo (21/10/4/exento, `taxFromGross`),
+método recordado en `localStorage` por tipo, una sola fecha salvo "se pagó
+otro día", proveedores sugeridos con su categoría habitual
+(`listCounterparties`) y "Guardar y cargar otro"; los comprobantes se
+enseñan como dos tipos (factura / ticket o justificante,
+`documentKindGroup`) aunque la base guarde tres; en Ajustes todo se guarda
+al momento con "Guardado", las categorías se ordenan con flechas
+(`reorderCategories`), muestran cuántos movimientos tienen y las archivadas
+tienen su sección. Los plurales van por `plural()`: "1 sesión", "3 sesiones".
+Pendientes de esa revisión, sin hacer: acciones masivas en el libro, OCR de
+facturas, miniaturas y ZIP por período en Documentos, arrastrar categorías.
+
+**El buscador global** (`lib/data/search.ts`) incluye los movimientos del
+libro (concepto, proveedor, notas) cuando la clínica tiene el módulo; un
+resultado lleva a Movimientos con la búsqueda puesta.
 
 **Gráficos**: `components/finanzas/finance-charts.tsx` (recharts, por
 `charts-lazy.tsx`). Un solo eje por gráfico; el color sigue a la entidad (una

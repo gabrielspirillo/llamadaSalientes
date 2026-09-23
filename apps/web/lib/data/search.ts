@@ -1,13 +1,14 @@
 import 'server-only';
 import { db } from '@/lib/db/client';
-import { calls, treatments } from '@/lib/db/schema';
+import { calls, financeEntries, tenants, treatments } from '@/lib/db/schema';
 import { listContacts } from '@/lib/ghl/contacts';
 import { and, desc, eq, ilike, or } from 'drizzle-orm';
 
 export type SearchHit =
   | { kind: 'call'; id: string; title: string; subtitle: string; href: string; when: Date | null }
   | { kind: 'treatment'; id: string; title: string; subtitle: string; href: string; when: null }
-  | { kind: 'contact'; id: string; title: string; subtitle: string; href: string; when: null };
+  | { kind: 'contact'; id: string; title: string; subtitle: string; href: string; when: null }
+  | { kind: 'finance'; id: string; title: string; subtitle: string; href: string; when: null };
 
 /**
  * Búsqueda global: llamadas (por número, summary, intent) + tratamientos.
@@ -55,7 +56,61 @@ export async function searchAll(tenantId: string, q: string, limit = 10): Promis
     )
     .limit(5);
 
+  // Movimientos del módulo Finanzas (concepto, proveedor, notas), sólo si la
+  // clínica lo tiene contratado: un resultado que lleva a una página con
+  // candado no es un resultado. Si la tabla no existe todavía, no rompe.
+  const financeRows = await (async () => {
+    try {
+      const [t] = await db
+        .select({ modules: tenants.enabledModules })
+        .from(tenants)
+        .where(eq(tenants.id, tenantId))
+        .limit(1);
+      if (!t?.modules?.finance) return [];
+      return await db
+        .select({
+          id: financeEntries.id,
+          kind: financeEntries.kind,
+          concept: financeEntries.concept,
+          counterparty: financeEntries.counterparty,
+          amountCents: financeEntries.amountCents,
+          occurredOn: financeEntries.occurredOn,
+        })
+        .from(financeEntries)
+        .where(
+          and(
+            eq(financeEntries.tenantId, tenantId),
+            or(
+              ilike(financeEntries.concept, like),
+              ilike(financeEntries.counterparty, like),
+              ilike(financeEntries.notes, like),
+            ),
+          ),
+        )
+        .orderBy(desc(financeEntries.occurredOn))
+        .limit(5);
+    } catch {
+      return [];
+    }
+  })();
+
   const hits: SearchHit[] = [];
+
+  for (const f of financeRows) {
+    const amount = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(
+      f.amountCents / 100,
+    );
+    hits.push({
+      kind: 'finance',
+      id: f.id,
+      title: f.concept,
+      subtitle: `${f.kind === 'INCOME' ? 'Ingreso' : 'Gasto'} · ${amount} · ${f.occurredOn}${
+        f.counterparty ? ` · ${f.counterparty}` : ''
+      }`,
+      href: `/dashboard/finanzas?tab=movimientos&period=last_12m&q=${encodeURIComponent(term)}`,
+      when: null,
+    });
+  }
 
   for (const c of callRows) {
     const cd = (c.customData ?? {}) as { patient_name?: string };

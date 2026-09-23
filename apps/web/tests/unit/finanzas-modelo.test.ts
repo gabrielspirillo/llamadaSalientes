@@ -17,10 +17,13 @@ import {
   linesTouchingRange,
   matchesFilters,
   openBalances,
+  plural,
+  recurrenceSourceMonth,
   resolvePeriod,
   slugify,
   sortLedger,
   summarizeLedger,
+  taxFromGross,
 } from '@/lib/finance/model';
 
 /**
@@ -54,6 +57,7 @@ function line(partial: Partial<LedgerLine> & { kind: LedgerLine['kind'] }): Ledg
     patientKey: null,
     patientName: null,
     isRecurring: false,
+    recurrence: null,
     notes: null,
     files: [],
     ...partial,
@@ -84,6 +88,7 @@ describe('resolvePeriod', () => {
     expect(p.to).toBe('2026-09-23');
     expect(p.previous).toEqual({ from: '2026-08-01', to: '2026-08-23' });
     expect(p.label).toBe('septiembre 2026');
+    expect(p.previousLabel).toBe('agosto 2026');
   });
 
   it('el mes pasado es el mes entero y su anterior también', () => {
@@ -98,6 +103,7 @@ describe('resolvePeriod', () => {
       to: '2026-09-23',
       previous: { from: '2026-04-01', to: '2026-06-23' },
       label: 'T3 2026',
+      previousLabel: 'T2 2026',
     });
     expect(resolvePeriod('year', '2026-09-23')).toMatchObject({
       from: '2026-01-01',
@@ -407,5 +413,26 @@ describe('filtros y utilidades', () => {
     expect(csv.startsWith('﻿Fecha;')).toBe(true);
     expect(csv).toContain('"Alquiler ""local""; septiembre"');
     expect(csv).toContain(';800,50;');
+  });
+});
+
+describe('recurrencia, plurales e IVA', () => {
+  it('el mes de origen depende de cada cuánto se repite', () => {
+    expect(recurrenceSourceMonth('2026-09', 'MONTHLY')).toBe('2026-08');
+    expect(recurrenceSourceMonth('2026-09', 'QUARTERLY')).toBe('2026-06');
+    expect(recurrenceSourceMonth('2026-01', 'YEARLY')).toBe('2025-01');
+    expect(recurrenceSourceMonth('2026-02', 'QUARTERLY')).toBe('2025-11');
+  });
+
+  it('plural sin tilde de más', () => {
+    expect(plural(1, 'sesión', 'sesiones')).toBe('1 sesión');
+    expect(plural(0, 'sesión', 'sesiones')).toBe('0 sesiones');
+    expect(plural(3, 'gasto', 'gastos')).toBe('3 gastos');
+  });
+
+  it('el IVA sale del importe con IVA incluido', () => {
+    expect(taxFromGross(12100, 21)).toBe(2100);
+    expect(taxFromGross(11000, 10)).toBe(1000);
+    expect(taxFromGross(5000, 0)).toBe(0);
   });
 });

@@ -8,11 +8,28 @@ import {
   linesTouchingRange,
   matchesFilters,
   monthKeyOf,
+  plural,
   sortLedger,
 } from '@/lib/finance/model';
 import type { FinanceParams } from '@/lib/finance/params';
-import type { FinanceCategoryRecord, FinanceProfessional } from '@/lib/finance/queries';
+import type {
+  CounterpartySuggestion,
+  FinanceCategoryRecord,
+  FinanceProfessional,
+} from '@/lib/finance/queries';
 import { BookOpen } from 'lucide-react';
+
+/** Misma barra de filtros en Movimientos y Documentos: lo que cambia es la lista, no cómo se acota. */
+export const LEDGER_FILTERS = {
+  basis: true,
+  kind: true,
+  status: true,
+  category: true,
+  professional: true,
+  method: true,
+  source: true,
+  q: true,
+} as const;
 
 /** La pestaña Movimientos: el libro con todos los filtros y las acciones por línea. */
 export function MovimientosTab({
@@ -20,6 +37,8 @@ export function MovimientosTab({
   ledger,
   categories,
   professionals,
+  counterparties,
+  recurring,
   todayKey,
   canWrite,
   canManage,
@@ -28,6 +47,8 @@ export function MovimientosTab({
   ledger: LedgerLine[];
   categories: FinanceCategoryRecord[];
   professionals: FinanceProfessional[];
+  counterparties: CounterpartySuggestion[];
+  recurring: { candidates: number; alreadyCopied: number };
   todayKey: string;
   canWrite: boolean;
   canManage: boolean;
@@ -38,14 +59,14 @@ export function MovimientosTab({
   );
   let income = 0;
   let expense = 0;
-  let pending = 0;
+  let pendingCount = 0;
   for (const l of lines) {
     if (l.amountCents === null) continue;
-    if (l.status === 'PENDING') pending += 1;
+    if (l.status === 'PENDING') pendingCount += 1;
     if (l.kind === 'INCOME') income += l.amountCents;
     else expense += l.amountCents;
   }
-
+  const net = income - expense;
   const activeCategories = categories.filter((c) => c.active);
 
   return (
@@ -54,29 +75,29 @@ export function MovimientosTab({
         params={params}
         categories={activeCategories}
         professionals={professionals}
-        show={{
-          basis: true,
-          kind: true,
-          status: true,
-          category: true,
-          professional: true,
-          method: true,
-          source: true,
-          q: true,
-        }}
+        show={LEDGER_FILTERS}
       />
 
       <dl className="mb-4 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-(--color-border-subtle) bg-(--color-border-subtle) sm:grid-cols-4">
-        <Total label="Ingresos" value={formatCents(income)} tone="income" />
-        <Total label="Gastos" value={formatCents(expense)} />
+        <Total
+          label="Ingresos"
+          value={formatCents(income)}
+          tone={income > 0 ? 'income' : 'neutral'}
+        />
+        <Total
+          label="Gastos"
+          value={formatCents(expense)}
+          tone={expense > 0 ? 'expense' : 'neutral'}
+        />
         <Total
           label="Neto"
-          value={formatCents(income - expense)}
-          tone={income - expense >= 0 ? 'income' : 'due'}
+          value={formatCents(net)}
+          tone={net > 0 ? 'income' : net < 0 ? 'negative' : 'neutral'}
         />
         <Total
           label="Movimientos"
-          value={`${lines.length}${pending ? ` · ${pending} pendiente${pending === 1 ? '' : 's'}` : ''}`}
+          value={`${lines.length}${pendingCount ? ` · ${plural(pendingCount, 'pendiente', 'pendientes')}` : ''}`}
+          tone="neutral"
         />
       </dl>
 
@@ -85,18 +106,20 @@ export function MovimientosTab({
           icon={<BookOpen className="h-4 w-4" />}
           tone="grape"
           title="Libro de movimientos"
-          subtitle="Los cobros de las citas se editan desde la ficha del paciente; el resto, aquí"
+          subtitle="Los cobros de las citas (con candado) se editan desde la ficha del paciente; el resto, aquí"
         />
         <div className="px-4 pb-5 sm:px-6 sm:pb-6">
           <LedgerTable
             lines={lines}
             categories={activeCategories}
             professionals={professionals.filter((p) => p.active)}
+            counterparties={counterparties}
             todayKey={todayKey}
             basis={params.basis}
             canWrite={canWrite}
             canManage={canManage}
             monthKey={monthKeyOf(todayKey)}
+            recurring={recurring}
           />
         </div>
       </Card>
@@ -107,19 +130,21 @@ export function MovimientosTab({
 function Total({
   label,
   value,
-  tone = 'default',
-}: { label: string; value: string; tone?: 'default' | 'income' | 'due' }) {
+  tone,
+}: { label: string; value: string; tone: 'neutral' | 'income' | 'expense' | 'negative' }) {
   return (
     <div className="flex flex-col gap-[3px] bg-[#fbfcfc] px-3.5 py-3">
-      <dt className="text-[12px] font-semibold text-zinc-600">{label}</dt>
+      <dt className="text-[12px] font-semibold text-zinc-700">{label}</dt>
       <dd
         className={cn(
           'text-[15px] font-bold tabular-nums md:text-[18px]',
           tone === 'income'
             ? 'text-emerald-700'
-            : tone === 'due'
-              ? 'text-rose-700'
-              : 'text-zinc-900',
+            : tone === 'expense'
+              ? 'text-amber-800'
+              : tone === 'negative'
+                ? 'text-rose-700'
+                : 'text-zinc-900',
         )}
       >
         {value}

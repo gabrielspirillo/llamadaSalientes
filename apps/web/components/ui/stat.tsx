@@ -67,6 +67,7 @@ export function StatTile({
   trend,
   progress,
   className,
+  valueClassName,
 }: {
   label: string;
   /** Valor ya formateado (p. ej. "3m 12s"). Se ignora si se pasa `numeric`. */
@@ -85,6 +86,8 @@ export function StatTile({
   /** 0–100: dibuja barra de progreso al pie. */
   progress?: number;
   className?: string;
+  /** Color del número (verde para ingresos, ámbar para gastos…). */
+  valueClassName?: string;
 }) {
   const t = TONE[tone];
   const dir = delta == null ? 'flat' : delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat';
@@ -122,7 +125,12 @@ export function StatTile({
       </div>
 
       <div className="relative mt-3 flex items-baseline gap-2">
-        <span className="text-[31px] font-bold leading-none tracking-tight text-zinc-900 sm:text-[34px]">
+        <span
+          className={cn(
+            'text-[31px] font-bold leading-none tracking-tight text-zinc-900 sm:text-[34px]',
+            valueClassName,
+          )}
+        >
           {numeric != null ? (
             <AnimatedNumber value={numeric} decimals={decimals} suffix={suffix} />
           ) : (
@@ -148,7 +156,9 @@ export function StatTile({
 
       {hint && <p className="relative mt-1.5 text-[12px] text-zinc-500">{hint}</p>}
 
-      {trend && trend.length > 1 && (
+      {/* Una serie toda a cero pinta una raya al pie que se lee como una barra
+          llena: sin datos no hay sparkline. */}
+      {trend && trend.length > 1 && trend.some((v) => v !== 0) && (
         <div className="relative mt-3 -mb-1">
           <Sparkline data={trend} stroke={t.stroke} height={34} />
         </div>
