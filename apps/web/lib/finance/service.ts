@@ -1,6 +1,6 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
-import { and, eq, gte, lte } from 'drizzle-orm';
+import { and, eq, gte, isNull, lte, or } from 'drizzle-orm';
 
 import type { ChargeFileKind } from '@/lib/agenda/billing';
 import { db } from '@/lib/db/client';
@@ -15,16 +15,19 @@ import { env } from '@/lib/env';
 import {
   DEFAULT_EXPENSE_CATEGORIES,
   DEFAULT_INCOME_CATEGORIES,
+  FINANCE_RECURRENCES,
   type FinanceKind,
   type FinancePaymentMethod,
+  type FinanceRecurrence,
   type FinanceStatus,
-  addMonthsToKey,
   daysInMonth,
   endOfMonthKey,
   isDateKey,
   isFinanceKind,
   isFinancePaymentMethod,
+  isFinanceRecurrence,
   isFinanceStatus,
+  recurrenceSourceMonth,
   slugify,
 } from '@/lib/finance/model';
 import { mediaDelete, mediaUpload } from '@/lib/storage/media';
@@ -101,7 +104,8 @@ export interface EntryInput {
   paidOn?: string | null;
   paymentMethod?: FinancePaymentMethod | null;
   professionalId?: string | null;
-  isRecurring?: boolean;
+  /** Cada cuánto se repite. Null = no se repite. */
+  recurrence?: FinanceRecurrence | null;
   notes?: string | null;
 }
 
@@ -118,6 +122,7 @@ interface NormalizedEntry {
   paymentMethod: FinancePaymentMethod | null;
   professionalId: string | null;
   isRecurring: boolean;
+  recurrence: FinanceRecurrence | null;
   notes: string | null;
 }
 
@@ -156,6 +161,10 @@ export function normalizeEntryInput(input: EntryInput): NormalizedEntry {
       paymentMethod = input.paymentMethod;
     }
   }
+  const recurrence = input.recurrence ?? null;
+  if (recurrence !== null && !isFinanceRecurrence(recurrence)) {
+    throw new FinanceValidationError('La recurrencia no es válida.');
+  }
   return {
     kind: input.kind,
     concept,
@@ -168,7 +177,8 @@ export function normalizeEntryInput(input: EntryInput): NormalizedEntry {
     paidOn,
     paymentMethod,
     professionalId: clean(input.professionalId, 36),
-    isRecurring: Boolean(input.isRecurring),
+    isRecurring: recurrence !== null,
+    recurrence,
     notes: clean(input.notes, 2000),
   };
 }
@@ -291,35 +301,42 @@ export async function deleteEntry(
 }
 
 /**
- * Trae al mes `monthKey` los gastos recurrentes del mes anterior que todavía
- * no están: alquiler, cuota, seguro… Cada copia nace PENDIENTE con el mismo
- * día (o el último del mes si no existe) y lleva `dedupe_key`
- * 'rec:<raíz>:<mes>', así que volver a pulsar no duplica nada.
+ * Trae al mes `monthKey` los recurrentes que tocan y todavía no están: los
+ * mensuales del mes anterior, los trimestrales de hace tres meses, los
+ * anuales de hace doce. Cada copia nace PENDIENTE con el mismo día (o el
+ * último del mes si no existe) y lleva `dedupe_key` 'rec:<raíz>:<mes>', así
+ * que volver a pulsar no duplica nada.
  */
 export async function replicateRecurring(
   scope: FinanceScope,
   monthKey: string,
 ): Promise<{ created: number; skipped: number }> {
   if (!/^\d{4}-\d{2}$/.test(monthKey)) throw new FinanceValidationError('El mes no es válido.');
-  const firstOfMonth = `${monthKey}-01`;
-  const prevFirst = addMonthsToKey(firstOfMonth, -1);
-  const prevLast = endOfMonthKey(prevFirst);
+  const target = parseDateKey(`${monthKey}-01`);
+  if (!target) throw new FinanceValidationError('El mes no es válido.');
+  const lastDay = daysInMonth(target.year, target.month);
+
+  const conditions = FINANCE_RECURRENCES.map((rec) => {
+    const from = `${recurrenceSourceMonth(monthKey, rec)}-01`;
+    const to = endOfMonthKey(from);
+    const byRecurrence =
+      rec === 'MONTHLY'
+        ? or(
+            eq(financeEntries.recurrence, rec),
+            and(isNull(financeEntries.recurrence), eq(financeEntries.isRecurring, true)),
+          )
+        : eq(financeEntries.recurrence, rec);
+    return and(
+      byRecurrence,
+      gte(financeEntries.occurredOn, from),
+      lte(financeEntries.occurredOn, to),
+    );
+  });
   const sources = await db
     .select()
     .from(financeEntries)
-    .where(
-      and(
-        eq(financeEntries.tenantId, scope.tenantId),
-        eq(financeEntries.isRecurring, true),
-        gte(financeEntries.occurredOn, prevFirst),
-        lte(financeEntries.occurredOn, prevLast),
-      ),
-    );
+    .where(and(eq(financeEntries.tenantId, scope.tenantId), or(...conditions)));
   if (sources.length === 0) return { created: 0, skipped: 0 };
-
-  const target = parseDateKey(firstOfMonth);
-  if (!target) throw new FinanceValidationError('El mes no es válido.');
-  const lastDay = daysInMonth(target.year, target.month);
 
   let created = 0;
   let skipped = 0;
@@ -345,6 +362,7 @@ export async function replicateRecurring(
         paymentMethod: src.paymentMethod,
         professionalId: src.professionalId,
         isRecurring: true,
+        recurrence: isFinanceRecurrence(src.recurrence) ? src.recurrence : 'MONTHLY',
         dedupeKey: `rec:${rootId}:${monthKey}`,
         notes: src.notes,
         createdByUserId: scope.userId,
@@ -487,6 +505,32 @@ export async function updateCategory(
     .set(patch)
     .where(and(eq(financeCategories.tenantId, scope.tenantId), eq(financeCategories.id, cat.id)));
   return { id: cat.id };
+}
+
+/**
+ * Nuevo orden de las categorías de un tipo: la posición en `orderedIds` pasa a
+ * ser `sort_order`. Los ids que no sean de esta clínica se ignoran.
+ */
+export async function reorderCategories(
+  scope: FinanceScope,
+  kind: FinanceKind,
+  orderedIds: string[],
+): Promise<void> {
+  if (!isFinanceKind(kind)) throw new FinanceValidationError('Tipo de categoría no válido.');
+  const own = await db
+    .select({ id: financeCategories.id })
+    .from(financeCategories)
+    .where(and(eq(financeCategories.tenantId, scope.tenantId), eq(financeCategories.kind, kind)));
+  const allowed = new Set(own.map((c) => c.id));
+  let position = 0;
+  for (const id of orderedIds) {
+    if (!allowed.has(id)) continue;
+    await db
+      .update(financeCategories)
+      .set({ sortOrder: position, updatedAt: new Date() })
+      .where(and(eq(financeCategories.tenantId, scope.tenantId), eq(financeCategories.id, id)));
+    position += 1;
+  }
 }
 
 // ─── Ajustes ────────────────────────────────────────────────────────────────

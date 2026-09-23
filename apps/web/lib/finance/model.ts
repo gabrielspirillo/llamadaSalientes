@@ -89,11 +89,59 @@ export function isFinancePeriod(value: unknown): value is FinancePeriod {
 export const FINANCE_BASES = ['cash', 'accrual'] as const;
 export type FinanceBasis = (typeof FINANCE_BASES)[number];
 export const FINANCE_BASIS_LABELS: Record<FinanceBasis, string> = {
-  cash: 'Caja',
-  accrual: 'Devengo',
+  cash: 'Cobrado',
+  accrual: 'Facturado',
+};
+/** Lo que explica el tooltip del selector: "caja" y "devengo" son jerga. */
+export const FINANCE_BASIS_HELP: Record<FinanceBasis, string> = {
+  cash: 'Cuenta el dinero cuando entra o sale: por fecha de cobro o de pago.',
+  accrual: 'Cuenta cuando se genera: la sesión o la factura, se haya pagado o no.',
 };
 export function isFinanceBasis(value: unknown): value is FinanceBasis {
   return value === 'cash' || value === 'accrual';
+}
+
+/** Cada cuánto se repite un gasto (alquiler mensual, seguro trimestral, IBI anual). */
+export const FINANCE_RECURRENCES = ['MONTHLY', 'QUARTERLY', 'YEARLY'] as const;
+export type FinanceRecurrence = (typeof FINANCE_RECURRENCES)[number];
+export const FINANCE_RECURRENCE_LABELS: Record<FinanceRecurrence, string> = {
+  MONTHLY: 'Cada mes',
+  QUARTERLY: 'Cada trimestre',
+  YEARLY: 'Cada año',
+};
+export const RECURRENCE_MONTHS: Record<FinanceRecurrence, number> = {
+  MONTHLY: 1,
+  QUARTERLY: 3,
+  YEARLY: 12,
+};
+export function isFinanceRecurrence(value: unknown): value is FinanceRecurrence {
+  return typeof value === 'string' && (FINANCE_RECURRENCES as readonly string[]).includes(value);
+}
+
+/** "3 sesiones", "1 sesión": el plural bien puesto, sin tildes de más. */
+export function plural(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+/** Tipos de IVA en España. El importe que se teclea ya lo incluye. */
+export const VAT_RATES = [21, 10, 4, 0] as const;
+/** IVA contenido en un importe con IVA incluido. */
+export function taxFromGross(grossCents: number, ratePct: number): number {
+  if (ratePct <= 0) return 0;
+  return Math.round(grossCents - grossCents / (1 + ratePct / 100));
+}
+
+/**
+ * Para el panel, los tres tipos de comprobante son dos: la factura (lo que
+ * pide la gestoría) y todo lo demás (el ticket del TPV, la captura del Bizum).
+ */
+export type DocumentKindGroup = 'INVOICE' | 'RECEIPT';
+export const DOCUMENT_KIND_GROUP_LABELS: Record<DocumentKindGroup, string> = {
+  INVOICE: 'Factura',
+  RECEIPT: 'Ticket o justificante',
+};
+export function documentKindGroup(kind: ChargeFileKind): DocumentKindGroup {
+  return kind === 'INVOICE' ? 'INVOICE' : 'RECEIPT';
 }
 
 /** De dónde sale cada línea del libro unificado. */
@@ -140,6 +188,7 @@ export interface LedgerLine {
   patientKey: string | null;
   patientName: string | null;
   isRecurring: boolean;
+  recurrence: FinanceRecurrence | null;
   notes: string | null;
   files: LedgerFile[];
 }
@@ -195,6 +244,8 @@ export interface ResolvedPeriod extends DateRange {
   /** El tramo equivalente anterior, para las comparativas. */
   previous: DateRange;
   label: string;
+  /** "agosto 2026", "T2 2026": contra qué se compara. */
+  previousLabel: string;
 }
 
 /**
@@ -217,12 +268,14 @@ export function resolvePeriod(
     if (from > to) [from, to] = [to, from];
     const length = daysBetweenKeys(from, to) + 1;
     const prevTo = addDaysToKey(from, -1);
+    const prevFrom = addDaysToKey(prevTo, -(length - 1));
     return {
       period,
       from,
       to,
-      previous: { from: addDaysToKey(prevTo, -(length - 1)), to: prevTo },
+      previous: { from: prevFrom, to: prevTo },
       label: `${formatDateKey(from)} – ${formatDateKey(to)}`,
+      previousLabel: `${formatDateKey(prevFrom, { year: false })} – ${formatDateKey(prevTo, { year: false })}`,
     };
   }
 
@@ -237,6 +290,7 @@ export function resolvePeriod(
       to,
       previous: { from: prevFrom, to: endOfMonthKey(prevFrom) },
       label: monthLabel(monthKeyOf(from)),
+      previousLabel: monthLabel(monthKeyOf(prevFrom)),
     };
   }
 
@@ -250,6 +304,10 @@ export function resolvePeriod(
       to,
       previous: { from: addMonthsToKey(from, -3), to: addMonthsToKey(to, -3) },
       label: `T${Math.floor((today.month - 1) / 3) + 1} ${today.year}`,
+      previousLabel: (() => {
+        const q = Math.floor((today.month - 1) / 3) + 1;
+        return q === 1 ? `T4 ${today.year - 1}` : `T${q - 1} ${today.year}`;
+      })(),
     };
   }
 
@@ -262,6 +320,7 @@ export function resolvePeriod(
       to,
       previous: { from: addMonthsToKey(from, -12), to: addMonthsToKey(to, -12) },
       label: String(today.year),
+      previousLabel: String(today.year - 1),
     };
   }
 
@@ -274,6 +333,7 @@ export function resolvePeriod(
       to,
       previous: { from: addMonthsToKey(from, -12), to: addMonthsToKey(to, -12) },
       label: 'Últimos 12 meses',
+      previousLabel: 'los 12 meses anteriores',
     };
   }
 
@@ -286,7 +346,13 @@ export function resolvePeriod(
     to,
     previous: { from: addMonthsToKey(from, -1), to: addMonthsToKey(to, -1) },
     label: monthLabel(monthKeyOf(from)),
+    previousLabel: monthLabel(monthKeyOf(addMonthsToKey(from, -1))),
   };
+}
+
+/** 'YYYY-MM' del que se copian los recurrentes para llegar a `monthKey`. */
+export function recurrenceSourceMonth(monthKey: string, recurrence: FinanceRecurrence): string {
+  return monthKeyOf(addMonthsToKey(`${monthKey}-01`, -RECURRENCE_MONTHS[recurrence]));
 }
 
 export type Granularity = 'day' | 'week' | 'month';

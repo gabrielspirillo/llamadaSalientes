@@ -10,21 +10,27 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Input, Label, Select, Switch, Textarea } from '@/components/ui/input';
+import { Input, Label, Select, Textarea } from '@/components/ui/input';
 import { RECEIPT_ACCEPT, centsToInput, parseAmountToCents } from '@/lib/agenda/billing';
 import { cn } from '@/lib/cn';
 import {
   FINANCE_PAYMENT_METHODS,
   FINANCE_PAYMENT_METHOD_LABELS,
+  FINANCE_RECURRENCES,
+  FINANCE_RECURRENCE_LABELS,
   type FinanceKind,
   type FinancePaymentMethod,
+  type FinanceRecurrence,
   type FinanceStatus,
   type LedgerLine,
+  VAT_RATES,
+  isDateKey,
+  isFinancePaymentMethod,
+  taxFromGross,
 } from '@/lib/finance/model';
 import { AlertTriangle, Check, FileText, Loader2, Paperclip, Plus, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -43,20 +49,61 @@ export interface EntryProfessionalOption {
   fullName: string;
 }
 
+export interface EntryCounterpartyOption {
+  name: string;
+  kind: FinanceKind;
+  categoryId: string | null;
+}
+
+type VatMode = '' | '21' | '10' | '4' | '0' | 'custom';
+
 interface FormState {
   kind: FinanceKind;
   concept: string;
   categoryId: string;
   counterparty: string;
   amount: string;
+  vatMode: VatMode;
   tax: string;
   occurredOn: string;
   status: FinanceStatus;
+  /** "Se pagó otro día": si no, la fecha de pago es la del movimiento. */
+  paidElsewhen: boolean;
   paidOn: string;
   paymentMethod: FinancePaymentMethod | '';
   professionalId: string;
-  isRecurring: boolean;
+  recurrence: FinanceRecurrence | '';
   notes: string;
+}
+
+type FieldErrors = Partial<Record<'concept' | 'amount' | 'tax' | 'occurredOn' | 'paidOn', string>>;
+
+const LAST_METHOD_KEY = (kind: FinanceKind) => `finanzas:ultimo-metodo:${kind}`;
+
+function rememberedMethod(kind: FinanceKind): FinancePaymentMethod | '' {
+  try {
+    const v = localStorage.getItem(LAST_METHOD_KEY(kind));
+    return isFinancePaymentMethod(v) ? v : '';
+  } catch {
+    return '';
+  }
+}
+
+function rememberMethod(kind: FinanceKind, method: FinancePaymentMethod | '') {
+  try {
+    if (method) localStorage.setItem(LAST_METHOD_KEY(kind), method);
+  } catch {
+    // Sin almacenamiento no se recuerda; no pasa nada.
+  }
+}
+
+/** Con qué tipo de IVA cuadra un importe y su IVA ya guardados. */
+function vatModeFor(amountCents: number, taxCents: number): VatMode {
+  if (taxCents <= 0) return '';
+  for (const rate of VAT_RATES) {
+    if (rate > 0 && taxFromGross(amountCents, rate) === taxCents) return String(rate) as VatMode;
+  }
+  return 'custom';
 }
 
 function initialState(
@@ -71,13 +118,16 @@ function initialState(
       categoryId: entry.categoryId ?? '',
       counterparty: entry.counterparty ?? '',
       amount: centsToInput(entry.amountCents),
+      vatMode: entry.amountCents === null ? '' : vatModeFor(entry.amountCents, entry.taxCents),
       tax: entry.taxCents > 0 ? centsToInput(entry.taxCents) : '',
       occurredOn: entry.occurredOn,
       status: entry.status,
+      paidElsewhen:
+        entry.status === 'PAID' && entry.paidOn !== null && entry.paidOn !== entry.occurredOn,
       paidOn: entry.paidOn ?? entry.occurredOn,
       paymentMethod: entry.paymentMethod ?? '',
       professionalId: entry.professionalId ?? '',
-      isRecurring: entry.isRecurring,
+      recurrence: entry.recurrence ?? '',
       notes: entry.notes ?? '',
     };
   }
@@ -87,24 +137,28 @@ function initialState(
     categoryId: '',
     counterparty: '',
     amount: '',
+    vatMode: '',
     tax: '',
     occurredOn: todayKey,
     status: 'PAID',
+    paidElsewhen: false,
     paidOn: todayKey,
-    paymentMethod: defaultKind === 'EXPENSE' ? 'DIRECT_DEBIT' : 'CARD',
+    paymentMethod: rememberedMethod(defaultKind),
     professionalId: '',
-    isRecurring: false,
+    recurrence: '',
     notes: '',
   };
 }
 
 /**
  * Alta y edición de un movimiento del libro: gasto o ingreso, con su
- * categoría, importe, fechas de devengo y de pago, método, proveedor, y los
- * comprobantes. El movimiento va por Server Action y los archivos, después,
- * por el endpoint de subida: un archivo no cabe en una acción. Si el
- * movimiento entra y un archivo no, se dice tal cual: el movimiento no se
- * pierde.
+ * comprobante arriba (muchas veces es por donde se empieza), categoría,
+ * importe con el IVA calculado, fechas, método, proveedor y recurrencia.
+ *
+ * El movimiento va por Server Action y los archivos, después, por el endpoint
+ * de subida: un archivo no cabe en una acción. Si el movimiento entra y un
+ * archivo no, se dice tal cual: el movimiento no se pierde. Un comprobante
+ * siempre cuelga de un movimiento: no hay documentos huérfanos.
  *
  * Controlado (`open`/`onOpenChange`) o con `trigger` propio.
  */
@@ -113,6 +167,7 @@ export function EntryDialog({
   entry,
   categories,
   professionals,
+  counterparties = [],
   todayKey,
   defaultKind = 'EXPENSE',
   initialFile = null,
@@ -124,6 +179,7 @@ export function EntryDialog({
   entry?: LedgerLine | null;
   categories: EntryCategoryOption[];
   professionals: EntryProfessionalOption[];
+  counterparties?: EntryCounterpartyOption[];
   todayKey: string;
   defaultKind?: FinanceKind;
   /** Un comprobante ya elegido (desde Documentos): se sube al guardar. */
@@ -141,7 +197,12 @@ export function EntryDialog({
     initialState(todayKey, defaultKind, entry),
   );
   const [files, setFiles] = React.useState<File[]>(initialFile ? [initialFile] : []);
+  const [errors, setErrors] = React.useState<FieldErrors>({});
   const [error, setError] = React.useState<string | null>(null);
+  const [notice, setNotice] = React.useState<string | null>(null);
+  const [savedCount, setSavedCount] = React.useState(0);
+  const conceptRef = React.useRef<HTMLInputElement>(null);
+  const datalistId = React.useId();
 
   // Cada apertura parte limpia (o de la fila a editar): el estado de la
   // anterior no puede colarse en la siguiente.
@@ -149,35 +210,95 @@ export function EntryDialog({
     if (!open) return;
     setForm(initialState(todayKey, defaultKind, entry));
     setFiles(initialFile ? [initialFile] : []);
+    setErrors({});
     setError(null);
+    setNotice(null);
+    setSavedCount(0);
   }, [open, todayKey, defaultKind, entry, initialFile]);
 
-  const categoryOptions = categories.filter((c) => c.kind === form.kind);
   const isExpense = form.kind === 'EXPENSE';
+  const categoryOptions = categories.filter((c) => c.kind === form.kind);
+  const counterpartyOptions = counterparties.filter((c) => c.kind === form.kind);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
   function switchKind(kind: FinanceKind) {
+    setErrors({});
+    setError(null);
     setForm((f) => ({
       ...f,
       kind,
       categoryId: '',
-      paymentMethod: kind === 'EXPENSE' ? 'DIRECT_DEBIT' : 'CARD',
+      paymentMethod: rememberedMethod(kind),
+      recurrence: '',
     }));
   }
 
-  function submit() {
-    if (!form.concept.trim()) {
-      setError('Escribe el concepto.');
-      return;
+  /** El IVA se recalcula cuando cambia el importe o el tipo. */
+  function applyVat(amount: string, mode: VatMode, customTax: string): string {
+    if (mode === '') return '';
+    if (mode === 'custom') return customTax;
+    const cents = parseAmountToCents(amount);
+    if (cents === null) return '';
+    return centsToInput(taxFromGross(cents, Number(mode)));
+  }
+
+  function onAmountChange(amount: string) {
+    setForm((f) => ({ ...f, amount, tax: applyVat(amount, f.vatMode, f.tax) }));
+    if (errors.amount) setErrors((e) => ({ ...e, amount: undefined }));
+  }
+
+  function onVatModeChange(mode: VatMode) {
+    setForm((f) => ({
+      ...f,
+      vatMode: mode,
+      tax: applyVat(f.amount, mode, mode === 'custom' ? f.tax : ''),
+    }));
+  }
+
+  function onCounterpartyChange(value: string) {
+    setForm((f) => {
+      const known = counterpartyOptions.find(
+        (c) => c.name.toLowerCase() === value.trim().toLowerCase(),
+      );
+      const categoryId =
+        f.categoryId ||
+        (known?.categoryId && categoryOptions.some((c) => c.id === known.categoryId)
+          ? known.categoryId
+          : f.categoryId);
+      return { ...f, counterparty: value, categoryId };
+    });
+  }
+
+  function validate(): FieldErrors {
+    const next: FieldErrors = {};
+    if (!form.concept.trim()) next.concept = 'Escribe el concepto.';
+    const amountCents = parseAmountToCents(form.amount);
+    if (amountCents === null) next.amount = 'Escribe el importe, por ejemplo 45 o 45,50.';
+    if (form.tax.trim()) {
+      const taxCents = parseAmountToCents(form.tax);
+      if (taxCents === null) next.tax = 'El IVA no es un importe válido.';
+      else if (amountCents !== null && taxCents > amountCents)
+        next.tax = 'El IVA no puede superar el importe.';
     }
-    if (parseAmountToCents(form.amount) === null) {
-      setError('Escribe el importe, por ejemplo 45 o 45,50.');
-      return;
+    if (!isDateKey(form.occurredOn)) next.occurredOn = 'Elige la fecha.';
+    if (form.status === 'PAID' && form.paidElsewhen && !isDateKey(form.paidOn)) {
+      next.paidOn = isExpense ? 'Elige la fecha de pago.' : 'Elige la fecha de cobro.';
     }
+    return next;
+  }
+
+  function submit(andAnother = false) {
+    const next = validate();
+    setErrors(next);
     setError(null);
+    setNotice(null);
+    if (Object.keys(next).length > 0) {
+      if (next.concept) conceptRef.current?.focus();
+      return;
+    }
     const input: EntryFormInput = {
       kind: form.kind,
       concept: form.concept,
@@ -187,10 +308,10 @@ export function EntryDialog({
       tax: form.tax || null,
       occurredOn: form.occurredOn,
       status: form.status,
-      paidOn: form.status === 'PAID' ? form.paidOn || null : null,
+      paidOn: form.status === 'PAID' ? (form.paidElsewhen ? form.paidOn : form.occurredOn) : null,
       paymentMethod: form.status === 'PAID' && form.paymentMethod ? form.paymentMethod : null,
       professionalId: form.professionalId || null,
-      isRecurring: form.isRecurring,
+      recurrence: form.recurrence || null,
       notes: form.notes || null,
     };
     const toUpload = files;
@@ -203,6 +324,7 @@ export function EntryDialog({
         setError(result.error);
         return;
       }
+      rememberMethod(form.kind, form.paymentMethod);
       const failed: string[] = [];
       for (const file of toUpload) {
         try {
@@ -219,14 +341,38 @@ export function EntryDialog({
         router.refresh();
         return;
       }
+      if (andAnother) {
+        // Se conserva lo que suele repetirse (tipo, fecha, método) y se limpia el resto.
+        setForm((f) => ({
+          ...initialState(todayKey, f.kind, null),
+          occurredOn: f.occurredOn,
+          paymentMethod: f.paymentMethod,
+          status: f.status,
+        }));
+        setFiles([]);
+        setSavedCount((n) => n + 1);
+        setNotice('Guardado. Puedes cargar el siguiente.');
+        router.refresh();
+        conceptRef.current?.focus();
+        return;
+      }
       setOpen(false);
       router.refresh();
     });
   }
 
+  const fieldError = (key: keyof FieldErrors) =>
+    errors[key] ? (
+      <p className="flex items-center gap-1 text-[12px] font-medium text-rose-700" role="alert">
+        <AlertTriangle className="h-3.5 w-3.5" /> {errors[key]}
+      </p>
+    ) : null;
+  const invalid = (key: keyof FieldErrors) =>
+    errors[key] ? 'border-rose-400 focus-visible:ring-rose-500/20' : undefined;
+
   const content = (
-    <DialogContent className="flex max-w-2xl flex-col overflow-hidden">
-      <DialogHeader className="mb-3">
+    <DialogContent className="flex max-h-[calc(100vh-2rem)] max-w-2xl flex-col overflow-hidden">
+      <DialogHeader className="mb-3 shrink-0">
         <DialogTitle>{mode === 'edit' ? 'Editar movimiento' : 'Nuevo movimiento'}</DialogTitle>
         <DialogDescription>
           {isExpense
@@ -235,7 +381,7 @@ export function EntryDialog({
         </DialogDescription>
       </DialogHeader>
 
-      <div className="flex flex-col gap-4">
+      <div className="-mx-1 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 pb-2">
         <fieldset
           className="grid min-w-0 grid-cols-2 gap-1 rounded-[14px] bg-zinc-100 p-1"
           aria-label="Tipo"
@@ -250,9 +396,9 @@ export function EntryDialog({
                 'h-10 rounded-[11px] text-[14px] font-semibold transition-colors',
                 form.kind === k
                   ? k === 'EXPENSE'
-                    ? 'bg-white text-rose-700 shadow-sm'
+                    ? 'bg-white text-amber-800 shadow-sm'
                     : 'bg-white text-emerald-700 shadow-sm'
-                  : 'text-zinc-500 hover:text-zinc-800',
+                  : 'text-zinc-600 hover:text-zinc-900',
               )}
             >
               {k === 'EXPENSE' ? 'Gasto' : 'Ingreso'}
@@ -260,38 +406,126 @@ export function EntryDialog({
           ))}
         </fieldset>
 
+        {/* El comprobante, arriba: es lo que se tiene en la mano. */}
+        <div className="flex flex-col gap-2">
+          <label className="flex min-h-14 cursor-pointer items-center gap-3 rounded-[14px] border border-dashed border-brand-300 bg-brand-50/40 px-3.5 py-2.5 hover:bg-brand-50">
+            <input
+              type="file"
+              accept={RECEIPT_ACCEPT}
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                const picked = Array.from(e.target.files ?? []);
+                if (picked.length) setFiles((f) => [...f, ...picked]);
+                e.target.value = '';
+              }}
+            />
+            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-brand-700 ring-1 ring-brand-200">
+              <Paperclip className="h-4 w-4" />
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="text-[14px] font-semibold text-zinc-900">
+                {files.length > 0 ? 'Añadir otro comprobante' : 'Adjuntar la factura o el ticket'}
+              </span>
+              <span className="text-[12px] text-zinc-600">
+                PDF o foto, hasta 15 MB cada uno. Queda unido a este movimiento.
+              </span>
+            </span>
+          </label>
+          {files.length > 0 && (
+            <ul className="flex flex-wrap gap-1.5">
+              {files.map((f, i) => (
+                <li
+                  key={`${f.name}-${i}`}
+                  className="inline-flex max-w-full items-center gap-1.5 rounded-[10px] bg-zinc-100 px-2.5 py-1.5 text-[12px] text-zinc-800"
+                >
+                  <FileText className="h-3.5 w-3.5 shrink-0 text-zinc-600" />
+                  <span className="truncate">{f.name}</span>
+                  <button
+                    type="button"
+                    aria-label={`Quitar ${f.name}`}
+                    onClick={() => setFiles((list) => list.filter((_, j) => j !== i))}
+                    className="text-zinc-500 hover:text-zinc-800"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {mode === 'edit' && entry && entry.files.length > 0 && (
+            <p className="text-[12px] text-zinc-600">
+              Ya tiene {entry.files.length} comprobante{entry.files.length === 1 ? '' : 's'}; los
+              nuevos se añaden.
+            </p>
+          )}
+        </div>
+
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5 sm:col-span-2">
             <Label htmlFor="fin-concept">Concepto</Label>
             <Input
+              ref={conceptRef}
               id="fin-concept"
               value={form.concept}
-              onChange={(e) => set('concept', e.target.value)}
-              placeholder={isExpense ? 'Alquiler del local · septiembre' : 'Bono de 5 sesiones'}
+              onChange={(e) => {
+                set('concept', e.target.value);
+                if (errors.concept) setErrors((er) => ({ ...er, concept: undefined }));
+              }}
+              placeholder={
+                isExpense ? 'Ej.: Alquiler del local · septiembre' : 'Ej.: Bono de 5 sesiones'
+              }
               maxLength={200}
+              aria-invalid={Boolean(errors.concept)}
+              className={cn('placeholder:text-zinc-400/80', invalid('concept'))}
             />
+            {fieldError('concept')}
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="fin-amount">Importe (€)</Label>
+            <Label htmlFor="fin-amount">Importe (€, IVA incluido)</Label>
             <Input
               id="fin-amount"
               inputMode="decimal"
               value={form.amount}
-              onChange={(e) => set('amount', e.target.value)}
-              placeholder="450,00"
+              onChange={(e) => onAmountChange(e.target.value)}
+              placeholder="Ej.: 450,00"
+              aria-invalid={Boolean(errors.amount)}
+              className={cn('placeholder:text-zinc-400/80', invalid('amount'))}
             />
+            {fieldError('amount')}
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="fin-tax">
-              IVA incluido <span className="font-normal text-zinc-400">(opcional)</span>
-            </Label>
-            <Input
-              id="fin-tax"
-              inputMode="decimal"
-              value={form.tax}
-              onChange={(e) => set('tax', e.target.value)}
-              placeholder="0,00"
-            />
+            <Label htmlFor="fin-vat">IVA</Label>
+            <div className="flex gap-2">
+              <Select
+                id="fin-vat"
+                value={form.vatMode}
+                onChange={(e) => onVatModeChange(e.target.value as VatMode)}
+                className="min-w-0 flex-1"
+              >
+                <option value="">Sin desglosar</option>
+                <option value="21">21 %</option>
+                <option value="10">10 %</option>
+                <option value="4">4 %</option>
+                <option value="0">Exento (0 %)</option>
+                <option value="custom">Otro importe</option>
+              </Select>
+              {form.vatMode === 'custom' ? (
+                <Input
+                  aria-label="Importe del IVA"
+                  inputMode="decimal"
+                  value={form.tax}
+                  onChange={(e) => set('tax', e.target.value)}
+                  placeholder="Ej.: 78,10"
+                  className={cn('w-[120px] placeholder:text-zinc-400/80', invalid('tax'))}
+                />
+              ) : form.vatMode !== '' ? (
+                <span className="inline-flex h-11 min-w-[96px] items-center justify-end rounded-[14px] bg-zinc-100 px-3 text-[14px] font-semibold tabular-nums text-zinc-800">
+                  {form.tax ? `${form.tax} €` : '—'}
+                </span>
+              ) : null}
+            </div>
+            {fieldError('tax')}
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="fin-category">Categoría</Label>
@@ -313,11 +547,18 @@ export function EntryDialog({
             <Label htmlFor="fin-counterparty">{isExpense ? 'Proveedor' : 'Quién paga'}</Label>
             <Input
               id="fin-counterparty"
+              list={datalistId}
               value={form.counterparty}
-              onChange={(e) => set('counterparty', e.target.value)}
-              placeholder={isExpense ? 'Inmobiliaria Sol' : 'Familia García'}
+              onChange={(e) => onCounterpartyChange(e.target.value)}
+              placeholder={isExpense ? 'Ej.: Inmobiliaria Sol' : 'Ej.: Familia García'}
               maxLength={200}
+              className="placeholder:text-zinc-400/80"
             />
+            <datalist id={datalistId}>
+              {counterpartyOptions.map((c) => (
+                <option key={c.name} value={c.name} />
+              ))}
+            </datalist>
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="fin-occurred">
@@ -327,13 +568,19 @@ export function EntryDialog({
               id="fin-occurred"
               type="date"
               value={form.occurredOn}
-              onChange={(e) => set('occurredOn', e.target.value)}
+              onChange={(e) => {
+                set('occurredOn', e.target.value);
+                if (errors.occurredOn) setErrors((er) => ({ ...er, occurredOn: undefined }));
+              }}
+              aria-invalid={Boolean(errors.occurredOn)}
+              className={invalid('occurredOn')}
             />
+            {fieldError('occurredOn')}
           </div>
           {professionals.length > 0 && (
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="fin-prof">
-                Profesional <span className="font-normal text-zinc-400">(opcional)</span>
+                Profesional <span className="font-normal text-zinc-500">(opcional)</span>
               </Label>
               <Select
                 id="fin-prof"
@@ -353,9 +600,7 @@ export function EntryDialog({
 
         <div className="rounded-[18px] border border-(--color-border) bg-[#fafbfb] p-3.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-[13px] font-semibold text-zinc-700">
-              {isExpense ? '¿Ya está pagado?' : '¿Ya está cobrado?'}
-            </span>
+            <span className="text-[13px] font-semibold text-zinc-800">Estado</span>
             <fieldset
               className="inline-flex min-w-0 items-center rounded-full border border-(--color-border) bg-white p-0.5"
               aria-label="Estado"
@@ -370,25 +615,16 @@ export function EntryDialog({
                     'rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors',
                     form.status === s
                       ? 'bg-brand-100 text-brand-800'
-                      : 'text-zinc-500 hover:text-zinc-800',
+                      : 'text-zinc-600 hover:text-zinc-900',
                   )}
                 >
-                  {s === 'PAID' ? 'Sí' : 'Pendiente'}
+                  {s === 'PAID' ? (isExpense ? 'Pagado' : 'Cobrado') : 'Pendiente'}
                 </button>
               ))}
             </fieldset>
           </div>
           {form.status === 'PAID' && (
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="fin-paid">{isExpense ? 'Fecha de pago' : 'Fecha de cobro'}</Label>
-                <Input
-                  id="fin-paid"
-                  type="date"
-                  value={form.paidOn}
-                  onChange={(e) => set('paidOn', e.target.value)}
-                />
-              </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="fin-method">Método</Label>
                 <Select
@@ -406,91 +642,83 @@ export function EntryDialog({
                   ))}
                 </Select>
               </div>
+              <div className="flex flex-col gap-1.5">
+                <span className="flex items-center gap-2 text-[14px] font-semibold tracking-tight text-zinc-700">
+                  <input
+                    type="checkbox"
+                    checked={form.paidElsewhen}
+                    onChange={(e) => set('paidElsewhen', e.target.checked)}
+                    className="h-4 w-4 rounded border-zinc-300 accent-brand-600"
+                    id="fin-paid-elsewhen"
+                  />
+                  <label htmlFor="fin-paid-elsewhen">
+                    {isExpense ? 'Se pagó otro día' : 'Se cobró otro día'}
+                  </label>
+                </span>
+                {form.paidElsewhen ? (
+                  <>
+                    <Input
+                      aria-label={isExpense ? 'Fecha de pago' : 'Fecha de cobro'}
+                      type="date"
+                      value={form.paidOn}
+                      onChange={(e) => {
+                        set('paidOn', e.target.value);
+                        if (errors.paidOn) setErrors((er) => ({ ...er, paidOn: undefined }));
+                      }}
+                      aria-invalid={Boolean(errors.paidOn)}
+                      className={invalid('paidOn')}
+                    />
+                    {fieldError('paidOn')}
+                  </>
+                ) : (
+                  <p className="text-[12px] text-zinc-600">
+                    {isExpense ? 'Se toma la fecha del gasto.' : 'Se toma la fecha del ingreso.'}
+                  </p>
+                )}
+              </div>
             </div>
           )}
         </div>
 
-        {isExpense && (
-          <span className="flex items-center justify-between gap-3 rounded-[18px] border border-(--color-border) px-3.5 py-3">
-            <span className="flex flex-col">
-              <span className="text-[14px] font-semibold text-zinc-800">Se repite cada mes</span>
-              <span className="text-[12px] text-zinc-500">
-                Alquiler, cuota, seguro… Desde Movimientos se traen al mes siguiente con un clic.
-              </span>
-            </span>
-            <Switch
-              checked={form.isRecurring}
-              onCheckedChange={(v) => set('isRecurring', v)}
-              label="Se repite cada mes"
-            />
-          </span>
-        )}
-
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="fin-notes">
-            Notas <span className="font-normal text-zinc-400">(opcional)</span>
-          </Label>
-          <Textarea
-            id="fin-notes"
-            value={form.notes}
-            onChange={(e) => set('notes', e.target.value)}
-            className="min-h-[72px]"
-            maxLength={2000}
-          />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <label className="flex min-h-14 cursor-pointer items-center gap-3 rounded-[14px] border border-dashed border-brand-200 bg-white px-3.5 py-2.5 hover:bg-brand-50/50">
-            <input
-              type="file"
-              accept={RECEIPT_ACCEPT}
-              multiple
-              className="hidden"
-              onChange={(e) => {
-                const picked = Array.from(e.target.files ?? []);
-                if (picked.length) setFiles((f) => [...f, ...picked]);
-                e.target.value = '';
-              }}
-            />
-            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
-              <Paperclip className="h-4 w-4" />
-            </span>
-            <span className="flex min-w-0 flex-1 flex-col">
-              <span className="text-[14px] font-semibold text-zinc-800">Adjuntar comprobante</span>
-              <span className="text-[12px] text-zinc-500">
-                Factura, ticket o justificante · PDF o foto · hasta 15 MB cada uno
-              </span>
-            </span>
-          </label>
-          {files.length > 0 && (
-            <ul className="flex flex-wrap gap-1.5">
-              {files.map((f, i) => (
-                <li
-                  key={`${f.name}-${i}`}
-                  className="inline-flex max-w-full items-center gap-1.5 rounded-[10px] bg-zinc-100 px-2.5 py-1.5 text-[12px] text-zinc-800"
-                >
-                  <FileText className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
-                  <span className="truncate">{f.name}</span>
-                  <button
-                    type="button"
-                    aria-label={`Quitar ${f.name}`}
-                    onClick={() => setFiles((list) => list.filter((_, j) => j !== i))}
-                    className="text-zinc-400 hover:text-zinc-700"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </li>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="fin-recurrence">Se repite</Label>
+            <Select
+              id="fin-recurrence"
+              value={form.recurrence}
+              onChange={(e) => set('recurrence', e.target.value as FinanceRecurrence | '')}
+            >
+              <option value="">No se repite</option>
+              {FINANCE_RECURRENCES.map((r) => (
+                <option key={r} value={r}>
+                  {FINANCE_RECURRENCE_LABELS[r]}
+                </option>
               ))}
-            </ul>
-          )}
-          {mode === 'edit' && entry && entry.files.length > 0 && (
-            <p className="text-[12px] text-zinc-500">
-              Ya tiene {entry.files.length} comprobante{entry.files.length === 1 ? '' : 's'}; los
-              nuevos se añaden.
+            </Select>
+            <p className="text-[12px] text-zinc-600">
+              Alquiler, cuota, seguro, IBI… Desde Movimientos se traen al mes que toca con un clic.
             </p>
-          )}
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="fin-notes">
+              Notas <span className="font-normal text-zinc-500">(opcional)</span>
+            </Label>
+            <Textarea
+              id="fin-notes"
+              value={form.notes}
+              onChange={(e) => set('notes', e.target.value)}
+              className="min-h-[72px]"
+              maxLength={2000}
+            />
+          </div>
         </div>
 
+        {notice && (
+          <p className="flex items-start gap-2 rounded-[14px] bg-emerald-50 p-3 text-[13px] text-emerald-800">
+            <Check className="mt-0.5 h-4 w-4 shrink-0" /> {notice}
+            {savedCount > 1 ? ` (${savedCount} en esta tanda)` : ''}
+          </p>
+        )}
         {error && (
           <p
             role="alert"
@@ -501,15 +729,21 @@ export function EntryDialog({
         )}
       </div>
 
-      <DialogFooter>
+      {/* Pie fijo: Guardar siempre a la vista, aunque el formulario sea largo. */}
+      <div className="mt-3 flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-(--color-border-subtle) pt-4">
         <Button variant="ghost" onClick={() => setOpen(false)} disabled={pending}>
           Cancelar
         </Button>
-        <Button onClick={submit} disabled={pending}>
+        {mode === 'create' && (
+          <Button variant="secondary" onClick={() => submit(true)} disabled={pending}>
+            <Plus className="h-4 w-4" /> Guardar y cargar otro
+          </Button>
+        )}
+        <Button onClick={() => submit(false)} disabled={pending}>
           {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-          {mode === 'edit' ? 'Guardar cambios' : 'Guardar movimiento'}
+          {mode === 'edit' ? 'Guardar cambios' : 'Guardar'}
         </Button>
-      </DialogFooter>
+      </div>
     </DialogContent>
   );
 

@@ -7,48 +7,49 @@ import { ArrowDownToLine, ArrowUpFromLine, Info, Target } from 'lucide-react';
 
 export function AjustesTab({
   categories,
+  counts,
   settings,
 }: {
   categories: FinanceCategoryRecord[];
+  counts: Record<string, number>;
   settings: FinanceSettingsRecord;
 }) {
   return (
     <div className="space-y-6">
       <Callout tone="brand" icon={<Info className="h-4 w-4" />} title="Qué es un coste fijo">
-        Lo que se paga haya o no pacientes: alquiler, cuota de autónomos, seguros, software. El
-        punto de equilibrio del Resumen sale de ahí, así que conviene marcar bien esa casilla. El
-        material o las comisiones del TPV son variables: van con la actividad.
+        Lo que se paga haya o no pacientes: alquiler, cuota de autónomos, seguros, software. La
+        tarjeta «Punto de equilibrio» del Resumen sale de ahí (cuántas sesiones al mes cubren esos
+        fijos), así que conviene marcar bien esa casilla. El material o las comisiones del TPV son
+        variables: van con la actividad. Todo lo de esta pestaña se guarda al momento.
       </Callout>
+      <Card>
+        <CardTopbar
+          icon={<Target className="h-4 w-4" />}
+          tone="sky"
+          title="Objetivo mensual"
+          subtitle="La barra del Resumen mide contra esto"
+        />
+        <SettingsForm monthlyRevenueGoalCents={settings.monthlyRevenueGoalCents} />
+      </Card>
       <div className="grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-2">
         <Card>
           <CardTopbar
             icon={<ArrowUpFromLine className="h-4 w-4" />}
             tone="honey"
             title="Categorías de gasto"
-            subtitle="Renombra, marca como fijo o archiva"
+            subtitle="Ordena, renombra, marca como fijo o archiva"
           />
-          <CategoriesPanel kind="EXPENSE" categories={categories} />
+          <CategoriesPanel kind="EXPENSE" categories={categories} counts={counts} />
         </Card>
-        <div className="flex flex-col gap-4 sm:gap-6">
-          <Card>
-            <CardTopbar
-              icon={<ArrowDownToLine className="h-4 w-4" />}
-              tone="mint"
-              title="Categorías de ingreso"
-              subtitle="Para lo que no viene de una cita"
-            />
-            <CategoriesPanel kind="INCOME" categories={categories} />
-          </Card>
-          <Card>
-            <CardTopbar
-              icon={<Target className="h-4 w-4" />}
-              tone="sky"
-              title="Objetivo mensual"
-              subtitle="La barra del Resumen mide contra esto"
-            />
-            <SettingsForm monthlyRevenueGoalCents={settings.monthlyRevenueGoalCents} />
-          </Card>
-        </div>
+        <Card>
+          <CardTopbar
+            icon={<ArrowDownToLine className="h-4 w-4" />}
+            tone="mint"
+            title="Categorías de ingreso"
+            subtitle="Para lo que no viene de una cita"
+          />
+          <CategoriesPanel kind="INCOME" categories={categories} counts={counts} />
+        </Card>
       </div>
     </div>
   );

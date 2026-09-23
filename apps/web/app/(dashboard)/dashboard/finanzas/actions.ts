@@ -9,7 +9,12 @@ import {
   requireFinanceManager,
   requireFinanceWriter,
 } from '@/lib/finance/auth';
-import type { FinanceKind, FinancePaymentMethod, FinanceStatus } from '@/lib/finance/model';
+import type {
+  FinanceKind,
+  FinancePaymentMethod,
+  FinanceRecurrence,
+  FinanceStatus,
+} from '@/lib/finance/model';
 import {
   FinanceValidationError,
   createCategory,
@@ -17,6 +22,7 @@ import {
   deleteEntry,
   deleteEntryFile,
   markEntryPaid,
+  reorderCategories,
   replicateRecurring,
   saveFinanceSettings,
   updateCategory,
@@ -52,7 +58,7 @@ export interface EntryFormInput {
   paidOn?: string | null;
   paymentMethod?: FinancePaymentMethod | null;
   professionalId?: string | null;
-  isRecurring?: boolean;
+  recurrence?: FinanceRecurrence | null;
   notes?: string | null;
 }
 
@@ -75,7 +81,7 @@ function toServiceInput(input: EntryFormInput) {
     paidOn: input.paidOn ?? null,
     paymentMethod: input.paymentMethod ?? null,
     professionalId: input.professionalId ?? null,
-    isRecurring: Boolean(input.isRecurring),
+    recurrence: input.recurrence ?? null,
     notes: input.notes ?? null,
   };
 }
@@ -251,6 +257,20 @@ export async function updateCategoryAction(
       entityId: id,
       after: input,
     });
+    revalidate();
+    return { ok: true };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+export async function reorderCategoriesAction(
+  kind: FinanceKind,
+  orderedIds: string[],
+): Promise<FinanceActionResult> {
+  try {
+    const ctx = await requireFinanceManager();
+    await reorderCategories({ tenantId: ctx.tenantId, userId: ctx.userId }, kind, orderedIds);
     revalidate();
     return { ok: true };
   } catch (err) {

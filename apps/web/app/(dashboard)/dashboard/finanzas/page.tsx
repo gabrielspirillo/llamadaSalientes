@@ -10,10 +10,13 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/feedback';
 import { getClinicTimezone } from '@/lib/agenda/queries';
 import { type FinanceAccess, FinanceForbiddenError, getFinanceAccess } from '@/lib/finance/auth';
-import { linesTouchingRange } from '@/lib/finance/model';
+import { linesTouchingRange, monthKeyOf } from '@/lib/finance/model';
 import { type RawSearchParams, financeQuery, parseFinanceParams } from '@/lib/finance/params';
 import {
+  countEntriesByCategory,
+  countRecurringCandidates,
   getFinanceSettings,
+  listCounterparties,
   listFinanceCategories,
   listFinanceProfessionals,
   loadFinanceLedger,
@@ -35,9 +38,7 @@ export const dynamic = 'force-dynamic';
  */
 export default async function FinanzasPage({
   searchParams,
-}: {
-  searchParams: Promise<RawSearchParams>;
-}) {
+}: { searchParams: Promise<RawSearchParams> }) {
   const sp = await searchParams;
 
   let access: FinanceAccess;
@@ -57,20 +58,32 @@ export default async function FinanzasPage({
     console.warn('[finanzas] no se pudieron sembrar las categorías', (err as Error).message),
   );
 
-  const [categories, professionals, settings, ledger] = await Promise.all([
-    listFinanceCategories(access.tenantId, { includeInactive: true }),
-    listFinanceProfessionals(access.tenantId),
-    getFinanceSettings(access.tenantId),
-    loadFinanceLedger(access.tenantId, {
-      from: params.period.previous.from,
-      to: params.period.to,
-      tz,
-    }),
-  ]);
+  const [categories, professionals, settings, ledger, counterparties, recurring, categoryCounts] =
+    await Promise.all([
+      listFinanceCategories(access.tenantId, { includeInactive: true }),
+      listFinanceProfessionals(access.tenantId),
+      getFinanceSettings(access.tenantId),
+      loadFinanceLedger(access.tenantId, {
+        from: params.period.previous.from,
+        to: params.period.to,
+        tz,
+      }),
+      access.canWrite ? listCounterparties(access.tenantId) : Promise.resolve([]),
+      params.tab === 'movimientos' && access.canWrite
+        ? countRecurringCandidates(access.tenantId, monthKeyOf(todayKey))
+        : Promise.resolve({ candidates: 0, alreadyCopied: 0 }),
+      params.tab === 'ajustes' ? countEntriesByCategory(access.tenantId) : Promise.resolve({}),
+    ]);
 
   const activeCategories = categories.filter((c) => c.active);
   const activeProfessionals = professionals.filter((p) => p.active);
   const documentsCount = documentsFromLedger(linesTouchingRange(ledger, params.period)).length;
+
+  // Las acciones de cabecera sólo donde aplican: exportar y cargar movimientos
+  // no tienen sentido en Ajustes, y en el Resumen ya hay entrada propia.
+  const showExport =
+    access.canManage && (params.tab === 'movimientos' || params.tab === 'documentos');
+  const showNew = access.canWrite && (params.tab === 'movimientos' || params.tab === 'documentos');
 
   return (
     <ModuleGate moduleKey="finance">
@@ -80,23 +93,26 @@ export default async function FinanzasPage({
         title="Finanzas"
         description="Lo que entra, lo que sale, los comprobantes y si la clínica va bien."
         actions={
-          <>
-            {access.canManage && (
-              <Button asChild variant="secondary">
-                <a href={`/api/finanzas/export?${financeQuery(params).toString()}`}>
-                  <Download className="h-4 w-4" /> Exportar CSV
-                </a>
-              </Button>
-            )}
-            {access.canWrite && (
-              <EntryDialog
-                mode="create"
-                categories={activeCategories}
-                professionals={activeProfessionals}
-                todayKey={todayKey}
-              />
-            )}
-          </>
+          showExport || showNew ? (
+            <>
+              {showExport && (
+                <Button asChild variant="secondary">
+                  <a href={`/api/finanzas/export?${financeQuery(params).toString()}`}>
+                    <Download className="h-4 w-4" /> Exportar CSV
+                  </a>
+                </Button>
+              )}
+              {showNew && (
+                <EntryDialog
+                  mode="create"
+                  categories={activeCategories}
+                  professionals={activeProfessionals}
+                  counterparties={counterparties}
+                  todayKey={todayKey}
+                />
+              )}
+            </>
+          ) : undefined
         }
       />
 
@@ -108,6 +124,7 @@ export default async function FinanzasPage({
           ledger={ledger}
           categories={categories}
           professionals={professionals}
+          counterparties={counterparties}
           settings={settings}
           todayKey={todayKey}
         />
@@ -118,6 +135,8 @@ export default async function FinanzasPage({
           ledger={ledger}
           categories={categories}
           professionals={professionals}
+          counterparties={counterparties}
+          recurring={recurring}
           todayKey={todayKey}
           canWrite={access.canWrite}
           canManage={access.canManage}
@@ -129,11 +148,14 @@ export default async function FinanzasPage({
           ledger={ledger}
           categories={categories}
           professionals={professionals}
+          counterparties={counterparties}
           todayKey={todayKey}
           canWrite={access.canWrite}
         />
       )}
-      {params.tab === 'ajustes' && <AjustesTab categories={categories} settings={settings} />}
+      {params.tab === 'ajustes' && (
+        <AjustesTab categories={categories} counts={categoryCounts} settings={settings} />
+      )}
     </ModuleGate>
   );
 }

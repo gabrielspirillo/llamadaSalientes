@@ -26,6 +26,7 @@ import {
   MessageSquare,
   Phone,
   Search,
+  Wallet,
   X,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -36,6 +37,7 @@ type SearchHit =
   | { kind: 'call'; id: string; title: string; subtitle: string; href: string; when: string | null }
   | { kind: 'treatment'; id: string; title: string; subtitle: string; href: string; when: null }
   | { kind: 'contact'; id: string; title: string; subtitle: string; href: string; when: null }
+  | { kind: 'finance'; id: string; title: string; subtitle: string; href: string; when: null }
   | { kind: 'channel'; id: string; title: string; subtitle: string; href: string; when: null }
   | {
       kind: 'message';
@@ -154,7 +156,7 @@ export function DashboardTopbar({
             )}
           >
             <Search className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:scale-110" />
-            <span className="truncate">Buscar llamadas, pacientes, mensajes…</span>
+            <span className="truncate">Buscar llamadas, pacientes, mensajes, movimientos…</span>
             <kbd className="ml-auto shrink-0 rounded-lg bg-white/20 px-1.5 py-0.5 text-[11px] font-semibold text-white/85">
               ⌘K
             </kbd>
@@ -181,7 +183,10 @@ export function DashboardTopbar({
 
           <TeamMenu />
 
-          <div className="ml-0.5 rounded-full p-1 ring-1 ring-white/25 transition-all hover:ring-white/50">
+          <div
+            className="ml-0.5 rounded-full p-1 ring-1 ring-white/25 transition-all hover:ring-white/50"
+            title="Tu cuenta"
+          >
             <UserButton
               appearance={{
                 elements: { avatarBox: 'h-11 w-11' },
@@ -298,7 +303,7 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
             ref={inputRef}
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar por número, paciente, resumen, tratamiento, mensaje…"
+            placeholder="Número, paciente, tratamiento, mensaje, gasto o factura…"
             className="relative flex-1 bg-transparent text-[16px] outline-none placeholder:text-zinc-500"
           />
           <button
@@ -346,6 +351,8 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
                         <Hash className="h-4 w-4" />
                       ) : h.kind === 'message' ? (
                         <MessageSquare className="h-4 w-4" />
+                      ) : h.kind === 'finance' ? (
+                        <Wallet className="h-4 w-4" />
                       ) : (
                         <Calendar className="h-4 w-4" />
                       )}

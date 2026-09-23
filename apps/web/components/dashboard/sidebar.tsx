@@ -175,7 +175,7 @@ const ICON_TONE: Record<Tone, string> = {
 
 /* Todas las filas del menú comparten forma: enlaces, grupos y el pie. */
 const ROW_BASE =
-  'group relative flex w-full items-center gap-3 rounded-2xl px-2.5 py-2 text-left text-[14px] font-medium transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]';
+  'group relative flex w-full items-center gap-3 rounded-2xl px-2.5 py-1.5 text-left text-[14px] font-medium transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]';
 const ROW_IDLE = 'text-zinc-600 hover:translate-x-0.5 hover:bg-white/70 hover:text-zinc-900';
 const ROW_ACTIVE = 'bg-white text-zinc-900 shadow-[0_8px_20px_-12px_rgba(20,33,29,0.45)]';
 
@@ -691,7 +691,7 @@ function SidebarNav({
       </div>
 
       {/* --- Selector de organización -------------------------------------- */}
-      <div data-sidebar-hide className="px-3 pb-1 pt-1">
+      <div data-sidebar-hide className="px-3 pb-1 pt-1" title="Clínica activa">
         <OrganizationSwitcher
           hidePersonal
           afterCreateOrganizationUrl="/dashboard"
@@ -707,7 +707,10 @@ function SidebarNav({
       </div>
 
       {/* --- Navegación ----------------------------------------------------- */}
-      <nav className="scrollbar-none flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
+      {/* Con la barra de scroll oculta, en pantallas bajas el último ítem se
+          cortaba por la mitad sin pista de que había más: se deja una barra
+          fina, del color de la barra. */}
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3 [scrollbar-color:#cfd6d3_transparent] [scrollbar-width:thin]">
         {(agendaOnly ? AGENDA_ONLY_ENTRIES : ENTRIES).map((entry) => {
           if (entry.kind === 'group') {
             return (
