@@ -32,9 +32,10 @@ import {
   updateProfessional,
 } from '@/lib/agenda/service';
 import { agendaBookAppointment, agendaCheckAvailability } from '@/lib/agenda/voice';
-import { createPatient } from '@/lib/patients/persons';
-import { upsertWhatsappContact } from '@/lib/whatsapp/persist';
+import { createPatient, deletePatient, previewPatientDeletion } from '@/lib/patients/persons';
+import { deleteContact, findPatientByPhone, previewContactDeletion } from '@/lib/patients/registry';
 import { dispatchTool } from '@/lib/retell/tools';
+import { upsertWhatsappContact } from '@/lib/whatsapp/persist';
 import { raw, seedTenant } from './_qa-tasks-helpers';
 
 const TZ = 'Europe/Madrid';
@@ -663,10 +664,19 @@ describe('aislamiento de la lista de pacientes', () => {
     await upsertWhatsappContact({ tenantId: a.tenantId, phoneE164: '+34622222222', name: 'Lucía' });
     await createPatient(
       { tenantId: a.tenantId, userId: a.userA },
-      { firstName: 'Nico', lastName: 'De A', birthDate: '2025-03-01', contactPhone: '+34633333333' },
+      {
+        firstName: 'Nico',
+        lastName: 'De A',
+        birthDate: '2025-03-01',
+        contactPhone: '+34633333333',
+      },
     );
     // Clínica B: un solo contacto propio.
-    await upsertWhatsappContact({ tenantId: b.tenantId, phoneE164: '+34644444444', name: 'Solo B' });
+    await upsertWhatsappContact({
+      tenantId: b.tenantId,
+      phoneE164: '+34644444444',
+      name: 'Solo B',
+    });
 
     const deB = await listAgendaPatients(b.tenantId, {});
     expect(deB.map((p) => p.patientName)).toEqual(['Solo B']);
@@ -678,5 +688,62 @@ describe('aislamiento de la lista de pacientes', () => {
 
     // Y buscar desde B por un teléfono de A no encuentra nada.
     expect(await listAgendaPatients(b.tenantId, { search: '611111111' })).toHaveLength(0);
+  });
+});
+
+describe('quitar pacientes y contactos sin historia', () => {
+  it('un niño sin citas se borra; su tutor sólo después; con citas, ninguno', async () => {
+    const t = await seedTenant('quitar', TZ);
+    const ctx = ctxFor(t.tenantId, t.userA);
+    const prof = await createProfessional(ctx, { fullName: 'Dra. Limpieza', agendaEnabled: true });
+    await replaceShifts(ctx, prof!.id, [{ weekday: 2, startMinute: 9 * 60, endMinute: 14 * 60 }]);
+
+    const nino = await createPatient(
+      { tenantId: t.tenantId, userId: t.userA },
+      {
+        firstName: 'Prueba',
+        lastName: 'Asistente',
+        birthDate: '2025-05-05',
+        contactPhone: '+34655555555',
+      },
+    );
+    const tutor = await findPatientByPhone(t.tenantId, '+34655555555');
+    expect(tutor).not.toBeNull();
+
+    // El tutor tiene un niño a cargo: no se borra todavía.
+    const antes = await previewContactDeletion(t.tenantId, tutor!.id);
+    expect(antes).toMatchObject({ patients: 1, canDelete: false });
+    await expect(deleteContact(t.tenantId, tutor!.id)).rejects.toThrow(/no se puede borrar/);
+
+    // El niño sin historia sí.
+    expect((await previewPatientDeletion(t.tenantId, nino.id))?.canDelete).toBe(true);
+    await deletePatient({ tenantId: t.tenantId, userId: t.userA }, nino.id);
+    expect(await previewPatientDeletion(t.tenantId, nino.id)).toBeNull();
+
+    // Y ahora el tutor, que ya no tiene a nadie a cargo.
+    expect((await previewContactDeletion(t.tenantId, tutor!.id))?.canDelete).toBe(true);
+    await deleteContact(t.tenantId, tutor!.id);
+    expect(await listAgendaPatients(t.tenantId, {})).toHaveLength(0);
+
+    // Un niño con cita es historia: se rechaza.
+    const conCita = await createPatient(
+      { tenantId: t.tenantId, userId: t.userA },
+      { firstName: 'Con', lastName: 'Cita', birthDate: '2025-06-06', contactPhone: '+34666666666' },
+    );
+    await createAppointment(ctx, {
+      professionalId: prof!.id,
+      patientId: conCita.id,
+      patientName: 'Con Cita',
+      startDateKey: MARTES,
+      startMinute: 10 * 60,
+      durationMinutes: 30,
+    });
+    expect((await previewPatientDeletion(t.tenantId, conCita.id))?.canDelete).toBe(false);
+    await expect(
+      deletePatient({ tenantId: t.tenantId, userId: t.userA }, conCita.id),
+    ).rejects.toThrow(/no se puede borrar/);
+    // Y su tutor tampoco: la cita lleva su teléfono.
+    const tutor2 = await findPatientByPhone(t.tenantId, '+34666666666');
+    expect((await previewContactDeletion(t.tenantId, tutor2!.id))?.canDelete).toBe(false);
   });
 });

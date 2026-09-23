@@ -1,8 +1,8 @@
 import 'server-only';
-import { and, asc, eq, inArray, or, sql } from 'drizzle-orm';
+import { and, asc, count, eq, inArray, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { normalizePatientPhone } from '@/lib/agenda/patients';
+import { normalizePatientPhone, patientKeyForPerson } from '@/lib/agenda/patients';
 import {
   type AnamnesisAnswers,
   type Guardian,
@@ -12,7 +12,13 @@ import {
   parseGuardians,
 } from '@/lib/care-profile/policy';
 import { db } from '@/lib/db/client';
-import { patients, whatsappContacts } from '@/lib/db/schema';
+import {
+  agendaAppointments,
+  clinicalNotes,
+  patientConsents,
+  patients,
+  whatsappContacts,
+} from '@/lib/db/schema';
 import { upsertPatientRecord } from '@/lib/patients/registry';
 
 /**
@@ -384,4 +390,85 @@ export async function setPatientReview(
     .where(and(eq(patients.tenantId, scope.tenantId), eq(patients.id, patientId)))
     .returning({ id: patients.id });
   if (!row) throw new PatientValidationError('Ese paciente no existe en esta clínica.');
+}
+
+// ─── Quitar a un paciente ────────────────────────────────────────────────────
+
+export interface PatientDeletionPreview {
+  fullName: string;
+  appointments: number;
+  notes: number;
+  /** Consentimientos ya firmados: son historia y no se borran. */
+  signedConsents: number;
+  canDelete: boolean;
+}
+
+/**
+ * Qué arrastraría borrar a este paciente. Sólo se borra sin rastro cuando no
+ * hay nada: un alta de prueba o un error. Con citas, notas o un consentimiento
+ * firmado, no: eso es historia clínica y es de la clínica y del paciente.
+ */
+export async function previewPatientDeletion(
+  tenantId: string,
+  patientId: string,
+): Promise<PatientDeletionPreview | null> {
+  const person = await getPatientPerson(tenantId, patientId);
+  if (!person) return null;
+  const key = patientKeyForPerson(patientId);
+
+  const [[appts], [notes], [consents]] = await Promise.all([
+    db
+      .select({ n: count() })
+      .from(agendaAppointments)
+      .where(
+        and(
+          eq(agendaAppointments.tenantId, tenantId),
+          or(eq(agendaAppointments.patientId, patientId), eq(agendaAppointments.patientKey, key)),
+        ),
+      ),
+    db
+      .select({ n: count() })
+      .from(clinicalNotes)
+      .where(
+        and(
+          eq(clinicalNotes.tenantId, tenantId),
+          or(eq(clinicalNotes.patientId, patientId), eq(clinicalNotes.patientKey, key)),
+        ),
+      ),
+    db
+      .select({ n: count() })
+      .from(patientConsents)
+      .where(
+        and(
+          eq(patientConsents.tenantId, tenantId),
+          eq(patientConsents.patientId, patientId),
+          eq(patientConsents.status, 'SIGNED'),
+        ),
+      ),
+  ]);
+
+  const appointments = Number(appts?.n ?? 0);
+  const noteCount = Number(notes?.n ?? 0);
+  const signedConsents = Number(consents?.n ?? 0);
+  return {
+    fullName: person.fullName,
+    appointments,
+    notes: noteCount,
+    signedConsents,
+    canDelete: appointments === 0 && noteCount === 0 && signedConsents === 0,
+  };
+}
+
+/** Borra sin rastro a un paciente que no tiene historia. Si la tiene, se rechaza. */
+export async function deletePatient(scope: PatientScope, patientId: string): Promise<void> {
+  const preview = await previewPatientDeletion(scope.tenantId, patientId);
+  if (!preview) throw new PatientValidationError('Ese paciente no existe en esta clínica.');
+  if (!preview.canDelete) {
+    throw new PatientValidationError(
+      'Este paciente tiene historia (citas, notas o un consentimiento firmado) y no se puede borrar.',
+    );
+  }
+  await db
+    .delete(patients)
+    .where(and(eq(patients.tenantId, scope.tenantId), eq(patients.id, patientId)));
 }
