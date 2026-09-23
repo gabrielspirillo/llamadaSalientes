@@ -1,10 +1,10 @@
 'use client';
 
+import { ImpersonationChip } from '@/components/dashboard/impersonation-chip';
 import { DashboardSidebarMobile } from '@/components/dashboard/sidebar';
 import { TeamMenu } from '@/components/dashboard/team-menu';
 import { useMessaging } from '@/components/messaging/MessagingProvider';
 import { MentionsInbox } from '@/components/messaging/dock/MentionsInbox';
-import { ImpersonationChip } from '@/components/dashboard/impersonation-chip';
 import { StatusDot } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/feedback';
 import { Avatar } from '@/components/ui/stat';

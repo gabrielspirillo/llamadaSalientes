@@ -89,10 +89,8 @@ export function PatientMarks({
         />
         <span>
           <span className="font-semibold">Marcar prioritario a mano</span>
-          {priority.source === 'AGE' || priority.source === 'BOTH'
-            ? ' (además de la edad)'
-            : ''}
-          : los asistentes le ofrecen el primer hueco y avisan a recepción si no lo hay.
+          {priority.source === 'AGE' || priority.source === 'BOTH' ? ' (además de la edad)' : ''}:
+          los asistentes le ofrecen el primer hueco y avisan a recepción si no lo hay.
         </span>
       </label>
       {flag && (

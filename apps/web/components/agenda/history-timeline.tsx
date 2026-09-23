@@ -46,10 +46,12 @@ export function HistoryTimeline({
   const [professionalId, setProfessionalId] = React.useState<string>('all');
   const professionals = React.useMemo(() => {
     const seen = new Map<string, string>();
-    for (const n of notes) if (!seen.has(n.professionalId)) seen.set(n.professionalId, n.professionalName);
+    for (const n of notes)
+      if (!seen.has(n.professionalId)) seen.set(n.professionalId, n.professionalName);
     return [...seen.entries()].map(([id, name]) => ({ id, name }));
   }, [notes]);
-  const shown = professionalId === 'all' ? notes : notes.filter((n) => n.professionalId === professionalId);
+  const shown =
+    professionalId === 'all' ? notes : notes.filter((n) => n.professionalId === professionalId);
 
   return (
     <div className="p-4 md:p-6">
@@ -65,7 +67,11 @@ export function HistoryTimeline({
               Todos
             </Chip>
             {professionals.map((p) => (
-              <Chip key={p.id} active={professionalId === p.id} onClick={() => setProfessionalId(p.id)}>
+              <Chip
+                key={p.id}
+                active={professionalId === p.id}
+                onClick={() => setProfessionalId(p.id)}
+              >
                 {p.name}
               </Chip>
             ))}
@@ -107,7 +113,9 @@ export function HistoryTimeline({
                     aria-hidden
                     className="mt-1 h-3 w-3 rounded-full bg-brand-500 ring-4 ring-brand-100"
                   />
-                  {!last && <span aria-hidden className="mt-1.5 w-0.5 flex-1 bg-(--color-border)" />}
+                  {!last && (
+                    <span aria-hidden className="mt-1.5 w-0.5 flex-1 bg-(--color-border)" />
+                  )}
                 </div>
                 <div className="flex min-w-0 flex-col gap-1.5 pb-6">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
@@ -126,7 +134,9 @@ export function HistoryTimeline({
                     )}
                   </div>
                   <p className="text-[15px] font-semibold text-zinc-900">
-                    <span className="text-zinc-600">{pediatric ? 'Diagnóstico: ' : 'Motivo: '}</span>
+                    <span className="text-zinc-600">
+                      {pediatric ? 'Diagnóstico: ' : 'Motivo: '}
+                    </span>
                     {n.summary}
                   </p>
                   {n.symptoms && (
@@ -141,7 +151,8 @@ export function HistoryTimeline({
                   )}
                   {n.treatmentPerformed && (
                     <p className="text-[13px] leading-relaxed text-zinc-700">
-                      <strong>{pediatric ? 'Tratamiento' : 'Se hizo'}:</strong> {n.treatmentPerformed}
+                      <strong>{pediatric ? 'Tratamiento' : 'Se hizo'}:</strong>{' '}
+                      {n.treatmentPerformed}
                     </p>
                   )}
                   {n.observations && (

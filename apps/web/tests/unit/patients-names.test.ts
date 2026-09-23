@@ -10,7 +10,7 @@ describe('titleCaseName', () => {
 
   it('respeta partículas, guiones y apóstrofos', () => {
     expect(titleCaseName('juan de la cruz')).toBe('Juan de la Cruz');
-    expect(titleCaseName('jean-luc o\'neil')).toBe("Jean-Luc O'Neil");
+    expect(titleCaseName("jean-luc o'neil")).toBe("Jean-Luc O'Neil");
     expect(titleCaseName('  de   los santos ')).toBe('De los Santos');
   });
 

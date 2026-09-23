@@ -62,7 +62,9 @@ export function PatientAlertsBanner({
               title={formatWatchout(it)}
             >
               <span>{it.label}</span>
-              {it.detail && <span className="truncate font-medium text-rose-700">· {it.detail}</span>}
+              {it.detail && (
+                <span className="truncate font-medium text-rose-700">· {it.detail}</span>
+              )}
             </li>
           ))}
           {pendingAnamnesis > 0 && anamnesisHref && (

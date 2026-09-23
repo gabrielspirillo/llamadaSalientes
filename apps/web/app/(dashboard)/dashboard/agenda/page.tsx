@@ -2,6 +2,7 @@ import { CalendarView } from '@/components/agenda/calendar-view';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Button } from '@/components/ui/button';
 import { getAgendaContext } from '@/lib/agenda/auth';
+import { patientIdFromKey, phoneFromPatientKey } from '@/lib/agenda/patients';
 import {
   listAppointmentsInRange,
   listProfessionals,
@@ -18,7 +19,6 @@ import { describeAge } from '@/lib/care-profile/policy';
 import { getCareProfile } from '@/lib/care-profile/queries';
 import { db } from '@/lib/db/client';
 import { professionalShifts, treatments } from '@/lib/db/schema';
-import { patientIdFromKey, phoneFromPatientKey } from '@/lib/agenda/patients';
 import { getPatientPerson, listPatientPersons } from '@/lib/patients/persons';
 import { localDateKey, zonedToUtc } from '@/lib/tasks/tz';
 import { and, asc, eq } from 'drizzle-orm';

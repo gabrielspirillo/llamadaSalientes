@@ -467,7 +467,10 @@ export function describePriority(
   const source = byAge && byFlag ? 'BOTH' : byAge ? 'AGE' : byFlag ? 'MANUAL' : null;
   const parts: string[] = [];
   if (byAge && rule) {
-    const cap = input.ageMonths !== null && input.ageMonths <= rule.veryHighMax ? rule.veryHighMax : rule.highMax;
+    const cap =
+      input.ageMonths !== null && input.ageMonths <= rule.veryHighMax
+        ? rule.veryHighMax
+        : rule.highMax;
     parts.push(`por edad (hasta ${cap} meses)`);
   }
   if (byFlag) {

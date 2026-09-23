@@ -56,7 +56,10 @@ export function PatientHeader({
       className="overflow-hidden rounded-[22px] border border-(--color-border) bg-white shadow-[var(--shadow-soft)]"
     >
       <div className="flex flex-col gap-3 p-4 md:px-6 md:py-5">
-        <nav aria-label="Ruta" className="flex flex-wrap items-center gap-1 text-[12px] text-zinc-600">
+        <nav
+          aria-label="Ruta"
+          className="flex flex-wrap items-center gap-1 text-[12px] text-zinc-600"
+        >
           {breadcrumb.map((c, i) => {
             const last = i === breadcrumb.length - 1;
             return (
@@ -67,11 +70,18 @@ export function PatientHeader({
                   </span>
                 )}
                 {c.href && !last ? (
-                  <Link href={c.href} prefetch={false} className="hover:text-brand-700 hover:underline">
+                  <Link
+                    href={c.href}
+                    prefetch={false}
+                    className="hover:text-brand-700 hover:underline"
+                  >
                     {c.label}
                   </Link>
                 ) : (
-                  <span className={cn(last && 'font-semibold text-zinc-800')} aria-current={last ? 'page' : undefined}>
+                  <span
+                    className={cn(last && 'font-semibold text-zinc-800')}
+                    aria-current={last ? 'page' : undefined}
+                  >
                     {c.label}
                   </span>
                 )}
@@ -123,7 +133,9 @@ export function PatientHeader({
                 <span
                   className={cn(
                     'line-clamp-2',
-                    f.emphasis ? 'text-[20px] font-extrabold md:text-[22px]' : 'text-[15px] font-bold',
+                    f.emphasis
+                      ? 'text-[20px] font-extrabold md:text-[22px]'
+                      : 'text-[15px] font-bold',
                     f.tone === 'warn'
                       ? 'text-amber-700'
                       : f.tone === 'muted'

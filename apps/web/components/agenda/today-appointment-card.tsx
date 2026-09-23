@@ -74,7 +74,15 @@ export function TodayAppointmentCard({
           )}
         </div>
         {appointment ? (
-          <Badge tone={closed ? 'neutral' : status === 'ARRIVED' || status === 'IN_PROGRESS' ? 'success' : 'info'}>
+          <Badge
+            tone={
+              closed
+                ? 'neutral'
+                : status === 'ARRIVED' || status === 'IN_PROGRESS'
+                  ? 'success'
+                  : 'info'
+            }
+          >
             {STATUS_LABELS[appointment.status]}
           </Badge>
         ) : (
@@ -110,7 +118,9 @@ export function TodayAppointmentCard({
             active={false}
             disabled={pending}
             onClick={() => setStatus('COMPLETED')}
-            icon={pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+            icon={
+              pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />
+            }
           >
             Atendida
           </StatusButton>

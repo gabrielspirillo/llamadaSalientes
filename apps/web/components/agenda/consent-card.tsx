@@ -190,8 +190,8 @@ function ConsentRow({ consent: c, fmt }: { consent: ConsentListItem; fmt: Intl.D
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[10px] bg-amber-50 px-2.5 py-2 text-[12px] text-amber-900">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
           <span>
-            El WhatsApp no salió{c.error ? `: ${c.error.replace(/^WhatsApp: /, '')}` : ''}.
-            Copia el enlace y mándaselo a mano
+            El WhatsApp no salió{c.error ? `: ${c.error.replace(/^WhatsApp: /, '')}` : ''}. Copia el
+            enlace y mándaselo a mano
             {noWhatsapp ? ' o conecta el WhatsApp de la clínica' : ''}.
           </span>
           {noWhatsapp && (
@@ -263,7 +263,12 @@ function RefreshConsent({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Button size="sm" variant={primary ? 'primary' : 'secondary'} onClick={run} disabled={pending}>
+      <Button
+        size="sm"
+        variant={primary ? 'primary' : 'secondary'}
+        onClick={run}
+        disabled={pending}
+      >
         {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
         Comprobar firma
       </Button>

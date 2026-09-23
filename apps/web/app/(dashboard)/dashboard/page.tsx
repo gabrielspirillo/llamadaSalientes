@@ -8,9 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Reveal } from '@/components/ui/motion';
 import { Avatar } from '@/components/ui/stat';
+import { resolveTimezone } from '@/lib/agenda/queries';
 import { formatDuration, getDashboardStats, getUpcomingAppointments } from '@/lib/data/calls-list';
 import { getDemoUpcoming } from '@/lib/demo-data';
-import { resolveTimezone } from '@/lib/agenda/queries';
 import { getCurrentTenant } from '@/lib/tenant';
 import { currentUser } from '@clerk/nextjs/server';
 import { ArrowRight, CalendarClock, Sparkles } from 'lucide-react';
@@ -34,7 +34,8 @@ export default async function DashboardOverview({
       .formatToParts(new Date())
       .find((p) => p.type === 'hour')?.value ?? '12',
   );
-  const saludo = hour < 6 || hour >= 20 ? 'Buenas noches' : hour < 13 ? 'Buenos días' : 'Buenas tardes';
+  const saludo =
+    hour < 6 || hour >= 20 ? 'Buenas noches' : hour < 13 ? 'Buenos días' : 'Buenas tardes';
   const firstName = user?.firstName ?? user?.fullName?.split(' ')[0] ?? '';
   // Las dos sólo dependen del tenant: encadenarlas sumaba un round-trip a cada
   // carga del home, y este se repite con el refresco automático.

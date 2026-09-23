@@ -101,7 +101,10 @@ describe('groupAnamnesis', () => {
   });
 
   it('una plantilla sin bloques queda en un único grupo sin nombre', () => {
-    const plain = parseAnamnesisTemplate([{ key: 'a', label: 'A' }, { key: 'b', label: 'B' }]);
+    const plain = parseAnamnesisTemplate([
+      { key: 'a', label: 'A' },
+      { key: 'b', label: 'B' },
+    ]);
     expect(groupAnamnesis(plain)).toEqual([{ group: null, items: plain }]);
   });
 });
