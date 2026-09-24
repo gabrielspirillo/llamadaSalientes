@@ -1,6 +1,8 @@
 import 'server-only';
 
 import { describeAgendaForPrompt } from '@/lib/agenda/agent';
+import { listLessonLines } from '@/lib/agent-training/lessons';
+import { type LessonLine, formatLessonsForPrompt } from '@/lib/agent-training/model';
 import { listFaqsForTenant } from '@/lib/data/faqs';
 import { listTreatmentsForTenant } from '@/lib/data/treatments';
 import type { WhatsappAgentMode } from '@/lib/data/whatsapp-agent-settings';
@@ -122,6 +124,13 @@ export interface BuildSystemPromptInput {
    * Null para el resto de clínicas: no se añade nada.
    */
   careProtocol?: string | null;
+  /**
+   * Lo que la clínica le enseñó desde "Entrenar al asistente". Aditivo como
+   * `persona`, pero concreto: manda sobre el criterio general del modelo y
+   * cede ante los datos oficiales y las reglas duras. Vacío o ausente en una
+   * clínica que nunca entrenó a su asistente: el prompt es el de siempre.
+   */
+  lessons?: readonly LessonLine[];
 }
 
 /**
@@ -160,14 +169,18 @@ export async function loadGroundingForTenant(tenantId: string): Promise<{
   treatments: TreatmentLine[];
   faqs: FaqLine[];
   professionals: string;
+  lessons: LessonLine[];
 }> {
-  const [ctxVars, treatmentRows, faqRows, professionals] = await Promise.all([
+  const [ctxVars, treatmentRows, faqRows, professionals, lessons] = await Promise.all([
     buildClinicContextVars(tenantId),
     listTreatmentsForTenant(tenantId),
     listFaqsForTenant(tenantId),
     // Si la clínica no usa la agenda interna esto viene vacío y el prompt no
     // menciona profesionales. Un fallo aquí no puede dejar al agente mudo.
     describeAgendaForPrompt(tenantId).catch(() => ''),
+    // Lo que la clínica le enseñó. Si la tabla no está (migración sin aplicar)
+    // el asistente atiende como siempre en vez de quedarse mudo.
+    listLessonLines(tenantId).catch(() => [] as LessonLine[]),
   ]);
 
   const clinic: ClinicGrounding = {
@@ -194,7 +207,7 @@ export async function loadGroundingForTenant(tenantId: string): Promise<{
     answer: f.answer,
   }));
 
-  return { clinic, treatments, faqs, professionals };
+  return { clinic, treatments, faqs, professionals, lessons };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -260,6 +273,9 @@ export function buildSystemPrompt(input: BuildSystemPromptInput): string {
     agentName,
     contactPhoneE164,
   } = input;
+  // Lo aprendido va DESPUÉS de la personalización y ANTES de las reglas duras:
+  // afina el criterio del modelo, no lo que la clínica tiene por oficial.
+  const lessonsSection = formatLessonsForPrompt(input.lessons ?? []);
   // El nombre con que se presenta y el teléfono del contacto (si lo tenemos y
   // no es un placeholder de prueba). El teléfono se inyecta para que el agente
   // NO lo pida — ya lo tiene del WhatsApp del contacto.
@@ -331,10 +347,11 @@ tienes que preguntarle si quiere reagendar — ya lo pidió. Tu trabajo:
       phoneSection,
       leadMemorySection,
       careSection,
+      lessonsSection,
     });
   }
 
-  return `Eres el asistente virtual de WhatsApp de la clínica "${clinic.name}".${personaSection}${phoneSection}${leadMemorySection}${careSection}${resumeSection}
+  return `Eres el asistente virtual de WhatsApp de la clínica "${clinic.name}".${personaSection}${lessonsSection}${phoneSection}${leadMemorySection}${careSection}${resumeSection}
 Atiendes TODO lo que llega a la clínica por WhatsApp: pacientes existentes, personas
 interesadas, y también proveedores, profesionales, mutuas, postulantes, prensa, etc.
 Hablas español de España.
@@ -560,6 +577,7 @@ function buildDerivePrompt(input: {
   phoneSection: string;
   leadMemorySection: string;
   careSection: string;
+  lessonsSection: string;
 }): string {
   const {
     clinic,
@@ -571,9 +589,10 @@ function buildDerivePrompt(input: {
     phoneSection,
     leadMemorySection,
     careSection,
+    lessonsSection,
   } = input;
 
-  return `Eres el asistente virtual de WhatsApp de "${clinic.name}".${personaSection}${phoneSection}${leadMemorySection}${careSection}
+  return `Eres el asistente virtual de WhatsApp de "${clinic.name}".${personaSection}${lessonsSection}${phoneSection}${leadMemorySection}${careSection}
 Atiendes TODO lo que llega por WhatsApp: pacientes, personas interesadas, y también
 proveedores, profesionales, mutuas, postulantes, prensa, etc.
 Hablas español de España.

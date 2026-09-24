@@ -358,6 +358,58 @@ export const whatsappAgentSettings = pgTable('whatsapp_agent_settings', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Entrenar al asistente (migración 0038) — lo que la clínica le enseñó
+// conversando con el entrenador. Aditivo, como `persona`: afina el
+// comportamiento del asistente de WhatsApp pero NO anula las reglas duras ni
+// los datos oficiales (precios, horarios, agenda).
+// ─────────────────────────────────────────────────────────────────────────────
+export const agentLessons = pgTable(
+  'agent_lessons',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    // ANSWER | RULE | STYLE | BOUNDARY
+    kind: text('kind').notNull(),
+    title: text('title').notNull(),
+    /** Cuándo aplica, en lenguaje natural. Null = siempre. */
+    situation: text('situation'),
+    instruction: text('instruction').notNull(),
+    // ACTIVE | PAUSED
+    status: text('status').notNull().default('ACTIVE'),
+    // COACH | MANUAL
+    source: text('source').notNull().default('COACH'),
+    createdBy: text('created_by'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantIdx: index('agent_lessons_tenant_status_idx').on(t.tenantId, t.status, t.createdAt),
+  }),
+);
+
+export const agentTrainingMessages = pgTable(
+  'agent_training_messages',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    // user | assistant
+    role: text('role').notNull(),
+    content: text('content').notNull(),
+    /** Propuestas del entrenador en ese turno, con su marca de aplicadas. */
+    proposals: jsonb('proposals').$type<unknown>(),
+    authorName: text('author_name'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantIdx: index('agent_training_messages_tenant_idx').on(t.tenantId, t.createdAt),
+  }),
+);
+
 export const callEvents = pgTable(
   'call_events',
   {

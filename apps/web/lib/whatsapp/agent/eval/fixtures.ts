@@ -7,6 +7,7 @@
  * tools son plausibles para que el LLM pueda continuar de forma realista.
  */
 
+import type { LessonLine } from '@/lib/agent-training/model';
 import type { ClinicGrounding, FaqLine, TreatmentLine } from '../prompt';
 import type { ExecuteToolInput } from '../tools';
 import type { ToolCallTrace } from '../types';
@@ -93,6 +94,7 @@ export async function fixtureLoadGrounding(): Promise<{
   treatments: TreatmentLine[];
   faqs: FaqLine[];
   professionals: string;
+  lessons: LessonLine[];
 }> {
   // La clínica del sandbox lleva su agenda en la plataforma: así los casos de
   // evaluación ejercitan también el camino con profesionales.
@@ -101,7 +103,7 @@ export async function fixtureLoadGrounding(): Promise<{
     '- Dra. Marta Ruiz (Odontología general): Limpieza dental, Revisión',
     '- Dr. Iván Soler (Ortodoncia): Ortodoncia, Revisión',
   ].join('\n');
-  return { clinic, treatments, faqs, professionals };
+  return { clinic, treatments, faqs, professionals, lessons: [] };
 }
 
 /** Teléfonos que el mock reconoce como pacientes existentes. */

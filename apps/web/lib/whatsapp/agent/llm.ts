@@ -1,8 +1,6 @@
 import 'server-only';
 import OpenAI from 'openai';
 
-import type { AgentToolDefinition } from './tools';
-
 /**
  * Cliente LLM con tool-calling para el agente de WhatsApp.
  *
@@ -49,9 +47,29 @@ export type LlmMessage =
   | { role: 'assistant'; content: string | null; toolCalls?: LlmToolCallRequest[] }
   | { role: 'tool'; toolCallId: string; name: string; content: string };
 
+/**
+ * Una herramienta tal como la declaran los dos providers.
+ *
+ * No es `AgentToolDefinition`: el mismo cliente lo usa el entrenador del
+ * asistente (`lib/agent-training/coach.ts`), que tiene su propia herramienta y
+ * no ejecuta ninguna de las del agente. `AgentToolDefinition` encaja aquí por
+ * estructura.
+ */
+export interface LlmToolDefinition {
+  name: string;
+  description: string;
+  /** JSON Schema draft-07 compatible. Sin $schema ni $id. */
+  parameters: {
+    type: 'object';
+    properties: Record<string, unknown>;
+    required: string[];
+    additionalProperties: boolean;
+  };
+}
+
 export interface LlmCallInput {
   messages: LlmMessage[];
-  tools: AgentToolDefinition[];
+  tools: LlmToolDefinition[];
   temperature?: number;
   /** Forzar provider (saltarse Gemini). Útil para testing/diagnóstico. */
   forceProvider?: 'gemini' | 'openai';

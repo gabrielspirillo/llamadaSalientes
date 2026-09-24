@@ -429,6 +429,71 @@ una maqueta.
 - Los dos endpoints (`/api/retell/web-call`, `/api/agent/whatsapp-test`) exigen
   rol `operator`: cada prueba gasta minutos de Retell o tokens del LLM.
 
+## Entrenar al asistente (core, sin gate de `enabled_modules`)
+
+Sección `/dashboard/entrenamiento` (label "Entrenar asistente", dentro del menú
+Clínica). La clínica le enseña a su asistente de WhatsApp **conversando**, no
+editando un prompt.
+
+El problema que resuelve: cuando el asistente contestaba mal a un lead, la
+clínica no tenía forma de corregirlo. Lo que sabía salía del catálogo de
+tratamientos, de las FAQs y del campo `persona` de `whatsapp_agent_settings`
+—un textarea suelto que nadie de una clínica iba a rellenar bien—, así que la
+corrección llegaba por teléfono y alguien tocaba el prompt a mano.
+
+**Migración**: `0038_entrenamiento_asistente.sql`. Tablas `agent_lessons` (lo
+aprendido) y `agent_training_messages` (la conversación con el entrenador, que
+se guarda: una clínica entrena en varios ratos, no de una sentada).
+
+**Quien atiende no es el asistente: es un entrenador** (`lib/agent-training/coach.ts`),
+un segundo LLM con su propio prompt y UNA sola herramienta,
+`proponer_ensenanzas`. Traduce "es que cuando preguntan el precio suelta la
+cifra y se nos van" en tarjetas concretas. Claves:
+- **Propone, nunca guarda.** Aplica la persona que está delante, de a una
+  tarjeta, y puede editar el texto antes. Un modelo que se auto-aprueba
+  instrucciones para otro modelo es la forma más rápida de que el asistente
+  acabe diciendo algo que la clínica nunca dijo.
+- Conoce el catálogo, las FAQs y lo ya enseñado, y **se niega a fijar precios,
+  horarios o huecos** como enseñanza: eso vive en Tratamientos, en Preguntas
+  frecuentes y en Datos de la clínica, y cambia. Cuando se lo piden, dice dónde
+  se cambia.
+- Tampoco propone quitarle el protocolo de urgencias ni el paso a recepción, ni
+  que diagnostique.
+- El loop es de dos vueltas: Gemini manda el `functionCall` sin texto, así que
+  se le devuelve el acuse y se le pide el mensaje para la persona.
+
+**Dónde entra lo aprendido**: `formatLessonsForPrompt` (puro, en
+`lib/agent-training/model.ts`, con tests) arma una sección que
+`loadGroundingForTenant` carga y `buildSystemPrompt` inyecta en los DOS prompts
+(BOOKING y DERIVE), después de la personalización. Es **aditiva**: manda sobre
+el criterio general del modelo y cede ante las reglas duras, los datos
+oficiales y los protocolos de urgencia/handoff — lo dice la propia sección.
+Sin enseñanzas devuelve cadena vacía, así que una clínica que no entrenó tiene
+exactamente el prompt de siempre. Tope de `MAX_LESSONS_IN_PROMPT` (60): cada
+enseñanza son tokens en TODAS las ráfagas de TODAS las conversaciones.
+
+**Tres pestañas por URL** (`?tab=ensenar|aprendido|probar`, Server Components,
+no `TabsContent`): la charla con el entrenador y sus tarjetas; la lista de lo
+aprendido (editar, pausar, borrar, o escribir una a mano); y **Probar**, que
+reusa el `WhatsappTester` de `/dashboard/agent` — el asistente de verdad, con
+lo recién enseñado. Sin ese último paso el entrenamiento es un acto de fe.
+
+**Idempotencia de la aprobación**: cada propuesta lleva `ref`
+(`<messageId>-<índice>`) y al aplicarla se marca dentro del `proposals` jsonb de
+su turno. Sin eso, recargar la página devolvía la tarjeta a "pendiente" y la
+misma enseñanza se aprobaba dos veces.
+
+**Roles**: `operator` en adelante, el mismo listón que el banco de pruebas y que
+cargar tratamientos o FAQs. Quien atiende a los pacientes es quien ve al
+asistente equivocarse; hacerle pedir permiso a un admin para corregir una frase
+garantiza que nadie lo corrija. El gate está en el servidor en las dos vías: el
+endpoint del entrenador (`POST /api/agent/training/chat`, `denyUnlessRole`) y
+todas las Server Actions (`requireTaskRole`).
+
+**Pausar no es borrar**: una enseñanza en pausa sigue guardada pero el asistente
+no la ve. Vaciar la charla tampoco deshace lo aprendido: son dos cosas
+distintas.
+
 ## Marca por clínica (white-label)
 
 Futura (super-admin) le puede poner a cada clínica **su nombre y su logo**, y esa

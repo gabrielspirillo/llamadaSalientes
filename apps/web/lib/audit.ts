@@ -19,6 +19,8 @@ export type AuditEntity =
   | 'faq'
   | 'agent_config'
   | 'agent_prompt_version'
+  // Entrenar al asistente (migración 0038).
+  | 'agent_lesson'
   | 'phone_number'
   | 'ghl_integration'
   | 'membership'

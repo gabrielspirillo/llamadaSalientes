@@ -144,6 +144,12 @@ const ENTRIES: readonly NavEntry[] = [
       tone: 'honey',
       items: [
         { href: '/dashboard/agent', label: 'Asistente', icon: Bot, tone: 'brand' },
+        {
+          href: '/dashboard/entrenamiento',
+          label: 'Entrenar asistente',
+          icon: Sparkles,
+          tone: 'blossom',
+        },
         { href: '/dashboard/settings', label: 'Datos de la clínica', icon: Building2, tone: 'sky' },
       ],
     },

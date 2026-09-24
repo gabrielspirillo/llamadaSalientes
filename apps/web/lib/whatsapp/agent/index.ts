@@ -112,6 +112,9 @@ export async function runWhatsappAgent(
     treatments: grounding.treatments,
     faqs: grounding.faqs,
     professionals: grounding.professionals,
+    // Lo que la clínica le enseñó desde "Entrenar al asistente". Los fixtures
+    // de evals no lo traen, y ahí el prompt es el de siempre.
+    lessons: grounding.lessons ?? [],
     now: formatNowInClinicZone(grounding.clinic.timezone, deps.now()),
     remindersResume: input.remindersResume ?? null,
     leadMemory,

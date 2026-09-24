@@ -17,6 +17,7 @@
  * cliente (p. ej. que Fisioterapia y Valoración hoy caen al respaldo).
  */
 
+import type { LessonLine } from '@/lib/agent-training/model';
 import { formatDerivationBrief } from '../derivation';
 import type { ClinicGrounding, FaqLine, TreatmentLine } from '../prompt';
 import type { ExecuteToolInput } from '../tools';
@@ -136,10 +137,11 @@ export async function deriveLoadGrounding(): Promise<{
   treatments: TreatmentLine[];
   faqs: FaqLine[];
   professionals: string;
+  lessons: LessonLine[];
 }> {
   // Sin agenda en la plataforma: el prompt de DERIVE no lista profesionales y
   // el asistente no debe nombrar a nadie por su cuenta.
-  return { clinic, treatments, faqs, professionals: '' };
+  return { clinic, treatments, faqs, professionals: '', lessons: [] };
 }
 
 function asRecord(raw: unknown): Record<string, unknown> {
