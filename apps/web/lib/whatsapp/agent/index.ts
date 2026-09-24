@@ -15,7 +15,10 @@ import {
   loadGroundingForTenant,
 } from './prompt';
 
+import { toWhatsappFormatting } from '@/lib/whatsapp/format';
+
 import { buildDerivationReply } from './derivation';
+
 import { detectDiagnosis, detectInjection, redactPii } from './guardrails';
 import {
   type AgentToolName,
@@ -278,6 +281,11 @@ export async function runWhatsappAgent(
       finalText = HANDOFF_RESPONSE_TEXT;
     }
   }
+
+  // Último paso sobre el texto: WhatsApp no entiende Markdown, así que la
+  // negrita del modelo (`**así**`) llegaba al paciente con los asteriscos a la
+  // vista. Va después de los guardrails para cubrir también sus plantillas.
+  if (finalText) finalText = toWhatsappFormatting(finalText);
 
   const intent = deriveIntent({ urgent, handoff: handoff || !!derivation, toolsCalled });
   const intentConfidence = deriveConfidence({
