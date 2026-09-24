@@ -204,8 +204,20 @@ jobs:
           set -euo pipefail
           repo="${GITHUB_REPOSITORY,,}"
 
+          # Reintenta: el 2026-09-24 un corte de red de dos minutos contra el
+          # VPS tumbó el deploy entero en la PRIMERA llamada (curl 28), con las
+          # dos imágenes ya publicadas en GHCR. El trabajo estaba hecho y hubo
+          # que relanzar el job a mano.
+          #
+          # Reintentar un POST puede encolar dos veces el mismo deploy si la
+          # respuesta se pierde después de que Dokploy lo aceptara. Es
+          # inofensivo: es la misma imagen, el sondeo mira el último
+          # despliegue, y las migraciones del worker son idempotentes (tabla
+          # `schema_migrations` + advisory lock). Perder el deploy, no.
           api() {
             curl -fsS -X POST "$DOKPLOY_URL/api/$1" \
+              --retry 5 --retry-delay 5 --retry-all-errors \
+              --connect-timeout 20 --max-time 60 \
               -H "x-api-key: $DOKPLOY_API_KEY" \
               -H 'Content-Type: application/json' \
               -d "$2"
@@ -239,7 +251,10 @@ jobs:
               # Un fallo de red no aborta el deploy: se reintenta a la vuelta
               # siguiente. Pero tampoco pasa inadvertido — si el sondeo se queda
               # mudo se avisa, en vez de esperar al timeout sin decir nada.
-              status=$(curl -fsS "$DOKPLOY_URL/api/deployment.all?applicationId=$id" \
+              # Con timeout: sin él una conexión colgada se come dos minutos
+              # de la vuelta y el sondeo deja de sondear cada 10 s.
+              status=$(curl -fsS --connect-timeout 15 --max-time 30 \
+                "$DOKPLOY_URL/api/deployment.all?applicationId=$id" \
                 -H "x-api-key: $DOKPLOY_API_KEY" \
                 | jq -er 'if type == "array" then . else .data end
                           | sort_by(.createdAt) | last | .status' || true)
