@@ -1,5 +1,6 @@
 'use client';
 
+import { useRegisterOverlay } from '@/components/ui/overlay-stack';
 import { cn } from '@/lib/cn';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
@@ -29,33 +30,36 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 export const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-  <DialogPortal>
-    <DialogOverlay />
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        'fixed left-1/2 top-1/2 z-50 max-h-[calc(100vh-2rem)] w-[calc(100vw-1rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto',
-        'rounded-[26px] border border-white/60 bg-white p-5 shadow-[0_40px_90px_-30px_rgba(20,33,29,0.5)] sm:p-7',
-        'data-[state=open]:animate-zoom-in data-[state=closed]:animate-zoom-out',
-        'focus-visible:outline-none',
-        className,
-      )}
-      {...props}
-    >
-      {/* Halo superior de marca — da profundidad sin recargar */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-28 rounded-t-[26px] bg-[radial-gradient(60%_100%_at_50%_0%,rgba(95,168,150,0.14),transparent_70%)]"
-      />
-      <div className="relative">{children}</div>
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full p-1.5 text-zinc-400 transition-all duration-300 hover:rotate-90 hover:bg-zinc-100 hover:text-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Cerrar</span>
-      </DialogPrimitive.Close>
-    </DialogPrimitive.Content>
-  </DialogPortal>
-));
+>(({ className, children, ...props }, ref) => {
+  useRegisterOverlay();
+  return (
+    <DialogPortal>
+      <DialogOverlay />
+      <DialogPrimitive.Content
+        ref={ref}
+        className={cn(
+          'fixed left-1/2 top-1/2 z-50 max-h-[calc(100vh-2rem)] w-[calc(100vw-1rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto',
+          'rounded-[26px] border border-white/60 bg-white p-5 shadow-[0_40px_90px_-30px_rgba(20,33,29,0.5)] sm:p-7',
+          'data-[state=open]:animate-zoom-in data-[state=closed]:animate-zoom-out',
+          'focus-visible:outline-none',
+          className,
+        )}
+        {...props}
+      >
+        {/* Halo superior de marca — da profundidad sin recargar */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-28 rounded-t-[26px] bg-[radial-gradient(60%_100%_at_50%_0%,rgba(95,168,150,0.14),transparent_70%)]"
+        />
+        <div className="relative">{children}</div>
+        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full p-1.5 text-zinc-400 transition-all duration-300 hover:rotate-90 hover:bg-zinc-100 hover:text-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40">
+          <X className="h-4 w-4" />
+          <span className="sr-only">Cerrar</span>
+        </DialogPrimitive.Close>
+      </DialogPrimitive.Content>
+    </DialogPortal>
+  );
+});
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 export function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {

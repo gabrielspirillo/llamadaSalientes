@@ -2,6 +2,7 @@
 
 import { Avatar, DueChip } from '@/components/tasks/shared';
 import { Button } from '@/components/ui/button';
+import { useRegisterOverlay } from '@/components/ui/overlay-stack';
 import { cn } from '@/lib/cn';
 import {
   CATEGORY_META,
@@ -61,6 +62,9 @@ export function TaskDetailPanel({
   const [evidence, setEvidence] = useState('');
   const [threadOpen, setThreadOpen] = useState(false);
   const titleRef = useRef<HTMLTextAreaElement>(null);
+
+  // Mientras el detalle está abierto, el dock de Mensajes se aparta.
+  useRegisterOverlay();
 
   const load = useCallback(async () => {
     setLoading(true);

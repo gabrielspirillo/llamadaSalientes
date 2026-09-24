@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Callout } from '@/components/ui/feedback';
+import { useRegisterOverlay } from '@/components/ui/overlay-stack';
 import type { Reminder, Rule } from './Pipeline';
 
 type Vars = {
@@ -75,6 +76,9 @@ export function ReminderDetailDialog({
     tone: 'neutral' as const,
   };
   const [busy, setBusy] = useState(false);
+
+  // Mientras el diálogo está abierto, el dock de Mensajes se aparta.
+  useRegisterOverlay();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {

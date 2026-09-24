@@ -15,6 +15,7 @@ import {
   type NotificationsApi,
   useNotifications,
 } from '@/components/messaging/dock/useNotifications';
+import { useOverlayOpen } from '@/components/ui/overlay-stack';
 import { cn } from '@/lib/cn';
 import type { ImRealtimeEvent, ImRealtimeEventKind } from '@/lib/messaging/events';
 import type {
@@ -707,7 +708,9 @@ function NotificationToasts({
   onDismiss: (id: string) => void;
   onOpen: (channelId: string | null) => void;
 }) {
-  if (toasts.length === 0) return null;
+  const overlayOpen = useOverlayOpen();
+
+  if (toasts.length === 0 || overlayOpen) return null;
 
   return (
     // Sin `role="status"`: cada toast lleva botones y el contenedor solo anuncia.

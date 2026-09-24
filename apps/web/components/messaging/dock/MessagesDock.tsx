@@ -14,6 +14,7 @@ import { plainPreview } from '@/components/messaging/shared';
 import { StatusDot } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/feedback';
 import { Input, Select, Switch } from '@/components/ui/input';
+import { useOverlayOpen } from '@/components/ui/overlay-stack';
 import { cn } from '@/lib/cn';
 import {
   AtSign,
@@ -59,7 +60,11 @@ export function MessagesDock() {
   } = useMessaging();
 
   const pathname = usePathname();
-  const hidden = pathname.startsWith('/dashboard/messages');
+  // Fuera de su pantalla, y nunca encima de un diálogo o un panel de detalle:
+  // la burbuja y el anticipo del canal tapaban el campo de comentario de la
+  // tarea abierta.
+  const overlayOpen = useOverlayOpen();
+  const hidden = pathname.startsWith('/dashboard/messages') || overlayOpen;
 
   const [view, setView] = useState<DockView>('thread');
   const [pickerOpen, setPickerOpen] = useState(false);
