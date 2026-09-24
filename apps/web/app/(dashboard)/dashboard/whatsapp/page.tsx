@@ -8,11 +8,18 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/feedback';
 import { Avatar } from '@/components/ui/stat';
+import { resolveTenantRole } from '@/lib/auth/tenant-role';
 import { db } from '@/lib/db/client';
-import { whatsappContacts, whatsappConversations, whatsappMessages } from '@/lib/db/schema';
+import {
+  whatsappConnections,
+  whatsappContacts,
+  whatsappConversations,
+  whatsappMessages,
+} from '@/lib/db/schema';
 import { getCurrentTenant } from '@/lib/tenant';
 
 import { AutoRefresh } from './_components/auto-refresh';
+import { ConnectWhatsappButton } from './_components/connect-whatsapp';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,6 +64,19 @@ function channelLabel(channel: string): string {
 
 export default async function WhatsappConversationsPage() {
   const { tenant } = await getCurrentTenant();
+
+  // El alta de WhatsApp es del administrador de la clínica: la pantalla
+  // técnica de conexiones sólo la ve Futura, así que sin este botón una
+  // clínica no tiene por dónde vincular su número.
+  const [{ role, isSuperAdmin }, connections] = await Promise.all([
+    resolveTenantRole(),
+    db
+      .select({ status: whatsappConnections.status })
+      .from(whatsappConnections)
+      .where(eq(whatsappConnections.tenantId, tenant.id)),
+  ]);
+  const isConnected = connections.some((c) => c.status === 'CONNECTED');
+  const canConnect = (role === 'admin' || isSuperAdmin) && !isConnected;
 
   const rows = await db
     .select({
@@ -153,11 +173,16 @@ export default async function WhatsappConversationsPage() {
             : 'Conversaciones que atiende tu agente por WhatsApp.'
         }
         actions={
-          <Button asChild variant="secondary" size="sm">
-            <Link href="/dashboard/configuration?tab=whatsapp">
-              <Settings2 className="h-4 w-4" /> Configurar
-            </Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {canConnect && <ConnectWhatsappButton />}
+            {isSuperAdmin && (
+              <Button asChild variant="secondary" size="sm">
+                <Link href="/dashboard/configuration?tab=whatsapp">
+                  <Settings2 className="h-4 w-4" /> Configurar
+                </Link>
+              </Button>
+            )}
+          </div>
         }
       />
 
@@ -165,12 +190,20 @@ export default async function WhatsappConversationsPage() {
         <Card>
           <EmptyState
             icon={<MessageCircle className="h-5 w-5" />}
-            title="Aún no hay conversaciones"
-            description="Configura una conexión de WhatsApp para empezar a recibir mensajes."
+            title={isConnected ? 'Aún no hay conversaciones' : 'Todavía no has conectado WhatsApp'}
+            description={
+              isConnected
+                ? 'Cuando alguien escriba al WhatsApp de la clínica, la conversación aparecerá aquí.'
+                : 'Vincula el WhatsApp de la clínica para empezar a recibir mensajes aquí.'
+            }
             action={
-              <Button asChild size="sm">
-                <Link href="/dashboard/configuration?tab=whatsapp">Configurar WhatsApp</Link>
-              </Button>
+              canConnect ? (
+                <ConnectWhatsappButton label="Conectar WhatsApp" />
+              ) : isSuperAdmin ? (
+                <Button asChild size="sm">
+                  <Link href="/dashboard/configuration?tab=whatsapp">Configurar WhatsApp</Link>
+                </Button>
+              ) : undefined
             }
           />
         </Card>
