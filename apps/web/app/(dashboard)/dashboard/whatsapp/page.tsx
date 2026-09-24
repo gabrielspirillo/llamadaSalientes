@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/feedback';
 import { Avatar } from '@/components/ui/stat';
-import { resolveTenantRole } from '@/lib/auth/tenant-role';
 import { db } from '@/lib/db/client';
 import {
   whatsappConnections,
@@ -17,6 +16,7 @@ import {
   whatsappMessages,
 } from '@/lib/db/schema';
 import { getCurrentTenant } from '@/lib/tenant';
+import { canManageWhatsappConnection } from '@/lib/whatsapp/connection-access';
 
 import { AutoRefresh } from './_components/auto-refresh';
 import { ConnectWhatsappButton, DisconnectWhatsappButton } from './_components/connect-whatsapp';
@@ -63,26 +63,26 @@ function channelLabel(channel: string): string {
 }
 
 export default async function WhatsappConversationsPage() {
-  const { tenant } = await getCurrentTenant();
+  const { tenant, isSuperAdmin } = await getCurrentTenant();
 
   // El alta de WhatsApp es del administrador de la clínica: la pantalla
   // técnica de conexiones sólo la ve Futura, así que sin este botón una
   // clínica no tiene por dónde vincular su número.
-  const [{ role, isSuperAdmin }, connections] = await Promise.all([
-    resolveTenantRole(),
+  const [canManageConnection, connections] = await Promise.all([
+    canManageWhatsappConnection(),
     db
       .select({ mode: whatsappConnections.mode, status: whatsappConnections.status })
       .from(whatsappConnections)
       .where(eq(whatsappConnections.tenantId, tenant.id)),
   ]);
-  const isAdmin = role === 'admin' || isSuperAdmin;
   const isConnected = connections.some((c) => c.status === 'CONNECTED');
-  const canConnect = isAdmin && !isConnected;
+  const canConnect = canManageConnection && !isConnected;
   // Desvincular sólo tiene sentido sobre el número que la propia clínica
   // escaneó: las conexiones que gestiona Futura (Cloud API, Twilio) se tocan
   // desde su pantalla, no desde aquí.
   const canDisconnect =
-    isAdmin && connections.some((c) => c.mode === 'EVOLUTION' && c.status === 'CONNECTED');
+    canManageConnection &&
+    connections.some((c) => c.mode === 'EVOLUTION' && c.status === 'CONNECTED');
 
   const rows = await db
     .select({

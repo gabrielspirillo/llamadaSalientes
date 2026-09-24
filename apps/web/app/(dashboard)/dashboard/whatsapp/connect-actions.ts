@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { requireTaskRole } from '@/lib/tasks/auth';
+import { canManageWhatsappConnection } from '@/lib/whatsapp/connection-access';
 
 import { connectEvolution, disconnect, getEvolutionConnectionState } from './integrations/actions';
 
@@ -24,12 +24,9 @@ const GENERIC_ERROR =
 
 /** Gate de rol: vincular el número de la clínica es cosa del administrador. */
 async function assertAdmin(): Promise<string | null> {
-  try {
-    await requireTaskRole('admin');
-    return null;
-  } catch {
-    return 'Solo el administrador de la clínica puede conectar WhatsApp.';
-  }
+  return (await canManageWhatsappConnection())
+    ? null
+    : 'Solo el administrador de la clínica puede conectar o desconectar WhatsApp.';
 }
 
 export async function requestWhatsappQr(): Promise<
