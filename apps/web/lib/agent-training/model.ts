@@ -125,16 +125,17 @@ export function formatLessonsForPrompt(lessons: readonly LessonLine[]): string {
 
   return `
 
-# Lo que te ha enseñado la clínica
-Son correcciones que el equipo de la clínica te ha dado por escrito. Tienen
-prioridad sobre tu criterio general: si algo de aquí contradice cómo lo harías
-por defecto, haz lo que dice aquí. NO anulan las "Reglas duras", los DATOS
-OFICIALES (precios, horarios, agenda, tratamientos) ni los protocolos de
-urgencia y de handoff: ante un choque con eso, manda lo oficial.${bloque(
-    'ANSWER',
-    'Qué responder:',
-  )}${bloque('RULE', 'Cómo actuar:')}${bloque('STYLE', 'Tono y trato:')}${bloque(
-    'BOUNDARY',
-    'Lo que NO debes hacer ni decir:',
-  )}`;
+# LO QUE TE HA ENSEÑADO LA CLÍNICA — manda sobre todo lo anterior
+Esto lo ha escrito el equipo de la clínica corrigiéndote. Es lo último que lees
+y es la última palabra sobre CÓMO te comportas: si algo de aquí cambia lo que
+dicen las secciones de arriba —el saludo, las frases de ejemplo, el orden en que
+preguntas, qué ofreces o cómo cierras—, haz lo que dice aquí y NO lo de arriba.
+Una frase de ejemplo de más arriba no es una orden: estas instrucciones sí.
+Sólo tres cosas siguen por encima de esto: los DATOS OFICIALES (precios,
+horarios, agenda, tratamientos y profesionales, que se consultan, no se
+inventan), el protocolo de urgencias y el paso a recepción, y no diagnosticar
+ni prometer resultados.${bloque('ANSWER', 'Qué responder:')}${bloque(
+    'RULE',
+    'Cómo actuar:',
+  )}${bloque('STYLE', 'Tono y trato:')}${bloque('BOUNDARY', 'Lo que NO debes hacer ni decir:')}`;
 }

@@ -2,19 +2,25 @@ import { PageHeader } from '@/components/dashboard/page-header';
 import { WhatsappTester } from '@/components/dashboard/whatsapp-tester';
 import { LessonActions } from '@/components/entrenamiento/lesson-actions';
 import { LessonDialog } from '@/components/entrenamiento/lesson-dialog';
+import { QuestBoard } from '@/components/entrenamiento/quest-board';
 import { type ChatTurn, TrainerChat } from '@/components/entrenamiento/trainer-chat';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardTopbar } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Callout, EmptyState } from '@/components/ui/feedback';
 import { Stagger } from '@/components/ui/motion';
 import { SegmentedNav } from '@/components/ui/tabs';
-import { listLessons, listTrainingMessages } from '@/lib/agent-training/lessons';
+import {
+  listAppliedQuestIds,
+  listLessons,
+  listTrainingMessages,
+} from '@/lib/agent-training/lessons';
 import {
   LESSON_KIND_LABEL,
   LESSON_KIND_TONE,
   MAX_LESSONS_IN_PROMPT,
 } from '@/lib/agent-training/model';
+import { levelFor, pendingQuests } from '@/lib/agent-training/quests';
 import { getWhatsappAgentSettings } from '@/lib/data/whatsapp-agent-settings';
 import { getCurrentTenant } from '@/lib/tenant';
 import { BookOpen, GraduationCap, MessageSquare, Plus, Sparkles } from 'lucide-react';
@@ -41,7 +47,8 @@ function normalizar(v: string | undefined): Pestana {
 }
 
 const DESCRIPCION: Record<Pestana, string> = {
-  ensenar: 'Cuéntale a tu asistente qué quieres que responda mejor. Él te lo deja listo.',
+  ensenar:
+    'Cuéntale qué quieres que responda mejor, o aplica uno de los ajustes que te recomienda.',
   aprendido: 'Todo lo que tu asistente ha aprendido de vosotros. Se puede editar y pausar.',
   probar: 'Escríbele como si fueras un paciente y comprueba que ha aprendido.',
 };
@@ -122,17 +129,26 @@ export default async function EntrenamientoPage({
       <SegmentedNav items={items} activeValue={tab} className="mb-5" />
 
       {tab === 'ensenar' && (
-        <TrainerChat
-          agentName={agentName}
-          initialTurns={(await listTrainingMessages(tenant.id)).map(
-            (m): ChatTurn => ({
-              id: m.id,
-              role: m.role,
-              content: m.content,
-              proposals: m.proposals,
-            }),
-          )}
-        />
+        <div className="grid gap-5 lg:grid-cols-3 lg:items-start">
+          <div className="lg:col-span-2">
+            <TrainerChat
+              agentName={agentName}
+              initialTurns={(await listTrainingMessages(tenant.id)).map(
+                (m): ChatTurn => ({
+                  id: m.id,
+                  role: m.role,
+                  content: m.content,
+                  proposals: m.proposals,
+                }),
+              )}
+            />
+          </div>
+          <QuestBoard
+            level={levelFor(activas.length)}
+            pending={pendingQuests(await listAppliedQuestIds(tenant.id))}
+            activeLessons={activas.length}
+          />
+        </div>
       )}
 
       {tab === 'aprendido' && (

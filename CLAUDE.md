@@ -465,12 +465,34 @@ cifra y se nos van" en tarjetas concretas. Claves:
 **Dónde entra lo aprendido**: `formatLessonsForPrompt` (puro, en
 `lib/agent-training/model.ts`, con tests) arma una sección que
 `loadGroundingForTenant` carga y `buildSystemPrompt` inyecta en los DOS prompts
-(BOOKING y DERIVE), después de la personalización. Es **aditiva**: manda sobre
-el criterio general del modelo y cede ante las reglas duras, los datos
-oficiales y los protocolos de urgencia/handoff — lo dice la propia sección.
+(BOOKING y DERIVE). ⚠️ **Va AL FINAL del prompt, no arriba.** Puesta después de
+la personalización —donde estaba el primer día— quedaba por delante de
+cuatrocientas líneas de reglas y guiones, y el modelo se quedaba con el guion:
+una clínica le enseñó "pregunta con quién hablo al saludar" y el asistente
+siguió soltando literalmente el saludo de ejemplo de la Regla 0. Y el texto de
+la sección dice lo contrario de lo que decía: **manda sobre todo lo anterior**
+—el saludo, las frases de ejemplo, el orden de las preguntas, el cierre— y sólo
+cede ante tres cosas, los DATOS OFICIALES (que se consultan, no se inventan),
+el protocolo de urgencias y el paso a recepción, y no diagnosticar ni prometer.
 Sin enseñanzas devuelve cadena vacía, así que una clínica que no entrenó tiene
 exactamente el prompt de siempre. Tope de `MAX_LESSONS_IN_PROMPT` (60): cada
 enseñanza son tokens en TODAS las ráfagas de TODAS las conversaciones.
+
+**Retos: el panel recomienda, no sólo escucha** (`lib/agent-training/quests.ts`,
+puro y con tests; migración `0039_entrenamiento_retos.sql`). Nadie sabe de
+entrada qué hay que enseñarle a un asistente, y la pantalla en blanco es lo que
+hace que una clínica entre una vez y no vuelva. Junto a la charla hay un
+catálogo fijo de doce ajustes con el texto YA redactado ("que pregunte con quién
+habla", "que el precio no cierre la conversación", "que no prometa resultados"):
+se leen y se aplican con un clic. Es catálogo y no LLM a propósito: sale al
+instante, no cuesta tokens y se testea. Un reto aplicado guarda su
+`agent_lessons.quest_id` y **no vuelve a recomendarse** —ni pausado: si la
+clínica lo apagó, volvérselo a ofrecer es no escucharla— con único parcial
+`(tenant_id, quest_id)` para que dos personas pulsando a la vez no dejen la
+enseñanza duplicada en el prompt. Encima va el **nivel** del asistente
+(`levelFor`), que cuenta TODAS las enseñanzas activas y no sólo los retos: si
+contara sólo el catálogo, la clínica que se toma el trabajo de enseñarle cosas
+suyas vería su asistente estancado en el primer nivel.
 
 **Tres pestañas por URL** (`?tab=ensenar|aprendido|probar`, Server Components,
 no `TabsContent`): la charla con el entrenador y sus tarjetas; la lista de lo

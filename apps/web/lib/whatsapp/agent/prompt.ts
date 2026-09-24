@@ -273,8 +273,11 @@ export function buildSystemPrompt(input: BuildSystemPromptInput): string {
     agentName,
     contactPhoneE164,
   } = input;
-  // Lo aprendido va DESPUÉS de la personalización y ANTES de las reglas duras:
-  // afina el criterio del modelo, no lo que la clínica tiene por oficial.
+  // Lo aprendido va AL FINAL del prompt, no arriba. Puesto antes de las
+  // cuatrocientas líneas de reglas y guiones, el modelo se quedaba con el
+  // guion: una clínica enseñó "pregunta con quién hablo al saludar" y el
+  // asistente siguió soltando el saludo de ejemplo de la Regla 0. Es lo
+  // último que lee y es lo que manda sobre CÓMO se comporta.
   const lessonsSection = formatLessonsForPrompt(input.lessons ?? []);
   // El nombre con que se presenta y el teléfono del contacto (si lo tenemos y
   // no es un placeholder de prueba). El teléfono se inyecta para que el agente
@@ -351,7 +354,7 @@ tienes que preguntarle si quiere reagendar — ya lo pidió. Tu trabajo:
     });
   }
 
-  return `Eres el asistente virtual de WhatsApp de la clínica "${clinic.name}".${personaSection}${lessonsSection}${phoneSection}${leadMemorySection}${careSection}${resumeSection}
+  return `Eres el asistente virtual de WhatsApp de la clínica "${clinic.name}".${personaSection}${phoneSection}${leadMemorySection}${careSection}${resumeSection}
 Atiendes TODO lo que llega a la clínica por WhatsApp: pacientes existentes, personas
 interesadas, y también proveedores, profesionales, mutuas, postulantes, prensa, etc.
 Hablas español de España.
@@ -547,7 +550,7 @@ paciente con un mensaje breve en castellano, listo para enviar por WhatsApp.
 Si has llamado a "request_handoff", la app enviará la respuesta estándar — tu
 mensaje final será ignorado en ese caso, así que NO repitas el texto. Tras
 "flag_urgent" SÍ debes escribir tu mensaje final (la confirmación de la cita de
-urgencia que agendaste): ese mensaje se envía tal cual.`;
+urgencia que agendaste): ese mensaje se envía tal cual.${lessonsSection}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -592,7 +595,7 @@ function buildDerivePrompt(input: {
     lessonsSection,
   } = input;
 
-  return `Eres el asistente virtual de WhatsApp de "${clinic.name}".${personaSection}${lessonsSection}${phoneSection}${leadMemorySection}${careSection}
+  return `Eres el asistente virtual de WhatsApp de "${clinic.name}".${personaSection}${phoneSection}${leadMemorySection}${careSection}
 Atiendes TODO lo que llega por WhatsApp: pacientes, personas interesadas, y también
 proveedores, profesionales, mutuas, postulantes, prensa, etc.
 Hablas español de España.
@@ -756,5 +759,5 @@ ${formatFaqs(faqs)}
 Cuando termines de usar herramientas (o decidas que no hace falta), responde al
 paciente con un mensaje breve en castellano, listo para enviar por WhatsApp.
 Si has llamado a "derive_to_professional" o a "request_handoff", el mensaje de cierre
-lo pone la app — tu texto final se ignora en ese caso, así que NO lo repitas.`;
+lo pone la app — tu texto final se ignora en ese caso, así que NO lo repitas.${lessonsSection}`;
 }

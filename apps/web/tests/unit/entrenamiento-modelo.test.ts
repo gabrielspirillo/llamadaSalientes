@@ -28,7 +28,7 @@ describe('formatLessonsForPrompt', () => {
     ];
 
     const out = formatLessonsForPrompt(lessons);
-    expect(out).toContain('# Lo que te ha enseñado la clínica');
+    expect(out).toContain('LO QUE TE HA ENSEÑADO LA CLÍNICA');
     expect(out).toContain('Qué responder:');
     expect(out).toContain('- Cuando preguntan el precio de los implantes: No des la cifra');
     expect(out).toContain('Lo que NO debes hacer ni decir:');
@@ -37,13 +37,16 @@ describe('formatLessonsForPrompt', () => {
     expect(out).not.toContain('Tono y trato:');
   });
 
-  it('deja claro que no manda sobre los datos oficiales', () => {
+  it('manda sobre el guion de arriba pero no sobre los datos oficiales', () => {
     const out = formatLessonsForPrompt([
       { kind: 'RULE', title: 'x', situation: null, instruction: 'Ofrece cita esta semana.' },
     ]);
-    expect(out).toContain('OFICIALES (precios, horarios, agenda, tratamientos)');
-    expect(out).toContain('"Reglas duras"');
-    expect(out).toContain('manda lo oficial');
+    // Lo primero es lo que faltaba: una clínica enseñó "pregunta con quién
+    // hablo al saludar" y el asistente siguió con el saludo de ejemplo.
+    expect(out).toContain('manda sobre todo lo anterior');
+    expect(out).toContain('el saludo, las frases de ejemplo');
+    expect(out).toContain('DATOS OFICIALES');
+    expect(out).toContain('urgencias');
   });
 });
 

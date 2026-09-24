@@ -381,6 +381,8 @@ export const agentLessons = pgTable(
     status: text('status').notNull().default('ACTIVE'),
     // COACH | MANUAL
     source: text('source').notNull().default('COACH'),
+    /** Reto recomendado del que salió (migración 0039). Único por tenant. */
+    questId: text('quest_id'),
     createdBy: text('created_by'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),

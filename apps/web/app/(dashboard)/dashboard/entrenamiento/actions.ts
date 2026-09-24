@@ -14,6 +14,7 @@ import {
   MAX_LESSON_SITUATION,
   MAX_LESSON_TITLE,
 } from '@/lib/agent-training/model';
+import { questById } from '@/lib/agent-training/quests';
 import { recordAudit } from '@/lib/audit';
 import { requireTaskRole } from '@/lib/tasks/auth';
 import { revalidatePath } from 'next/cache';
@@ -120,6 +121,51 @@ export async function dismissProposalAction(input: {
     revalidatePath(RUTA);
     return { ok: true };
   } catch (err) {
+    return fail(err);
+  }
+}
+
+/**
+ * Aplica un reto recomendado. Un clic: el texto ya está escrito.
+ *
+ * El único parcial `(tenant_id, quest_id)` de la migración 0039 es lo que
+ * impide que dos personas del equipo pulsando a la vez dejen la misma
+ * enseñanza dos veces en el prompt. Aquí se traduce a un mensaje entendible en
+ * vez de un error de base.
+ */
+export async function applyQuestAction(questId: string): Promise<ActionResult> {
+  try {
+    const { tenantId, userId } = await guard();
+    const quest = questById(questId);
+    if (!quest) return { ok: false, error: 'Ese ajuste ya no existe' };
+
+    const created = await createLesson({
+      tenantId,
+      kind: quest.kind,
+      title: quest.title,
+      situation: quest.situation,
+      instruction: quest.instruction,
+      source: 'COACH',
+      questId: quest.id,
+      createdBy: userId,
+    });
+
+    await recordAudit({
+      tenantId,
+      actorUserId: userId,
+      action: 'create',
+      entity: 'agent_lesson',
+      entityId: created.id,
+      after: created,
+    });
+
+    revalidatePath(RUTA);
+    return { ok: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '';
+    if (message.includes('agent_lessons_tenant_quest_uidx')) {
+      return { ok: false, error: 'Ese ajuste ya se lo habéis enseñado' };
+    }
     return fail(err);
   }
 }
