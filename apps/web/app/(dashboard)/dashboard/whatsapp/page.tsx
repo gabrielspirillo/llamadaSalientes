@@ -19,7 +19,7 @@ import {
 import { getCurrentTenant } from '@/lib/tenant';
 
 import { AutoRefresh } from './_components/auto-refresh';
-import { ConnectWhatsappButton } from './_components/connect-whatsapp';
+import { ConnectWhatsappButton, DisconnectWhatsappButton } from './_components/connect-whatsapp';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,12 +71,18 @@ export default async function WhatsappConversationsPage() {
   const [{ role, isSuperAdmin }, connections] = await Promise.all([
     resolveTenantRole(),
     db
-      .select({ status: whatsappConnections.status })
+      .select({ mode: whatsappConnections.mode, status: whatsappConnections.status })
       .from(whatsappConnections)
       .where(eq(whatsappConnections.tenantId, tenant.id)),
   ]);
+  const isAdmin = role === 'admin' || isSuperAdmin;
   const isConnected = connections.some((c) => c.status === 'CONNECTED');
-  const canConnect = (role === 'admin' || isSuperAdmin) && !isConnected;
+  const canConnect = isAdmin && !isConnected;
+  // Desvincular sólo tiene sentido sobre el número que la propia clínica
+  // escaneó: las conexiones que gestiona Futura (Cloud API, Twilio) se tocan
+  // desde su pantalla, no desde aquí.
+  const canDisconnect =
+    isAdmin && connections.some((c) => c.mode === 'EVOLUTION' && c.status === 'CONNECTED');
 
   const rows = await db
     .select({
@@ -175,6 +181,7 @@ export default async function WhatsappConversationsPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {canConnect && <ConnectWhatsappButton />}
+            {canDisconnect && <DisconnectWhatsappButton />}
             {isSuperAdmin && (
               <Button asChild variant="secondary" size="sm">
                 <Link href="/dashboard/configuration?tab=whatsapp">

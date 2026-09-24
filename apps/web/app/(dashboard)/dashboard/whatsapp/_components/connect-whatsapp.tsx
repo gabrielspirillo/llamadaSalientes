@@ -5,15 +5,16 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { CheckCircle2, Loader2, QrCode, RefreshCw, Smartphone } from 'lucide-react';
+import { CheckCircle2, Loader2, QrCode, RefreshCw, Smartphone, Unplug } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
-import { checkWhatsappLink, requestWhatsappQr } from '../connect-actions';
+import { checkWhatsappLink, disconnectWhatsapp, requestWhatsappQr } from '../connect-actions';
 
 /**
  * Alta de WhatsApp desde la propia bandeja, para el dueño o el administrador
@@ -199,5 +200,62 @@ function ConnectWhatsappDialog({
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * Desvincular el número. Va detrás de una confirmación porque mientras esté
+ * desconectado el asistente deja de atender: nadie recibe ni responde nada por
+ * WhatsApp, y eso no se ve hasta que un paciente escribe y no le contestan.
+ */
+export function DisconnectWhatsappButton() {
+  const router = useRouter();
+  const [open, setOpen] = React.useState(false);
+  const [pending, setPending] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  async function onConfirm() {
+    setPending(true);
+    setError(null);
+    const res = await disconnectWhatsapp();
+    setPending(false);
+    if (!res.success) {
+      setError(res.error);
+      return;
+    }
+    setOpen(false);
+    router.refresh();
+  }
+
+  return (
+    <>
+      <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
+        <Unplug className="h-4 w-4" /> Desconectar WhatsApp
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>¿Desconectar WhatsApp?</DialogTitle>
+            <DialogDescription>
+              Se cerrará la sesión del WhatsApp de la clínica. Dejarás de recibir y responder
+              mensajes desde aquí, y tu asistente no atenderá a nadie hasta que lo vuelvas a
+              conectar escaneando un código nuevo. Las conversaciones que ya tienes no se borran.
+            </DialogDescription>
+          </DialogHeader>
+
+          {error && <p className="text-[13px] text-rose-600">{error}</p>}
+
+          <DialogFooter>
+            <Button size="sm" variant="secondary" onClick={() => setOpen(false)} disabled={pending}>
+              Cancelar
+            </Button>
+            <Button size="sm" variant="danger" onClick={() => void onConfirm()} disabled={pending}>
+              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Desconectar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

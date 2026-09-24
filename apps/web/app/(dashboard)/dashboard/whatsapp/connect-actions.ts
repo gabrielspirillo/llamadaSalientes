@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 
 import { requireTaskRole } from '@/lib/tasks/auth';
 
-import { connectEvolution, getEvolutionConnectionState } from './integrations/actions';
+import { connectEvolution, disconnect, getEvolutionConnectionState } from './integrations/actions';
 
 /**
  * Alta de WhatsApp para la propia clínica (dueño o administrador).
@@ -84,4 +84,22 @@ export async function checkWhatsappLink(): Promise<ConnectResult<{ connected: bo
   const connected = res.data.status === 'CONNECTED';
   if (connected) revalidatePath('/dashboard/whatsapp');
   return { success: true, data: { connected } };
+}
+
+export async function disconnectWhatsapp(): Promise<ConnectResult<null>> {
+  const denied = await assertAdmin();
+  if (denied) return { success: false, error: denied };
+
+  const res = await disconnect({ mode: 'EVOLUTION' });
+  if (!res.success) {
+    console.warn('[whatsapp-connect] no se pudo desconectar:', res.error);
+    return {
+      success: false,
+      error:
+        'No pudimos cerrar la sesión de WhatsApp. Inténtalo de nuevo; si sigue fallando, avísanos.',
+    };
+  }
+
+  revalidatePath('/dashboard/whatsapp');
+  return { success: true, data: null };
 }
