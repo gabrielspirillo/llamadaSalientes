@@ -2,7 +2,7 @@ import 'server-only';
 
 import { db } from '@/lib/db/client';
 import { agentLessons, agentTrainingMessages } from '@/lib/db/schema';
-import { and, desc, eq, isNotNull } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 
 import {
   type LessonKind,
@@ -22,7 +22,6 @@ export interface AgentLesson {
   instruction: string;
   status: LessonStatus;
   source: LessonSource;
-  questId: string | null;
   createdBy: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -39,7 +38,6 @@ function toLesson(row: typeof agentLessons.$inferSelect): AgentLesson {
     instruction: row.instruction,
     status: row.status === 'PAUSED' ? 'PAUSED' : 'ACTIVE',
     source: row.source === 'MANUAL' ? 'MANUAL' : 'COACH',
-    questId: row.questId,
     createdBy: row.createdBy,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -101,7 +99,6 @@ export async function createLesson(input: {
   situation: string | null;
   instruction: string;
   source: LessonSource;
-  questId?: string | null;
   createdBy: string | null;
 }): Promise<AgentLesson> {
   const [row] = await db
@@ -113,7 +110,6 @@ export async function createLesson(input: {
       situation: input.situation,
       instruction: input.instruction,
       source: input.source,
-      questId: input.questId ?? null,
       createdBy: input.createdBy,
     })
     .returning();
@@ -146,21 +142,6 @@ export async function deleteLesson(tenantId: string, id: string): Promise<void> 
   await db
     .delete(agentLessons)
     .where(and(eq(agentLessons.tenantId, tenantId), eq(agentLessons.id, id)));
-}
-
-/**
- * Los retos que esta clínica ya aplicó, activos o en pausa.
- *
- * Cuentan también los pausados: la clínica decidió que ese consejo no le vale,
- * y volvérselo a recomendar es no escucharla.
- */
-export async function listAppliedQuestIds(tenantId: string): Promise<string[]> {
-  const rows = await db
-    .select({ questId: agentLessons.questId })
-    .from(agentLessons)
-    .where(and(eq(agentLessons.tenantId, tenantId), isNotNull(agentLessons.questId)))
-    .limit(200);
-  return rows.map((r) => r.questId).filter((id): id is string => Boolean(id));
 }
 
 export async function countActiveLessons(tenantId: string): Promise<number> {

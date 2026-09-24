@@ -449,6 +449,14 @@ se guarda: una clínica entrena en varios ratos, no de una sentada).
 un segundo LLM con su propio prompt y UNA sola herramienta,
 `proponer_ensenanzas`. Traduce "es que cuando preguntan el precio suelta la
 cifra y se nos van" en tarjetas concretas. Claves:
+- ⚠️ **Su actitud por defecto es PROPONER, y el prompt lo dice con esas
+  palabras.** La primera versión abría con un "NUNCA propongas una enseñanza que
+  fije un precio, un horario o una hora libre" y cerraba con un bloque de
+  prohibiciones: el modelo generalizó y contestaba "no puedo hacerlo" a casi
+  todo, dejando la sección inútil. Ahora el "no puedo" está acotado a tres casos
+  (diagnosticar, quitar urgencias o el paso a recepción, mentir al paciente) y lo
+  de los datos concretos es un matiz, no una negativa: si le dictan un precio,
+  propone igual la enseñanza de CÓMO responder y añade dónde se cambia la cifra.
 - **Propone, nunca guarda.** Aplica la persona que está delante, de a una
   tarjeta, y puede editar el texto antes. Un modelo que se auto-aprueba
   instrucciones para otro modelo es la forma más rápida de que el asistente
@@ -478,21 +486,20 @@ Sin enseñanzas devuelve cadena vacía, así que una clínica que no entrenó ti
 exactamente el prompt de siempre. Tope de `MAX_LESSONS_IN_PROMPT` (60): cada
 enseñanza son tokens en TODAS las ráfagas de TODAS las conversaciones.
 
-**Retos: el panel recomienda, no sólo escucha** (`lib/agent-training/quests.ts`,
-puro y con tests; migración `0039_entrenamiento_retos.sql`). Nadie sabe de
-entrada qué hay que enseñarle a un asistente, y la pantalla en blanco es lo que
-hace que una clínica entre una vez y no vuelva. Junto a la charla hay un
-catálogo fijo de doce ajustes con el texto YA redactado ("que pregunte con quién
-habla", "que el precio no cierre la conversación", "que no prometa resultados"):
-se leen y se aplican con un clic. Es catálogo y no LLM a propósito: sale al
-instante, no cuesta tokens y se testea. Un reto aplicado guarda su
-`agent_lessons.quest_id` y **no vuelve a recomendarse** —ni pausado: si la
-clínica lo apagó, volvérselo a ofrecer es no escucharla— con único parcial
-`(tenant_id, quest_id)` para que dos personas pulsando a la vez no dejen la
-enseñanza duplicada en el prompt. Encima va el **nivel** del asistente
-(`levelFor`), que cuenta TODAS las enseñanzas activas y no sólo los retos: si
-contara sólo el catálogo, la clínica que se toma el trabajo de enseñarle cosas
-suyas vería su asistente estancado en el primer nivel.
+⚠️ **Los "retos" recomendados se probaron y se quitaron** (migraciones 0039 y
+0040). Eran un tablero al lado de la charla con el nivel del asistente y doce
+ajustes de catálogo aplicables con un clic. La clínica los pidió fuera: quiere
+la conversación, no un tablero de niveles compitiendo con ella. La 0040 devuelve
+la columna `quest_id`; las enseñanzas que hubieran salido de un reto se quedan,
+porque son instrucciones válidas. Si vuelve a plantearse, el problema real que
+resolvían —la pantalla en blanco— se ataca mejor dentro del propio chat.
+
+**Ver lo que lee el asistente**: la pestaña "Lo aprendido" trae un desplegable
+con el texto EXACTO que se le añade al prompt, generado por
+`formatLessonsForPrompt` en el mismo render. La primera pregunta de todo el
+mundo es si esto cambia de verdad al asistente o es un cuaderno aparte; con el
+texto delante se acaba la duda y se ve por qué una instrucción vaga no cambia
+nada.
 
 **Tres pestañas por URL** (`?tab=ensenar|aprendido|probar`, Server Components,
 no `TabsContent`): la charla con el entrenador y sus tarjetas; la lista de lo

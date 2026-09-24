@@ -2,7 +2,6 @@ import { PageHeader } from '@/components/dashboard/page-header';
 import { WhatsappTester } from '@/components/dashboard/whatsapp-tester';
 import { LessonActions } from '@/components/entrenamiento/lesson-actions';
 import { LessonDialog } from '@/components/entrenamiento/lesson-dialog';
-import { QuestBoard } from '@/components/entrenamiento/quest-board';
 import { type ChatTurn, TrainerChat } from '@/components/entrenamiento/trainer-chat';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,20 +9,17 @@ import { Card } from '@/components/ui/card';
 import { Callout, EmptyState } from '@/components/ui/feedback';
 import { Stagger } from '@/components/ui/motion';
 import { SegmentedNav } from '@/components/ui/tabs';
-import {
-  listAppliedQuestIds,
-  listLessons,
-  listTrainingMessages,
-} from '@/lib/agent-training/lessons';
+import { listLessons, listTrainingMessages } from '@/lib/agent-training/lessons';
 import {
   LESSON_KIND_LABEL,
   LESSON_KIND_TONE,
+  type LessonLine,
   MAX_LESSONS_IN_PROMPT,
+  formatLessonsForPrompt,
 } from '@/lib/agent-training/model';
-import { levelFor, pendingQuests } from '@/lib/agent-training/quests';
 import { getWhatsappAgentSettings } from '@/lib/data/whatsapp-agent-settings';
 import { getCurrentTenant } from '@/lib/tenant';
-import { BookOpen, GraduationCap, MessageSquare, Plus, Sparkles } from 'lucide-react';
+import { BookOpen, FileText, GraduationCap, MessageSquare, Plus, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
@@ -47,8 +43,7 @@ function normalizar(v: string | undefined): Pestana {
 }
 
 const DESCRIPCION: Record<Pestana, string> = {
-  ensenar:
-    'Cuéntale qué quieres que responda mejor, o aplica uno de los ajustes que te recomienda.',
+  ensenar: 'Cuéntale a tu asistente qué quieres que responda mejor. Él te lo deja listo.',
   aprendido: 'Todo lo que tu asistente ha aprendido de vosotros. Se puede editar y pausar.',
   probar: 'Escríbele como si fueras un paciente y comprueba que ha aprendido.',
 };
@@ -129,26 +124,17 @@ export default async function EntrenamientoPage({
       <SegmentedNav items={items} activeValue={tab} className="mb-5" />
 
       {tab === 'ensenar' && (
-        <div className="grid gap-5 lg:grid-cols-3 lg:items-start">
-          <div className="lg:col-span-2">
-            <TrainerChat
-              agentName={agentName}
-              initialTurns={(await listTrainingMessages(tenant.id)).map(
-                (m): ChatTurn => ({
-                  id: m.id,
-                  role: m.role,
-                  content: m.content,
-                  proposals: m.proposals,
-                }),
-              )}
-            />
-          </div>
-          <QuestBoard
-            level={levelFor(activas.length)}
-            pending={pendingQuests(await listAppliedQuestIds(tenant.id))}
-            activeLessons={activas.length}
-          />
-        </div>
+        <TrainerChat
+          agentName={agentName}
+          initialTurns={(await listTrainingMessages(tenant.id)).map(
+            (m): ChatTurn => ({
+              id: m.id,
+              role: m.role,
+              content: m.content,
+              proposals: m.proposals,
+            }),
+          )}
+        />
       )}
 
       {tab === 'aprendido' && (
@@ -158,6 +144,47 @@ export default async function EntrenamientoPage({
               Tu asistente tiene en cuenta las {MAX_LESSONS_IN_PROMPT} enseñanzas más recientes.
               Pausa o borra las que ya no apliquen para que entren las nuevas.
             </Callout>
+          )}
+
+          {activas.length > 0 && (
+            <Card className="overflow-hidden">
+              {/* La pregunta que hace todo el mundo la primera vez es si esto
+                  cambia de verdad al asistente. Aquí está el texto exacto que
+                  se le añade, sin intermediarios. */}
+              <details className="group">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-5 text-[14px] font-semibold text-zinc-900">
+                  <span className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-zinc-400" />
+                    Ver lo que lee tu asistente
+                  </span>
+                  <span className="text-[12px] font-medium text-zinc-400 group-open:hidden">
+                    Mostrar
+                  </span>
+                  <span className="hidden text-[12px] font-medium text-zinc-400 group-open:inline">
+                    Ocultar
+                  </span>
+                </summary>
+                <div className="border-t border-(--color-border) px-5 py-4">
+                  <p className="mb-3 text-[13px] leading-relaxed text-zinc-500">
+                    Esto se añade al final de las instrucciones del asistente de WhatsApp, en cada
+                    conversación y antes de que conteste. No sustituye lo que ya sabe de la clínica:
+                    se suma, y manda sobre su forma de responder por defecto.
+                  </p>
+                  <pre className="max-h-[420px] overflow-auto rounded-[14px] bg-zinc-50 p-4 font-mono text-[12px] leading-relaxed text-zinc-700 whitespace-pre-wrap">
+                    {formatLessonsForPrompt(
+                      activas.map(
+                        (l): LessonLine => ({
+                          kind: l.kind,
+                          title: l.title,
+                          situation: l.situation,
+                          instruction: l.instruction,
+                        }),
+                      ),
+                    ).trim()}
+                  </pre>
+                </div>
+              </details>
+            </Card>
           )}
 
           {lessons.length === 0 ? (
