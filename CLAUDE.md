@@ -494,6 +494,40 @@ la columna `quest_id`; las enseñanzas que hubieran salido de un reto se quedan,
 porque son instrucciones válidas. Si vuelve a plantearse, el problema real que
 resolvían —la pantalla en blanco— se ataca mejor dentro del propio chat.
 
+**También cambia los DATOS, no sólo la forma de responder** (migración
+`0041_entrenamiento_cambios_datos.sql`; lo puro en
+`lib/agent-training/data-changes.ts` con tests, lo que escribe en
+`lib/agent-training/clinic-data.ts`). Enseñarle a responder no arregla un precio
+desactualizado, y contestar "eso se cambia en Registros → Tratamientos" es
+mandar a la clínica a otra pantalla a hacer a mano lo que acaba de explicar con
+palabras. El entrenador tiene una segunda herramienta,
+`proponer_cambios_de_datos`, con la que toca `treatments`, `faqs` y
+`clinic_settings` — **las tablas de siempre, sin copia de nada**: lo aplicado
+sale en Registros y en la ficha en el acto, y al revés.
+- **La tarjeta enseña el antes → el después**, no la frase del modelo: nadie
+  aprueba un precio que no ha visto. Se aplica con un clic, como una enseñanza.
+- **El cambio se lee de la propuesta guardada, nunca del cuerpo de la acción**:
+  del cliente sólo se acepta CUÁL cambio (`messageId` + `ref`). Si no,
+  cualquiera con sesión escribiría el precio que quisiera pasando por ahí.
+- **"Ya no lo hacemos" es DEACTIVATE, nunca borrar**: un tratamiento está
+  referenciado por citas ya dadas y por `professional_treatments`. El borrado
+  duro sólo existe para las FAQs, que no cuelgan de nada.
+- El id del tratamiento o de la FAQ sale del catálogo que el prompt le da entre
+  corchetes; **un id inventado se descarta al parsear**, igual que un cambio que
+  no cambia nada o un precio ilegible: es preferible a enseñar una tarjeta que
+  al pulsarla va a fallar.
+- Los precios se leen con `parseAmountToCents` de `lib/agenda/billing.ts`, el
+  mismo lector que los cobros. Dos lectores de importes en la misma app se
+  separan al tercer caso raro y el que se queda corto guarda 1,5 € donde se
+  dijo 1.500.
+- El horario de atención y la agenda NO se tocan desde aquí (el horario es un
+  jsonb por día y la agenda tiene su propio motor): el prompt se lo dice y
+  señala dónde se cambian.
+- Mismo listón de rol que el resto (`operator`): quien puede editar un
+  tratamiento desde Registros puede hacerlo desde aquí. Pedir `admin` sólo en
+  esta puerta haría que el entrenador se negara a lo que la misma persona hace
+  a dos clics.
+
 **Ver lo que lee el asistente**: la pestaña "Lo aprendido" trae un desplegable
 con el texto EXACTO que se le añade al prompt, generado por
 `formatLessonsForPrompt` en el mismo render. La primera pregunta de todo el

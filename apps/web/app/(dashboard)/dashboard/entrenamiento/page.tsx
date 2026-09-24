@@ -43,7 +43,8 @@ function normalizar(v: string | undefined): Pestana {
 }
 
 const DESCRIPCION: Record<Pestana, string> = {
-  ensenar: 'Cuéntale a tu asistente qué quieres que responda mejor. Él te lo deja listo.',
+  ensenar:
+    'Cuéntale qué quieres que responda mejor, o qué dato hay que cambiar. Te lo deja listo para aprobar.',
   aprendido: 'Todo lo que tu asistente ha aprendido de vosotros. Se puede editar y pausar.',
   probar: 'Escríbele como si fueras un paciente y comprueba que ha aprendido.',
 };
@@ -132,6 +133,7 @@ export default async function EntrenamientoPage({
               role: m.role,
               content: m.content,
               proposals: m.proposals,
+              dataChanges: m.dataChanges,
             }),
           )}
         />

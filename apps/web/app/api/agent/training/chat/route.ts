@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
       role: 'assistant',
       content: result.reply,
       proposals: result.proposals,
+      dataChanges: result.dataChanges,
     });
 
     return NextResponse.json({
@@ -70,6 +71,7 @@ export async function POST(req: NextRequest) {
         id: coachMessage.id,
         content: coachMessage.content,
         proposals: coachMessage.proposals,
+        dataChanges: coachMessage.dataChanges,
       },
       model: result.model,
     });

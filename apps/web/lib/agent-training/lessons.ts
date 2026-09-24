@@ -4,6 +4,7 @@ import { db } from '@/lib/db/client';
 import { agentLessons, agentTrainingMessages } from '@/lib/db/schema';
 import { and, desc, eq } from 'drizzle-orm';
 
+import type { DataChangeProposal } from './data-changes';
 import {
   type LessonKind,
   type LessonLine,
@@ -162,6 +163,7 @@ export interface TrainingMessage {
   role: 'user' | 'assistant';
   content: string;
   proposals: LessonProposal[];
+  dataChanges: DataChangeProposal[];
   authorName: string | null;
   createdAt: Date;
 }
@@ -171,11 +173,13 @@ export const TRAINING_HISTORY_TURNS = 16;
 
 function toTrainingMessage(row: typeof agentTrainingMessages.$inferSelect): TrainingMessage {
   const raw = row.proposals;
+  const rawData = row.dataChanges;
   return {
     id: row.id,
     role: row.role === 'assistant' ? 'assistant' : 'user',
     content: row.content,
     proposals: Array.isArray(raw) ? (raw as LessonProposal[]) : [],
+    dataChanges: Array.isArray(rawData) ? (rawData as DataChangeProposal[]) : [],
     authorName: row.authorName,
     createdAt: row.createdAt,
   };
@@ -216,6 +220,7 @@ export async function appendTrainingMessage(input: {
   role: 'user' | 'assistant';
   content: string;
   proposals?: LessonProposal[];
+  dataChanges?: DataChangeProposal[];
   authorName?: string | null;
 }): Promise<TrainingMessage> {
   const [row] = await db
@@ -225,6 +230,7 @@ export async function appendTrainingMessage(input: {
       role: input.role,
       content: input.content,
       proposals: input.proposals?.length ? input.proposals : null,
+      dataChanges: input.dataChanges?.length ? input.dataChanges : null,
       authorName: input.authorName ?? null,
     })
     .returning();
@@ -266,6 +272,74 @@ export async function markProposalResolved(input: {
   await db
     .update(agentTrainingMessages)
     .set({ proposals: next })
+    .where(
+      and(
+        eq(agentTrainingMessages.tenantId, input.tenantId),
+        eq(agentTrainingMessages.id, input.messageId),
+      ),
+    );
+}
+
+/**
+ * Devuelve la propuesta de cambio tal como se guardó en su turno.
+ *
+ * Es la fuente de verdad de lo que se aplica: el cuerpo de una Server Action lo
+ * escribe el navegador, así que del cliente sólo se acepta CUÁL cambio, nunca
+ * su contenido.
+ */
+export async function findDataChange(input: {
+  tenantId: string;
+  messageId: string;
+  ref: string;
+}): Promise<DataChangeProposal | null> {
+  const rows = await db
+    .select({ dataChanges: agentTrainingMessages.dataChanges })
+    .from(agentTrainingMessages)
+    .where(
+      and(
+        eq(agentTrainingMessages.tenantId, input.tenantId),
+        eq(agentTrainingMessages.id, input.messageId),
+      ),
+    )
+    .limit(1);
+  const current = rows[0]?.dataChanges;
+  if (!Array.isArray(current)) return null;
+  return (current as DataChangeProposal[]).find((c) => c.ref === input.ref) ?? null;
+}
+
+/**
+ * Marca un cambio de datos como aplicado o descartado en su turno.
+ *
+ * Mismo motivo que con las enseñanzas: sin esto, recargar devolvía la tarjeta a
+ * "pendiente" y el mismo precio se aplicaba dos veces.
+ */
+export async function markDataChangeResolved(input: {
+  tenantId: string;
+  messageId: string;
+  ref: string;
+  applied?: boolean;
+  dismissed?: boolean;
+}): Promise<void> {
+  const rows = await db
+    .select({ dataChanges: agentTrainingMessages.dataChanges })
+    .from(agentTrainingMessages)
+    .where(
+      and(
+        eq(agentTrainingMessages.tenantId, input.tenantId),
+        eq(agentTrainingMessages.id, input.messageId),
+      ),
+    )
+    .limit(1);
+  const current = rows[0]?.dataChanges;
+  if (!Array.isArray(current)) return;
+  const next = (current as DataChangeProposal[]).map((c) =>
+    c.ref === input.ref
+      ? { ...c, applied: input.applied ?? false, dismissed: input.dismissed ?? false }
+      : c,
+  );
+  await db
+    .update(agentTrainingMessages)
+    .set({ dataChanges: next })
     .where(
       and(
         eq(agentTrainingMessages.tenantId, input.tenantId),

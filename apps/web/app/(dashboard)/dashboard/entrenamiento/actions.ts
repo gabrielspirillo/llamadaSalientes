@@ -1,9 +1,12 @@
 'use server';
 
+import { applyDataChange } from '@/lib/agent-training/clinic-data';
 import {
   createLesson,
   deleteLesson,
+  findDataChange,
   getLessonById,
+  markDataChangeResolved,
   markProposalResolved,
   updateLesson,
 } from '@/lib/agent-training/lessons';
@@ -112,6 +115,73 @@ export async function dismissProposalAction(input: {
   try {
     const { tenantId } = await guard();
     await markProposalResolved({
+      tenantId,
+      messageId: input.messageId,
+      ref: input.ref,
+      dismissed: true,
+    });
+    revalidatePath(RUTA);
+    return { ok: true };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+/**
+ * Aplica un cambio de datos aprobado: precio, tratamiento, FAQ o ficha.
+ *
+ * Mismo listón de rol que el resto: quien puede editar un tratamiento desde
+ * Registros puede hacerlo desde aquí. Pedir `admin` sólo en esta puerta haría
+ * que el entrenador se negara a lo que la misma persona hace a dos clics.
+ *
+ * El cambio NO se lee del cuerpo de la petición: se lee de la propuesta
+ * guardada en su turno. Si no, cualquiera con sesión escribiría el precio que
+ * quisiera pasándolo por aquí.
+ */
+export async function applyDataChangeAction(input: {
+  messageId: string;
+  ref: string;
+}): Promise<ActionResult> {
+  try {
+    const { tenantId, userId } = await guard();
+
+    const change = await findDataChange({
+      tenantId,
+      messageId: input.messageId,
+      ref: input.ref,
+    });
+    if (!change) return { ok: false, error: 'Ese cambio ya no está disponible' };
+    if (change.applied) return { ok: false, error: 'Ese cambio ya se aplicó' };
+
+    const result = await applyDataChange({ tenantId, userId, change });
+    if (!result.ok) return { ok: false, error: result.error };
+
+    await markDataChangeResolved({
+      tenantId,
+      messageId: input.messageId,
+      ref: input.ref,
+      applied: true,
+    });
+
+    // El dato vive en las pantallas de siempre: si no se invalidan, la clínica
+    // ve el precio viejo al ir a comprobarlo y cree que no se guardó.
+    revalidatePath(RUTA);
+    revalidatePath('/dashboard/treatments');
+    revalidatePath('/dashboard/faqs');
+    revalidatePath('/dashboard/settings');
+    return { ok: true };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+export async function dismissDataChangeAction(input: {
+  messageId: string;
+  ref: string;
+}): Promise<ActionResult> {
+  try {
+    const { tenantId } = await guard();
+    await markDataChangeResolved({
       tenantId,
       messageId: input.messageId,
       ref: input.ref,

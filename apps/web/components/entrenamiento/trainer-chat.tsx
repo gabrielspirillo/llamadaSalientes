@@ -6,10 +6,12 @@ import { Card } from '@/components/ui/card';
 import { Callout } from '@/components/ui/feedback';
 import { Textarea } from '@/components/ui/input';
 import { Equalizer } from '@/components/ui/stat';
+import type { DataChangeProposal } from '@/lib/agent-training/data-changes';
 import type { LessonProposal } from '@/lib/agent-training/model';
 import { GraduationCap, Loader2, RotateCcw, Send, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
+import { DataChangeCard } from './data-change-card';
 import { ProposalCard } from './proposal-card';
 
 export interface ChatTurn {
@@ -17,14 +19,15 @@ export interface ChatTurn {
   role: 'user' | 'assistant';
   content: string;
   proposals: LessonProposal[];
+  dataChanges: DataChangeProposal[];
 }
 
 /** Arranques de conversación. Quitan el folio en blanco, que es lo que frena. */
 const SUGERENCIAS = [
+  'La limpieza dental ahora son 60 €, actualízalo',
   'Cuando preguntan el precio, que no suelte la cifra y ofrezca una primera valoración',
-  'Que salude diciendo el nombre de la clínica y pregunte en qué puede ayudar',
-  'Si alguien escribe fuera del horario, que avise de cuándo le contestamos',
-  'Cuando preguntan por el parking, que diga que hay uno público en la misma calle',
+  'Añade una pregunta frecuente: sí aceptamos Adeslas y Sanitas',
+  'Ya no hacemos blanqueamiento, quítalo de lo que ofrece',
 ];
 
 /**
@@ -71,6 +74,7 @@ export function TrainerChat({
       role: 'user',
       content: limpio,
       proposals: [],
+      dataChanges: [],
     };
     setTurns((prev) => [...prev, provisional]);
     setSending(true);
@@ -93,6 +97,7 @@ export function TrainerChat({
           role: 'assistant' as const,
           content: body.reply.content,
           proposals: (body.reply.proposals ?? []) as LessonProposal[],
+          dataChanges: (body.reply.dataChanges ?? []) as DataChangeProposal[],
         },
       ]);
     } catch (err) {
@@ -193,8 +198,16 @@ export function TrainerChat({
                   <div className="max-w-[92%] whitespace-pre-wrap rounded-[18px] rounded-tl-md bg-zinc-50 px-4 py-2.5 text-[14px] leading-relaxed text-zinc-800">
                     {t.content}
                   </div>
-                  {t.proposals.length > 0 && (
+                  {(t.proposals.length > 0 || t.dataChanges.length > 0) && (
                     <div className="space-y-2">
+                      {t.dataChanges.map((c) => (
+                        <DataChangeCard
+                          key={c.ref}
+                          messageId={t.id}
+                          change={c}
+                          onApplied={() => router.refresh()}
+                        />
+                      ))}
                       {t.proposals.map((p) => (
                         <ProposalCard
                           key={p.ref}
@@ -261,7 +274,8 @@ export function TrainerChat({
           </Button>
         </div>
         <p className="mt-2 text-[12px] text-zinc-400">
-          Nada cambia hasta que apruebas una tarjeta.
+          Puede cambiar cómo responde y también los datos: precios, tratamientos y preguntas
+          frecuentes. Nada se guarda hasta que apruebas la tarjeta.
         </p>
       </div>
     </Card>

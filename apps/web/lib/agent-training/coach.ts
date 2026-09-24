@@ -5,6 +5,8 @@ import { callLLM } from '@/lib/whatsapp/agent/llm';
 import type { LlmMessage, LlmToolDefinition } from '@/lib/whatsapp/agent/llm';
 import { loadGroundingForTenant } from '@/lib/whatsapp/agent/prompt';
 
+import { formatDataContextForPrompt, loadClinicDataContext } from './clinic-data';
+import { type ClinicDataContext, type DataChangeProposal, parseDataChanges } from './data-changes';
 import { listLessonLines } from './lessons';
 import {
   LESSON_KINDS,
@@ -80,6 +82,92 @@ const PROPOSE_TOOL: LlmToolDefinition = {
   },
 };
 
+/**
+ * La segunda herramienta: cambiar el DATO, no sólo la forma de contarlo.
+ *
+ * Va aparte de `proponer_ensenanzas` para que cada una tenga su esquema y el
+ * modelo no mezcle "cómo responder" con "cuánto cuesta". Y como la otra, sólo
+ * propone: lo aplica la persona.
+ */
+const DATA_TOOL: LlmToolDefinition = {
+  name: 'proponer_cambios_de_datos',
+  description:
+    'Propone cambios en los datos de la clínica: precios y duración de tratamientos, alta o baja de tratamientos, preguntas frecuentes, y dirección o teléfonos. Úsala cuando lo que hay que corregir es el DATO y no la forma de responder. La persona de la clínica verá el antes y el después y decidirá si lo aplica.',
+  parameters: {
+    type: 'object',
+    properties: {
+      changes: {
+        type: 'array',
+        description: 'Entre 1 y 4 cambios. Cada uno se aplica por separado.',
+        items: {
+          type: 'object',
+          properties: {
+            entity: {
+              type: 'string',
+              enum: ['TREATMENT', 'FAQ', 'CLINIC'],
+              description:
+                'TREATMENT = un tratamiento del catálogo. FAQ = una pregunta frecuente. CLINIC = dirección, teléfonos o número de recepción.',
+            },
+            op: {
+              type: 'string',
+              enum: ['CREATE', 'UPDATE', 'DEACTIVATE', 'ACTIVATE', 'DELETE'],
+              description:
+                'CREATE para dar de alta, UPDATE para cambiar. DEACTIVATE deja de ofrecer un tratamiento sin borrar su historial (es lo que hay que usar para "ya no lo hacemos"); ACTIVATE lo vuelve a ofrecer. DELETE sólo vale para FAQ.',
+            },
+            target_id: {
+              type: 'string',
+              description:
+                'El id EXACTO de la lista de arriba. Obligatorio salvo en CREATE y en CLINIC. Nunca te lo inventes: si no lo tienes, pregunta a qué se refiere.',
+            },
+            name: { type: 'string', description: 'TREATMENT: nombre del tratamiento.' },
+            description: {
+              type: 'string',
+              description: 'TREATMENT: qué incluye, en una o dos frases.',
+            },
+            duration_minutes: {
+              type: 'number',
+              description: 'TREATMENT: cuánto dura la cita, entre 5 y 480 minutos.',
+            },
+            price_min: {
+              type: 'string',
+              description:
+                'TREATMENT: precio, o el mínimo si es una horquilla. Sólo el número, como lo dictó la clínica ("60", "1.250,00").',
+            },
+            price_max: {
+              type: 'string',
+              description: 'TREATMENT: máximo de la horquilla. Omítelo si el precio es único.',
+            },
+            currency: { type: 'string', description: 'TREATMENT: moneda. EUR si no dicen otra.' },
+            question: {
+              type: 'string',
+              description: 'FAQ: la pregunta tal como la haría un paciente.',
+            },
+            answer: { type: 'string', description: 'FAQ: la respuesta, en el tono de la clínica.' },
+            category: {
+              type: 'string',
+              description: 'FAQ: categoría corta (Precios, Pagos, Ubicación…).',
+            },
+            address: { type: 'string', description: 'CLINIC: dirección completa.' },
+            phones: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'CLINIC: teléfonos de la clínica.',
+            },
+            transfer_number: {
+              type: 'string',
+              description: 'CLINIC: número al que se pasan las llamadas y las urgencias.',
+            },
+          },
+          required: ['entity', 'op'],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ['changes'],
+    additionalProperties: false,
+  },
+};
+
 export interface CoachTurn {
   role: 'user' | 'assistant';
   content: string;
@@ -88,6 +176,7 @@ export interface CoachTurn {
 export interface CoachResult {
   reply: string;
   proposals: LessonProposal[];
+  dataChanges: DataChangeProposal[];
   model: string;
 }
 
@@ -105,20 +194,11 @@ export function buildCoachSystemPrompt(input: {
   clinicName: string;
   agentName: string | null;
   mode: 'BOOKING' | 'DERIVE';
-  treatments: string[];
-  faqs: string[];
+  data: ClinicDataContext;
   lessons: readonly LessonLine[];
 }): string {
   const nombreAgente = input.agentName?.trim() || 'el asistente';
-  const catalogo = input.treatments.length
-    ? input.treatments.slice(0, 40).join(', ')
-    : '(catálogo de tratamientos vacío)';
-  const preguntas = input.faqs.length
-    ? input.faqs
-        .slice(0, 25)
-        .map((q) => `- ${q}`)
-        .join('\n')
-    : '(sin preguntas frecuentes cargadas)';
+  const datos = formatDataContextForPrompt(input.data);
 
   const queHace =
     input.mode === 'DERIVE'
@@ -148,20 +228,32 @@ ${queHace}
 Atiende a pacientes, a personas interesadas y también a proveedores o a quien se
 equivoca de número. Cuando algo se le escapa, pasa la conversación a recepción.
 
-# Lo que el asistente YA sabe
-Tratamientos del catálogo: ${catalogo}
-Preguntas frecuentes cargadas:
-${preguntas}
-También conoce el nombre, la dirección, los teléfonos y el horario de la clínica,
-y consulta la agenda en vivo.
+# Los datos de la clínica, hoy
+${datos}
+El asistente lee estos datos en cada conversación, más el horario de la clínica
+y la agenda en vivo.
 
-Un dato concreto —un precio, un horario, una hora libre— no se enseña aquí: se
-cambia en su ficha (Registros → Tratamientos, Registros → Preguntas frecuentes,
-Clínica → Datos de la clínica) y el asistente lo lee de ahí. Eso NO es motivo
-para no proponer: si te dictan un precio, propón igualmente la enseñanza de CÓMO
-responder ("ante el precio de X, explica de qué depende y ofrece valoración") y
-añade en una línea dónde se cambia la cifra. Sólo cuando lo único que te piden
-es cambiar el número, dices dónde se cambia y no propones nada.
+# Tienes DOS herramientas, y son para cosas distintas
+- "proponer_ensenanzas" cambia CÓMO responde: el saludo, el tono, qué ofrece,
+  cuándo pasa a recepción, qué no debe decir.
+- "proponer_cambios_de_datos" cambia el DATO: el precio o la duración de un
+  tratamiento, dar de alta uno nuevo, dejar de ofrecer otro, una pregunta
+  frecuente, la dirección o los teléfonos.
+
+Si te dicen "la limpieza ahora son 60 €", eso es un CAMBIO DE DATO: propónlo con
+la herramienta de datos, no como enseñanza. Nunca le digas a la clínica que vaya
+a otra pantalla a cambiarlo: se cambia desde aquí.
+Si te piden las dos cosas a la vez ("subí el precio y que no lo suelte a bocajarro"),
+llama a las dos herramientas en el mismo turno.
+
+Reglas de los datos:
+- El "target_id" sale SIEMPRE de la lista de arriba, entre corchetes. Si no
+  sabes a qué tratamiento o pregunta se refieren, pregunta cuál; no adivines.
+- "Ya no lo hacemos" es DEACTIVATE, nunca borrar: el tratamiento está en citas
+  ya dadas y en la ficha de los profesionales.
+- El horario de atención y la agenda NO se tocan desde aquí. Si te lo piden,
+  dilo y señala Clínica → Datos de la clínica o Agenda.
+- Un precio con horquilla lleva mínimo y máximo. Uno solo, sólo mínimo.
 
 # Lo que la clínica ya le ha enseñado
 ${formatExistingLessons(input.lessons)}
@@ -207,18 +299,18 @@ export async function runCoach(input: {
   userText: string;
   refPrefix: string;
 }): Promise<CoachResult> {
-  const [grounding, settings, lessons] = await Promise.all([
+  const [grounding, settings, lessons, data] = await Promise.all([
     loadGroundingForTenant(input.tenantId),
     getWhatsappAgentSettings(input.tenantId).catch(() => null),
     listLessonLines(input.tenantId).catch(() => [] as LessonLine[]),
+    loadClinicDataContext(input.tenantId),
   ]);
 
   const system = buildCoachSystemPrompt({
     clinicName: grounding.clinic.name,
     agentName: settings?.agentName ?? null,
     mode: settings?.mode ?? 'BOOKING',
-    treatments: grounding.treatments.map((t) => t.name),
-    faqs: grounding.faqs.map((f) => f.question),
+    data,
     lessons,
   });
 
@@ -229,27 +321,41 @@ export async function runCoach(input: {
   ];
 
   let proposals: LessonProposal[] = [];
+  let dataChanges: DataChangeProposal[] = [];
   let reply: string | null = null;
   let model = 'unknown';
 
   for (let iter = 0; iter < 2; iter++) {
     const result = await callLLM({
       messages,
-      tools: [PROPOSE_TOOL],
+      tools: [PROPOSE_TOOL, DATA_TOOL],
       temperature: COACH_TEMPERATURE,
     });
     model = result.model;
 
-    const call = result.toolCalls.find((c) => c.name === 'proponer_ensenanzas');
-    if (!call) {
+    // Un turno puede traer las dos herramientas: "subí el precio Y que no lo
+    // suelte a bocajarro" son un cambio de dato y una enseñanza.
+    const llamadas = result.toolCalls.filter(
+      (c) => c.name === 'proponer_ensenanzas' || c.name === 'proponer_cambios_de_datos',
+    );
+    if (llamadas.length === 0) {
       reply = result.text;
       break;
     }
 
-    // Sólo se aceptan las de la primera llamada: si el modelo insiste en una
-    // segunda vuelta, ya tiene sus tarjetas y lo que falta es el mensaje.
-    if (proposals.length === 0) {
-      proposals = parseProposals((call.args as { lessons?: unknown }).lessons, input.refPrefix);
+    // Sólo cuenta la primera vuelta: si el modelo insiste, ya tiene sus
+    // tarjetas y lo que falta es el mensaje para la persona.
+    for (const call of llamadas) {
+      if (call.name === 'proponer_ensenanzas' && proposals.length === 0) {
+        proposals = parseProposals((call.args as { lessons?: unknown }).lessons, input.refPrefix);
+      }
+      if (call.name === 'proponer_cambios_de_datos' && dataChanges.length === 0) {
+        dataChanges = parseDataChanges(
+          (call.args as { changes?: unknown }).changes,
+          input.refPrefix,
+          data,
+        );
+      }
     }
 
     if (result.text?.trim()) {
@@ -257,26 +363,29 @@ export async function runCoach(input: {
       break;
     }
 
+    const hayAlgo = proposals.length > 0 || dataChanges.length > 0;
     messages.push({ role: 'assistant', content: result.text, toolCalls: result.toolCalls });
-    messages.push({
-      role: 'tool',
-      toolCallId: call.id,
-      name: call.name,
-      content:
-        proposals.length > 0
+    for (const call of result.toolCalls) {
+      messages.push({
+        role: 'tool',
+        toolCallId: call.id,
+        name: call.name,
+        content: hayAlgo
           ? 'Las tarjetas ya se le están mostrando a la persona de la clínica. Escribe ahora tu mensaje: dos o tres frases sobre qué has entendido y qué cambia. No repitas el texto de las tarjetas.'
-          : 'No se ha podido leer ninguna enseñanza de esa llamada. Explícaselo en una frase y vuelve a proponer con el formato correcto.',
-    });
+          : 'No se ha podido leer nada de esa llamada: revisa que el target_id salga de la lista y que los campos obligatorios estén. Explícaselo en una frase y vuelve a proponer.',
+      });
+    }
   }
 
   const texto = reply?.trim();
   return {
     reply:
       texto ||
-      (proposals.length > 0
+      (proposals.length > 0 || dataChanges.length > 0
         ? 'He preparado esto a partir de lo que me has contado. Revísalo y aplica lo que encaje.'
         : 'No te he entendido del todo. ¿Me cuentas con un ejemplo qué respondió el asistente y qué habrías respondido tú?'),
     proposals,
+    dataChanges,
     model,
   };
 }

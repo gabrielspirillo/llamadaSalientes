@@ -402,6 +402,8 @@ export const agentTrainingMessages = pgTable(
     content: text('content').notNull(),
     /** Propuestas del entrenador en ese turno, con su marca de aplicadas. */
     proposals: jsonb('proposals').$type<unknown>(),
+    /** Cambios de datos propuestos en ese turno (migración 0041). */
+    dataChanges: jsonb('data_changes').$type<unknown>(),
     authorName: text('author_name'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
