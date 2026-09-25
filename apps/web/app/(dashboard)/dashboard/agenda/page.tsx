@@ -38,15 +38,24 @@ export default async function AgendaPage({
 }) {
   const params = await searchParams;
   const ctx = await getAgendaContext();
-  const timezone = await resolveTimezone(ctx.tenantId, null);
+
+  // Las tres sólo dependen del tenant, que `getAgendaContext` ya resolvió:
+  // encadenadas eran tres round-trips en serie antes de empezar a mirar el
+  // calendario, en la pantalla más visitada del módulo.
+  //
+  // `careProfile` decide si esta clínica lleva a sus pacientes como personas
+  // (con edad y ficha propia). Sin perfil, nada de eso se carga después.
+  const [timezone, professionalRows, careProfile] = await Promise.all([
+    resolveTimezone(ctx.tenantId, null),
+    listProfessionals(ctx.tenantId),
+    getCareProfile(ctx.tenantId),
+  ]);
 
   const todayKey = localDateKey(new Date(), timezone);
   const dateKey = /^\d{4}-\d{2}-\d{2}$/.test(params.date ?? '')
     ? (params.date as string)
     : todayKey;
   const view = params.view === 'week' ? 'week' : 'day';
-
-  const professionalRows = await listProfessionals(ctx.tenantId);
 
   // "Agendar" desde la ficha: la clave del paciente viene en la URL y el alta
   // se abre ya rellena. Una clave que no resuelve a nadie no abre nada.
@@ -100,10 +109,6 @@ export default async function AgendaPage({
   const professionalIds = professionals.map((p) => p.id);
   const scopedIds =
     selectedProfessionalId === 'all' ? professionalIds : [selectedProfessionalId].filter(Boolean);
-
-  // El perfil de atención decide si esta clínica lleva a sus pacientes como
-  // personas (con edad y ficha propia). Sin perfil, nada de esto se carga.
-  const careProfile = await getCareProfile(ctx.tenantId);
 
   const [appointments, blocks, catalog, shiftRows, persons] = await Promise.all([
     scopedIds.length > 0

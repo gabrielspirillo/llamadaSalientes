@@ -18,81 +18,85 @@ export async function searchAll(tenantId: string, q: string, limit = 10): Promis
   if (term.length < 2) return [];
   const like = `%${term}%`;
 
-  const callRows = await db
-    .select({
-      id: calls.id,
-      retellCallId: calls.retellCallId,
-      fromNumber: calls.fromNumber,
-      toNumber: calls.toNumber,
-      summary: calls.summary,
-      intent: calls.intent,
-      startedAt: calls.startedAt,
-      customData: calls.customData,
-    })
-    .from(calls)
-    .where(
-      and(
-        eq(calls.tenantId, tenantId),
-        or(
-          ilike(calls.fromNumber, like),
-          ilike(calls.toNumber, like),
-          ilike(calls.summary, like),
-          ilike(calls.intent, like),
-          ilike(calls.retellCallId, like),
-        ),
-      ),
-    )
-    .orderBy(desc(calls.startedAt))
-    .limit(limit);
-
-  const treatmentRows = await db
-    .select({ id: treatments.id, name: treatments.name, description: treatments.description })
-    .from(treatments)
-    .where(
-      and(
-        eq(treatments.tenantId, tenantId),
-        or(ilike(treatments.name, like), ilike(treatments.description, like)),
-      ),
-    )
-    .limit(5);
-
-  // Movimientos del módulo Finanzas (concepto, proveedor, notas), sólo si la
-  // clínica lo tiene contratado: un resultado que lleva a una página con
-  // candado no es un resultado. Si la tabla no existe todavía, no rompe.
-  const financeRows = await (async () => {
-    try {
-      const [t] = await db
-        .select({ modules: tenants.enabledModules })
-        .from(tenants)
-        .where(eq(tenants.id, tenantId))
-        .limit(1);
-      if (!t?.modules?.finance) return [];
-      return await db
-        .select({
-          id: financeEntries.id,
-          kind: financeEntries.kind,
-          concept: financeEntries.concept,
-          counterparty: financeEntries.counterparty,
-          amountCents: financeEntries.amountCents,
-          occurredOn: financeEntries.occurredOn,
-        })
-        .from(financeEntries)
-        .where(
-          and(
-            eq(financeEntries.tenantId, tenantId),
-            or(
-              ilike(financeEntries.concept, like),
-              ilike(financeEntries.counterparty, like),
-              ilike(financeEntries.notes, like),
-            ),
+  // Las tres van en paralelo: no dependen entre sí y esto corre en cada tecleo
+  // del buscador global. Encadenadas eran tres round-trips por pulsación.
+  const [callRows, treatmentRows, financeRows] = await Promise.all([
+    db
+      .select({
+        id: calls.id,
+        retellCallId: calls.retellCallId,
+        fromNumber: calls.fromNumber,
+        toNumber: calls.toNumber,
+        summary: calls.summary,
+        intent: calls.intent,
+        startedAt: calls.startedAt,
+        customData: calls.customData,
+      })
+      .from(calls)
+      .where(
+        and(
+          eq(calls.tenantId, tenantId),
+          or(
+            ilike(calls.fromNumber, like),
+            ilike(calls.toNumber, like),
+            ilike(calls.summary, like),
+            ilike(calls.intent, like),
+            ilike(calls.retellCallId, like),
           ),
-        )
-        .orderBy(desc(financeEntries.occurredOn))
-        .limit(5);
-    } catch {
-      return [];
-    }
-  })();
+        ),
+      )
+      .orderBy(desc(calls.startedAt))
+      .limit(limit),
+
+    db
+      .select({ id: treatments.id, name: treatments.name, description: treatments.description })
+      .from(treatments)
+      .where(
+        and(
+          eq(treatments.tenantId, tenantId),
+          or(ilike(treatments.name, like), ilike(treatments.description, like)),
+        ),
+      )
+      .limit(5),
+
+    // Movimientos del módulo Finanzas (concepto, proveedor, notas), sólo si la
+    // clínica lo tiene contratado: un resultado que lleva a una página con
+    // candado no es un resultado. Si la tabla no existe todavía, no rompe.
+    (async () => {
+      try {
+        const [t] = await db
+          .select({ modules: tenants.enabledModules })
+          .from(tenants)
+          .where(eq(tenants.id, tenantId))
+          .limit(1);
+        if (!t?.modules?.finance) return [];
+        return await db
+          .select({
+            id: financeEntries.id,
+            kind: financeEntries.kind,
+            concept: financeEntries.concept,
+            counterparty: financeEntries.counterparty,
+            amountCents: financeEntries.amountCents,
+            occurredOn: financeEntries.occurredOn,
+          })
+          .from(financeEntries)
+          .where(
+            and(
+              eq(financeEntries.tenantId, tenantId),
+              or(
+                ilike(financeEntries.concept, like),
+                ilike(financeEntries.counterparty, like),
+                ilike(financeEntries.notes, like),
+              ),
+            ),
+          )
+          .orderBy(desc(financeEntries.occurredOn))
+          .limit(5);
+      } catch {
+        return [];
+      }
+    })(),
+  ]);
 
   const hits: SearchHit[] = [];
 

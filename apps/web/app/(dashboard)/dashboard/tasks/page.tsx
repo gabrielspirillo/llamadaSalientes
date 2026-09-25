@@ -57,20 +57,17 @@ export default async function TasksPage() {
     const currentUserId = access.internalUserId;
     const role = access.role ?? 'operator';
 
-    // loadTaskStats necesita el tablero, pero el resto no: iba fuera del
-    // Promise.all y agregaba un round-trip de más.
-    const [board, members, templates, rules] = await Promise.all([
+    // loadTaskStats necesita el tablero, pero el resto no: va fuera del
+    // Promise.all. La timezone SÍ entra en él —sólo depende del tenant— porque
+    // esperarla después sumaba otro round-trip en serie.
+    const [board, members, templates, rules, timezone] = await Promise.all([
       loadBoardTasks(tenant.id),
       loadTaskMembers(tenant.id, tenant.clerkOrganizationId),
       loadTemplates(tenant.id),
       loadAutomationRules(tenant.id),
+      getTenantTimezone(tenant.id),
     ]);
-    const stats = await loadTaskStats(
-      tenant.id,
-      board,
-      new Date(),
-      await getTenantTimezone(tenant.id),
-    );
+    const stats = await loadTaskStats(tenant.id, board, new Date(), timezone);
 
     return (
       <TasksWorkspace

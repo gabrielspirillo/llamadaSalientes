@@ -54,17 +54,22 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
   const row = convRows[0];
   if (!row) notFound();
 
-  // Marcar como leída al abrir: reseteamos el contador de no leídos. Solo
+  // Marcar como leída al abrir: reseteamos el contador de no leídos. Sólo
   // escribimos si hay algo que resetear, para no generar writes en cada render.
-  if (row.conv.unreadCount > 0) {
-    await db
-      .update(whatsappConversations)
-      .set({ unreadCount: 0 })
-      .where(eq(whatsappConversations.id, row.conv.id));
-  }
+  //
+  // Ni esto ni la memoria del lead dependen de nada de lo que viene después, y
+  // encadenados eran dos round-trips más antes del batch grande, en la pantalla
+  // de chat que más se abre. Arrancan aquí y se esperan abajo, junto al resto.
+  const markReadPromise =
+    row.conv.unreadCount > 0
+      ? db
+          .update(whatsappConversations)
+          .set({ unreadCount: 0 })
+          .where(eq(whatsappConversations.id, row.conv.id))
+      : Promise.resolve();
 
   // Memoria del lead (cross-canal) para mostrar en el sidebar. Best-effort.
-  const leadMem = await getLeadMemory(tenant.id, row.contact.phoneE164).catch(() => null);
+  const leadMemPromise = getLeadMemory(tenant.id, row.contact.phoneE164).catch(() => null);
 
   // Citas del contacto: lectura optimista de la caché local. Se busca por todas
   // sus identidades —el id del CRM y su teléfono— porque una cita de la agenda
@@ -99,7 +104,7 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
           }>,
         );
 
-  const [messages, allTags, convTagRows, membersRows, apptRows] = await Promise.all([
+  const [messages, allTags, convTagRows, membersRows, apptRows, leadMem] = await Promise.all([
     db
       .select()
       .from(whatsappMessages)
@@ -117,6 +122,8 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
       .where(eq(whatsappConversationTags.conversationId, row.conv.id)),
     listTenantMembersSynced(tenant.id, tenant.clerkOrganizationId),
     apptsPromise,
+    leadMemPromise,
+    markReadPromise,
   ]);
 
   const tagIdsOnConv = convTagRows.map((r) => r.tagId);
