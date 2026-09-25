@@ -1105,6 +1105,40 @@ categoría conserva su color aunque cambie el filtro: se pasa `colorIndex` desde
 el catálogo, no desde el ranking); ingresos en verde de marca, gastos en gris
 neutro, resultado como línea oscura.
 
+## Facturas desde la ficha del paciente
+
+Pestaña **Contable** de la ficha → **Nueva factura** (migración `0038_facturas.sql`).
+El diseño es la plantilla de Respinens (`Factura Respinens.html`, Claude Design):
+logo centrado, banda Documento · Nº · Fecha · Total, Emisor / Facturar a ·
+Tutor/a legal / Paciente, tabla de conceptos, base + IVA + total, forma de
+pago, observaciones y pie verde. Se dibuja con pdf-lib (`lib/invoices/pdf.ts`,
+puro, con tests), igual que el consentimiento.
+
+- **Autocompletado**: tutor titular (nombre, teléfono, correo) de la ficha;
+  NIF y dirección del propio tutor (`guardians[].taxId/address`, se recuerdan
+  al emitir) o, si no, del último consentimiento; sesiones atendidas sin
+  facturar ya marcadas y agrupadas por concepto + precio
+  (`groupSessionsIntoItems`); precio del cobro o del tratamiento; forma de
+  pago del cobro; concepto por defecto de la clínica.
+- **Emisor** en `invoice_settings` (una fila por clínica; la 0038 siembra la de
+  Respinens con los datos de su plantilla). Se edita en Finanzas → Ajustes →
+  Datos de facturación. Sin fila, se factura a nombre de la clínica.
+- **Numeración** `AAAA-0000001` por año, asignada dentro de una transacción con
+  `SELECT … FOR UPDATE` sobre `invoice_settings` (dos altas a la vez no sacan
+  el mismo número). El próximo número se puede ajustar para continuar una
+  serie existente.
+- **Inmutable**: la factura copia emisor y destinatario al emitirse. No se
+  borra: se **anula** (sólo admin), el número queda, las sesiones vuelven a ser
+  facturables y el PDF se regenera con la marca ANULADA.
+- `patient_charges.invoice_id` une cobro y factura: una sesión en una factura
+  viva no se vuelve a ofrecer. Al emitir se puede registrar el cobro de las
+  sesiones pendientes con la misma forma y fecha.
+- **Enviar**: descargar (`GET /api/facturas/[id]/pdf?download=1`, URL firmada
+  contra `S3_PUBLIC_BASE_URL` con `Content-Disposition: attachment`), correo
+  (`mailto:` ya escrito; el PDF se adjunta a mano) o WhatsApp
+  (`connector.sendMedia('document')` con URL firmada de 24 h; queda en el
+  inbox como PDF enviado por el equipo).
+
 ## Módulo Mensajes (core, sin gate de `enabled_modules`)
 
 Sección `/dashboard/messages` (label "Mensajes"). Chat interno del equipo. Transversal, como Tareas.

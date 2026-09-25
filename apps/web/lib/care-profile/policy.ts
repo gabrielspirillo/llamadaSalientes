@@ -60,6 +60,9 @@ export const guardianSchema = z.object({
   email: z.string().trim().max(160).optional(),
   channel: z.enum(CONTACT_CHANNELS).nullable().optional(),
   primary: z.boolean().optional(),
+  /** NIF/NIE y dirección: los pide la factura y se recuerdan de una a otra. */
+  taxId: z.string().trim().max(24).optional(),
+  address: z.string().trim().max(240).optional(),
 });
 /** Hasta cuatro: madre, padre, abuela que trae al niño, tutor legal. */
 export const guardiansSchema = z.array(guardianSchema).max(4);

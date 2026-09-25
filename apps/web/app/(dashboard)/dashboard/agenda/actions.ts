@@ -50,6 +50,12 @@ import {
 } from '@/lib/consents/service';
 import { createTreatment, listTreatmentsForTenant } from '@/lib/data/treatments';
 import {
+  type InvoiceBillTo,
+  type InvoiceItemInput,
+  InvoiceValidationError,
+} from '@/lib/invoices/model';
+import { issueInvoice, sendInvoiceWhatsapp, voidInvoice } from '@/lib/invoices/service';
+import {
   type PatientInput,
   type PatientMarksInput,
   PatientValidationError,
@@ -77,7 +83,8 @@ function fail(err: unknown): { ok: false; error: string; code?: 'POLICY' } {
     err instanceof AgendaForbiddenError ||
     err instanceof PatientValidationError ||
     err instanceof ConsentError ||
-    err instanceof DocumensoError
+    err instanceof DocumensoError ||
+    err instanceof InvoiceValidationError
   ) {
     return { ok: false, error: err.message };
   }
@@ -768,6 +775,116 @@ export async function registerPaymentAction(input: {
     }).catch(() => undefined);
     revalidatePath(`/dashboard/agenda/pacientes/${encodeURIComponent(result.patientKey)}`);
     return { ok: true, data: { chargeId: result.chargeId } };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+// ─── Facturas desde la ficha (migración 0038) ────────────────────────────────
+
+function revalidatePatientKey(patientKey: string) {
+  revalidatePath(`/dashboard/agenda/pacientes/${encodeURIComponent(patientKey)}`);
+}
+
+export interface IssueInvoiceActionInput {
+  patientKey: string;
+  patientId: string | null;
+  patientName: string;
+  billTo: InvoiceBillTo;
+  items: InvoiceItemInput[];
+  paymentMethod: PaymentMethod | null;
+  issuedOn: string;
+  notes: string | null;
+  registerPayment: boolean;
+  rememberBillTo: boolean;
+}
+
+/** Emite la factura: número, PDF y las sesiones marcadas. Quien puede cobrar puede facturar. */
+export async function issueInvoiceAction(
+  input: IssueInvoiceActionInput,
+): Promise<ActionResult<{ id: string; number: string; totalCents: number; warning?: string }>> {
+  try {
+    const ctx = await requireAgendaWriter();
+    const onlyProfessionalId = ctx.scope === 'OWN' ? ctx.professional?.id : undefined;
+    for (const it of input.items) {
+      for (const appointmentId of it.appointmentIds ?? []) {
+        await assertChargeAppointmentInScope(ctx.tenantId, appointmentId, onlyProfessionalId);
+      }
+    }
+    const result = await issueInvoice({ tenantId: ctx.tenantId, userId: ctx.userId }, input);
+    await recordAudit({
+      tenantId: ctx.tenantId,
+      actorUserId: ctx.userId,
+      action: 'create',
+      entity: 'invoice',
+      entityId: result.id,
+      after: {
+        patientKey: input.patientKey,
+        number: result.number,
+        totalCents: result.totalCents,
+        billTo: input.billTo.name,
+      },
+    }).catch(() => undefined);
+    revalidatePatientKey(input.patientKey);
+    return {
+      ok: true,
+      data: {
+        id: result.id,
+        number: result.number,
+        totalCents: result.totalCents,
+        warning: result.warning,
+      },
+    };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+export async function sendInvoiceWhatsappAction(
+  invoiceId: string,
+  phone: string,
+): Promise<ActionResult<{ sent: true }>> {
+  try {
+    const ctx = await requireAgendaWriter();
+    const result = await sendInvoiceWhatsapp(
+      { tenantId: ctx.tenantId, userId: ctx.userId },
+      invoiceId,
+      phone,
+    );
+    await recordAudit({
+      tenantId: ctx.tenantId,
+      actorUserId: ctx.userId,
+      action: 'update',
+      entity: 'invoice',
+      entityId: invoiceId,
+      after: { patientKey: result.patientKey, number: result.number, whatsappSent: true },
+    }).catch(() => undefined);
+    revalidatePatientKey(result.patientKey);
+    return { ok: true, data: { sent: true } };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+/** Anular es de administrador: una factura anulada sigue existiendo con su número. */
+export async function voidInvoiceAction(invoiceId: string, reason: string): Promise<ActionResult> {
+  try {
+    const ctx = await requireAgendaManager();
+    const result = await voidInvoice(
+      { tenantId: ctx.tenantId, userId: ctx.userId },
+      invoiceId,
+      reason,
+    );
+    await recordAudit({
+      tenantId: ctx.tenantId,
+      actorUserId: ctx.userId,
+      action: 'update',
+      entity: 'invoice',
+      entityId: invoiceId,
+      after: { patientKey: result.patientKey, number: result.number, status: 'VOID', reason },
+    }).catch(() => undefined);
+    revalidatePatientKey(result.patientKey);
+    return { ok: true };
   } catch (err) {
     return fail(err);
   }

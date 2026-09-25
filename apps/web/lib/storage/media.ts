@@ -87,12 +87,54 @@ export async function mediaUpload(input: UploadInput): Promise<UploadResult> {
  */
 export async function mediaSignedUrl(
   path: string,
-  options?: { bucket?: string; expiresInSeconds?: number },
+  options?: {
+    bucket?: string;
+    expiresInSeconds?: number;
+    /** Fuerza la descarga con este nombre (Content-Disposition: attachment). */
+    downloadName?: string;
+    /**
+     * Firma contra la URL pública (`S3_PUBLIC_BASE_URL`) en vez del endpoint
+     * interno: hace falta cuando el enlace lo abre alguien de fuera —el
+     * navegador del usuario, el proveedor de WhatsApp—. Una firma v4 lleva el
+     * host dentro, así que la del endpoint interno no vale desde fuera.
+     */
+    publicHost?: boolean;
+  },
 ): Promise<string> {
   const bucket = options?.bucket ?? env.S3_BUCKET_WHATSAPP;
   const expiresIn = options?.expiresInSeconds ?? 60 * 60 * 24; // 24h
-  const client = getClient();
-  return getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: path }), { expiresIn });
+  const client = options?.publicHost ? getPublicClient() : getClient();
+  return getSignedUrl(
+    client,
+    new GetObjectCommand({
+      Bucket: bucket,
+      Key: path,
+      ...(options?.downloadName
+        ? {
+            ResponseContentDisposition: `attachment; filename="${options.downloadName.replace(/["\\\r\n]/g, '')}"`,
+          }
+        : {}),
+    }),
+    { expiresIn },
+  );
+}
+
+let _publicClient: S3Client | null = null;
+
+/** Como `getClient`, pero apuntando a la URL pública si la hay. */
+function getPublicClient(): S3Client {
+  if (!env.S3_PUBLIC_BASE_URL) return getClient();
+  if (_publicClient) return _publicClient;
+  const accessKeyId = env.S3_ACCESS_KEY;
+  const secretAccessKey = env.S3_SECRET_KEY;
+  if (!accessKeyId || !secretAccessKey) return getClient();
+  _publicClient = new S3Client({
+    region: env.S3_REGION,
+    endpoint: env.S3_PUBLIC_BASE_URL,
+    credentials: { accessKeyId, secretAccessKey },
+    forcePathStyle: env.S3_FORCE_PATH_STYLE,
+  });
+  return _publicClient;
 }
 
 /**

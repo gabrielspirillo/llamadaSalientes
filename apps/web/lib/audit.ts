@@ -39,7 +39,10 @@ export type AuditEntity =
   // Módulo Finanzas (migración 0036).
   | 'finance_entry'
   | 'finance_category'
-  | 'finance_settings';
+  | 'finance_settings'
+  // Facturas desde la ficha (migración 0038).
+  | 'invoice'
+  | 'invoice_settings';
 
 export async function recordAudit(input: {
   tenantId: string;
