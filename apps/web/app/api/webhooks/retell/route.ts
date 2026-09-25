@@ -179,23 +179,19 @@ export async function POST(req: NextRequest) {
       const identity = identityPatch(call);
       const transcriptEnc = call.transcript ? encrypt(call.transcript) : undefined;
 
-      // Resumen rápido en español usando Gemini (si está disponible).
-      // El job Inngest después puede sobreescribir con OpenAI si está configurado.
-      let summaryEs: string | undefined = analysis?.call_summary || undefined;
-      let intentEs: string | undefined;
-      let sentimentEs: string | undefined = mapRetellSentiment(analysis?.user_sentiment);
-
-      if (call.transcript && process.env.GEMINI_API_KEY) {
-        try {
-          const { summarizeCallWithGemini } = await import('@/lib/gemini/client');
-          const ai = await summarizeCallWithGemini(call.transcript);
-          summaryEs = ai.summary || summaryEs;
-          intentEs = ai.intent || undefined;
-          sentimentEs = ai.sentiment || sentimentEs;
-        } catch (err) {
-          console.error('[retell-webhook] gemini summary fallo:', err);
-        }
-      }
+      // Aquí NO se llama a ningún LLM.
+      //
+      // Antes se resumía con Gemini en este punto, antes de contestarle a
+      // Retell. Eso colgaba el ack del evento más frecuente de la centralita
+      // durante lo que tardara el proveedor —en el mismo proceso Node que
+      // sirve el panel—, y Retell reintentaba el webhook mientras tanto. Y era
+      // trabajo repetido: el job `process-call` ya resume la transcripción.
+      //
+      // La fila se guarda con lo que Retell ya trae (su propio resumen y el
+      // sentimiento mapeado), así que la llamada se ve en el panel al instante;
+      // el resumen en español lo escribe el job unos segundos después.
+      const summaryEs: string | undefined = analysis?.call_summary || undefined;
+      const sentimentEs: string | undefined = mapRetellSentiment(analysis?.user_sentiment);
 
       await upsertCall({
         tenantId,
@@ -206,7 +202,6 @@ export async function POST(req: NextRequest) {
         status: 'ended',
         transcriptEnc,
         summary: summaryEs,
-        intent: intentEs,
         sentiment: sentimentEs,
         ...(call.disconnection_reason === 'call_transfer' ? { transferred: true } : {}),
       });

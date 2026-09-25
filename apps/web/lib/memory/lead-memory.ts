@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { and, desc, eq, or } from 'drizzle-orm';
+import { and, desc, eq, inArray, or } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import {
@@ -56,6 +56,43 @@ export async function getLeadMemory(
     .where(and(eq(leadMemory.tenantId, tenantId), eq(leadMemory.phoneE164, phoneE164)))
     .limit(1);
   return rows[0] ?? null;
+}
+
+/**
+ * Resumen de memoria de MUCHOS leads de una vez, indexado por teléfono.
+ *
+ * El despacho de una campaña saliente pedía `getLeadMemory` dentro de un
+ * `Promise.all` sobre los destinatarios: con una campaña de 5000 contactos eran
+ * 5000 SELECT simultáneos contra Postgres en una sola petición HTTP, que agotan
+ * el pool de 20 conexiones —compartido con el resto del panel y con el worker—
+ * y dejan la app entera esperando conexión. Es la operación más cara del
+ * producto; aquí es UNA consulta.
+ *
+ * Sólo trae `profile_summary`, que es lo único que el despacho le pasa al
+ * agente. Los teléfonos se trocean porque un `IN (...)` de miles de valores
+ * también tiene su coste de parseo.
+ */
+export async function getLeadMemorySummaries(
+  tenantId: string,
+  phones: string[],
+): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const unique = [...new Set(phones.filter(Boolean))];
+  if (unique.length === 0) return out;
+
+  const CHUNK = 500;
+  for (let i = 0; i < unique.length; i += CHUNK) {
+    const slice = unique.slice(i, i + CHUNK);
+    const rows = await db
+      .select({ phoneE164: leadMemory.phoneE164, profileSummary: leadMemory.profileSummary })
+      .from(leadMemory)
+      .where(and(eq(leadMemory.tenantId, tenantId), inArray(leadMemory.phoneE164, slice)));
+    for (const r of rows) {
+      const summary = r.profileSummary?.trim();
+      if (summary) out.set(r.phoneE164, summary);
+    }
+  }
+  return out;
 }
 
 /** Junta el material reciente del lead, gated por los módulos activos. */

@@ -3,6 +3,9 @@ import { getRetellClient } from '@/lib/retell/client';
 import { getCurrentTenant } from '@/lib/tenant';
 import { type NextRequest, NextResponse } from 'next/server';
 
+/** Tope de espera al pedirle la grabación a Retell. */
+const RECORDING_TIMEOUT_MS = 30_000;
+
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -56,7 +59,7 @@ export async function HEAD(_req: NextRequest, { params }: { params: Promise<{ id
   }
 }
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const auth = await authorize(id);
   if ('error' in auth) return auth.error;
@@ -73,24 +76,47 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'La grabación todavía no está lista' }, { status: 425 });
   }
 
-  const audioRes = await fetch(recordingUrl);
-  if (!audioRes.ok) {
+  // El `Range` del reproductor se reenvía a Retell tal cual. Antes se anunciaba
+  // `Accept-Ranges: bytes` sin implementarlo: el navegador se creía que podía
+  // saltar por el audio y cada salto volvía a bajarse el archivo entero.
+  const range = req.headers.get('range');
+
+  let audioRes: Response;
+  try {
+    audioRes = await fetch(recordingUrl, {
+      headers: range ? { Range: range } : undefined,
+      // Una grabación larga tarda, pero sin tope un endpoint que acepta la
+      // conexión y no responde deja el request colgado hasta el timeout del
+      // runtime.
+      signal: AbortSignal.timeout(RECORDING_TIMEOUT_MS),
+    });
+  } catch (err) {
+    console.error('[recording GET] fetch de la grabación falló:', err);
+    return NextResponse.json({ error: 'No se pudo leer la grabación' }, { status: 504 });
+  }
+
+  if (!audioRes.ok || !audioRes.body) {
     return NextResponse.json(
       { error: `Retell devolvió ${audioRes.status} al pedir la grabación` },
       { status: 502 },
     );
   }
 
-  const contentType = audioRes.headers.get('content-type') ?? 'audio/wav';
-  const buffer = Buffer.from(await audioRes.arrayBuffer());
+  const headers = new Headers({
+    'Content-Type': audioRes.headers.get('content-type') ?? 'audio/wav',
+    'Cache-Control': 'private, max-age=3600',
+    'Accept-Ranges': 'bytes',
+  });
+  for (const h of ['content-length', 'content-range'] as const) {
+    const v = audioRes.headers.get(h);
+    if (v) headers.set(h, v);
+  }
 
-  return new NextResponse(buffer, {
-    status: 200,
-    headers: {
-      'Content-Type': contentType,
-      'Content-Length': buffer.length.toString(),
-      'Cache-Control': 'private, max-age=3600',
-      'Accept-Ranges': 'bytes',
-    },
+  // Se PIPEA el cuerpo en vez de `arrayBuffer()`: buferizar el archivo entero
+  // en memoria retenía megas por cada grabación que alguien abriera y no
+  // empezaba a servir nada hasta tenerlo todo.
+  return new NextResponse(audioRes.body, {
+    status: audioRes.status === 206 ? 206 : 200,
+    headers,
   });
 }

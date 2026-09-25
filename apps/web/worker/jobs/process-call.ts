@@ -39,7 +39,8 @@ type SummaryShape = {
  *
  * Pasos (todos retryables individualmente via step.run con caché en Redis):
  *   1. download-and-upload-recording → bajar audio firmado de Retell + subir a R2
- *   2. summarize-transcript          → analizar transcript con OpenAI
+ *   2. summarize-transcript          → analizar transcript (OpenAI, o Gemini
+ *                                     si no hay OpenAI configurado)
  *   3. persist-results               → escribir todo en la fila de calls
  *
  * Idempotencia: jobId = `call-${retellCallId}`. Si Retell reintenta el
@@ -71,13 +72,35 @@ export async function processCallJob(
     });
   }
 
-  // Sin OPENAI_API_KEY no inventamos clasificación: el webhook ya pudo haber
-  // guardado una mejor (Gemini) y pisarla con 'otro'/'neutro' sería peor.
+  // El resumen del transcript vive AQUÍ, no en el webhook.
+  //
+  // Hasta ahora el webhook de `call_analyzed` resumía con Gemini antes de
+  // contestarle a Retell y este job volvía a resumir con OpenAI y pisaba el
+  // resultado: dos llamadas a un LLM por llamada telefónica, una de ellas
+  // bloqueando el ack de la centralita. El estado final que se guardaba era el
+  // de OpenAI, o el de Gemini si OpenAI no estaba configurado — que es
+  // exactamente lo que hacen estas dos ramas, ya sin el trabajo repetido.
+  //
+  // Sin ninguna de las dos claves no inventamos clasificación: el webhook ya
+  // guardó el resumen que trae Retell y pisarlo con 'otro'/'neutro' sería peor.
+  // Cada rama es su propio `step.run`, así que un fallo del proveedor reintenta
+  // sólo el resumen y no vuelve a subir la grabación.
   let summary: SummaryShape | null = null;
   if (transcript && process.env.OPENAI_API_KEY) {
     summary = await step.run<SummaryShape>('summarize-transcript', async () =>
       summarizeCall(transcript),
     );
+  } else if (transcript && process.env.GEMINI_API_KEY) {
+    summary = await step.run<SummaryShape>('summarize-transcript-gemini', async () => {
+      const { summarizeCallWithGemini } = await import('@/lib/gemini/client');
+      const ai = await summarizeCallWithGemini(transcript);
+      return {
+        intent: ai.intent,
+        sentiment: ai.sentiment,
+        summary: ai.summary,
+        followUp: ai.followUp,
+      };
+    });
   }
 
   await step.run('persist-results', async () => {

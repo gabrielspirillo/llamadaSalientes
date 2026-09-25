@@ -4,7 +4,7 @@ import { type OutboundCampaign, setCampaignStatus } from '@/lib/data/outbound-ca
 import { getTenantTelephony } from '@/lib/data/tenant-telephony';
 import { db } from '@/lib/db/client';
 import { outboundTargets, phoneNumbers, tenants } from '@/lib/db/schema';
-import { getLeadMemory } from '@/lib/memory/lead-memory';
+import { getLeadMemorySummaries } from '@/lib/memory/lead-memory';
 import { getRetellClient } from '@/lib/retell/client';
 import { and, eq } from 'drizzle-orm';
 
@@ -105,37 +105,42 @@ export async function dispatchCampaign(
 
   const shared = (campaign.sharedDynamicVars ?? {}) as Record<string, string>;
 
-  const tasks = await Promise.all(
-    targets.map(async (t) => {
-      const targetVars = (t.dynamicVars ?? {}) as Record<string, string>;
-      // Memoria del lead (cross-canal) por destinatario. Best-effort.
-      const leadMem = await getLeadMemory(tenantId, t.toNumber).catch(() => null);
-      return {
-        to_number: t.toNumber,
-        retell_llm_dynamic_variables: {
-          clinic_name: clinicName,
-          current_date: today,
-          direction: 'outbound',
-          use_case: campaign.useCase,
-          patient_name: t.patientName ?? targetVars.patient_name ?? 'paciente',
-          campaign_name: campaign.name,
-          lead_memory: leadMem?.profileSummary?.trim() || '',
-          ...shared,
-          ...targetVars,
-        },
-        metadata: {
-          tenant_id: tenantId,
-          campaign_id: campaign.id,
-          target_id: t.id,
-          ghl_contact_id: t.ghlContactId ?? null,
-          patient_name: t.patientName ?? null,
-          source: 'campaign',
-          direction: 'outbound',
-          use_case: campaign.useCase,
-        },
-      } as const;
-    }),
-  );
+  // Memoria de los leads (cross-canal) en UNA consulta, no una por
+  // destinatario: una campaña puede llevar miles y un `Promise.all` de miles
+  // de SELECT simultáneos agota el pool de conexiones y deja esperando al
+  // panel entero. Best-effort: sin memoria, la variable va vacía.
+  const leadMemories = await getLeadMemorySummaries(
+    tenantId,
+    targets.map((t) => t.toNumber),
+  ).catch(() => new Map<string, string>());
+
+  const tasks = targets.map((t) => {
+    const targetVars = (t.dynamicVars ?? {}) as Record<string, string>;
+    return {
+      to_number: t.toNumber,
+      retell_llm_dynamic_variables: {
+        clinic_name: clinicName,
+        current_date: today,
+        direction: 'outbound',
+        use_case: campaign.useCase,
+        patient_name: t.patientName ?? targetVars.patient_name ?? 'paciente',
+        campaign_name: campaign.name,
+        lead_memory: leadMemories.get(t.toNumber) ?? '',
+        ...shared,
+        ...targetVars,
+      },
+      metadata: {
+        tenant_id: tenantId,
+        campaign_id: campaign.id,
+        target_id: t.id,
+        ghl_contact_id: t.ghlContactId ?? null,
+        patient_name: t.patientName ?? null,
+        source: 'campaign',
+        direction: 'outbound',
+        use_case: campaign.useCase,
+      },
+    } as const;
+  });
 
   const callTimeWindow =
     campaign.callWindowStart != null && campaign.callWindowEnd != null
