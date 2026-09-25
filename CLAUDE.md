@@ -1252,8 +1252,59 @@ Escrito después de una auditoría que encontró varias de estas rotas. Antes de
 - **Nada de una query por fila.** El preview del inbox de WhatsApp eran 101 queries por render, refrescadas cada 8 s.
 - **Las pestañas que son Server Components se resuelven por URL, no con `TabsContent`**: Radix sólo oculta con CSS, así que se ejecutan y se envían todas.
 - **La auto-provisión no bloquea el render** salvo la primera vez; el resto va a `after()` o al cron del worker.
-- **`recharts` y todo lo pesado entran por `next/dynamic`** (`components/dashboard/charts-lazy.tsx`).
+- **`recharts` y todo lo pesado entran por `next/dynamic`** (`components/dashboard/charts-lazy.tsx`). Un gráfico que importe `recharts` directo se salta el corte y mete la librería en el bundle de su ruta, aunque nadie mire esa pestaña.
+- **Toda navegación da señal antes de que conteste el servidor.** Los enlaces
+  del menú y las pestañas usan `NavLink` de `components/dashboard/nav-progress.tsx`,
+  que pinta la barra de arriba y marca el ítem pulsado con `useLinkStatus`. Con
+  todo el panel en `force-dynamic`, un `<Link>` pelado deja la pantalla idéntica
+  cientos de milisegundos: se lee como que el clic no registró y la gente vuelve
+  a pulsar, encolando otra navegación.
+- **`experimental.staleTimes.dynamic` está en 30 en `next.config.ts`.** El
+  default de Next 15 es 0 y el panel es todo dinámico: sin esto, volver a una
+  sección recién visitada o pulsar «atrás» re-ejecuta el layout entero en el
+  servidor. Si alguien lo quita, vuelve el «se tilda» al cambiar de sección.
+- **El layout del panel es camino crítico de TODA página.** Envuelve sidebar,
+  topbar y el contenido, así que hasta que termina no sale nada hacia el
+  navegador, ni siquiera el `loading.tsx` de la ruta destino. Todo lo que no
+  dependa de otra cosa va en la misma tanda (`Promise.all`); un `await` nuevo
+  encadenado ahí se paga en cada navegación Y en cada `router.refresh()`.
+- **Lo que se pide más de una vez por petición va en `cache()` de React**
+  (`getCurrentTenant`, `resolveTenantRole`, `findProfessionalForClerkUser`,
+  `internalUserIdFor`). Un gate nuevo que consulte por su cuenta vuelve a
+  sumar round-trips idénticos al camino crítico.
+- **Un listado nunca trae columnas que no pinta.** `listCalls` seleccionaba
+  `SELECT *` y arrastraba `transcript_enc` —la transcripción entera, cifrada—
+  en el listado de 100 filas sólo para tirarla.
+- **Un contador es `COUNT(*)`**, no traer las filas y medir el array.
+- **El escalonado de listas (`.stagger`) está capado a 300 ms en el CSS.** El
+  tope vive en `animation-delay: min(...)` de `globals.css`, no en cada lista:
+  la mitad de los usos a mano no capaban el índice y el elemento 14 aparecía
+  840 ms tarde. Eso es contenido real retrasado, no decoración.
+- **Nada que sondee corre con la pestaña en segundo plano.** Todo `setInterval`
+  del panel comprueba `document.visibilityState`.
+
+## Llamadas externas: el invariante que más se incumplía
+
+**Toda llamada a un proveedor lleva `AbortSignal.timeout`.** Está escrito arriba
+en «Colas: invariantes» desde siempre, y en septiembre de 2026 no lo cumplía
+ninguno de los diez clientes HTTP del repo. Un proveedor que acepta la conexión
+y no responde:
+
+- cuelga el request de Node hasta el timeout del runtime (minutos), en el MISMO
+  proceso que sirve el panel — de ahí buena parte del «se tilda»;
+- o inmoviliza un slot del worker para siempre, porque BullMQ renueva el lock
+  mientras el handler sigue vivo y el job nunca se marca stalled. El único modo
+  de recuperar ese slot era un redeploy.
+
+Ya lo llevan `lib/{gemini,ghl,zadarma,twilio,logger}`, `lib/ghl/oauth.ts`,
+`lib/whatsapp/{cloud,twilio,evolution}.ts`, `lib/whatsapp/agent/vision.ts` y el
+proxy de grabaciones. **Un cliente nuevo sin tope es un bug, no un descuido.**
+
+**Y ningún webhook público llama a un LLM antes de contestar.** El de Retell
+resumía con Gemini antes del ack del evento más frecuente de la centralita, y
+encima el job `process-call` ya resumía y pisaba el resultado: dos llamadas a un
+LLM por llamada telefónica, una bloqueando. Ese trabajo va a la cola.
 
 ---
 
-**Última actualización**: 2026-09-01 (auditoría con agentes de verificación: webhooks firmados, gates de rol, idempotencia de colas, migraciones huérfanas recuperadas, índices, carga percibida del panel y CI en verde).
+**Última actualización**: 2026-09-25 (auditoría de rendimiento con agentes: señal de navegación, caché del router, camino crítico del layout, topes de espera en los diez clientes externos, consultas encadenadas, índices de la migración 0044 y CI en verde).
