@@ -1,3 +1,4 @@
+import { ContactsImportDialog } from '@/components/agenda/contacts-import-dialog';
 import { PatientDialog } from '@/components/agenda/patient-dialog';
 import { PatientSignalBadges } from '@/components/agenda/patient-signals';
 import { RemovePatientButton } from '@/components/agenda/remove-patient-button';
@@ -80,7 +81,13 @@ export default async function AgendaPacientesPage({
         title={ctx.scope === 'OWN' ? 'Mis pacientes' : 'Pacientes de la agenda'}
         description="Quién ha pasado por consulta, cuándo vuelve y su historia clínica."
         actions={
-          careProfile && ctx.canWriteAppointments ? <PatientDialog mode="create" /> : undefined
+          careProfile && ctx.canWriteAppointments ? (
+            <div className="flex flex-wrap gap-2">
+              {/* Alta masiva: sólo el administrador de la clínica (o Futura). */}
+              {ctx.canManageProfessionals && <ContactsImportDialog />}
+              <PatientDialog mode="create" />
+            </div>
+          ) : undefined
         }
       />
 
