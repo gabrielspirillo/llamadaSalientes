@@ -11,6 +11,7 @@ import {
 import { upsertAppointmentCache } from '@/lib/appointments/cache';
 import { describePatientsForPhone, registerPatientPerson } from '@/lib/care-profile/agent';
 import { getCareProfileSafe } from '@/lib/care-profile/queries';
+import type { CancelledBy } from '@/lib/care-profile/signals';
 import { patchCallCustomData, setCallGhlContact } from '@/lib/data/calls';
 import { listFaqsForTenant } from '@/lib/data/faqs';
 import { getGhlIntegration } from '@/lib/data/ghl-integration';
@@ -550,8 +551,14 @@ export async function registerPatient(
 export async function cancelAppointment(
   tenantId: string,
   args: CancelAppointmentArgs,
+  /** Quién anula. Lo decide el código que llama, nunca el LLM. */
+  opts: { cancelledBy?: CancelledBy } = {},
 ): Promise<ToolResult> {
-  const internal = await agendaCancelAppointment(tenantId, args.appointment_id);
+  const internal = await agendaCancelAppointment(
+    tenantId,
+    args.appointment_id,
+    opts.cancelledBy ?? 'PATIENT',
+  );
   if (internal) return internal;
 
   const integration = await getGhlIntegration(tenantId);

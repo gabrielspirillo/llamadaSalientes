@@ -41,6 +41,7 @@ import {
 import { type TeamCandidate, listTeamCandidates } from '@/lib/agenda/team';
 import { recordAudit } from '@/lib/audit';
 import type { SessionBehavior } from '@/lib/care-profile/policy';
+import type { CancelledBy } from '@/lib/care-profile/signals';
 import { DocumensoError } from '@/lib/consents/documenso';
 import {
   ConsentError,
@@ -479,6 +480,7 @@ export async function updateAppointmentAction(
 export async function cancelAppointmentAction(
   appointmentId: string,
   reason?: string,
+  cancelledBy: CancelledBy = 'PATIENT',
 ): Promise<ActionResult> {
   try {
     const ctx = await requireAgendaWriter();
@@ -487,8 +489,14 @@ export async function cancelAppointmentAction(
       appointmentId,
       ctx.scope === 'OWN' ? ctx.professional?.id : undefined,
     );
-    await cancelAppointment(ctx, appointmentId, reason);
+    await cancelAppointment(
+      ctx,
+      appointmentId,
+      reason,
+      cancelledBy === 'CLINIC' ? 'CLINIC' : 'PATIENT',
+    );
     revalidateAgenda();
+    revalidatePath('/dashboard/agenda/pacientes', 'layout');
     return { ok: true };
   } catch (err) {
     return fail(err);
@@ -656,6 +664,8 @@ export async function setPatientMarksAction(
         patientKey: `pat:${patientId}`,
         priorityFlag: input.priorityFlag,
         googleReview: input.googleReview,
+        ...(input.hesitant === undefined ? {} : { hesitant: input.hesitant }),
+        ...(input.priorRedFlags === undefined ? {} : { priorRedFlags: input.priorRedFlags }),
       },
     }).catch(() => undefined);
     revalidatePatient(patientId);

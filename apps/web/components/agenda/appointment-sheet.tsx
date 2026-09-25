@@ -5,6 +5,7 @@ import {
   rescheduleAppointmentAction,
   updateAppointmentAction,
 } from '@/app/(dashboard)/dashboard/agenda/actions';
+import { PatientSignalBadges } from '@/components/agenda/patient-signals';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,7 +19,15 @@ import { Input, Label, Select } from '@/components/ui/input';
 import { type AppointmentStatus, SOURCE_LABELS, STATUS_LABELS } from '@/lib/agenda/shared';
 import type { CalendarItem } from '@/lib/agenda/view';
 import { cn } from '@/lib/cn';
-import { AlertTriangle, CalendarClock, Loader2, NotebookPen, Phone, User } from 'lucide-react';
+import {
+  AlertTriangle,
+  CalendarClock,
+  Flag,
+  Loader2,
+  NotebookPen,
+  Phone,
+  User,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
@@ -45,6 +54,10 @@ export function AppointmentSheet({
   const [pending, startTransition] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
   const [showReschedule, setShowReschedule] = React.useState(false);
+  // Con perfil de atención se pregunta quién cancela: sólo la cancelación de
+  // la familia es una bandera roja. Sin perfil, el botón cancela directamente.
+  const askWhoCancels = item.signals !== null;
+  const [confirmCancel, setConfirmCancel] = React.useState(false);
   const [dateKey, setDateKey] = React.useState(item.dateKey);
   const [time, setTime] = React.useState(hhmm(item.startMinute));
   const [duration, setDuration] = React.useState(item.durationMinutes);
@@ -87,6 +100,14 @@ export function AppointmentSheet({
               {STATUS_LABELS[item.status]}
             </Badge>
             <Badge tone="neutral">{SOURCE_LABELS[item.source]}</Badge>
+            {item.signals && (
+              <PatientSignalBadges
+                size="sm"
+                redFlags={item.signals.redFlags}
+                hesitant={item.signals.hesitant}
+                hesitantNote={item.signals.hesitantNote}
+              />
+            )}
             {item.patientPhone && (
               <a
                 href={`tel:${item.patientPhone}`}
@@ -251,8 +272,11 @@ export function AppointmentSheet({
                   variant="danger"
                   size="sm"
                   disabled={pending || item.status === 'CANCELLED'}
+                  aria-expanded={askWhoCancels ? confirmCancel : undefined}
                   onClick={() =>
-                    run(() => cancelAppointmentAction(item.id, 'Cancelada desde el panel'))
+                    askWhoCancels
+                      ? setConfirmCancel((v) => !v)
+                      : run(() => cancelAppointmentAction(item.id, 'Cancelada desde el panel'))
                   }
                 >
                   {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Cancelar cita
@@ -260,6 +284,41 @@ export function AppointmentSheet({
               </div>
             )}
           </div>
+
+          {canWrite && askWhoCancels && confirmCancel && item.status !== 'CANCELLED' && (
+            <div className="rounded-[14px] border border-rose-200 bg-rose-50/60 p-3">
+              <p className="text-[13px] font-semibold text-zinc-800">¿Quién cancela la cita?</p>
+              <p className="mb-2.5 text-[12px] text-zinc-600">
+                Si cancela la familia, le suma una bandera roja.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="danger"
+                  size="sm"
+                  disabled={pending}
+                  onClick={() =>
+                    run(() =>
+                      cancelAppointmentAction(item.id, 'Cancelada por la familia', 'PATIENT'),
+                    )
+                  }
+                >
+                  <Flag className="h-4 w-4" /> La familia
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={pending}
+                  onClick={() =>
+                    run(() =>
+                      cancelAppointmentAction(item.id, 'Cancelada por la clínica', 'CLINIC'),
+                    )
+                  }
+                >
+                  La clínica
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

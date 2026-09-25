@@ -6,6 +6,7 @@
 // calendario dibujaría "las 9" del navegador, no las 9 de la clínica.
 
 import type { AppointmentSource, AppointmentStatus, BlockKind } from '@/lib/agenda/shared';
+import type { RedFlagCounts } from '@/lib/care-profile/signals';
 import { localDateKey, localParts } from '@/lib/tasks/tz';
 
 export interface CalendarItem {
@@ -20,6 +21,8 @@ export interface CalendarItem {
   patientAge: string | null;
   /** Etiqueta corta junto al estado ("1ª visita"). La decide el servidor. */
   badge: string | null;
+  /** Familia que duda y banderas rojas. Sólo en clínicas con perfil; si no, null. */
+  signals: CalendarSignals | null;
   treatmentId: string | null;
   treatmentName: string | null;
   status: AppointmentStatus;
@@ -37,6 +40,12 @@ export interface CalendarItem {
   /** true si la cita se sale del día (empezó ayer o termina mañana). */
   continuesBefore: boolean;
   continuesAfter: boolean;
+}
+
+export interface CalendarSignals {
+  redFlags: RedFlagCounts;
+  hesitant: boolean;
+  hesitantNote: string | null;
 }
 
 export interface CalendarBlock {
@@ -60,6 +69,7 @@ interface SourceAppointment {
   patientPhone: string | null;
   patientAge?: string | null;
   badge?: string | null;
+  signals?: CalendarSignals | null;
   treatmentId: string | null;
   treatmentName: string | null;
   status: AppointmentStatus;
@@ -113,6 +123,7 @@ export function toCalendarItems(
         patientPhone: a.patientPhone,
         patientAge: a.patientAge ?? null,
         badge: a.badge ?? null,
+        signals: a.signals ?? null,
         treatmentId: a.treatmentId,
         treatmentName: a.treatmentName,
         status: a.status,

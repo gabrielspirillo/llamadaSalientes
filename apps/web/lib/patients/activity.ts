@@ -72,7 +72,7 @@ export function describeActivity(entry: PatientActivityEntry): string {
     case 'patient':
       if (entry.action === 'create') return 'Dio de alta al paciente';
       if (field === 'anamnesis') return 'Guardó la anamnesis';
-      if (field === 'marcas') return 'Cambió la prioridad o la reseña';
+      if (field === 'marcas') return 'Cambió las marcas del paciente';
       if (field === 'revision') return 'Dio por valorado el aviso médico';
       return 'Editó los datos del paciente';
     case 'clinical_note':

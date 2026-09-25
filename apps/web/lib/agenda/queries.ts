@@ -6,6 +6,7 @@ import { patientIdFromKey, patientKeyFor, patientKeyForPerson } from '@/lib/agen
 import { BUSY_STATUSES, type ShiftRule, type SlotCandidate } from '@/lib/agenda/shared';
 import { firstVisitRules } from '@/lib/care-profile/policy';
 import { getCareProfile } from '@/lib/care-profile/queries';
+import { EMPTY_RED_FLAGS, type RedFlagCounts } from '@/lib/care-profile/signals';
 import { db } from '@/lib/db/client';
 import {
   agendaAppointments,
@@ -319,6 +320,9 @@ export interface CalendarAppointment extends AppointmentRow {
   /** Del paciente como persona, si la cita lo tiene. 'YYYY-MM-DD'. */
   patientBirthDate: string | null;
   patientPriorityFlag: boolean;
+  patientHesitant: boolean;
+  patientHesitantNote: string | null;
+  patientPriorRedFlags: number;
 }
 
 export async function listAppointmentsInRange(
@@ -345,6 +349,9 @@ export async function listAppointmentsInRange(
       treatmentName: treatments.name,
       patientBirthDate: patients.birthDate,
       patientPriorityFlag: patients.priorityFlag,
+      patientHesitant: patients.hesitant,
+      patientHesitantNote: patients.hesitantNote,
+      patientPriorRedFlags: patients.priorRedFlags,
     })
     .from(agendaAppointments)
     .innerJoin(professionals, eq(professionals.id, agendaAppointments.professionalId))
@@ -360,6 +367,9 @@ export async function listAppointmentsInRange(
     treatmentName: r.treatmentName ?? null,
     patientBirthDate: r.patientBirthDate ?? null,
     patientPriorityFlag: r.patientPriorityFlag ?? false,
+    patientHesitant: r.patientHesitant ?? false,
+    patientHesitantNote: r.patientHesitantNote ?? null,
+    patientPriorRedFlags: r.patientPriorRedFlags ?? 0,
   }));
 }
 
@@ -553,6 +563,42 @@ export async function resolveDuration(
 
 // ─── Pacientes e historia clínica ────────────────────────────────────────────
 
+/**
+ * Banderas rojas contadas de la agenda, por paciente: faltas y cancelaciones
+ * de la familia (`isRedFlagAppointment`, aquí en SQL). Una sola consulta
+ * agrupada para la lista o el calendario entero; tira del índice
+ * (tenant_id, patient_key, starts_at). `prior` va a 0: lo pone quien tenga la
+ * ficha del paciente.
+ */
+export async function countRedFlagsByPatientKey(
+  tenantId: string,
+  patientKeys: string[],
+): Promise<Map<string, RedFlagCounts>> {
+  const keys = [...new Set(patientKeys)];
+  if (keys.length === 0) return new Map();
+  const rows = await db
+    .select({
+      patientKey: agendaAppointments.patientKey,
+      noShows: sql<number>`count(*) filter (where ${agendaAppointments.status} = 'NO_SHOW')`,
+      cancellations: sql<number>`count(*) filter (where ${agendaAppointments.status} = 'CANCELLED' and coalesce(${agendaAppointments.cancelledBy}, 'PATIENT') <> 'CLINIC')`,
+    })
+    .from(agendaAppointments)
+    .where(
+      and(
+        eq(agendaAppointments.tenantId, tenantId),
+        inArray(agendaAppointments.patientKey, keys),
+        inArray(agendaAppointments.status, ['NO_SHOW', 'CANCELLED']),
+      ),
+    )
+    .groupBy(agendaAppointments.patientKey);
+  return new Map(
+    rows.map((r) => [
+      r.patientKey,
+      { ...EMPTY_RED_FLAGS, noShows: Number(r.noShows), cancellations: Number(r.cancellations) },
+    ]),
+  );
+}
+
 export interface PatientSummary {
   patientKey: string;
   patientName: string;
@@ -563,6 +609,10 @@ export interface PatientSummary {
   patientId: string | null;
   birthDate: string | null;
   priorityFlag: boolean;
+  /** Familia que duda y banderas rojas previas (sólo pacientes-persona). */
+  hesitant: boolean;
+  hesitantNote: string | null;
+  priorRedFlags: number;
   totalAppointments: number;
   lastVisitAt: Date | null;
   nextVisitAt: Date | null;
@@ -656,6 +706,9 @@ export async function listAgendaPatients(
       patientId: person?.id ?? null,
       birthDate: person?.birthDate ?? null,
       priorityFlag: person?.priorityFlag ?? false,
+      hesitant: person?.hesitant ?? false,
+      hesitantNote: person?.hesitantNote ?? null,
+      priorRedFlags: person?.priorRedFlags ?? 0,
       totalAppointments: Number(r.totalAppointments),
       lastVisitAt: r.lastVisitAt ? new Date(r.lastVisitAt) : null,
       nextVisitAt: r.nextVisitAt ? new Date(r.nextVisitAt) : null,
@@ -700,6 +753,9 @@ async function personsWithoutAppointments(
       lastName: patients.lastName,
       birthDate: patients.birthDate,
       priorityFlag: patients.priorityFlag,
+      hesitant: patients.hesitant,
+      hesitantNote: patients.hesitantNote,
+      priorRedFlags: patients.priorRedFlags,
       phone: whatsappContacts.phoneE164,
       email: whatsappContacts.email,
       ghlContactId: whatsappContacts.ghlContactId,
@@ -724,6 +780,9 @@ async function personsWithoutAppointments(
       patientId: r.id,
       birthDate: r.birthDate,
       priorityFlag: r.priorityFlag,
+      hesitant: r.hesitant,
+      hesitantNote: r.hesitantNote,
+      priorRedFlags: r.priorRedFlags,
       totalAppointments: 0,
       lastVisitAt: null,
       nextVisitAt: null,
@@ -800,6 +859,9 @@ async function patientsWithoutAppointments(
       patientId: null,
       birthDate: null,
       priorityFlag: false,
+      hesitant: false,
+      hesitantNote: null,
+      priorRedFlags: 0,
       totalAppointments: 0,
       lastVisitAt: null,
       nextVisitAt: null,
@@ -905,6 +967,9 @@ export async function getPatientDossier(
       treatmentPriceCents: r.treatmentPriceCents ?? null,
       patientBirthDate: person?.birthDate ?? null,
       patientPriorityFlag: person?.priorityFlag ?? false,
+      patientHesitant: person?.hesitant ?? false,
+      patientHesitantNote: person?.hesitantNote ?? null,
+      patientPriorRedFlags: person?.priorRedFlags ?? 0,
     })),
     notes: noteRows.map((r) => ({
       ...r.note,

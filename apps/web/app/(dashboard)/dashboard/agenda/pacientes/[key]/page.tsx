@@ -10,6 +10,7 @@ import { PatientDialog } from '@/components/agenda/patient-dialog';
 import { type PatientFact, PatientHeader } from '@/components/agenda/patient-header';
 import { PatientMarks } from '@/components/agenda/patient-marks';
 import { PatientReviewAlert } from '@/components/agenda/patient-review-alert';
+import { PatientSignalBadges } from '@/components/agenda/patient-signals';
 import { PatientTabs } from '@/components/agenda/patient-tabs';
 import { TodayAppointmentCard, type TodayItem } from '@/components/agenda/today-appointment-card';
 import { Badge } from '@/components/ui/badge';
@@ -25,7 +26,12 @@ import {
 } from '@/lib/agenda/billing';
 import { listPatientCharges } from '@/lib/agenda/charges';
 import { type PatientTab, type PatientTabItem, isPatientTab } from '@/lib/agenda/patient-tabs';
-import { getPatientDossier, listProfessionals, resolveTimezone } from '@/lib/agenda/queries';
+import {
+  countRedFlagsByPatientKey,
+  getPatientDossier,
+  listProfessionals,
+  resolveTimezone,
+} from '@/lib/agenda/queries';
 import { STATUS_LABELS } from '@/lib/agenda/shared';
 import {
   EMPTY_BOOKING_POLICY,
@@ -43,6 +49,7 @@ import {
   primaryGuardian,
 } from '@/lib/care-profile/policy';
 import { getCareProfile } from '@/lib/care-profile/queries';
+import { EMPTY_RED_FLAGS, type RedFlagCounts } from '@/lib/care-profile/signals';
 import { listPatientConsents, tenantHasEsign } from '@/lib/consents/service';
 import { getInvoiceContext, listPatientInvoices } from '@/lib/invoices/service';
 import { describeActivity, listPatientActivity } from '@/lib/patients/activity';
@@ -93,14 +100,18 @@ export default async function PacienteDossierPage({
   const timezone = await resolveTimezone(ctx.tenantId, null);
   const viewerProfessionalId = ctx.scope === 'OWN' ? ctx.professional?.id : undefined;
 
-  const [dossier, careProfile, hasEsign, charges, professionalRows] = await Promise.all([
-    getPatientDossier(ctx.tenantId, patientKey, { viewerProfessionalId }),
-    getCareProfile(ctx.tenantId),
-    // Firma digital: sólo las clínicas que la tienen configurada ven la tarjeta.
-    tenantHasEsign(ctx.tenantId).catch(() => false),
-    listPatientCharges(ctx.tenantId, patientKey, { viewerProfessionalId }).catch(() => []),
-    listProfessionals(ctx.tenantId).catch(() => []),
-  ]);
+  const [dossier, careProfile, hasEsign, charges, professionalRows, redFlagCounts] =
+    await Promise.all([
+      getPatientDossier(ctx.tenantId, patientKey, { viewerProfessionalId }),
+      getCareProfile(ctx.tenantId),
+      // Firma digital: sólo las clínicas que la tienen configurada ven la tarjeta.
+      tenantHasEsign(ctx.tenantId).catch(() => false),
+      listPatientCharges(ctx.tenantId, patientKey, { viewerProfessionalId }).catch(() => []),
+      listProfessionals(ctx.tenantId).catch(() => []),
+      // Banderas rojas de TODAS sus citas, no sólo las que ve un profesional
+      // restringido: una falta con otra fisio también es una falta.
+      countRedFlagsByPatientKey(ctx.tenantId, [patientKey]).catch(() => new Map()),
+    ]);
   if (!dossier) notFound();
 
   const fmt = new Intl.DateTimeFormat('es-ES', {
@@ -137,6 +148,11 @@ export default async function PacienteDossierPage({
   const person = dossier.patient;
   const pediatric = careProfile?.profile === 'PEDIATRIC';
   const template = person && careProfile ? careProfile.anamnesisTemplate : [];
+  // Señales de conducta (familia que duda, banderas rojas): sólo con perfil.
+  const redFlags: RedFlagCounts | null =
+    person && careProfile
+      ? { ...(redFlagCounts.get(patientKey) ?? EMPTY_RED_FLAGS), prior: person.priorRedFlags }
+      : null;
   const hasAnamnesis = template.length > 0;
   const todayKey = localDateKey(new Date(), timezone);
   const age = person?.birthDate ? describeAge(person.birthDate, todayKey) : null;
@@ -527,6 +543,13 @@ export default async function PacienteDossierPage({
                   <Star className="h-3 w-3 fill-amber-500 text-amber-500" /> Reseña en Google
                 </Badge>
               )}
+              {person && redFlags && (
+                <PatientSignalBadges
+                  redFlags={redFlags}
+                  hesitant={person.hesitant}
+                  hesitantNote={person.hesitantNote}
+                />
+              )}
             </>
           }
           actions={
@@ -846,8 +869,8 @@ export default async function PacienteDossierPage({
                 <Card>
                   <CardTopbar
                     icon={<Star className="h-4 w-4" />}
-                    title="Prioridad y reseña"
-                    subtitle="Lo leen los asistentes"
+                    title="Marcas del paciente"
+                    subtitle="Prioridad, reseña, duda y banderas rojas"
                     tone="honey"
                   />
                   <CardContent>
@@ -857,6 +880,9 @@ export default async function PacienteDossierPage({
                       priorityReason={person.priorityReason}
                       googleReview={person.googleReview}
                       priority={priority}
+                      hesitant={person.hesitant}
+                      hesitantNote={person.hesitantNote}
+                      redFlags={redFlags ?? { ...EMPTY_RED_FLAGS, prior: person.priorRedFlags }}
                       canEdit={ctx.canWriteAppointments}
                     />
                   </CardContent>

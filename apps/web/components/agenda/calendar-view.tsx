@@ -18,6 +18,7 @@ import {
   type DialogPatient,
 } from './appointment-dialog';
 import { AppointmentSheet } from './appointment-sheet';
+import { PatientSignalBadges } from './patient-signals';
 
 export interface CalendarProfessional {
   id: string;
@@ -468,6 +469,16 @@ export function CalendarView(props: CalendarViewProps) {
                           }}
                         >
                           <span className="block truncate text-[12px] font-bold leading-tight text-zinc-900">
+                            {/* Banderas rojas y duda antes del nombre: es lo primero que recepción mira. */}
+                            {item.signals && (
+                              <PatientSignalBadges
+                                size="xs"
+                                className="mr-1"
+                                redFlags={item.signals.redFlags}
+                                hesitant={item.signals.hesitant}
+                                hesitantNote={item.signals.hesitantNote}
+                              />
+                            )}
                             {lineas === 1
                               ? `${hhmm(item.startMinute)} ${item.patientName}`
                               : item.patientName}
