@@ -410,9 +410,16 @@ function NotificationsBell({
     return v ? Number(v) : 0;
   });
 
+  // La campana vive en el topbar, o sea en TODAS las pantallas del panel. El
+  // sondeo se pausa con la pestaña en segundo plano —que es donde pasa la mayor
+  // parte del día un panel abierto— y se pone al día al volver a ella o al
+  // abrir el desplegable. Antes corría cada minuto pasara lo que pasara: una
+  // consulta por operador y por pestaña abierta, las 24 horas, para un contador
+  // que nadie estaba mirando.
   useEffect(() => {
     let mounted = true;
     async function load() {
+      if (!mounted) return;
       setLoading(true);
       try {
         const res = await fetch('/api/notifications');
@@ -424,10 +431,17 @@ function NotificationsBell({
       if (mounted) setLoading(false);
     }
     load();
-    const iv = setInterval(load, 60_000);
+    const iv = setInterval(() => {
+      if (document.visibilityState === 'visible') load();
+    }, 60_000);
+    const onVis = () => {
+      if (document.visibilityState === 'visible') load();
+    };
+    document.addEventListener('visibilitychange', onVis);
     return () => {
       mounted = false;
       clearInterval(iv);
+      document.removeEventListener('visibilitychange', onVis);
     };
   }, []);
 

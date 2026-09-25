@@ -1,4 +1,5 @@
 import { DashboardOverlays } from '@/components/dashboard/dashboard-overlays';
+import { NavProgressBar } from '@/components/dashboard/nav-progress';
 import { ScrollReset } from '@/components/dashboard/scroll-reset';
 import { DashboardSidebar } from '@/components/dashboard/sidebar';
 import { DashboardTopbar } from '@/components/dashboard/topbar';
@@ -31,6 +32,19 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect('/onboarding');
   }
 
+  // ⚠️ Este layout envuelve TODO el panel: sidebar, topbar y la página. Hasta
+  // que termina, el navegador no recibe nada nuevo — ni siquiera el
+  // `loading.tsx` de la página destino. Cada `await` encadenado aquí es tiempo
+  // en el que la pantalla se queda idéntica y la app se lee como colgada. Y no
+  // se paga sólo al navegar: cada `router.refresh()` (el inbox de WhatsApp lo
+  // dispara con cada mensaje) vuelve a ejecutarlo entero.
+  //
+  // Por eso todo lo que no dependa de otra cosa arranca a la vez. El
+  // `users.id` interno sólo necesita el usuario de Clerk, que ya tenemos, así
+  // que su consulta sale AHORA y viaja en paralelo con la del tenant en vez de
+  // esperar su turno.
+  const internalUserIdPromise = internalUserIdFor(userId).catch(() => null);
+
   // Tenant puede no existir si el webhook de Clerk todavía no llegó (1-2s).
   // En ese caso renderizamos con módulos OFF — al refrescar el tenant ya estará.
   const tenantCtx = await getCurrentTenantOrNull();
@@ -51,11 +65,36 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // El enlace se mira SIEMPRE en el servidor y la redirección es de servidor;
   // esconder ítems del menú no protegería nada (las escrituras del resto del
   // panel las corta `requireTaskRole`).
+  //
+  // La ficha de profesional y los dos badges sólo necesitan el tenant y el
+  // `users.id`, que ya están: van los tres en una única tanda. Encadenados eran
+  // tres round-trips a Postgres, uno detrás de otro, en el camino crítico de
+  // CADA página del panel.
   let agendaOnly = false;
+  let tasksBadge = 0;
+  let messagesBadge = 0;
+
   if (tenantCtx) {
-    const professional = await findProfessionalForClerkUser(tenantCtx.tenant.id, userId).catch(
-      () => null,
-    );
+    const internalUserId = await internalUserIdPromise;
+    const tenantId = tenantCtx.tenant.id;
+
+    const [professional, tasks, messages] = await Promise.all([
+      findProfessionalForClerkUser(tenantId, userId).catch(() => null),
+      // Badge de Tareas: lo mío vencido o para hoy. Si falla (tenant recién
+      // creado, DB lenta) el sidebar se dibuja sin badge.
+      internalUserId ? countActionableTasks(tenantId, internalUserId).catch(() => 0) : 0,
+      // Si las tablas `im_` todavía no existen (migración 0019 sin aplicar) el
+      // panel entero tiene que seguir dibujándose, por eso se traga el fallo.
+      internalUserId
+        ? unreadSummary(tenantId, internalUserId)
+            .then((s) => s.totalUnread)
+            .catch(() => 0)
+        : 0,
+    ]);
+
+    tasksBadge = tasks;
+    messagesBadge = messages;
+
     agendaOnly = isAgendaOnly(professional, {
       role: normalizeRole(orgRole),
       isSuperAdmin: tenantCtx.isSuperAdmin,
@@ -81,35 +120,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
     logoUrl: tenantCtx?.tenant.logoUrl ?? null,
   };
 
-  // Badge de Tareas: lo mío vencido o para hoy. Una query barata por render;
-  // si falla (tenant recién creado, DB lenta) el sidebar se dibuja sin badge.
-  let tasksBadge = 0;
-  let messagesBadge = 0;
-  if (tenantCtx) {
-    const internalUserId = await internalUserIdFor(userId).catch(() => null);
-
-    if (internalUserId) {
-      // Los dos badges sólo dependen del internalUserId, así que van en
-      // paralelo: encadenados sumaban un round-trip a CADA navegación del
-      // panel. Si las tablas im_ todavía no existen (migración 0019 sin
-      // aplicar) el panel entero tiene que seguir dibujándose, por eso los
-      // fallos se tragan y el badge queda en 0.
-      const [tasks, messages] = await Promise.all([
-        countActionableTasks(tenantCtx.tenant.id, internalUserId).catch(() => 0),
-        unreadSummary(tenantCtx.tenant.id, internalUserId)
-          .then((s) => s.totalUnread)
-          .catch(() => 0),
-      ]);
-      tasksBadge = tasks;
-      messagesBadge = messages;
-    }
-  }
-
   return (
     // El provider envuelve todo el panel: es el dueño único del EventSource de
     // Mensajes y lo consumen el sidebar (badge), la campana y el dock.
     <MessagingProvider>
       <ScrollReset />
+      {/* Señal global de "estoy yendo a otra página". El panel es todo
+          `force-dynamic`: sin esto, entre el clic y el primer byte del servidor
+          la pantalla se quedaba idéntica y parecía colgada. */}
+      <NavProgressBar />
       <div data-instant-reveal className="aurora-canvas flex min-h-screen text-zinc-900">
         <DashboardSidebar
           enabledModules={enabledModules}

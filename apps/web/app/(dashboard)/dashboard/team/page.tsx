@@ -48,14 +48,16 @@ export default async function TeamPage() {
   // falla, mostramos un estado vacío en vez de un 500.
   const [memberships, invitations] = await (async () => {
     try {
-      return [
-        await cc.organizations.getOrganizationMembershipList({ organizationId: orgId, limit: 50 }),
-        await cc.organizations.getOrganizationInvitationList({
+      // En paralelo: son dos peticiones HTTPS a Clerk que no dependen entre sí,
+      // y una llamada externa cuesta bastante más que una query local.
+      return await Promise.all([
+        cc.organizations.getOrganizationMembershipList({ organizationId: orgId, limit: 50 }),
+        cc.organizations.getOrganizationInvitationList({
           organizationId: orgId,
           status: ['pending'],
           limit: 50,
         }),
-      ] as const;
+      ]);
     } catch {
       return [null, null] as const;
     }

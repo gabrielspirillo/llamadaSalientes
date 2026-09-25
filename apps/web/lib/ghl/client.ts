@@ -1,6 +1,17 @@
 import 'server-only';
 import { getValidAccessToken } from '@/lib/data/ghl-integration';
 
+/**
+ * Tope de espera de cada llamada a GoHighLevel.
+ *
+ * `ghlFetch` se alcanza desde `/api/retell/tools`, o sea DURANTE una llamada de
+ * voz con el paciente en línea: si GHL acepta la conexión y no responde, el
+ * agente se queda mudo hasta que Retell corta la function-call y la llamada se
+ * percibe rota. Fuera de eso lo usan los webhooks de contacto y de cita, donde
+ * un cuelgue deja el ack pendiente y GHL reintenta, duplicando trabajo.
+ */
+const FETCH_TIMEOUT_MS = 10_000;
+
 const BASE_URL = 'https://services.leadconnectorhq.com';
 const GHL_API_VERSION = '2021-07-28';
 
@@ -48,6 +59,7 @@ export async function ghlFetch<T = unknown>({
       Accept: 'application/json',
     },
     body: body ? JSON.stringify(body) : undefined,
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
 
   if (!res.ok) {

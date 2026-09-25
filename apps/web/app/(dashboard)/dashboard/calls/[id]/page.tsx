@@ -4,7 +4,7 @@ import { Card, CardTopbar } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/feedback';
 import { Reveal } from '@/components/ui/motion';
 import { Avatar } from '@/components/ui/stat';
-import { formatDuration, getCall, getCallTranscript } from '@/lib/data/calls-list';
+import { decryptTranscript, formatDuration, getCall } from '@/lib/data/calls-list';
 import { getCurrentTenant } from '@/lib/tenant';
 import {
   ArrowLeft,
@@ -58,7 +58,10 @@ export default async function CallDetailPage({
   const call = await getCall(tenant.id, id);
   if (!call) notFound();
 
-  const transcript = await getCallTranscript(tenant.id, id);
+  // La fila ya está cargada: desencriptamos su transcripción aquí en vez de
+  // volver a pedirla, que repetía el mismo SELECT sobre `calls` —la fila más
+  // pesada de la tabla— para leer una columna que ya teníamos en la mano.
+  const transcript = decryptTranscript(call);
   const transcriptTurns = parseTranscript(transcript);
 
   // started_at es lo correcto; created_at (alta de la fila por el webhook) es el

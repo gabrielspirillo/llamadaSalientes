@@ -18,6 +18,13 @@ import { Buffer } from 'node:buffer';
  * está en lib/crypto + tenant_telephony.twilio_auth_token_enc.
  */
 
+/**
+ * Tope de espera de la API de Twilio (telefonía). Mismo motivo que en el resto
+ * de clientes: una llamada externa sin tope cuelga el request o inmoviliza el
+ * slot del worker hasta el reinicio del proceso.
+ */
+const TWILIO_TIMEOUT_MS = 10_000;
+
 const BASE_URL = 'https://api.twilio.com';
 const API_VERSION = '2010-04-01';
 
@@ -238,6 +245,7 @@ export class TwilioRestClient {
           : { Accept: 'application/json' }),
       },
       body: body ? body.toString() : undefined,
+      signal: AbortSignal.timeout(TWILIO_TIMEOUT_MS),
     });
   }
 

@@ -11,6 +11,16 @@ import {
   WhatsAppConnectorError,
 } from './types';
 
+/**
+ * Tope de espera de cada llamada a la instancia de Evolution.
+ *
+ * Es un contenedor propio por clínica: cuando se queda a medias (la sesión de
+ * WhatsApp caída, el contenedor reiniciándose) acepta la conexión y no
+ * responde. Sin tope, el envío de un WhatsApp dejaba colgado el request —o el
+ * job del worker, inmovilizando su slot de cola— hasta el timeout del runtime.
+ */
+const EVOLUTION_TIMEOUT_MS = 10_000;
+
 interface EvolutionSendResponse {
   key?: { id: string; remoteJid?: string; fromMe?: boolean };
   message?: unknown;
@@ -368,6 +378,7 @@ export class EvolutionConnector implements WhatsAppConnector {
         'content-type': 'application/json',
       },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(EVOLUTION_TIMEOUT_MS),
     });
     if (!res.ok) {
       throw await this.toError(res, code);
@@ -379,6 +390,7 @@ export class EvolutionConnector implements WhatsAppConnector {
     const res = await fetch(`${this.baseUrl}${path}`, {
       method: 'GET',
       headers: { apikey: this.opts.apiKey },
+      signal: AbortSignal.timeout(EVOLUTION_TIMEOUT_MS),
     });
     if (!res.ok) {
       throw await this.toError(res, code);
@@ -390,6 +402,7 @@ export class EvolutionConnector implements WhatsAppConnector {
     const res = await fetch(`${this.baseUrl}${path}`, {
       method: 'DELETE',
       headers: { apikey: this.opts.apiKey },
+      signal: AbortSignal.timeout(EVOLUTION_TIMEOUT_MS),
     });
     if (!res.ok) {
       throw await this.toError(res, code);

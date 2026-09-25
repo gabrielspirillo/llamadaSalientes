@@ -18,30 +18,52 @@ export const dynamic = 'force-dynamic';
 
 export default async function WaitlistSettingsPage() {
   const { tenant } = await getCurrentTenant();
-  const settings = await getOrCreateWaitlistSettings(tenant.id);
+  // Las cuatro sólo dependen del tenant: encadenadas eran cuatro round-trips a
+  // Postgres, uno detrás de otro, antes de pintar nada.
+  const [settings, connRows, treatmentsRaw, templates] = await Promise.all([
+    getOrCreateWaitlistSettings(tenant.id),
 
-  const [conn] = await db
-    .select({ mode: whatsappConnections.mode })
-    .from(whatsappConnections)
-    .where(
-      and(eq(whatsappConnections.tenantId, tenant.id), eq(whatsappConnections.status, 'CONNECTED')),
-    )
-    .orderBy(desc(whatsappConnections.updatedAt))
-    .limit(1);
+    db
+      .select({ mode: whatsappConnections.mode })
+      .from(whatsappConnections)
+      .where(
+        and(
+          eq(whatsappConnections.tenantId, tenant.id),
+          eq(whatsappConnections.status, 'CONNECTED'),
+        ),
+      )
+      .orderBy(desc(whatsappConnections.updatedAt))
+      .limit(1),
 
+    db
+      .select({
+        id: treatments.id,
+        name: treatments.name,
+        durationMinutes: treatments.durationMinutes,
+        active: treatments.active,
+        waitlistEligible: treatments.waitlistEligible,
+      })
+      .from(treatments)
+      .where(eq(treatments.tenantId, tenant.id))
+      .orderBy(treatments.name),
+
+    db
+      .select({
+        id: waitlistMessageTemplates.id,
+        channel: waitlistMessageTemplates.channel,
+        driverScope: waitlistMessageTemplates.driverScope,
+        templateName: waitlistMessageTemplates.templateName,
+        templateLanguage: waitlistMessageTemplates.templateLanguage,
+        freeText: waitlistMessageTemplates.freeText,
+        voicePromptOverride: waitlistMessageTemplates.voicePromptOverride,
+        enabled: waitlistMessageTemplates.enabled,
+      })
+      .from(waitlistMessageTemplates)
+      .where(eq(waitlistMessageTemplates.tenantId, tenant.id)),
+  ]);
+
+  const conn = connRows[0];
   const activeWhatsappScope = conn ? driverScopeForWhatsAppMode(conn.mode) : null;
-
-  const treatmentsRaw = await db
-    .select({
-      id: treatments.id,
-      name: treatments.name,
-      durationMinutes: treatments.durationMinutes,
-      active: treatments.active,
-      waitlistEligible: treatments.waitlistEligible,
-    })
-    .from(treatments)
-    .where(eq(treatments.tenantId, tenant.id))
-    .orderBy(treatments.name);
 
   const treatmentsRows: TreatmentToggleRow[] = treatmentsRaw.map((t) => ({
     id: t.id,
@@ -50,20 +72,6 @@ export default async function WaitlistSettingsPage() {
     active: t.active ?? true,
     waitlistEligible: t.waitlistEligible,
   }));
-
-  const templates = await db
-    .select({
-      id: waitlistMessageTemplates.id,
-      channel: waitlistMessageTemplates.channel,
-      driverScope: waitlistMessageTemplates.driverScope,
-      templateName: waitlistMessageTemplates.templateName,
-      templateLanguage: waitlistMessageTemplates.templateLanguage,
-      freeText: waitlistMessageTemplates.freeText,
-      voicePromptOverride: waitlistMessageTemplates.voicePromptOverride,
-      enabled: waitlistMessageTemplates.enabled,
-    })
-    .from(waitlistMessageTemplates)
-    .where(eq(waitlistMessageTemplates.tenantId, tenant.id));
 
   return (
     <>

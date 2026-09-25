@@ -5,6 +5,13 @@ import { env } from '@/lib/env';
 // Authorize endpoint:  https://marketplace.gohighlevel.com/oauth/chooselocation
 // Token endpoint:      https://services.leadconnectorhq.com/oauth/token
 
+/**
+ * Tope de espera del canje y refresco de token de GoHighLevel. Un refresco
+ * colgado bloquea CUALQUIER operación que dependa del CRM, porque todas pasan
+ * antes por `getValidAccessToken`.
+ */
+const TOKEN_TIMEOUT_MS = 10_000;
+
 const AUTHORIZE_URL = 'https://marketplace.gohighlevel.com/oauth/chooselocation';
 const TOKEN_URL = 'https://services.leadconnectorhq.com/oauth/token';
 
@@ -62,6 +69,7 @@ export async function exchangeCodeForTokens(code: string): Promise<GhlTokenRespo
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
     body,
+    signal: AbortSignal.timeout(TOKEN_TIMEOUT_MS),
   });
   if (!res.ok) {
     const text = await res.text();
@@ -86,6 +94,7 @@ export async function refreshAccessToken(refreshToken: string): Promise<GhlToken
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
     body,
+    signal: AbortSignal.timeout(TOKEN_TIMEOUT_MS),
   });
   if (!res.ok) {
     const text = await res.text();

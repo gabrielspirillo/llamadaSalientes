@@ -21,39 +21,44 @@ export const dynamic = 'force-dynamic';
 export default async function RemindersSettingsPage() {
   const { tenant } = await getCurrentTenant();
 
-  const ruleSets = await db
-    .select()
-    .from(reminderRuleSets)
-    .where(eq(reminderRuleSets.tenantId, tenant.id));
+  // Las cinco sólo dependen del tenant, que ya está resuelto: encadenadas eran
+  // cinco round-trips a Postgres, uno detrás de otro, antes de pintar nada.
+  const [ruleSets, rules, templates, treatmentRows, waConnRows] = await Promise.all([
+    db.select().from(reminderRuleSets).where(eq(reminderRuleSets.tenantId, tenant.id)),
 
-  const rules = await db
-    .select()
-    .from(reminderRules)
-    .where(eq(reminderRules.tenantId, tenant.id))
-    .orderBy(asc(reminderRules.order));
+    db
+      .select()
+      .from(reminderRules)
+      .where(eq(reminderRules.tenantId, tenant.id))
+      .orderBy(asc(reminderRules.order)),
 
-  const templates = await db
-    .select()
-    .from(reminderMessageTemplates)
-    .where(eq(reminderMessageTemplates.tenantId, tenant.id));
+    db
+      .select()
+      .from(reminderMessageTemplates)
+      .where(eq(reminderMessageTemplates.tenantId, tenant.id)),
 
-  const treatmentRows = await db
-    .select({ id: treatments.id, name: treatments.name })
-    .from(treatments)
-    .where(and(eq(treatments.tenantId, tenant.id), eq(treatments.active, true)));
+    db
+      .select({ id: treatments.id, name: treatments.name })
+      .from(treatments)
+      .where(and(eq(treatments.tenantId, tenant.id), eq(treatments.active, true))),
 
-  // Detectar el driver activo del tenant (la conexión CONNECTED más reciente).
-  // El RulesEditor lo usa para filtrar plantillas WhatsApp y mostrar solo el
-  // driver que corresponde, en lugar de listar los 3.
-  const [waConn] = await db
-    .select({ mode: whatsappConnections.mode })
-    .from(whatsappConnections)
-    .where(
-      and(eq(whatsappConnections.tenantId, tenant.id), eq(whatsappConnections.status, 'CONNECTED')),
-    )
-    .orderBy(desc(whatsappConnections.updatedAt))
-    .limit(1);
-  const activeWhatsAppMode = waConn?.mode ?? null;
+    // Driver activo del tenant (la conexión CONNECTED más reciente). El
+    // RulesEditor lo usa para filtrar plantillas WhatsApp y mostrar sólo el
+    // driver que corresponde, en lugar de listar los 3.
+    db
+      .select({ mode: whatsappConnections.mode })
+      .from(whatsappConnections)
+      .where(
+        and(
+          eq(whatsappConnections.tenantId, tenant.id),
+          eq(whatsappConnections.status, 'CONNECTED'),
+        ),
+      )
+      .orderBy(desc(whatsappConnections.updatedAt))
+      .limit(1),
+  ]);
+
+  const activeWhatsAppMode = waConnRows[0]?.mode ?? null;
 
   return (
     <>

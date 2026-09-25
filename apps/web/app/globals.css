@@ -604,10 +604,21 @@ html.js [data-reveal].is-revealed {
   will-change: auto;
 }
 
-/* Escalonado automático por índice (--i inline) */
+/* Escalonado automático por índice (--i inline).
+
+   El retraso va CAPADO a 300ms con `min()`. El tope estaba sólo en el
+   componente `<Stagger>` (MAX_STAGGER_INDEX = 5), pero la clase se usa a mano
+   en una docena de listas —el buzón de WhatsApp, contactos, llamadas, el rail
+   de canales, las notificaciones, el dock— y varias de ellas no capaban el
+   índice en absoluto: el elemento 14 de una lista aparecía 840ms tarde, y los
+   de la campana o el rail, con listas largas, aún más. Es contenido real
+   retrasado, no decoración: se lee como que la pantalla no termina de cargar.
+
+   Ponerlo aquí lo arregla en los catorce sitios de una vez y en los que
+   vengan, sin depender de que cada lista se acuerde del `Math.min`. */
 .stagger > * {
   animation: fade-up 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: calc(var(--stagger-step, 60ms) * var(--i, 0));
+  animation-delay: min(calc(var(--stagger-step, 60ms) * var(--i, 0)), 300ms);
 }
 
 /* Sin `both`: con fill-mode backwards el contenido se queda en el estado
@@ -733,5 +744,40 @@ html.js [data-reveal].is-revealed {
   html.js [data-reveal] {
     opacity: 1 !important;
     transform: none !important;
+  }
+}
+
+/* ============================================================================
+   Barra de progreso de navegación (components/dashboard/nav-progress.tsx)
+   ========================================================================== */
+
+/* Indeterminada a propósito: el servidor no informa de progreso, y una barra
+   que finge un porcentaje se nota enseguida. Recorre la pantalla mientras haya
+   una navegación en curso. */
+@keyframes nav-progress-sweep {
+  0% {
+    transform: translate3d(-100%, 0, 0);
+  }
+  100% {
+    transform: translate3d(100%, 0, 0);
+  }
+}
+
+.nav-progress-bar {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-brand-500, #37766a),
+    var(--color-brand-300, #6bc2a4),
+    transparent
+  );
+  animation: nav-progress-sweep 900ms cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-progress-bar {
+    animation: none;
+    background: var(--color-brand-500, #37766a);
+    opacity: 0.6;
   }
 }

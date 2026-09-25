@@ -35,6 +35,25 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '4mb',
     },
+    // Caché de segmentos del router en el cliente.
+    //
+    // El default de Next 15 es `dynamic: 0` (comprobado en
+    // `next/dist/server/config-shared.js`), y TODO el panel es dinámico. Con 0,
+    // el router no reutiliza NADA entre navegaciones: volver a una sección que
+    // se acaba de visitar, o pulsar «atrás», vuelve a ejecutar en el servidor
+    // el layout del panel entero —auth, tenant, ficha de profesional, los dos
+    // badges— antes siquiera de empezar la consulta de la página destino. Ir y
+    // volver entre dos pantallas costaba lo mismo que entrar por primera vez.
+    //
+    // 30 segundos es el valor que Next traía por defecto hasta la 15.0. Lo que
+    // se paga a cambio es que los badges y el rol pueden quedar hasta medio
+    // minuto viejos al navegar dentro de esa ventana; el contador de Mensajes
+    // no se ve afectado porque manda el stream en cuanto conecta, y toda
+    // escritura del panel ya termina en `router.refresh()` o en
+    // `revalidatePath`, que invalidan la caché al instante.
+    staleTimes: {
+      dynamic: 30,
+    },
     // El build picaba en ~3,3 GB de RSS. En el VPS, con Postgres, Redis, MinIO
     // y los dos contenedores de la app ya residentes, eso termina en OOM y el
     // deploy falla sin dejar la app caída (sigue sirviendo el contenedor

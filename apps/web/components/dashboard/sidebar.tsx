@@ -1,5 +1,6 @@
 'use client';
 
+import { NavPendingDot, NavLink as PendingAwareLink } from '@/components/dashboard/nav-progress';
 import { useMessaging } from '@/components/messaging/MessagingProvider';
 import type { Branding } from '@/lib/branding';
 import { cn } from '@/lib/cn';
@@ -335,7 +336,7 @@ const NavLink = React.memo(function NavLink({
     .join('. ');
 
   return (
-    <Link
+    <PendingAwareLink
       ref={ref}
       href={item.href}
       data-tour={tourAnchor}
@@ -383,8 +384,11 @@ const NavLink = React.memo(function NavLink({
           className="h-3 w-3 shrink-0 text-zinc-400"
         />
       )}
+      {/* Señal de que ESTA fila es la que se está cargando. Sin ella el menú se
+          quedaba con el ítem viejo marcado hasta que llegaba el servidor. */}
+      <NavPendingDot className="text-brand-600" />
       <HoverLabel text={item.label} anchorRef={ref} show={collapsed && hovered} />
-    </Link>
+    </PendingAwareLink>
   );
 });
 

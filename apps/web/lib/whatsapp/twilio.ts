@@ -13,6 +13,14 @@ import {
   WhatsAppConnectorError,
 } from './types';
 
+/**
+ * Topes de espera de la API de Twilio para WhatsApp. El envío también se
+ * dispara desde el inbox del panel cuando contesta una persona: sin tope, el
+ * botón se quedaba colgado para siempre si Twilio no respondía.
+ */
+const TWILIO_WA_TIMEOUT_MS = 10_000;
+const TWILIO_WA_MEDIA_TIMEOUT_MS = 30_000;
+
 interface TwilioMessageResponse {
   sid?: string;
   status?: string;
@@ -144,6 +152,8 @@ export class TwilioConnector implements WhatsAppConnector {
     const res = await fetch(mediaId, {
       headers: { Authorization: this.authHeader },
       redirect: 'follow',
+      // Más holgado que el envío: puede ser un vídeo de varios MB.
+      signal: AbortSignal.timeout(TWILIO_WA_MEDIA_TIMEOUT_MS),
     });
     if (!res.ok) {
       throw await this.toError(res, 'MEDIA_DOWNLOAD_FAILED');
@@ -201,6 +211,7 @@ export class TwilioConnector implements WhatsAppConnector {
         'content-type': 'application/x-www-form-urlencoded',
       },
       body,
+      signal: AbortSignal.timeout(TWILIO_WA_TIMEOUT_MS),
     });
     if (!res.ok) {
       // Twilio devuelve 20001 genérico sin pistas; logueamos los params del

@@ -33,15 +33,21 @@ export default async function AgendaPacientesPage({
 }) {
   const { q, prof } = await searchParams;
   const ctx = await getAgendaContext();
-  const timezone = await resolveTimezone(ctx.tenantId, null);
+
+  // Las tres sólo dependen del tenant, que `getAgendaContext` ya resolvió.
+  // Encadenadas eran tres round-trips en serie en una de las pantallas más
+  // visitadas de Agenda.
+  //
+  // `careProfile`: con perfil de atención el paciente es una persona con ficha
+  // propia —se da de alta desde aquí y se le ve la edad—; sin perfil, la lista
+  // es la de siempre.
+  const [timezone, careProfile, professionals] = await Promise.all([
+    resolveTimezone(ctx.tenantId, null),
+    getCareProfile(ctx.tenantId),
+    ctx.scope === 'OWN' ? Promise.resolve([]) : listProfessionals(ctx.tenantId),
+  ]);
+
   const todayKey = localDateKey(new Date(), timezone);
-
-  // Con perfil de atención, el paciente es una persona con ficha propia: se
-  // puede dar de alta desde aquí y se le ve la edad. Sin perfil, la lista es la
-  // de siempre.
-  const careProfile = await getCareProfile(ctx.tenantId);
-
-  const professionals = ctx.scope === 'OWN' ? [] : await listProfessionals(ctx.tenantId);
 
   // Un profesional restringido ve SUS pacientes, y el filtro NO sale de la URL:
   // lo que no es suyo no llega ni al HTML. Para el resto del equipo, "los

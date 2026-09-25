@@ -1,5 +1,6 @@
 'use client';
 
+import { NavLink, NavPendingDot } from '@/components/dashboard/nav-progress';
 import { cn } from '@/lib/cn';
 import * as TabsPrimitive from '@radix-ui/react-tabs';
 import Link from 'next/link';
@@ -78,12 +79,15 @@ export function SegmentedNav({
       {items.map((it) => {
         const active = it.value === activeValue;
         return (
-          <Link
+          <NavLink
             key={it.value}
             href={it.href}
-            // Navegación cliente: con <a> cada cambio de pestaña recargaba la
-            // página entera.
-            prefetch={false}
+            // Cada pestaña es una página de servidor distinta (Server
+            // Components por URL, no `TabsContent`). Se prefetchan: son pocas,
+            // están a la vista y es justo el salto que la gente hace más
+            // seguido. Con `prefetch={false}` cada clic era un round-trip
+            // entero contra la nada.
+            prefetch
             className={cn(
               'inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-[14px] font-semibold transition-all duration-300',
               active
@@ -102,7 +106,8 @@ export function SegmentedNav({
                 {it.count}
               </span>
             )}
-          </Link>
+            <NavPendingDot />
+          </NavLink>
         );
       })}
     </div>

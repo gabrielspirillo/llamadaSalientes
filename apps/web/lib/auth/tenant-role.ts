@@ -1,5 +1,6 @@
 import 'server-only';
 import { and, eq } from 'drizzle-orm';
+import { cache } from 'react';
 
 import { ensureInternalUserId } from '@/lib/auth/internal-user';
 import { db } from '@/lib/db/client';
@@ -58,36 +59,44 @@ export type TenantRoleContext =
  * `internalUserId` es el `users.id` que referencian las FK (creador de una
  * tarea, autor de un comentario…). Para Futura se garantiza que exista aunque
  * el webhook de Clerk no la haya sincronizado nunca.
+ *
+ * Cacheado por request con `cache()` de React. Es la puerta de TODOS los gates,
+ * así que una sola petición la llamaba varias veces (la página para pintar por
+ * rol, el gate que valida la escritura, el de agenda…) y cada llamada era un
+ * round-trip a `tenant_memberships`. Es una lectura pura dentro del request: el
+ * rol no cambia a mitad de render.
  */
-export async function resolveTenantRole(): Promise<TenantRoleContext> {
-  const { tenant, userId: clerkUserId, isSuperAdmin, impersonating } = await getCurrentTenant();
+export const resolveTenantRole = cache(
+  async function resolveTenantRole(): Promise<TenantRoleContext> {
+    const { tenant, userId: clerkUserId, isSuperAdmin, impersonating } = await getCurrentTenant();
 
-  const [m] = await db
-    .select({ role: tenantMemberships.role, internalUserId: users.id })
-    .from(tenantMemberships)
-    .innerJoin(users, eq(users.id, tenantMemberships.userId))
-    .where(and(eq(tenantMemberships.tenantId, tenant.id), eq(users.clerkUserId, clerkUserId)))
-    .limit(1);
+    const [m] = await db
+      .select({ role: tenantMemberships.role, internalUserId: users.id })
+      .from(tenantMemberships)
+      .innerJoin(users, eq(users.id, tenantMemberships.userId))
+      .where(and(eq(tenantMemberships.tenantId, tenant.id), eq(users.clerkUserId, clerkUserId)))
+      .limit(1);
 
-  const base: TenantRoleBase = {
-    tenantId: tenant.id,
-    clerkOrganizationId: tenant.clerkOrganizationId,
-    clerkUserId,
-    isSuperAdmin: Boolean(isSuperAdmin),
-    impersonating: Boolean(impersonating),
-  };
-
-  if (isSuperAdmin) {
-    // Manda aunque su fila (si la tiene) diga otra cosa: el super-admin lo es
-    // por pertenecer a la organización de Futura, no por un rol de Clerk.
-    return {
-      ...base,
-      role: 'admin',
-      internalUserId: m?.internalUserId ?? (await ensureInternalUserId(clerkUserId)),
+    const base: TenantRoleBase = {
+      tenantId: tenant.id,
+      clerkOrganizationId: tenant.clerkOrganizationId,
+      clerkUserId,
+      isSuperAdmin: Boolean(isSuperAdmin),
+      impersonating: Boolean(impersonating),
     };
-  }
 
-  if (!m) return { ...base, role: null, internalUserId: null };
+    if (isSuperAdmin) {
+      // Manda aunque su fila (si la tiene) diga otra cosa: el super-admin lo es
+      // por pertenecer a la organización de Futura, no por un rol de Clerk.
+      return {
+        ...base,
+        role: 'admin',
+        internalUserId: m?.internalUserId ?? (await ensureInternalUserId(clerkUserId)),
+      };
+    }
 
-  return { ...base, role: normalizeRole(m.role), internalUserId: m.internalUserId };
-}
+    if (!m) return { ...base, role: null, internalUserId: null };
+
+    return { ...base, role: normalizeRole(m.role), internalUserId: m.internalUserId };
+  },
+);

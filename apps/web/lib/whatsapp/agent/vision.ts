@@ -18,6 +18,15 @@ import 'server-only';
  * sospechoso como handoff a recepción (regla #4 del CLAUDE.md de DentalFlow).
  */
 
+/**
+ * Tope de espera de Gemini Vision. Corre dentro del job `wa-process`, en bucle
+ * sobre cada imagen o PDF de la ráfaga: un fetch colgado se lleva un slot de la
+ * cola de WhatsApp para siempre —BullMQ renueva el lock mientras el handler
+ * sigue vivo, así que nunca se marca stalled— y el paciente que mandó la foto
+ * no recibe respuesta nunca.
+ */
+const VISION_TIMEOUT_MS = 25_000;
+
 const DEFAULT_MODEL = process.env.GEMINI_VISION_MODEL ?? 'gemini-flash-latest';
 
 const IMAGE_PROMPT = `Describí brevemente, en castellano, lo que ves en esta imagen.
@@ -59,6 +68,7 @@ async function generateFromInline(input: {
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    signal: AbortSignal.timeout(VISION_TIMEOUT_MS),
     body: JSON.stringify({
       contents: [
         {

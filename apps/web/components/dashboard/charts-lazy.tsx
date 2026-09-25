@@ -52,3 +52,14 @@ export const ConversationStatusChart = dynamic(
   () => import('./analytics-module-charts').then((m) => m.ConversationStatusChart),
   { ssr: false, loading },
 );
+
+/**
+ * El panel de Mensajería importaba `recharts` directamente, saltándose este
+ * archivo: bastaba con abrir `/dashboard/analytics` en CUALQUIER pestaña para
+ * bajarse la librería entera, aunque la pestaña de Mensajería no se mirara.
+ * Es el único gráfico de esa página que faltaba por aquí.
+ */
+export const MessagingAnalyticsPanel = dynamic(
+  () => import('./messaging-analytics').then((m) => m.MessagingAnalyticsPanel),
+  { ssr: false, loading },
+);

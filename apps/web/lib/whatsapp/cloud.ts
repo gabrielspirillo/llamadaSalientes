@@ -13,6 +13,18 @@ import {
   WhatsAppConnectorError,
 } from './types';
 
+/**
+ * Topes de espera de la Cloud API de Meta.
+ *
+ * El envío se dispara tanto desde el worker como desde una Server Action del
+ * inbox cuando alguien del equipo contesta a mano: sin tope, el botón de enviar
+ * se quedaba pensando para siempre si Meta aceptaba la conexión y no respondía,
+ * y en el worker inmovilizaba el slot de cola (BullMQ renueva el lock mientras
+ * el handler sigue vivo, así que nunca se marca stalled).
+ */
+const CLOUD_TIMEOUT_MS = 10_000;
+const CLOUD_MEDIA_TIMEOUT_MS = 30_000;
+
 interface GraphSendResponse {
   messaging_product: 'whatsapp';
   contacts?: Array<{ input: string; wa_id: string }>;
@@ -207,6 +219,7 @@ export class WhatsAppCloudConnector implements WhatsAppConnector {
     const infoUrl = `${this.baseUrl}/${this.apiVersion}/${encodeURIComponent(mediaId)}`;
     const infoRes = await fetch(infoUrl, {
       headers: { Authorization: `Bearer ${this.opts.accessToken}` },
+      signal: AbortSignal.timeout(CLOUD_TIMEOUT_MS),
     });
     if (!infoRes.ok) {
       throw await this.toError(infoRes, 'MEDIA_INFO_FAILED');
@@ -215,6 +228,8 @@ export class WhatsAppCloudConnector implements WhatsAppConnector {
 
     const mediaRes = await fetch(info.url, {
       headers: { Authorization: `Bearer ${this.opts.accessToken}` },
+      // La descarga del adjunto tolera más: puede ser un vídeo de varios MB.
+      signal: AbortSignal.timeout(CLOUD_MEDIA_TIMEOUT_MS),
     });
     if (!mediaRes.ok) {
       throw await this.toError(mediaRes, 'MEDIA_DOWNLOAD_FAILED');
@@ -245,6 +260,7 @@ export class WhatsAppCloudConnector implements WhatsAppConnector {
         'content-type': 'application/json',
       },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(CLOUD_TIMEOUT_MS),
     });
     if (!res.ok) {
       throw await this.toError(res, 'SEND_FAILED');

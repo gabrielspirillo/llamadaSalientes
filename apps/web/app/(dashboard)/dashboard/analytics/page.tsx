@@ -1,5 +1,9 @@
-import { CallsTrendChart, IntentBarList, IntentDonut } from '@/components/dashboard/charts-lazy';
-import { MessagingAnalyticsPanel } from '@/components/dashboard/messaging-analytics';
+import {
+  CallsTrendChart,
+  IntentBarList,
+  IntentDonut,
+  MessagingAnalyticsPanel,
+} from '@/components/dashboard/charts-lazy';
 import { ModuleUnavailable } from '@/components/dashboard/modules/module-error';
 import { OutboundModule } from '@/components/dashboard/modules/outbound-module';
 import { WhatsappModule } from '@/components/dashboard/modules/whatsapp-module';

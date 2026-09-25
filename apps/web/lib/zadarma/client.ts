@@ -25,6 +25,13 @@ import { buildSortedParamsString, buildZadarmaSignature } from './signing';
  *   - Sólo usamos ~5 endpoints; un wrapper fetch es trivial y testeable.
  */
 
+/**
+ * Tope de espera de la API REST de Zadarma. Se alcanza desde el botón "llamar
+ * ahora" del panel: sin tope, un clic que Zadarma no contestaba dejaba la
+ * petición abierta sin límite y la clínica no sabía si la llamada salió.
+ */
+const ZADARMA_TIMEOUT_MS = 10_000;
+
 const BASE_URL = 'https://api.zadarma.com';
 
 export class ZadarmaApiError extends Error {
@@ -272,6 +279,7 @@ export class ZadarmaRestClient {
           : {}),
       },
       body: method === 'POST' && paramsString ? paramsString : undefined,
+      signal: AbortSignal.timeout(ZADARMA_TIMEOUT_MS),
     });
   }
 

@@ -29,6 +29,9 @@ async function send(level: Level, msg: string, fields: Fields) {
         Authorization: `Bearer ${env.AXIOM_TOKEN}`,
       },
       body: JSON.stringify([entry]),
+      // Loguear no puede costar la petición: si Axiom no responde se corta
+      // rápido y el registro cae al `catch`, que lo vuelca por consola.
+      signal: AbortSignal.timeout(3_000),
     });
   } catch (err) {
     console.error('axiom_ingest_failed', err);

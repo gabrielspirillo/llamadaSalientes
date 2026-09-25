@@ -5,6 +5,18 @@ import 'server-only';
 const MODEL = 'gemini-flash-latest';
 const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
+/**
+ * Tope de espera de cada llamada a Gemini.
+ *
+ * Sin él, un endpoint que acepta la conexión y no responde deja colgado el
+ * request de Node hasta el timeout por defecto del runtime (minutos). Gemini se
+ * llama desde el webhook `call_analyzed` de Retell —el más frecuente— y desde
+ * `/api/insights`: un mal momento del proveedor se veía desde fuera como que la
+ * app entera se tildaba. Es el mismo tope que ya llevan el cliente de MinIO y
+ * el de Documenso.
+ */
+const FETCH_TIMEOUT_MS = 15_000;
+
 const SUMMARY_SYSTEM = `Eres un analista de conversaciones telefónicas de una clínica dental.
 Recibís el transcript completo de una llamada entre un paciente y el agente.
 Devolvés EXCLUSIVAMENTE un JSON válido sin markdown:
@@ -28,6 +40,7 @@ export async function summarizeCallWithGemini(transcript: string): Promise<CallS
 
   const res = await fetch(`${ENDPOINT}?key=${apiKey}`, {
     method: 'POST',
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: SUMMARY_SYSTEM }] },
@@ -58,6 +71,7 @@ export async function translateToSpanish(text: string): Promise<string> {
   }
   const res = await fetch(`${ENDPOINT}?key=${apiKey}`, {
     method: 'POST',
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       systemInstruction: {
@@ -126,6 +140,7 @@ Analizá y devolvé el JSON.`;
 
   const res = await fetch(`${ENDPOINT}?key=${apiKey}`, {
     method: 'POST',
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },

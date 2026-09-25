@@ -1,5 +1,6 @@
 import 'server-only';
 import { and, eq } from 'drizzle-orm';
+import { cache } from 'react';
 
 import { db } from '@/lib/db/client';
 import { professionals, users } from '@/lib/db/schema';
@@ -24,8 +25,13 @@ export interface ProfessionalLink {
  * Ficha de profesional del usuario logueado en este tenant, o null si no es
  * profesional. La búsqueda lleva `tenant_id` en el WHERE aunque el `user_id`
  * ya sea único: el mismo usuario puede ser profesional en dos clínicas.
+ *
+ * Cacheado por request con `cache()` de React: en una sola navegación del panel
+ * lo piden el layout (para echar al profesional restringido), `requireTaskRole`
+ * y el gate de agenda. Sin esto eran tres round-trips idénticos a Postgres,
+ * encadenados, en el camino crítico de CADA página.
  */
-export async function findProfessionalForClerkUser(
+export const findProfessionalForClerkUser = cache(async function findProfessionalForClerkUser(
   tenantId: string,
   clerkUserId: string,
 ): Promise<ProfessionalLink | null> {
@@ -44,7 +50,7 @@ export async function findProfessionalForClerkUser(
     .limit(1);
 
   return rows[0] ?? null;
-}
+});
 
 /**
  * ¿Este usuario sólo puede ver su agenda?

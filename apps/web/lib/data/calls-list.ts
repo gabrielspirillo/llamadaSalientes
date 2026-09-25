@@ -7,6 +7,31 @@ import { type SQL, and, count, desc, eq, ilike, isNotNull, or, sql } from 'drizz
 export type CallRow = typeof calls.$inferSelect;
 
 /**
+ * Lo que necesita un LISTADO de llamadas: todo menos la transcripción cifrada y
+ * la clave de la grabación, que sólo se usan al abrir una llamada concreta.
+ */
+export type CallListRow = Omit<CallRow, 'transcriptEnc' | 'recordingR2Key'>;
+
+const CALL_LIST_COLUMNS = {
+  id: calls.id,
+  tenantId: calls.tenantId,
+  retellCallId: calls.retellCallId,
+  fromNumber: calls.fromNumber,
+  toNumber: calls.toNumber,
+  ghlContactId: calls.ghlContactId,
+  startedAt: calls.startedAt,
+  endedAt: calls.endedAt,
+  durationSeconds: calls.durationSeconds,
+  status: calls.status,
+  intent: calls.intent,
+  sentiment: calls.sentiment,
+  transferred: calls.transferred,
+  summary: calls.summary,
+  customData: calls.customData,
+  createdAt: calls.createdAt,
+} as const;
+
+/**
  * Momento efectivo de la llamada. `started_at` puede faltar (webhook perdido,
  * llamada creada desde otro flujo), así que caemos a `created_at` para que la
  * fila igual ordene y entre en los rangos de fecha en vez de desaparecer.
@@ -36,7 +61,7 @@ export type CallsFilter = {
 export async function listCalls(
   tenantId: string,
   limitOrFilter: number | (CallsFilter & { limit?: number }) = 50,
-): Promise<CallRow[]> {
+): Promise<CallListRow[]> {
   const filter = typeof limitOrFilter === 'number' ? { limit: limitOrFilter } : limitOrFilter;
   const limit = filter.limit ?? 50;
 
@@ -54,8 +79,15 @@ export async function listCalls(
     if (search) conditions.push(search);
   }
 
+  // Columnas explícitas, NO `select()`.
+  //
+  // `transcript_enc` es la columna más pesada de la tabla (la transcripción
+  // entera, cifrada) y ningún listado la muestra: se leía en el listado de
+  // Llamadas (100 filas), en el módulo de inicio y en `/api/insights` sólo para
+  // tirarla. Traerla era mover cientos de KB desde Postgres en cada render. La
+  // ficha de la llamada la pide aparte, que es donde se ve.
   return db
-    .select()
+    .select(CALL_LIST_COLUMNS)
     .from(calls)
     .where(and(...conditions))
     .orderBy(desc(occurredAt))
@@ -74,8 +106,16 @@ export async function getCall(tenantId: string, callId: string): Promise<CallRow
 /**
  * Devuelve el transcript desencriptado para un call. Solo el dueño del tenant.
  */
-export async function getCallTranscript(tenantId: string, callId: string): Promise<string | null> {
-  const call = await getCall(tenantId, callId);
+/**
+ * Desencripta la transcripción de una fila YA cargada.
+ *
+ * Sustituye al viejo `getCallTranscript(tenantId, callId)`: la ficha de la
+ * llamada hacía `getCall()` y acto seguido aquello, que volvía a hacer el MISMO
+ * `SELECT` sobre `calls` —la fila más pesada de la tabla— para leer una columna
+ * que ya tenía en la mano. El aislamiento por tenant no se pierde: la fila sólo
+ * se obtiene por `getCall()`, que ya lleva `tenant_id` en el WHERE.
+ */
+export function decryptTranscript(call: Pick<CallRow, 'transcriptEnc'> | null): string | null {
   if (!call?.transcriptEnc) return null;
   try {
     return decrypt(call.transcriptEnc);
@@ -109,8 +149,10 @@ export async function getDashboardStats(tenantId: string): Promise<DashboardStat
       and(eq(calls.tenantId, tenantId), sql`${occurredAt} >= ${ts(startOfToday)}::timestamptz`),
     );
 
-  const yesterdayCount = await db
-    .select({ id: calls.id })
+  // COUNT(*), no traer las filas para medir el array: aquí sólo hace falta el
+  // número y "desde ayer" incluye todo el día de hoy.
+  const [yesterdayAgg] = await db
+    .select({ n: sql<number>`count(*)::int` })
     .from(calls)
     .where(
       and(eq(calls.tenantId, tenantId), sql`${occurredAt} >= ${ts(startOfYesterday)}::timestamptz`),
@@ -132,7 +174,7 @@ export async function getDashboardStats(tenantId: string): Promise<DashboardStat
 
   return {
     callsToday,
-    callsYesterday: Math.max(0, yesterdayCount.length - callsToday),
+    callsYesterday: Math.max(0, (yesterdayAgg?.n ?? 0) - callsToday),
     avgDurationSec,
     conversionRate,
     containmentRate,
@@ -226,8 +268,10 @@ export async function getUpcomingAppointments(
  * Cuenta llamadas con transcript pero sin intent (candidatas a re-procesar).
  */
 export async function countCallsPendingIntent(tenantId: string): Promise<number> {
-  const rows = await db
-    .select({ id: calls.id })
+  // COUNT(*), no traer todas las filas para medir el array: este contador se
+  // pide en cada carga del módulo de inicio.
+  const [agg] = await db
+    .select({ n: sql<number>`count(*)::int` })
     .from(calls)
     .where(
       and(
@@ -235,7 +279,7 @@ export async function countCallsPendingIntent(tenantId: string): Promise<number>
         sql`${calls.transcriptEnc} IS NOT NULL AND ${calls.intent} IS NULL`,
       ),
     );
-  return rows.length;
+  return agg?.n ?? 0;
 }
 
 /**
