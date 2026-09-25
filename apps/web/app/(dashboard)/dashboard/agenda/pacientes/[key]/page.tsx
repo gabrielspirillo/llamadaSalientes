@@ -3,6 +3,8 @@ import { type BillingLineView, BillingPanel } from '@/components/agenda/billing-
 import { ClinicalNoteForm, type PreviousNote } from '@/components/agenda/clinical-note-form';
 import { ConsentCard } from '@/components/agenda/consent-card';
 import { type HistoryNoteView, HistoryTimeline } from '@/components/agenda/history-timeline';
+import type { InvoiceCandidateView } from '@/components/agenda/invoice-dialog';
+import { type InvoiceListItem, InvoicesCard } from '@/components/agenda/invoices-card';
 import { PatientAlertsBanner } from '@/components/agenda/patient-alerts-banner';
 import { PatientDialog } from '@/components/agenda/patient-dialog';
 import { type PatientFact, PatientHeader } from '@/components/agenda/patient-header';
@@ -15,7 +17,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardTopbar } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/feedback';
 import { getAgendaContext } from '@/lib/agenda/auth';
-import { buildBillingLines, describeConcept, summarizeBilling } from '@/lib/agenda/billing';
+import {
+  buildBillingLines,
+  describeConcept,
+  isPaymentMethod,
+  summarizeBilling,
+} from '@/lib/agenda/billing';
 import { listPatientCharges } from '@/lib/agenda/charges';
 import { type PatientTab, type PatientTabItem, isPatientTab } from '@/lib/agenda/patient-tabs';
 import { getPatientDossier, listProfessionals, resolveTimezone } from '@/lib/agenda/queries';
@@ -37,6 +44,7 @@ import {
 } from '@/lib/care-profile/policy';
 import { getCareProfile } from '@/lib/care-profile/queries';
 import { listPatientConsents, tenantHasEsign } from '@/lib/consents/service';
+import { getInvoiceContext, listPatientInvoices } from '@/lib/invoices/service';
 import { describeActivity, listPatientActivity } from '@/lib/patients/activity';
 import { formatPhoneDisplay, initialsOf, phoneDigits } from '@/lib/patients/names';
 import { localDateKey } from '@/lib/tasks/tz';
@@ -366,7 +374,7 @@ export default async function PacienteDossierPage({
     : null;
 
   const consents =
-    tab === 'visita' && hasEsign && person
+    (tab === 'visita' || tab === 'contable') && hasEsign && person
       ? await listPatientConsents(ctx.tenantId, person.id).catch(() => [])
       : [];
   const activity =
@@ -377,6 +385,71 @@ export default async function PacienteDossierPage({
           chargeIds: charges.map((c) => c.id),
         }).catch(() => [])
       : [];
+
+  // ─── Facturas (pestaña Contable) ────────────────────────────────────────
+  const [invoiceRows, invoiceContext] =
+    tab === 'contable'
+      ? await Promise.all([
+          listPatientInvoices(ctx.tenantId, patientKey, person?.id ?? null).catch(() => []),
+          getInvoiceContext(ctx.tenantId).catch(() => null),
+        ])
+      : [[], null];
+  const invoiceById = new Map(
+    invoiceRows.filter((i) => i.status === 'ISSUED').map((i) => [i.id, i]),
+  );
+  const chargeByAppointment = new Map(
+    charges.filter((c) => c.appointmentId).map((c) => [c.appointmentId as string, c]),
+  );
+  // Sesiones facturables: pasadas y no anuladas, con el precio del cobro (o
+  // del tratamiento) y la factura en la que ya van, si van.
+  const invoiceCandidates: InvoiceCandidateView[] = dossier.appointments
+    .filter(
+      (a) =>
+        a.status !== 'CANCELLED' && a.status !== 'NO_SHOW' && a.startsAt.getTime() <= Date.now(),
+    )
+    .map((a) => {
+      const c = chargeByAppointment.get(a.id);
+      const inv = c?.invoiceId ? invoiceById.get(c.invoiceId) : null;
+      return {
+        appointmentId: a.id,
+        when: fmt.format(a.startsAt),
+        concept: invoiceContext?.defaultConcept ?? a.treatmentName ?? 'Sesión',
+        unitCents: c?.amountCents ?? a.treatmentPriceCents ?? null,
+        chargeStatus: c?.status === 'PAID' ? 'PAID' : 'PENDING',
+        paymentMethod: isPaymentMethod(c?.paymentMethod) ? c.paymentMethod : null,
+        invoice: inv ? { id: inv.id, number: inv.number } : null,
+      };
+    });
+  const lastConsent = consents[0] ?? null;
+  const invoiceDefaults = {
+    name:
+      primary?.name ||
+      guardians.find((g) => g.name.trim())?.name ||
+      person?.contactName ||
+      dossier.patientName,
+    taxId: primary?.taxId?.trim() || lastConsent?.recipientDni || null,
+    address: primary?.address?.trim() || lastConsent?.recipientAddress || null,
+    email: email ?? null,
+    phone: phone ?? null,
+  };
+  const invoiceItems: InvoiceListItem[] = invoiceRows.map((i) => ({
+    id: i.id,
+    number: i.number,
+    issuedOnLabel: fmtDay.format(dateFromKey(i.issuedOn)),
+    totalCents: i.totalCents,
+    status: i.status,
+    billToName: i.billToName,
+    billToPhone: i.billToPhone,
+    billToEmail: i.billToEmail,
+    paymentMethod: i.paymentMethod,
+    whatsappSentAt: i.whatsappSentAt?.toISOString() ?? null,
+    itemsSummary: i.items.map((it) => `${it.quantity}× ${it.concept}`).join(', '),
+  }));
+  const invoiceByCharge = new Map(
+    charges
+      .filter((c) => c.invoiceId && invoiceById.has(c.invoiceId))
+      .map((c) => [c.id, invoiceById.get(c.invoiceId as string)]),
+  );
 
   // Lo que queda por hacer hoy con este paciente, en una línea cada cosa.
   const pendingItems: TodayItem[] = [];
@@ -680,11 +753,32 @@ export default async function PacienteDossierPage({
             )}
 
             {tab === 'contable' && (
-              <BillingPanel
-                lines={billingViews}
-                todayKey={todayKey}
-                canWrite={ctx.canWriteAppointments}
-              />
+              <>
+                <InvoicesCard
+                  invoices={invoiceItems}
+                  canWrite={ctx.canWriteAppointments}
+                  canVoid={ctx.canManageProfessionals}
+                  dialog={{
+                    patientKey,
+                    patientId: person?.id ?? null,
+                    patientName: person?.fullName ?? dossier.patientName,
+                    clinicName: invoiceContext?.clinicName ?? 'la clínica',
+                    issuerName: invoiceContext?.issuer.name ?? 'la clínica',
+                    vatRate: invoiceContext?.issuer.vatRate ?? 0,
+                    defaults: invoiceDefaults,
+                    candidates: invoiceCandidates,
+                    todayKey,
+                  }}
+                />
+                <BillingPanel
+                  lines={billingViews.map((l) => {
+                    const inv = l.chargeId ? invoiceByCharge.get(l.chargeId) : null;
+                    return { ...l, invoice: inv ? { id: inv.id, number: inv.number } : null };
+                  })}
+                  todayKey={todayKey}
+                  canWrite={ctx.canWriteAppointments}
+                />
+              </>
             )}
 
             {tab === 'actividad' && (

@@ -22,6 +22,7 @@ import {
   loadFinanceLedger,
 } from '@/lib/finance/queries';
 import { ensureFinanceProvisioned } from '@/lib/finance/service';
+import { getInvoiceSettings } from '@/lib/invoices/service';
 import { localDateKey } from '@/lib/tasks/tz';
 import { Download, Lock, Wallet } from 'lucide-react';
 import { FinanzasNav } from './finanzas-nav';
@@ -58,22 +59,33 @@ export default async function FinanzasPage({
     console.warn('[finanzas] no se pudieron sembrar las categorías', (err as Error).message),
   );
 
-  const [categories, professionals, settings, ledger, counterparties, recurring, categoryCounts] =
-    await Promise.all([
-      listFinanceCategories(access.tenantId, { includeInactive: true }),
-      listFinanceProfessionals(access.tenantId),
-      getFinanceSettings(access.tenantId),
-      loadFinanceLedger(access.tenantId, {
-        from: params.period.previous.from,
-        to: params.period.to,
-        tz,
-      }),
-      access.canWrite ? listCounterparties(access.tenantId) : Promise.resolve([]),
-      params.tab === 'movimientos' && access.canWrite
-        ? countRecurringCandidates(access.tenantId, monthKeyOf(todayKey))
-        : Promise.resolve({ candidates: 0, alreadyCopied: 0 }),
-      params.tab === 'ajustes' ? countEntriesByCategory(access.tenantId) : Promise.resolve({}),
-    ]);
+  const [
+    categories,
+    professionals,
+    settings,
+    ledger,
+    counterparties,
+    recurring,
+    categoryCounts,
+    invoiceSettings,
+  ] = await Promise.all([
+    listFinanceCategories(access.tenantId, { includeInactive: true }),
+    listFinanceProfessionals(access.tenantId),
+    getFinanceSettings(access.tenantId),
+    loadFinanceLedger(access.tenantId, {
+      from: params.period.previous.from,
+      to: params.period.to,
+      tz,
+    }),
+    access.canWrite ? listCounterparties(access.tenantId) : Promise.resolve([]),
+    params.tab === 'movimientos' && access.canWrite
+      ? countRecurringCandidates(access.tenantId, monthKeyOf(todayKey))
+      : Promise.resolve({ candidates: 0, alreadyCopied: 0 }),
+    params.tab === 'ajustes' ? countEntriesByCategory(access.tenantId) : Promise.resolve({}),
+    params.tab === 'ajustes'
+      ? getInvoiceSettings(access.tenantId).catch(() => null)
+      : Promise.resolve(null),
+  ]);
 
   const activeCategories = categories.filter((c) => c.active);
   const activeProfessionals = professionals.filter((p) => p.active);
@@ -154,7 +166,13 @@ export default async function FinanzasPage({
         />
       )}
       {params.tab === 'ajustes' && (
-        <AjustesTab categories={categories} counts={categoryCounts} settings={settings} />
+        <AjustesTab
+          categories={categories}
+          counts={categoryCounts}
+          settings={settings}
+          invoiceSettings={invoiceSettings}
+          year={Number(todayKey.slice(0, 4))}
+        />
       )}
     </ModuleGate>
   );

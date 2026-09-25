@@ -146,6 +146,7 @@ export interface BillingChargeInput {
   paidOn: string | null;
   createdAt: Date;
   files: BillingFile[];
+  invoiceId?: string | null;
 }
 
 /** Una línea de la pestaña: una cita con o sin cargo, o un cargo suelto. */
@@ -163,6 +164,8 @@ export interface BillingLine {
   paymentMethod: PaymentMethod | null;
   paidOn: string | null;
   files: BillingFile[];
+  /** La factura en la que va el cargo, si ya se facturó. */
+  invoiceId: string | null;
 }
 
 /**
@@ -202,6 +205,7 @@ export function buildBillingLines(input: {
       paymentMethod: isPaymentMethod(charge?.paymentMethod) ? charge.paymentMethod : null,
       paidOn: charge?.paidOn ?? null,
       files: charge?.files ?? [],
+      invoiceId: charge?.invoiceId ?? null,
     });
   }
 
@@ -221,6 +225,7 @@ export function buildBillingLines(input: {
       paymentMethod: isPaymentMethod(c.paymentMethod) ? c.paymentMethod : null,
       paidOn: c.paidOn,
       files: c.files,
+      invoiceId: c.invoiceId ?? null,
     });
   }
 

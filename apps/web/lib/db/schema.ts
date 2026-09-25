@@ -359,7 +359,7 @@ export const whatsappAgentSettings = pgTable('whatsapp_agent_settings', {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Entrenar al asistente (migración 0038) — lo que la clínica le enseñó
+// Entrenar al asistente (migración 0042) — lo que la clínica le enseñó
 // conversando con el entrenador. Aditivo, como `persona`: afina el
 // comportamiento del asistente de WhatsApp pero NO anula las reglas duras ni
 // los datos oficiales (precios, horarios, agenda).
@@ -2400,6 +2400,8 @@ export const patientCharges = pgTable(
     createdByUserId: uuid('created_by_user_id').references(() => users.id, {
       onDelete: 'set null',
     }),
+    /** La factura en la que va este cobro (migración 0042). Null = sin facturar. */
+    invoiceId: uuid('invoice_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
@@ -2554,3 +2556,81 @@ export const financeSettings = pgTable('finance_settings', {
   monthlyRevenueGoalCents: integer('monthly_revenue_goal_cents'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+// ─── Facturas desde la ficha (migración 0042) ────────────────────────────────
+// Los datos del emisor y el contador de la serie por clínica, y la factura
+// emitida como foto inmutable (emisor y destinatario copiados al emitir).
+
+export const invoiceSettings = pgTable('invoice_settings', {
+  tenantId: uuid('tenant_id')
+    .primaryKey()
+    .references(() => tenants.id, { onDelete: 'cascade' }),
+  issuerName: text('issuer_name'),
+  issuerSubtitle: text('issuer_subtitle'),
+  taxId: text('tax_id'),
+  address: text('address'),
+  email: text('email'),
+  phone: text('phone'),
+  iban: text('iban'),
+  logoUrl: text('logo_url'),
+  tagline: text('tagline'),
+  footerLeft: text('footer_left'),
+  footerCenter: text('footer_center'),
+  footerRight: text('footer_right'),
+  vatRate: numeric('vat_rate').notNull().default('0'),
+  vatNote: text('vat_note'),
+  defaultConcept: text('default_concept'),
+  seriesYear: integer('series_year'),
+  nextNumber: integer('next_number').notNull().default(1),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const invoices = pgTable(
+  'invoices',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    number: text('number').notNull(),
+    issuedOn: date('issued_on', { mode: 'string' }).notNull(),
+    /** ISSUED | VOID */
+    status: text('status').notNull().default('ISSUED'),
+    patientKey: text('patient_key').notNull(),
+    patientId: uuid('patient_id').references(() => patients.id, { onDelete: 'set null' }),
+    patientName: text('patient_name').notNull(),
+    billToName: text('bill_to_name').notNull(),
+    billToTaxId: text('bill_to_tax_id'),
+    billToAddress: text('bill_to_address'),
+    billToEmail: text('bill_to_email'),
+    billToPhone: text('bill_to_phone'),
+    items: jsonb('items')
+      .$type<
+        { concept: string; quantity: number; unitCents: number; appointmentIds?: string[] }[]
+      >()
+      .notNull()
+      .default([]),
+    subtotalCents: integer('subtotal_cents').notNull(),
+    vatRate: numeric('vat_rate').notNull().default('0'),
+    vatCents: integer('vat_cents').notNull().default(0),
+    totalCents: integer('total_cents').notNull(),
+    /** CARD | CASH | BIZUM | TRANSFER */
+    paymentMethod: text('payment_method'),
+    notes: text('notes'),
+    issuer: jsonb('issuer').$type<Record<string, unknown>>().notNull().default({}),
+    pdfKey: text('pdf_key'),
+    whatsappMessageId: text('whatsapp_message_id'),
+    whatsappSentAt: timestamp('whatsapp_sent_at', { withTimezone: true }),
+    voidReason: text('void_reason'),
+    voidedAt: timestamp('voided_at', { withTimezone: true }),
+    createdByUserId: uuid('created_by_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    numberUniq: uniqueIndex('invoices_number_uniq').on(t.tenantId, t.number),
+    patientIdx: index('invoices_patient_idx').on(t.tenantId, t.patientKey, t.issuedOn),
+  }),
+);

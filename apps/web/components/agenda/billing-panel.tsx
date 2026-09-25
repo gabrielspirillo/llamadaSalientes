@@ -48,6 +48,8 @@ export interface BillingLineView {
   /** "14 mar 2026" */
   paidOnLabel: string | null;
   files: { id: string; name: string; kind: ChargeFileKind }[];
+  /** La factura emitida por esta cita, si la hay. */
+  invoice?: { id: string; number: string } | null;
 }
 
 interface PayForm {
@@ -98,6 +100,7 @@ export function BillingPanel({
           paymentMethod: l.paymentMethod,
           paidOn: null,
           files: l.files,
+          invoiceId: l.invoice?.id ?? null,
         })),
       ),
     [lines],
@@ -374,6 +377,17 @@ export function BillingPanel({
                     <Badge tone={paid ? 'success' : 'warn'}>
                       {CHARGE_STATUS_LABELS[line.status]}
                     </Badge>
+                    {line.invoice && (
+                      <a
+                        href={`/api/facturas/${line.invoice.id}/pdf`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-0.5 text-[12px] font-semibold text-brand-800 ring-1 ring-brand-200 hover:bg-brand-100"
+                        title="Abrir la factura"
+                      >
+                        <FileText className="h-3 w-3" /> Factura {line.invoice.number}
+                      </a>
+                    )}
                   </div>
                 </div>
                 {paid && (

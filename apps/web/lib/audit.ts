@@ -19,7 +19,7 @@ export type AuditEntity =
   | 'faq'
   | 'agent_config'
   | 'agent_prompt_version'
-  // Entrenar al asistente (migración 0038).
+  // Entrenar al asistente (migración 0042).
   | 'agent_lesson'
   | 'phone_number'
   | 'ghl_integration'
@@ -39,7 +39,10 @@ export type AuditEntity =
   // Módulo Finanzas (migración 0036).
   | 'finance_entry'
   | 'finance_category'
-  | 'finance_settings';
+  | 'finance_settings'
+  // Facturas desde la ficha (migración 0042).
+  | 'invoice'
+  | 'invoice_settings';
 
 export async function recordAudit(input: {
   tenantId: string;

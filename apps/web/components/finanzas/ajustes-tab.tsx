@@ -1,18 +1,24 @@
 import { CategoriesPanel } from '@/components/finanzas/categories-panel';
+import { InvoiceSettingsForm } from '@/components/finanzas/invoice-settings-form';
 import { SettingsForm } from '@/components/finanzas/settings-form';
 import { Card, CardTopbar } from '@/components/ui/card';
 import { Callout } from '@/components/ui/feedback';
 import type { FinanceCategoryRecord, FinanceSettingsRecord } from '@/lib/finance/queries';
-import { ArrowDownToLine, ArrowUpFromLine, Info, Target } from 'lucide-react';
+import type { InvoiceSettingsRecord } from '@/lib/invoices/service';
+import { ArrowDownToLine, ArrowUpFromLine, FileText, Info, Target } from 'lucide-react';
 
 export function AjustesTab({
   categories,
   counts,
   settings,
+  invoiceSettings,
+  year,
 }: {
   categories: FinanceCategoryRecord[];
   counts: Record<string, number>;
   settings: FinanceSettingsRecord;
+  invoiceSettings: InvoiceSettingsRecord | null;
+  year: number;
 }) {
   return (
     <div className="space-y-6">
@@ -30,6 +36,15 @@ export function AjustesTab({
           subtitle="La barra del Resumen mide contra esto"
         />
         <SettingsForm monthlyRevenueGoalCents={settings.monthlyRevenueGoalCents} />
+      </Card>
+      <Card>
+        <CardTopbar
+          icon={<FileText className="h-4 w-4" />}
+          tone="grape"
+          title="Datos de facturación"
+          subtitle="Lo que va impreso en cada factura que se emite desde la ficha del paciente"
+        />
+        <InvoiceSettingsForm settings={invoiceSettings} year={year} />
       </Card>
       <div className="grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-2">
         <Card>

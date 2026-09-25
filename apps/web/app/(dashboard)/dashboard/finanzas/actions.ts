@@ -28,13 +28,19 @@ import {
   updateCategory,
   updateEntry,
 } from '@/lib/finance/service';
+import { InvoiceValidationError } from '@/lib/invoices/model';
+import { type InvoiceSettingsInput, saveInvoiceSettings } from '@/lib/invoices/service';
 
 export type FinanceActionResult<T = undefined> =
   | ({ ok: true } & (T extends undefined ? { data?: undefined } : { data: T }))
   | { ok: false; error: string };
 
 function fail(err: unknown): { ok: false; error: string } {
-  if (err instanceof FinanceValidationError || err instanceof FinanceForbiddenError) {
+  if (
+    err instanceof FinanceValidationError ||
+    err instanceof FinanceForbiddenError ||
+    err instanceof InvoiceValidationError
+  ) {
     return { ok: false, error: err.message };
   }
   console.error('[finanzas] acción fallida', err);
@@ -300,6 +306,29 @@ export async function saveFinanceSettingsAction(input: {
       after: { monthlyRevenueGoalCents: goal },
     });
     revalidate();
+    return { ok: true };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+/** Los datos del emisor de las facturas y el contador de la serie. Sólo admin. */
+export async function saveInvoiceSettingsAction(
+  input: InvoiceSettingsInput,
+): Promise<FinanceActionResult> {
+  try {
+    const ctx = await requireFinanceManager();
+    await saveInvoiceSettings({ tenantId: ctx.tenantId, userId: ctx.userId }, input);
+    await recordAudit({
+      tenantId: ctx.tenantId,
+      actorUserId: ctx.userId,
+      action: 'update',
+      entity: 'invoice_settings',
+      entityId: ctx.tenantId,
+      after: { ...input },
+    });
+    revalidate();
+    revalidatePath('/dashboard/agenda', 'layout');
     return { ok: true };
   } catch (err) {
     return fail(err);

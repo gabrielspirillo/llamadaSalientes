@@ -55,6 +55,8 @@ export interface ChargeRecord {
   status: string;
   paymentMethod: string | null;
   paidOn: string | null;
+  /** La factura en la que va (migración 0042). Null = sin facturar. */
+  invoiceId: string | null;
   createdAt: Date;
   files: ChargeFileRecord[];
 }
@@ -118,6 +120,7 @@ export async function listPatientCharges(
     status: charge.status,
     paymentMethod: charge.paymentMethod,
     paidOn: charge.paidOn,
+    invoiceId: charge.invoiceId ?? null,
     createdAt: charge.createdAt,
     files: filesByCharge.get(charge.id) ?? [],
   }));
