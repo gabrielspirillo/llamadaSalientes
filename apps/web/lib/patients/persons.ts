@@ -13,6 +13,7 @@ import {
   parseGuardians,
   primaryGuardian,
 } from '@/lib/care-profile/policy';
+import { MAX_PRIOR_RED_FLAGS } from '@/lib/care-profile/signals';
 import { db } from '@/lib/db/client';
 import {
   agendaAppointments,
@@ -73,6 +74,11 @@ export const patientMarksSchema = z.object({
   /** Si no se manda, el aviso médico se deja como estaba. */
   needsHumanReview: z.boolean().optional(),
   reviewReason: z.string().trim().max(500).optional().or(z.literal('')),
+  /** Familia que duda. Si no se manda, se deja como estaba. */
+  hesitant: z.boolean().optional(),
+  hesitantNote: z.string().trim().max(300).optional().or(z.literal('')),
+  /** Banderas rojas de antes de la plataforma. Si no se manda, se deja como estaba. */
+  priorRedFlags: z.number().int().min(0).max(MAX_PRIOR_RED_FLAGS).optional(),
 });
 export type PatientMarksInput = z.infer<typeof patientMarksSchema>;
 
@@ -95,6 +101,11 @@ export interface PatientPerson {
   /** Aviso médico pendiente de que lo valore una persona. Los agentes no reservan. */
   needsHumanReview: boolean;
   reviewReason: string | null;
+  /** Familia que duda: pregunta, no coge cita y al tiempo la coge. */
+  hesitant: boolean;
+  hesitantNote: string | null;
+  /** Banderas rojas de antes de la plataforma; las nuevas salen de la agenda. */
+  priorRedFlags: number;
   notes: string | null;
   /** Quién contestó la anamnesis por última vez y cuándo. */
   anamnesisUpdatedAt: Date | null;
@@ -159,6 +170,9 @@ function toPerson(row: {
     googleReview: p.googleReview,
     needsHumanReview: p.needsHumanReview,
     reviewReason: p.reviewReason,
+    hesitant: p.hesitant,
+    hesitantNote: p.hesitantNote,
+    priorRedFlags: p.priorRedFlags,
     notes: p.notes,
     anamnesisUpdatedAt: p.anamnesisUpdatedAt,
     anamnesisUpdatedByEmail: row.anamnesisUpdatedByEmail,
@@ -439,7 +453,7 @@ export async function saveAnamnesis(
   return parsed.data;
 }
 
-/** Prioritario (con motivo) y reseña en Google. */
+/** Prioritario (con motivo), reseña en Google, duda y banderas previas. */
 export async function setPatientMarks(
   scope: PatientScope,
   patientId: string,
@@ -458,6 +472,13 @@ export async function setPatientMarks(
             needsHumanReview: input.needsHumanReview,
             reviewReason: input.needsHumanReview ? emptyToNull(input.reviewReason) : null,
           }),
+      ...(input.hesitant === undefined
+        ? {}
+        : {
+            hesitant: input.hesitant,
+            hesitantNote: input.hesitant ? emptyToNull(input.hesitantNote) : null,
+          }),
+      ...(input.priorRedFlags === undefined ? {} : { priorRedFlags: input.priorRedFlags }),
       updatedAt: new Date(),
     })
     .where(and(eq(patients.tenantId, scope.tenantId), eq(patients.id, patientId)))

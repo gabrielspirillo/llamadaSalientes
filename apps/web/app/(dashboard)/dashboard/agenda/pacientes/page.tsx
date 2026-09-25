@@ -1,4 +1,5 @@
 import { PatientDialog } from '@/components/agenda/patient-dialog';
+import { PatientSignalBadges } from '@/components/agenda/patient-signals';
 import { RemovePatientButton } from '@/components/agenda/remove-patient-button';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -8,9 +9,15 @@ import { EmptyState } from '@/components/ui/feedback';
 import { Input, Select } from '@/components/ui/input';
 import { HeadRow, TD, TH, THead, TR, Table, TableWrap } from '@/components/ui/table';
 import { getAgendaContext } from '@/lib/agenda/auth';
-import { listAgendaPatients, listProfessionals, resolveTimezone } from '@/lib/agenda/queries';
+import {
+  countRedFlagsByPatientKey,
+  listAgendaPatients,
+  listProfessionals,
+  resolveTimezone,
+} from '@/lib/agenda/queries';
 import { describeAge } from '@/lib/care-profile/policy';
 import { getCareProfile } from '@/lib/care-profile/queries';
+import { EMPTY_RED_FLAGS, type RedFlagCounts } from '@/lib/care-profile/signals';
 import { localDateKey } from '@/lib/tasks/tz';
 import { Contact, Search } from 'lucide-react';
 import Link from 'next/link';
@@ -49,6 +56,14 @@ export default async function AgendaPacientesPage({
     professionalId: filtroProfesional,
     search: q,
   });
+  // Banderas rojas (faltas y cancelaciones de la familia): sólo con perfil. Una
+  // consulta agrupada para toda la lista, contando todas sus citas.
+  const redFlagsByKey = careProfile
+    ? await countRedFlagsByPatientKey(
+        ctx.tenantId,
+        patients.map((p) => p.patientKey),
+      ).catch(() => new Map<string, RedFlagCounts>())
+    : new Map<string, RedFlagCounts>();
 
   const fmt = new Intl.DateTimeFormat('es-ES', {
     timeZone: timezone,
@@ -138,6 +153,18 @@ export default async function AgendaPacientesPage({
                           <Badge tone="warn" size="sm" className="ml-2">
                             Prioritario
                           </Badge>
+                        )}
+                        {careProfile && (
+                          <PatientSignalBadges
+                            size="sm"
+                            className="ml-2 align-middle"
+                            redFlags={{
+                              ...(redFlagsByKey.get(p.patientKey) ?? EMPTY_RED_FLAGS),
+                              prior: p.priorRedFlags,
+                            }}
+                            hesitant={p.hesitant}
+                            hesitantNote={p.hesitantNote}
+                          />
                         )}
                       </TD>
                       {careProfile && (

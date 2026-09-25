@@ -820,6 +820,26 @@ nuevos, prioridad por edad. Todo eso va **sólo para ella** y sin interruptores:
   `patient_id`, `birth_date`, `guardian_name` y `medical_alert`; (3) el DID de
   Zadarma de la clínica apuntando a ese agente.
 
+## Señales de conducta del paciente (Respinens): duda y banderas rojas
+
+La clínica las llevaba con emojis en el nombre de cada contacto de Google (🤔
+familias que dudan, una 🚩 por cada falta o cancelación). Migración
+`0043_paciente_senales.sql`; se pintan **sólo con perfil de atención**.
+
+- **La duda es una marca a mano** (`patients.hesitant` + `hesitant_note`), en
+  la tarjeta "Marcas del paciente" de la ficha.
+- **Las banderas rojas se CUENTAN, no se guardan**: citas `NO_SHOW` y
+  `CANCELLED` de la agenda (`countRedFlagsByPatientKey`, una consulta
+  agrupada; regla pura en `lib/care-profile/signals.ts`, con tests).
+  `patients.prior_red_flags` sólo trae las de antes de la plataforma.
+- **Una cancelación de la clínica no es bandera**: `agenda_appointments.cancelled_by`
+  (`PATIENT` | `CLINIC`; NULL = sin dato, cuenta como familia). Con perfil, el
+  botón "Cancelar cita" pregunta quién cancela. Agentes y recordatorios anulan
+  como `PATIENT`; la lista de espera, al adelantar una cita, como `CLINIC`.
+- Se ven en la cabecera de la ficha, en la lista de pacientes, en el chip del
+  calendario y en la hoja de la cita (`components/agenda/patient-signals.tsx`).
+  Los asistentes todavía no las leen.
+
 ## Consentimiento informado con firma digital (Documenso, por WhatsApp)
 
 Respinens firma el consentimiento informado de cada menor **con un clic desde la

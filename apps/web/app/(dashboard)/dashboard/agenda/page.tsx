@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { getAgendaContext } from '@/lib/agenda/auth';
 import { patientIdFromKey, phoneFromPatientKey } from '@/lib/agenda/patients';
 import {
+  countRedFlagsByPatientKey,
   listAppointmentsInRange,
   listProfessionals,
   listTimeOffInRange,
@@ -17,6 +18,7 @@ import {
 } from '@/lib/agenda/view';
 import { describeAge } from '@/lib/care-profile/policy';
 import { getCareProfile } from '@/lib/care-profile/queries';
+import { EMPTY_RED_FLAGS, type RedFlagCounts } from '@/lib/care-profile/signals';
 import { db } from '@/lib/db/client';
 import { professionalShifts, treatments } from '@/lib/db/schema';
 import { getPatientPerson, listPatientPersons } from '@/lib/patients/persons';
@@ -138,6 +140,15 @@ export default async function AgendaPage({
       : Promise.resolve([]),
   ]);
 
+  // Banderas rojas de los pacientes que salen en pantalla, contando TODAS sus
+  // citas (no sólo las del rango): recepción las ve al abrir el día.
+  const redFlagsByKey = careProfile
+    ? await countRedFlagsByPatientKey(
+        ctx.tenantId,
+        appointments.map((a) => a.patientKey),
+      ).catch(() => new Map<string, RedFlagCounts>())
+    : new Map<string, RedFlagCounts>();
+
   const items = toCalendarItems(
     appointments.map((a) => ({
       id: a.id,
@@ -151,6 +162,16 @@ export default async function AgendaPage({
       // la etiqueta de primera visita, sólo en las clínicas con perfil.
       patientAge: a.patientBirthDate ? describeAge(a.patientBirthDate, todayKey) : null,
       badge: careProfile && a.isFirstVisit ? '1ª visita' : null,
+      signals: careProfile
+        ? {
+            redFlags: {
+              ...(redFlagsByKey.get(a.patientKey) ?? EMPTY_RED_FLAGS),
+              prior: a.patientPriorRedFlags,
+            },
+            hesitant: a.patientHesitant,
+            hesitantNote: a.patientHesitantNote,
+          }
+        : null,
       treatmentId: a.treatmentId,
       treatmentName: a.treatmentName,
       status: a.status,

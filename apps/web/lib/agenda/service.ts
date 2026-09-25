@@ -19,6 +19,7 @@ import { BUSY_STATUSES, PROFESSIONAL_COLORS } from '@/lib/agenda/shared';
 import { syncAppointmentEffects } from '@/lib/agenda/sync';
 import { SESSION_BEHAVIORS, firstVisitRules } from '@/lib/care-profile/policy';
 import { getCareProfile } from '@/lib/care-profile/queries';
+import type { CancelledBy } from '@/lib/care-profile/signals';
 import { db } from '@/lib/db/client';
 import {
   agendaAppointments,
@@ -1011,6 +1012,8 @@ export async function updateAppointment(
       | 'NO_SHOW';
     notes?: string | null;
     cancelReason?: string | null;
+    /** Quién la anula. Sólo la de la familia cuenta como bandera roja. */
+    cancelledBy?: CancelledBy | null;
     patientName?: string;
     patientPhone?: string | null;
     treatmentId?: string | null;
@@ -1020,6 +1023,7 @@ export async function updateAppointment(
   if (patch.status !== undefined) values.status = patch.status;
   if (patch.notes !== undefined) values.notes = emptyToNull(patch.notes);
   if (patch.cancelReason !== undefined) values.cancelReason = emptyToNull(patch.cancelReason);
+  if (patch.cancelledBy !== undefined) values.cancelledBy = patch.cancelledBy;
   if (patch.patientName !== undefined) values.patientName = patch.patientName;
   if (patch.patientPhone !== undefined) {
     values.patientPhone =
@@ -1068,14 +1072,21 @@ export async function updateAppointment(
   return row;
 }
 
+/**
+ * `cancelledBy` por defecto es la familia: es lo que pasa casi siempre (llama,
+ * escribe o pulsa "cancelar" en el recordatorio). La clínica lo dice cuando es
+ * ella quien anula, y entonces no cuenta como bandera roja.
+ */
 export async function cancelAppointment(
   ctx: AgendaContext,
   appointmentId: string,
   reason?: string,
+  cancelledBy: CancelledBy = 'PATIENT',
 ) {
   return updateAppointment(ctx, appointmentId, {
     status: 'CANCELLED',
     cancelReason: reason ?? null,
+    cancelledBy,
   });
 }
 

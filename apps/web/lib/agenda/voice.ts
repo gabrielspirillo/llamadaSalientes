@@ -14,6 +14,7 @@ import { getAppointment, getClinicTimezone, tenantHasAgenda } from '@/lib/agenda
 import { AgendaValidationError, cancelAppointment, createAppointment } from '@/lib/agenda/service';
 import { resolvePatientForBooking } from '@/lib/care-profile/agent';
 import { getCareProfileSafe } from '@/lib/care-profile/queries';
+import type { CancelledBy } from '@/lib/care-profile/signals';
 import { clockArticle, speakClockTime } from '@/lib/retell/time-speech';
 import { localDateKey } from '@/lib/tasks/tz';
 
@@ -294,6 +295,7 @@ export async function agendaBookAppointment(
 export async function agendaCancelAppointment(
   tenantId: string,
   appointmentId: string,
+  cancelledBy: CancelledBy = 'PATIENT',
 ): Promise<AgendaToolResult> {
   if (!(await usesInternalAgenda(tenantId))) return null;
   // Los ids de la agenda interna son UUID; los de GHL, alfanuméricos de 20.
@@ -306,7 +308,8 @@ export async function agendaCancelAppointment(
     await cancelAppointment(
       systemAgendaContext(tenantId),
       appointmentId,
-      'Cancelada por el agente',
+      cancelledBy === 'CLINIC' ? 'Movida a un hueco anterior' : 'Cancelada por el agente',
+      cancelledBy,
     );
     return { result: 'La cita quedó cancelada y el hueco vuelve a estar libre.' };
   } catch (err) {

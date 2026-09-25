@@ -5,12 +5,24 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input, Switch } from '@/components/ui/input';
 import { PRIORITY_LABELS, type PriorityDescription } from '@/lib/care-profile/policy';
-import { AlertTriangle, Check, Loader2 } from 'lucide-react';
+import {
+  MAX_PRIOR_RED_FLAGS,
+  type RedFlagCounts,
+  clampPrior,
+  describeRedFlags,
+  totalRedFlags,
+} from '@/lib/care-profile/signals';
+import { AlertTriangle, Check, CircleHelp, Flag, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
 /**
- * Prioridad y reseña del paciente.
+ * Marcas del paciente: prioridad, reseña, familia que duda y banderas rojas.
+ *
+ * Las banderas rojas NO se editan: se cuentan de la agenda (faltas y
+ * cancelaciones de la familia). Lo único que se escribe a mano son las de
+ * antes de la plataforma, para no perder las que la clínica ya llevaba en sus
+ * contactos.
  *
  * La prioridad que se PINTA (aquí y en la cabecera) sale de `describePriority`:
  * edad, marca manual o las dos, y se dice cuál. Así "Prioritario" en la
@@ -24,6 +36,9 @@ export function PatientMarks({
   priorityReason,
   googleReview,
   priority,
+  hesitant,
+  hesitantNote,
+  redFlags,
   canEdit,
 }: {
   patientId: string;
@@ -31,6 +46,10 @@ export function PatientMarks({
   priorityReason: string | null;
   googleReview: boolean;
   priority: PriorityDescription;
+  hesitant: boolean;
+  hesitantNote: string | null;
+  /** Contadas de la agenda + las de antes (`prior`). */
+  redFlags: RedFlagCounts;
   canEdit: boolean;
 }) {
   const router = useRouter();
@@ -41,9 +60,21 @@ export function PatientMarks({
   const [flag, setFlag] = React.useState(priorityFlag);
   const [reason, setReason] = React.useState(priorityReason ?? '');
   const [review, setReview] = React.useState(googleReview);
+  const [doubt, setDoubt] = React.useState(hesitant);
+  const [doubtNote, setDoubtNote] = React.useState(hesitantNote ?? '');
+  const [prior, setPrior] = React.useState(String(redFlags.prior));
+  const priorId = React.useId();
 
+  const priorValue = clampPrior(Number(prior || 0));
   const dirty =
-    flag !== priorityFlag || review !== googleReview || (flag && reason !== (priorityReason ?? ''));
+    flag !== priorityFlag ||
+    review !== googleReview ||
+    (flag && reason !== (priorityReason ?? '')) ||
+    doubt !== hesitant ||
+    (doubt && doubtNote !== (hesitantNote ?? '')) ||
+    priorValue !== redFlags.prior;
+  const liveFlags = { ...redFlags, prior: priorValue };
+  const flagsTotal = totalRedFlags(liveFlags);
 
   function submit() {
     setError(null);
@@ -52,6 +83,9 @@ export function PatientMarks({
         priorityFlag: flag,
         priorityReason: reason,
         googleReview: review,
+        hesitant: doubt,
+        hesitantNote: doubtNote,
+        priorRedFlags: priorValue,
       });
       if (result.ok) {
         setSaved(true);
@@ -122,6 +156,80 @@ export function PatientMarks({
             setSaved(false);
           }}
         />
+      </div>
+
+      <div className="grid gap-2 rounded-[14px] border border-(--color-border) px-3 py-2.5">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[13px] text-zinc-700">
+            <span className="inline-flex items-center gap-1.5 font-semibold">
+              <CircleHelp className="h-4 w-4 text-sky-600" aria-hidden /> Familia que duda
+            </span>
+            <span className="block text-[12px] text-zinc-600">
+              Pregunta, no coge cita y al tiempo la coge.
+            </span>
+          </span>
+          <Switch
+            checked={doubt}
+            disabled={!canEdit}
+            label="Familia que duda"
+            onCheckedChange={(v) => {
+              setDoubt(v);
+              setSaved(false);
+            }}
+          />
+        </div>
+        {doubt && (
+          <Input
+            aria-label="Nota sobre la duda"
+            value={doubtNote}
+            disabled={!canEdit}
+            maxLength={300}
+            onChange={(e) => {
+              setDoubtNote(e.target.value);
+              setSaved(false);
+            }}
+            placeholder="Opcional: pidió precios en marzo, lo está pensando…"
+          />
+        )}
+      </div>
+
+      <div className="grid gap-2 rounded-[14px] border border-(--color-border) px-3 py-2.5">
+        <div className="flex items-start justify-between gap-3">
+          <span className="text-[13px] text-zinc-700">
+            <span className="inline-flex items-center gap-1.5 font-semibold">
+              <Flag
+                className={
+                  flagsTotal > 0 ? 'h-4 w-4 fill-rose-600 text-rose-600' : 'h-4 w-4 text-zinc-400'
+                }
+                aria-hidden
+              />
+              Banderas rojas: {flagsTotal}
+            </span>
+            <span className="block text-[12px] text-zinc-600">
+              {flagsTotal > 0 ? describeRedFlags(liveFlags) : 'Ni faltas ni cancelaciones.'} Se
+              suman solas con cada falta o cancelación de la familia.
+            </span>
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-3 text-[12px] text-zinc-700">
+          <label htmlFor={priorId}>
+            Anteriores a este panel (las que ya teníais en los contactos)
+          </label>
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={MAX_PRIOR_RED_FLAGS}
+            id={priorId}
+            value={prior}
+            disabled={!canEdit}
+            onChange={(e) => {
+              setPrior(e.target.value);
+              setSaved(false);
+            }}
+            className="w-20 text-right"
+          />
+        </div>
       </div>
 
       {error && (

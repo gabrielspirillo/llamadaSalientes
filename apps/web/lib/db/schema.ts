@@ -10,6 +10,7 @@ import {
   pgEnum,
   pgTable,
   primaryKey,
+  smallint,
   text,
   timestamp,
   unique,
@@ -2192,6 +2193,11 @@ export const patients = pgTable(
     /** Un aviso médico que la clínica valora en persona antes de dar cita. */
     needsHumanReview: boolean('needs_human_review').notNull().default(false),
     reviewReason: text('review_reason'),
+    /** Familia que duda: pregunta, no coge cita y al tiempo la coge (migración 0043). */
+    hesitant: boolean('hesitant').notNull().default(false),
+    hesitantNote: text('hesitant_note'),
+    /** Faltas y cancelaciones de antes de la plataforma; las nuevas se cuentan de la agenda. */
+    priorRedFlags: smallint('prior_red_flags').notNull().default(0),
     notes: text('notes'),
     /** Quién contestó la anamnesis por última vez y cuándo (migración 0035). */
     anamnesisUpdatedAt: timestamp('anamnesis_updated_at', { withTimezone: true }),
@@ -2312,6 +2318,8 @@ export const agendaAppointments = pgTable(
     title: text('title'),
     notes: text('notes'),
     cancelReason: text('cancel_reason'),
+    /** PATIENT | CLINIC. Sólo la de la familia cuenta como bandera roja; NULL = sin dato. */
+    cancelledBy: text('cancelled_by').$type<'PATIENT' | 'CLINIC'>(),
     createdByUserId: uuid('created_by_user_id').references(() => users.id, {
       onDelete: 'set null',
     }),

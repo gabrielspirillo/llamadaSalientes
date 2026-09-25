@@ -672,10 +672,13 @@ export async function markOfferAccepted(args: {
     return { ok: false, reason: 'book_failed' };
   }
 
-  // Cancelar cita vieja en GHL — el webhook GHL hará el cascade.
-  await cancelAppointment(offer.tenantId, { appointment_id: entry.ghlAppointmentId }).catch((err) =>
-    console.error('[waitlist] cancel old appt failed', err),
-  );
+  // Cancelar cita vieja en GHL — el webhook GHL hará el cascade. La anula la
+  // clínica al adelantarle la hora: no es una bandera roja de la familia.
+  await cancelAppointment(
+    offer.tenantId,
+    { appointment_id: entry.ghlAppointmentId },
+    { cancelledBy: 'CLINIC' },
+  ).catch((err) => console.error('[waitlist] cancel old appt failed', err));
 
   // Marcar la oferta como aceptada y la entry como fulfilled.
   await db
