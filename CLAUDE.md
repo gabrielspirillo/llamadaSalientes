@@ -1107,7 +1107,7 @@ neutro, resultado como línea oscura.
 
 ## Facturas desde la ficha del paciente
 
-Pestaña **Contable** de la ficha → **Nueva factura** (migración `0038_facturas.sql`).
+Pestaña **Contable** de la ficha → **Nueva factura** (migración `0042_facturas.sql`).
 El diseño es la plantilla de Respinens (`Factura Respinens.html`, Claude Design):
 logo centrado, banda Documento · Nº · Fecha · Total, Emisor / Facturar a ·
 Tutor/a legal / Paciente, tabla de conceptos, base + IVA + total, forma de
@@ -1120,7 +1120,7 @@ puro, con tests), igual que el consentimiento.
   facturar ya marcadas y agrupadas por concepto + precio
   (`groupSessionsIntoItems`); precio del cobro o del tratamiento; forma de
   pago del cobro; concepto por defecto de la clínica.
-- **Emisor** en `invoice_settings` (una fila por clínica; la 0038 siembra la de
+- **Emisor** en `invoice_settings` (una fila por clínica; la 0042 siembra la de
   Respinens con los datos de su plantilla). Se edita en Finanzas → Ajustes →
   Datos de facturación. Sin fila, se factura a nombre de la clínica.
 - **Numeración** `AAAA-0000001` por año, asignada dentro de una transacción con

@@ -359,7 +359,7 @@ export const whatsappAgentSettings = pgTable('whatsapp_agent_settings', {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Entrenar al asistente (migración 0038) — lo que la clínica le enseñó
+// Entrenar al asistente (migración 0042) — lo que la clínica le enseñó
 // conversando con el entrenador. Aditivo, como `persona`: afina el
 // comportamiento del asistente de WhatsApp pero NO anula las reglas duras ni
 // los datos oficiales (precios, horarios, agenda).
@@ -2400,7 +2400,7 @@ export const patientCharges = pgTable(
     createdByUserId: uuid('created_by_user_id').references(() => users.id, {
       onDelete: 'set null',
     }),
-    /** La factura en la que va este cobro (migración 0038). Null = sin facturar. */
+    /** La factura en la que va este cobro (migración 0042). Null = sin facturar. */
     invoiceId: uuid('invoice_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
@@ -2557,7 +2557,7 @@ export const financeSettings = pgTable('finance_settings', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
-// ─── Facturas desde la ficha (migración 0038) ────────────────────────────────
+// ─── Facturas desde la ficha (migración 0042) ────────────────────────────────
 // Los datos del emisor y el contador de la serie por clínica, y la factura
 // emitida como foto inmutable (emisor y destinatario copiados al emitir).
 

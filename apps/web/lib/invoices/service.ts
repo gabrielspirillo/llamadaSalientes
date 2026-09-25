@@ -41,7 +41,7 @@ import { publishMessageEvent } from '@/lib/whatsapp/realtime/publisher';
 import type { WhatsAppConnector } from '@/lib/whatsapp/types';
 
 /**
- * Facturas desde la ficha del paciente (migración 0038).
+ * Facturas desde la ficha del paciente (migración 0042).
  *
  * La factura es INMUTABLE: al emitirla se copian el emisor y el destinatario
  * tal como estaban, se asigna el número dentro de una transacción con el

@@ -55,7 +55,7 @@ export interface ChargeRecord {
   status: string;
   paymentMethod: string | null;
   paidOn: string | null;
-  /** La factura en la que va (migración 0038). Null = sin facturar. */
+  /** La factura en la que va (migración 0042). Null = sin facturar. */
   invoiceId: string | null;
   createdAt: Date;
   files: ChargeFileRecord[];

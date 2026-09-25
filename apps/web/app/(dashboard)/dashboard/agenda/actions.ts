@@ -780,7 +780,7 @@ export async function registerPaymentAction(input: {
   }
 }
 
-// ─── Facturas desde la ficha (migración 0038) ────────────────────────────────
+// ─── Facturas desde la ficha (migración 0042) ────────────────────────────────
 
 function revalidatePatientKey(patientKey: string) {
   revalidatePath(`/dashboard/agenda/pacientes/${encodeURIComponent(patientKey)}`);

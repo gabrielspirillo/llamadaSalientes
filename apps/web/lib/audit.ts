@@ -19,7 +19,7 @@ export type AuditEntity =
   | 'faq'
   | 'agent_config'
   | 'agent_prompt_version'
-  // Entrenar al asistente (migración 0038).
+  // Entrenar al asistente (migración 0042).
   | 'agent_lesson'
   | 'phone_number'
   | 'ghl_integration'
@@ -40,7 +40,7 @@ export type AuditEntity =
   | 'finance_entry'
   | 'finance_category'
   | 'finance_settings'
-  // Facturas desde la ficha (migración 0038).
+  // Facturas desde la ficha (migración 0042).
   | 'invoice'
   | 'invoice_settings';
 
