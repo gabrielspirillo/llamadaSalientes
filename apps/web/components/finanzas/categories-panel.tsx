@@ -6,6 +6,7 @@ import {
   updateCategoryAction,
 } from '@/app/(dashboard)/dashboard/finanzas/actions';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Input, Switch } from '@/components/ui/input';
 import { cn } from '@/lib/cn';
 import { type FinanceKind, plural } from '@/lib/finance/model';
@@ -56,6 +57,7 @@ export function CategoriesPanel({
   const [editing, setEditing] = React.useState<{ id: string; name: string } | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [saved, setSaved] = React.useState(false);
+  const [archiving, setArchiving] = React.useState<CategoryRow | null>(null);
   const savedTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const active = categories.filter((c) => c.kind === kind && c.active);
@@ -257,15 +259,7 @@ export function CategoriesPanel({
                 disabled={pending}
                 aria-label={`Archivar ${c.name}`}
                 title="Archivar (no se borra: se puede recuperar)"
-                onClick={() => {
-                  if (
-                    !window.confirm(
-                      `¿Archivar «${c.name}»? Deja de ofrecerse al cargar movimientos; los que ya la usan no cambian y se puede recuperar.`,
-                    )
-                  )
-                    return;
-                  run(() => updateCategoryAction(c.id, { active: false }));
-                }}
+                onClick={() => setArchiving(c)}
               >
                 <Archive className="h-3.5 w-3.5" />
               </Button>
@@ -305,6 +299,24 @@ export function CategoriesPanel({
           </ul>
         </details>
       )}
+      <ConfirmDialog
+        open={archiving !== null}
+        onOpenChange={(o) => {
+          if (!o) setArchiving(null);
+        }}
+        title={archiving ? `¿Archivar «${archiving.name}»?` : 'Archivar categoría'}
+        details={[
+          'Deja de ofrecerse al cargar movimientos.',
+          'Los movimientos que ya la usan no cambian.',
+          'Se puede recuperar desde «Archivadas».',
+        ]}
+        tone="primary"
+        confirmLabel="Archivar"
+        onConfirm={() => {
+          if (archiving) run(() => updateCategoryAction(archiving.id, { active: false }));
+          return null;
+        }}
+      />
     </div>
   );
 }

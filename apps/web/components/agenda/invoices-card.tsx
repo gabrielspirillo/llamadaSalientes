@@ -6,6 +6,7 @@ import {
 } from '@/app/(dashboard)/dashboard/agenda/actions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Input } from '@/components/ui/input';
 import type { PaymentMethod } from '@/lib/agenda/billing';
 import { cn } from '@/lib/cn';
@@ -87,22 +88,16 @@ export function InvoicesCard({
     });
   }
 
-  function voidOne(inv: InvoiceListItem) {
-    const reason = window.prompt(
-      `¿Anular la factura ${inv.number}? Indica el motivo (queda registrado):`,
-    );
-    if (reason === null) return;
+  const [voiding, setVoiding] = React.useState<InvoiceListItem | null>(null);
+
+  async function confirmVoid(inv: InvoiceListItem, reason: string): Promise<string | null> {
     setError(null);
     setNotice(null);
-    startTransition(async () => {
-      const r = await voidInvoiceAction(inv.id, reason);
-      if (!r.ok) {
-        setError(r.error);
-        return;
-      }
-      setNotice(`Factura ${inv.number} anulada.`);
-      router.refresh();
-    });
+    const r = await voidInvoiceAction(inv.id, reason);
+    if (!r.ok) return r.error;
+    setNotice(`Factura ${inv.number} anulada.`);
+    router.refresh();
+    return null;
   }
 
   return (
@@ -227,7 +222,7 @@ export function InvoicesCard({
                       variant="ghost"
                       className="text-rose-600 hover:bg-rose-50 hover:text-rose-700"
                       disabled={pending}
-                      onClick={() => voidOne(inv)}
+                      onClick={() => setVoiding(inv)}
                     >
                       <Ban className="h-3.5 w-3.5" /> Anular
                     </Button>
@@ -269,6 +264,27 @@ export function InvoicesCard({
           })}
         </ul>
       )}
+
+      <ConfirmDialog
+        open={voiding !== null}
+        onOpenChange={(o) => {
+          if (!o) setVoiding(null);
+        }}
+        title={voiding ? `¿Anular la factura ${voiding.number}?` : 'Anular factura'}
+        description="Una factura emitida no se borra: queda anulada y se conserva."
+        details={[
+          'El número se mantiene y no se vuelve a usar.',
+          'El PDF pasa a llevar la marca ANULADA.',
+          'Sus sesiones vuelven a poder facturarse.',
+        ]}
+        reason={{
+          label: 'Motivo de la anulación',
+          placeholder: 'Ej.: datos del tutor equivocados, se emite una nueva',
+          required: true,
+        }}
+        confirmLabel="Anular factura"
+        onConfirm={(reason) => (voiding ? confirmVoid(voiding, reason) : null)}
+      />
     </div>
   );
 }

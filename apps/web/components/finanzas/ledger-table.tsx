@@ -7,6 +7,7 @@ import {
 } from '@/app/(dashboard)/dashboard/finanzas/actions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { EmptyState } from '@/components/ui/feedback';
 import { Input, Select } from '@/components/ui/input';
 import { RECEIPT_ACCEPT } from '@/lib/agenda/billing';
@@ -89,6 +90,7 @@ export function LedgerTable({
     method: FinancePaymentMethod | '';
   } | null>(null);
   const [uploading, setUploading] = React.useState<string | null>(null);
+  const [deleting, setDeleting] = React.useState<LedgerLine | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
 
@@ -424,15 +426,7 @@ export function LedgerTable({
                             variant="ghost"
                             className="text-rose-600 hover:bg-rose-50 hover:text-rose-700"
                             disabled={pending}
-                            onClick={() => {
-                              if (
-                                !window.confirm(
-                                  `¿Borrar «${line.concept}»? Se borran también sus comprobantes.`,
-                                )
-                              )
-                                return;
-                              run(() => deleteEntryAction(line.sourceId), 'Movimiento borrado.');
-                            }}
+                            onClick={() => setDeleting(line)}
                           >
                             <Trash2 className="h-3.5 w-3.5" /> Borrar
                           </Button>
@@ -456,6 +450,25 @@ export function LedgerTable({
           })}
         </ul>
       )}
+
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(o) => {
+          if (!o) setDeleting(null);
+        }}
+        title={deleting ? `¿Borrar «${deleting.concept}»?` : 'Borrar movimiento'}
+        description="Desaparece de las cuentas y del resumen. No se puede deshacer."
+        details={
+          deleting && deleting.files.length > 0
+            ? [`Se borran también sus ${deleting.files.length} comprobante(s).`]
+            : undefined
+        }
+        confirmLabel="Borrar movimiento"
+        onConfirm={() => {
+          if (deleting) run(() => deleteEntryAction(deleting.sourceId), 'Movimiento borrado.');
+          return null;
+        }}
+      />
 
       {editing && (
         <EntryDialog
