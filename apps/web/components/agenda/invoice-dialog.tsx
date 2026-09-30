@@ -170,9 +170,15 @@ export function InvoiceDialog({
     [invoiceable],
   );
 
-  // Cada apertura parte de los datos de la ficha, no de lo que quedó de la anterior.
+  // Cada apertura parte de los datos de la ficha, no de lo que quedó de la
+  // anterior. Sólo al ABRIRSE: tras emitir, la ficha se refresca y llegan
+  // `defaults` y `candidates` nuevos; si el efecto dependiera de ellos, la
+  // pantalla de "factura emitida" se borraba y volvía el formulario vacío.
+  const wasOpen = React.useRef(false);
   React.useEffect(() => {
-    if (!open) return;
+    const justOpened = open && !wasOpen.current;
+    wasOpen.current = open;
+    if (!justOpened) return;
     const sel = initialSelection();
     setBillTo(defaults);
     setSelected(sel);
@@ -329,10 +335,15 @@ export function InvoiceDialog({
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {issued.warning}
             </p>
           )}
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-3">
             <Button asChild>
               <a href={`/api/facturas/${issued.id}/pdf?download=1`}>
                 <Download className="h-4 w-4" /> Descargar PDF
+              </a>
+            </Button>
+            <Button asChild variant="secondary">
+              <a href={`/api/facturas/${issued.id}/pdf`} target="_blank" rel="noreferrer">
+                <FileText className="h-4 w-4" /> Ver factura
               </a>
             </Button>
             <Button asChild variant="secondary">
