@@ -1153,11 +1153,23 @@ puro, con tests), igual que el consentimiento.
 - `patient_charges.invoice_id` une cobro y factura: una sesión en una factura
   viva no se vuelve a ofrecer. Al emitir se puede registrar el cobro de las
   sesiones pendientes con la misma forma y fecha.
-- **Enviar**: descargar (`GET /api/facturas/[id]/pdf?download=1`, URL firmada
-  contra `S3_PUBLIC_BASE_URL` con `Content-Disposition: attachment`), correo
-  (`mailto:` ya escrito; el PDF se adjunta a mano) o WhatsApp
-  (`connector.sendMedia('document')` con URL firmada de 24 h; queda en el
-  inbox como PDF enviado por el equipo).
+- **El PDF se genera al pedirlo**, no se sirve desde el bucket:
+  `GET /api/facturas/[id]/pdf` lo renderiza y lo entrega (`?download=1` como
+  adjunto, sin él se abre). La primera versión guardaba el PDF en MinIO y
+  redirigía a una URL firmada; en producción ese paso fallaba y la ruta
+  respondía 404 con la factura ya emitida. Como la factura es inmutable,
+  generarla otra vez da el mismo documento; la copia en el bucket queda como
+  archivo best-effort (`archivePdf`). El logo se cachea una hora por proceso.
+- **Enviar**: descargar, correo (`mailto:` ya escrito; el PDF se adjunta a
+  mano) o WhatsApp (`connector.sendMedia('document')`). El proveedor baja el
+  PDF de un enlace **público y firmado de la propia app**
+  (`/api/public/facturas/[id]?exp=&sig=`, HMAC de clínica + factura +
+  caducidad derivado de `ENCRYPTION_KEY`, 72 h; `lib/invoices/public-link.ts`),
+  no del bucket. Queda en el inbox como PDF enviado por el equipo.
+- ⚠️ **El modal sólo se reinicia al abrirse** (`wasOpen` ref), no cuando
+  cambian sus props: tras emitir, la ficha se refresca y llegan `defaults` y
+  `candidates` nuevos, y con un efecto que dependía de ellos la pantalla de
+  "factura emitida" se borraba sola. Hay test de regresión.
 
 ## Módulo Mensajes (core, sin gate de `enabled_modules`)
 

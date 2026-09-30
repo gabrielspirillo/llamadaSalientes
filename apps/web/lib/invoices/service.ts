@@ -32,7 +32,8 @@ import {
   normalizeTaxId,
 } from '@/lib/invoices/model';
 import { renderInvoicePdf } from '@/lib/invoices/pdf';
-import { mediaSignedUrl, mediaUpload } from '@/lib/storage/media';
+import { invoicePublicPath, verifyInvoiceLink } from '@/lib/invoices/public-link';
+import { mediaUpload } from '@/lib/storage/media';
 import { parseDateKey } from '@/lib/tasks/tz';
 import { getConnectorForTenant } from '@/lib/whatsapp/factory';
 import { getOrCreateOpenConversation, upsertWhatsappContact } from '@/lib/whatsapp/persist';
@@ -223,10 +224,22 @@ export async function getInvoiceContext(tenantId: string): Promise<InvoiceContex
 
 // ─── PDF ────────────────────────────────────────────────────────────────────
 
-async function fetchLogo(
-  url: string | null,
-): Promise<{ bytes: Uint8Array; mime: 'image/png' | 'image/jpeg' } | null> {
+type LogoBytes = { bytes: Uint8Array; mime: 'image/png' | 'image/jpeg' };
+
+/** El logo se baja una vez por hora y proceso: cada descarga de PDF lo usa. */
+const logoCache = new Map<string, { at: number; logo: LogoBytes | null }>();
+const LOGO_TTL_MS = 60 * 60 * 1000;
+
+async function fetchLogo(url: string | null): Promise<LogoBytes | null> {
   if (!url) return null;
+  const cached = logoCache.get(url);
+  if (cached && Date.now() - cached.at < LOGO_TTL_MS) return cached.logo;
+  const logo = await downloadLogo(url);
+  logoCache.set(url, { at: Date.now(), logo });
+  return logo;
+}
+
+async function downloadLogo(url: string): Promise<LogoBytes | null> {
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
     if (!res.ok) return null;
@@ -264,8 +277,12 @@ function issuerFromRow(row: InvoiceRow): InvoiceIssuer {
   };
 }
 
-/** Genera el PDF de una factura y lo guarda en el bucket interno. Devuelve la key. */
-async function generateAndStorePdf(row: InvoiceRow): Promise<string> {
+/**
+ * El PDF de una factura, generado a partir de la fila. La factura es
+ * inmutable (emisor y destinatario van copiados), así que generarla dos veces
+ * da el mismo documento: no hace falta depender de una copia guardada.
+ */
+async function renderRowPdf(row: InvoiceRow): Promise<Uint8Array> {
   const issuer = issuerFromRow(row);
   const logo = await fetchLogo(issuer.logoUrl);
   const items = (row.items ?? []).map((it) => ({
@@ -301,18 +318,32 @@ async function generateAndStorePdf(row: InvoiceRow): Promise<string> {
     voided: row.status === 'VOID',
     logo,
   });
-  const key = `tenants/${row.tenantId}/invoices/${row.id}.pdf`;
-  await mediaUpload({
-    bucket: internalBucket(),
-    path: key,
-    body: bytes,
-    contentType: 'application/pdf',
-  });
-  await db
-    .update(invoices)
-    .set({ pdfKey: key, updatedAt: new Date() })
-    .where(and(eq(invoices.tenantId, row.tenantId), eq(invoices.id, row.id)));
-  return key;
+  return bytes;
+}
+
+/**
+ * Guarda una copia en el bucket interno como archivo. Best-effort: si el
+ * almacenamiento falla, la factura sigue sirviéndose (se genera al pedirla).
+ */
+async function archivePdf(row: InvoiceRow, bytes: Uint8Array): Promise<void> {
+  try {
+    const key = `tenants/${row.tenantId}/invoices/${row.id}.pdf`;
+    await mediaUpload({
+      bucket: internalBucket(),
+      path: key,
+      body: bytes,
+      contentType: 'application/pdf',
+    });
+    await db
+      .update(invoices)
+      .set({ pdfKey: key, updatedAt: new Date() })
+      .where(and(eq(invoices.tenantId, row.tenantId), eq(invoices.id, row.id)));
+  } catch (err) {
+    console.error('[facturas] no se pudo archivar el PDF en el bucket', {
+      id: row.id,
+      err: (err as Error).message,
+    });
+  }
 }
 
 async function findInvoice(tenantId: string, id: string): Promise<InvoiceRow | null> {
@@ -325,32 +356,33 @@ async function findInvoice(tenantId: string, id: string): Promise<InvoiceRow | n
   return rows[0] ?? null;
 }
 
-/** La key del PDF, generándolo si al emitir no se pudo. */
-export async function ensureInvoicePdf(tenantId: string, id: string): Promise<string | null> {
+export interface InvoicePdf {
+  bytes: Uint8Array;
+  fileName: string;
+}
+
+/** El PDF de una factura de esta clínica, o null si no existe. */
+export async function getInvoicePdf(tenantId: string, id: string): Promise<InvoicePdf | null> {
   const row = await findInvoice(tenantId, id);
   if (!row) return null;
-  if (row.pdfKey) return row.pdfKey;
-  return generateAndStorePdf(row);
+  return { bytes: await renderRowPdf(row), fileName: invoiceFileName(row.number) };
 }
 
 /**
- * URL firmada del PDF (10 min), contra la URL pública del bucket. Con
- * `download`, el bucket manda el archivo como adjunto con su nombre.
+ * El PDF para el enlace público (lo abre el proveedor de WhatsApp). Se busca
+ * por id y se valida la firma con la clínica de la propia fila: sin firma
+ * válida y vigente, null.
  */
-export async function invoicePdfSignedUrl(
-  tenantId: string,
+export async function getInvoicePdfPublic(
   id: string,
-  opts: { download?: boolean; expiresInSeconds?: number } = {},
-): Promise<string | null> {
-  const row = await findInvoice(tenantId, id);
-  if (!row) return null;
-  const key = row.pdfKey ?? (await generateAndStorePdf(row));
-  return mediaSignedUrl(key, {
-    bucket: internalBucket(),
-    expiresInSeconds: opts.expiresInSeconds ?? 60 * 10,
-    publicHost: true,
-    downloadName: opts.download ? invoiceFileName(row.number) : undefined,
-  });
+  exp: number,
+  sig: string | null,
+): Promise<InvoicePdf | null> {
+  if (!isUuid(id)) return null;
+  const rows = await db.select().from(invoices).where(eq(invoices.id, id)).limit(1);
+  const row = rows[0];
+  if (!row || !verifyInvoiceLink(row.tenantId, row.id, exp, sig)) return null;
+  return { bytes: await renderRowPdf(row), fileName: invoiceFileName(row.number) };
 }
 
 // ─── Emitir ─────────────────────────────────────────────────────────────────
@@ -582,11 +614,11 @@ export async function issueInvoice(
   let pdfOk = true;
   let warning: string | undefined;
   try {
-    await generateAndStorePdf(issued);
+    await archivePdf(issued, await renderRowPdf(issued));
   } catch (err) {
     pdfOk = false;
     warning =
-      'La factura quedó emitida, pero el PDF no se pudo generar ahora. Se generará al descargarla.';
+      'La factura quedó emitida, pero su PDF no se pudo generar. Avísanos si al descargarla falla.';
     console.error('[facturas] no se pudo generar el PDF al emitir', {
       id: issued.id,
       err: (err as Error).message,
@@ -730,13 +762,10 @@ export async function sendInvoiceWhatsapp(
     );
   }
 
-  const key = row.pdfKey ?? (await generateAndStorePdf(row));
-  const url = await mediaSignedUrl(key, {
-    bucket: internalBucket(),
-    expiresInSeconds: 60 * 60 * 24,
-    publicHost: true,
-    downloadName: invoiceFileName(row.number),
-  });
+  // El proveedor descarga el PDF de un enlace público y firmado de la propia
+  // app (72 h): no depende del bucket ni de su URL pública.
+  const appUrl = (env.NEXT_PUBLIC_APP_URL || 'https://app.futuradigital.es').replace(/\/$/, '');
+  const url = `${appUrl}${invoicePublicPath(scope.tenantId, row.id, 60 * 60 * 72)}`;
   const [tenant] = await Promise.all([getTenant(scope.tenantId)]);
   const text = buildInvoiceMessage({
     tutorName: row.billToName,
@@ -818,9 +847,11 @@ export async function voidInvoice(
     .set({ invoiceId: null, updatedAt: new Date() })
     .where(and(eq(patientCharges.tenantId, scope.tenantId), eq(patientCharges.invoiceId, row.id)));
   if (updated) {
-    await generateAndStorePdf(updated).catch((err) =>
-      console.warn('[facturas] no se pudo regenerar el PDF anulado', (err as Error).message),
-    );
+    await renderRowPdf(updated)
+      .then((bytes) => archivePdf(updated, bytes))
+      .catch((err) =>
+        console.warn('[facturas] no se pudo regenerar el PDF anulado', (err as Error).message),
+      );
   }
   return { patientKey: row.patientKey, number: row.number };
 }

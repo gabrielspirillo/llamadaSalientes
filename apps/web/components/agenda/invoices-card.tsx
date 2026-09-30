@@ -193,6 +193,11 @@ export function InvoicesCard({
                       <Download className="h-3.5 w-3.5" /> Descargar
                     </a>
                   </Button>
+                  <Button asChild size="sm" variant="ghost">
+                    <a href={`/api/facturas/${inv.id}/pdf`} target="_blank" rel="noreferrer">
+                      <FileText className="h-3.5 w-3.5" /> Ver
+                    </a>
+                  </Button>
                   {!voided && canWrite && (
                     <Button
                       size="sm"
