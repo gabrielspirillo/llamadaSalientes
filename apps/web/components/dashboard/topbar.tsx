@@ -26,6 +26,7 @@ import {
   MessageSquare,
   Phone,
   Search,
+  UserRound,
   Wallet,
   X,
 } from 'lucide-react';
@@ -38,6 +39,7 @@ type SearchHit =
   | { kind: 'treatment'; id: string; title: string; subtitle: string; href: string; when: null }
   | { kind: 'contact'; id: string; title: string; subtitle: string; href: string; when: null }
   | { kind: 'finance'; id: string; title: string; subtitle: string; href: string; when: null }
+  | { kind: 'patient'; id: string; title: string; subtitle: string; href: string; when: null }
   | { kind: 'channel'; id: string; title: string; subtitle: string; href: string; when: null }
   | {
       kind: 'message';
@@ -353,6 +355,8 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
                         <MessageSquare className="h-4 w-4" />
                       ) : h.kind === 'finance' ? (
                         <Wallet className="h-4 w-4" />
+                      ) : h.kind === 'patient' ? (
+                        <UserRound className="h-4 w-4" />
                       ) : (
                         <Calendar className="h-4 w-4" />
                       )}

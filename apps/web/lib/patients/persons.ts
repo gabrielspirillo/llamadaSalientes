@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, asc, count, eq, inArray, or, sql } from 'drizzle-orm';
+import { type SQL, and, asc, count, eq, inArray, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { z } from 'zod';
 
@@ -25,6 +25,13 @@ import {
 } from '@/lib/db/schema';
 import { titleCaseName } from '@/lib/patients/names';
 import { upsertPatientRecord } from '@/lib/patients/registry';
+import {
+  FOLD_FROM,
+  FOLD_TO,
+  escapeLike,
+  foldSearchText,
+  phoneDigitsQuery,
+} from '@/lib/patients/search-text';
 
 /**
  * El paciente como PERSONA, separado del contacto que llama.
@@ -234,15 +241,8 @@ export async function listPatientPersons(
 ): Promise<PatientPerson[]> {
   const where = [eq(patients.tenantId, tenantId)];
   if (!opts.includeInactive) where.push(eq(patients.active, true));
-  if (opts.search?.trim()) {
-    const q = `%${opts.search.trim().toLowerCase()}%`;
-    const filter = or(
-      sql`lower(${patients.firstName} || ' ' || coalesce(${patients.lastName}, '')) like ${q}`,
-      sql`lower(coalesce(${whatsappContacts.phoneE164}, '')) like ${q}`,
-      sql`lower(coalesce(${whatsappContacts.name}, '')) like ${q}`,
-    );
-    if (filter) where.push(filter);
-  }
+  const filter = opts.search ? patientSearchFilter(opts.search) : null;
+  if (filter) where.push(filter);
   const anamnesisUser = anamnesisUserAlias();
   const rows = await db
     .select(selectWith(anamnesisUser))
@@ -253,6 +253,28 @@ export async function listPatientPersons(
     .orderBy(asc(patients.lastName), asc(patients.firstName))
     .limit(opts.limit ?? 300);
   return rows.map(toPerson);
+}
+
+/**
+ * Filtro de búsqueda de pacientes: sin tildes ni mayúsculas, por nombre,
+ * apellidos, tutores y titular del teléfono, o por teléfono si lo tecleado son
+ * dígitos. Cada palabra tiene que aparecer, en cualquier orden: "santalla
+ * julieta" encuentra a Julieta Santalla Cruz. Exige el join a
+ * `whatsapp_contacts` en la query que lo use.
+ */
+export function patientSearchFilter(search: string): SQL | undefined {
+  const digits = phoneDigitsQuery(search);
+  if (digits) {
+    const like = `%${digits}%`;
+    return or(
+      sql`regexp_replace(coalesce(${whatsappContacts.phoneE164}, ''), '[^0-9]', '', 'g') like ${like}`,
+      sql`regexp_replace(coalesce(jsonb_path_query_array(${patients.guardians}, '$[*].phone')::text, ''), '[^0-9]', '', 'g') like ${like}`,
+    );
+  }
+  const words = foldSearchText(search).split(/\s+/).filter(Boolean).slice(0, 6);
+  if (words.length === 0) return undefined;
+  const haystack = sql`translate(lower(${patients.firstName} || ' ' || coalesce(${patients.lastName}, '') || ' ' || coalesce(jsonb_path_query_array(${patients.guardians}, '$[*].name')::text, '') || ' ' || coalesce(${whatsappContacts.name}, '')), ${FOLD_FROM}, ${FOLD_TO})`;
+  return and(...words.map((w) => sql`${haystack} like ${`%${escapeLike(w)}%`}`));
 }
 
 /** Los pacientes que cuelgan de un teléfono: los hijos del tutor que llama. */
