@@ -10,13 +10,18 @@ import {
   phoneHasHistory,
   systemAgendaContext,
 } from '@/lib/agenda/agent';
+import { pickAppointmentsToCancel } from '@/lib/agenda/cancel-match';
+import { normalizePatientPhone } from '@/lib/agenda/patients';
 import { getAppointment, getClinicTimezone, tenantHasAgenda } from '@/lib/agenda/queries';
 import { AgendaValidationError, cancelAppointment, createAppointment } from '@/lib/agenda/service';
 import { resolvePatientForBooking } from '@/lib/care-profile/agent';
 import { getCareProfileSafe } from '@/lib/care-profile/queries';
 import type { CancelledBy } from '@/lib/care-profile/signals';
+import { db } from '@/lib/db/client';
+import { agendaAppointments, professionals } from '@/lib/db/schema';
 import { clockArticle, speakClockTime } from '@/lib/retell/time-speech';
 import { localDateKey } from '@/lib/tasks/tz';
+import { and, asc, eq, gte, inArray } from 'drizzle-orm';
 
 /**
  * La agenda interna vista por los agentes virtuales (voz y WhatsApp).
@@ -314,6 +319,93 @@ export async function agendaCancelAppointment(
     return { result: 'La cita quedó cancelada y el hueco vuelve a estar libre.' };
   } catch (err) {
     console.error('[agenda-voice] cancel_appointment', err);
+    return null;
+  }
+}
+
+/**
+ * Anular una cita sin que el paciente tenga que dar un id: se buscan las citas
+ * próximas del teléfono del canal y se eligen por el nombre y el día que diga.
+ * Una sola → se anula. Varias → se devuelven para que el agente pregunte cuál
+ * (por nombre o por día, nunca por id). Ninguna → se dice.
+ *
+ * Sólo el teléfono del canal: un nombre no basta para anular una cita, porque
+ * cualquiera podría anular la de otro.
+ */
+export async function agendaCancelByPatient(
+  tenantId: string,
+  args: { patient_name?: string | null; date?: string | null },
+  ctx: { patientPhone?: string | null },
+  cancelledBy: CancelledBy = 'PATIENT',
+): Promise<AgendaToolResult> {
+  if (!(await usesInternalAgenda(tenantId))) return null;
+
+  const phone = normalizePatientPhone(ctx.patientPhone);
+  if (!phone) {
+    return {
+      result:
+        'No puedo localizar la cita sin el teléfono desde el que escribe o llama el paciente. Deriva a recepción con request_handoff.',
+    };
+  }
+
+  try {
+    const timezone = await getClinicTimezone(tenantId);
+    const rows = await db
+      .select({
+        id: agendaAppointments.id,
+        patientName: agendaAppointments.patientName,
+        startsAt: agendaAppointments.startsAt,
+        professionalName: professionals.fullName,
+      })
+      .from(agendaAppointments)
+      .innerJoin(professionals, eq(professionals.id, agendaAppointments.professionalId))
+      .where(
+        and(
+          eq(agendaAppointments.tenantId, tenantId),
+          eq(agendaAppointments.patientPhone, phone),
+          inArray(agendaAppointments.status, ['SCHEDULED', 'CONFIRMED']),
+          gte(agendaAppointments.startsAt, new Date()),
+        ),
+      )
+      .orderBy(asc(agendaAppointments.startsAt))
+      .limit(20);
+
+    const describe = (a: (typeof rows)[number]) =>
+      `${a.patientName}, el ${localDateKey(a.startsAt, timezone)} ${speakClockTime(a.startsAt, timezone)} con ${a.professionalName}`;
+
+    if (rows.length === 0) {
+      return {
+        result:
+          'Este teléfono no tiene ninguna cita próxima en la agenda. Pregúntale si la cita está a nombre de otra persona o desde qué número la pidió; si no se aclara, deriva a recepción con request_handoff.',
+      };
+    }
+
+    const matches = pickAppointmentsToCancel(rows, {
+      patientName: args.patient_name,
+      dateKey: args.date,
+      timezone,
+    });
+
+    if (matches.length !== 1) {
+      const list = (matches.length > 0 ? matches : rows).map(describe).join('; ');
+      return {
+        result: `Hay varias citas próximas con este teléfono: ${list}. Pregúntale cuál quiere cancelar por el nombre del paciente o el día (nunca le pidas un id) y vuelve a llamar a cancel_appointment con patient_name y date.`,
+      };
+    }
+
+    const target = matches[0];
+    if (!target) return null;
+    await cancelAppointment(
+      systemAgendaContext(tenantId),
+      target.id,
+      'Cancelada por el agente',
+      cancelledBy,
+    );
+    return {
+      result: `Cita cancelada: ${describe(target)}. El hueco vuelve a estar libre. Confírmaselo al paciente y pregúntale si quiere otra fecha.`,
+    };
+  } catch (err) {
+    console.error('[agenda-voice] cancel_appointment por paciente', err);
     return null;
   }
 }

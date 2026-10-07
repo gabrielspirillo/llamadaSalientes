@@ -3,6 +3,7 @@ import { normalizePatientPhone } from '@/lib/agenda/patients';
 import {
   agendaBookAppointment,
   agendaCancelAppointment,
+  agendaCancelByPatient,
   agendaCheckAvailability,
   agendaListProfessionals,
   agendaPatientSummary,
@@ -61,7 +62,12 @@ export type BookAppointmentArgs = {
 };
 
 export type CancelAppointmentArgs = {
-  appointment_id: string;
+  /** Si el agente lo tiene (de get_patient_info). Si no, se busca por paciente. */
+  appointment_id?: string;
+  /** Nombre del paciente de la cita, tal como lo dice quien escribe o llama. */
+  patient_name?: string;
+  /** Día de la cita, YYYY-MM-DD, cuando hay varias. */
+  date?: string;
 };
 
 export type GetPatientInfoArgs = {
@@ -552,11 +558,28 @@ export async function cancelAppointment(
   tenantId: string,
   args: CancelAppointmentArgs,
   /** Quién anula. Lo decide el código que llama, nunca el LLM. */
-  opts: { cancelledBy?: CancelledBy } = {},
+  opts: { cancelledBy?: CancelledBy; patientPhone?: string | null } = {},
 ): Promise<ToolResult> {
+  // Sin id: el paciente dijo su nombre (o el del niño) y quizá el día. Se busca
+  // entre las citas de su teléfono; pedirle un id que no conoce no sirve.
+  if (!args.appointment_id?.trim()) {
+    const byPatient = await agendaCancelByPatient(
+      tenantId,
+      { patient_name: args.patient_name, date: args.date },
+      { patientPhone: opts.patientPhone },
+      opts.cancelledBy ?? 'PATIENT',
+    );
+    if (byPatient) return byPatient;
+    return {
+      result:
+        'No pude localizar la cita. Usa get_patient_info para ver las citas del paciente o deriva a recepción con request_handoff. No le pidas un id al paciente.',
+    };
+  }
+  const appointmentId = args.appointment_id.trim();
+
   const internal = await agendaCancelAppointment(
     tenantId,
-    args.appointment_id,
+    appointmentId,
     opts.cancelledBy ?? 'PATIENT',
   );
   if (internal) return internal;
@@ -567,7 +590,7 @@ export async function cancelAppointment(
   try {
     await ghlFetch({
       tenantId,
-      path: `/calendars/events/appointments/${args.appointment_id}`,
+      path: `/calendars/events/appointments/${appointmentId}`,
       method: 'DELETE',
     });
 
@@ -1019,7 +1042,9 @@ export async function dispatchTool(
     case 'book_appointment':
       return bookAppointment(tenantId, args as BookAppointmentArgs, ctx);
     case 'cancel_appointment':
-      return cancelAppointment(tenantId, args as CancelAppointmentArgs);
+      return cancelAppointment(tenantId, args as CancelAppointmentArgs, {
+        patientPhone: normalizePatientPhone(ctx.patientPhone),
+      });
     case 'get_patient_info':
       return getPatientInfo(tenantId, args as GetPatientInfoArgs, ctx);
     case 'register_patient':

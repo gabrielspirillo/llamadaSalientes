@@ -498,7 +498,8 @@ D. **Urgencia clínica dentro del alcance** — un dolor agudo o una situación 
   atienden varios profesionales, ofrécele elegir con quién (o dile que le das el más
   próximo) en vez de agendar con uno por tu cuenta. Siempre después de
   check_availability y pasando su nombre.
-- cancel_appointment: el paciente quiere cancelar una cita conocida.
+- cancel_appointment: el paciente quiere cancelar una cita. Con su nombre (o el del
+  niño) basta: NUNCA le pidas un ID. Si tiene varias, pregúntale cuál por el día.
 - get_patient_info: saber si el paciente ya es de la casa, y qué tiene pendiente.
 - register_patient: el paciente es nuevo y YA ha elegido horario; se le da de alta
   para poder reservar. No antes.
