@@ -2,6 +2,7 @@ import 'server-only';
 import { and, asc, desc, eq, gte, inArray, ne, or } from 'drizzle-orm';
 
 import type { AgendaContext } from '@/lib/agenda/auth';
+import { firstVisitFromTreatment } from '@/lib/agenda/availability';
 import { describeAbsences, describeWeeklySchedule } from '@/lib/agenda/describe';
 import { normalizePatientPhone, patientKeyFor } from '@/lib/agenda/patients';
 import { type AvailabilityResult, getAvailability, getClinicTimezone } from '@/lib/agenda/queries';
@@ -295,6 +296,18 @@ export async function findAgentSlots(
     matchedTreatment = matchByName(params.treatmentName, all, (t) => t.name);
   }
 
+  // Si el tratamiento dice qué visita es, decide él: "visita recurrente" no
+  // es primera aunque el teléfono no tenga historial en la plataforma.
+  let firstVisit = params.firstVisit ?? false;
+  if (matchedTreatment) {
+    const [row] = await db
+      .select({ visitKind: treatments.visitKind })
+      .from(treatments)
+      .where(and(eq(treatments.tenantId, tenantId), eq(treatments.id, matchedTreatment.id)))
+      .limit(1);
+    firstVisit = firstVisitFromTreatment(row?.visitKind) ?? firstVisit;
+  }
+
   const matchedProfessional = params.professionalName
     ? matchByName(params.professionalName, catalog, (p) => p.fullName)
     : null;
@@ -369,7 +382,7 @@ export async function findAgentSlots(
         durationMinutes: duration,
         limit: perProfessional,
         now,
-        firstVisit: params.firstVisit ?? false,
+        firstVisit,
       });
       return availability.slots.map<AgentSlotOption>((s) => ({
         professionalId: p.id,

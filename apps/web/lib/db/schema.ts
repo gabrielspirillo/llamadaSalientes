@@ -111,6 +111,9 @@ export const treatments = pgTable(
     // Si true, este tratamiento entra al pool de waitlist (citas adelantadas).
     // Ver migración 0014_waitlist.sql.
     waitlistEligible: boolean('waitlist_eligible').notNull().default(false),
+    // 'FIRST' | 'FOLLOW_UP' | null: si el tratamiento decide la primera
+    // visita. Null = se decide por el historial. Ver migración 0045.
+    visitKind: text('visit_kind'),
     // Si true, al completarse una cita de este tratamiento se genera una tarea
     // de llamada postoperatoria. Ver migración 0018_tasks.sql.
     postOpFollowUp: boolean('post_op_follow_up').notNull().default(false),

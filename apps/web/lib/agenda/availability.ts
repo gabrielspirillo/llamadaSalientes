@@ -247,9 +247,16 @@ export function isInsideWorkingHours(
 export function describeConflict(
   start: Date,
   end: Date,
-  appointments: Interval[],
+  appointments: (Interval & { label?: string | null })[],
   blocks: Interval[],
   bufferMinutes = 0,
+  /**
+   * Para el panel: nombra la cita con la que choca y su hora local. Un error
+   * que no se puede ver en pantalla es un error que recepción no puede
+   * resolver. Los agentes NO lo piden: no pueden decirle a un paciente el
+   * nombre de otro.
+   */
+  reveal?: { timezone: string },
 ): string | null {
   const clash = appointments.find((a) =>
     overlaps(
@@ -259,11 +266,49 @@ export function describeConflict(
       new Date(a.end.getTime() + bufferMinutes * 60_000),
     ),
   );
-  if (clash) return 'Ese horario se pisa con otra cita del profesional.';
+  if (clash) {
+    // Si sólo choca por el descanso entre citas, se dice: en pantalla no hay
+    // solapamiento y sin esto parece un error del sistema.
+    const onlyBuffer = bufferMinutes > 0 && !overlaps(start, end, clash.start, clash.end);
+    const bufferNote = onlyBuffer
+      ? ` contando el descanso de ${bufferMinutes} min entre citas`
+      : '';
+    if (reveal) {
+      const fmt = new Intl.DateTimeFormat('es-ES', {
+        timeZone: reveal.timezone,
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+      });
+      const who = clash.label?.trim() || 'otra cita';
+      return `Ese horario se pisa con ${who} (${fmt.format(clash.start)}–${fmt.format(clash.end)})${bufferNote}.`;
+    }
+    return `Ese horario se pisa con otra cita del profesional${bufferNote}.`;
+  }
 
   const block = blocks.find((b) => overlaps(start, end, b.start, b.end));
   if (block) return 'El profesional tiene ese horario bloqueado.';
 
+  return null;
+}
+
+/** Qué tipo de visita es un tratamiento, si la clínica lo marcó. */
+export type TreatmentVisitKind = 'FIRST' | 'FOLLOW_UP';
+
+/**
+ * Si el tratamiento decide si la cita es primera visita: `FIRST` → sí,
+ * `FOLLOW_UP` → no, sin marcar → null y se decide por el historial.
+ *
+ * Existe porque el historial solo no basta: los pacientes que una clínica
+ * trae de antes llegan sin citas en la plataforma y contaban todos como
+ * nuevos, así que tres "visitas recurrentes" seguidas disparaban la regla de
+ * no encadenar primeras.
+ */
+export function firstVisitFromTreatment(
+  kind: TreatmentVisitKind | string | null | undefined,
+): boolean | null {
+  if (kind === 'FIRST') return true;
+  if (kind === 'FOLLOW_UP') return false;
   return null;
 }
 

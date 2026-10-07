@@ -1,6 +1,7 @@
 'use client';
 
 import { createAppointmentAction } from '@/app/(dashboard)/dashboard/agenda/actions';
+import { PatientDialog } from '@/components/agenda/patient-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -12,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input, Label, Select, Textarea } from '@/components/ui/input';
 import { cn } from '@/lib/cn';
-import { AlertTriangle, CalendarPlus, Loader2, Sparkles } from 'lucide-react';
+import { AlertTriangle, CalendarPlus, Loader2, Sparkles, UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
@@ -38,13 +39,30 @@ interface Treatment {
   durationMinutes: number;
 }
 
-/** Paciente-persona elegible al dar cita (clínicas que los llevan así). */
+/** Paciente-persona elegible al dar cita (lo devuelve `/api/agenda/patients`). */
 export interface DialogPatient {
   id: string;
   /** Lo que se ve en el desplegable: "Martina Ruiz · 1 año y 8 meses". */
   label: string;
+  /** El nombre limpio, sin la edad: es lo que va a la cita. */
+  name: string;
   /** Teléfono del tutor, si lo hay. */
   phone: string | null;
+  /** Titular del teléfono. */
+  tutor: string | null;
+}
+
+async function fetchPatients(params: Record<string, string>): Promise<DialogPatient[]> {
+  const res = await fetch(`/api/agenda/patients?${new URLSearchParams(params).toString()}`);
+  if (!res.ok) return [];
+  const data = (await res.json()) as { patients?: DialogPatient[] };
+  return data.patients ?? [];
+}
+
+/** "Julieta Santalla Cruz" → nombre + apellidos, para precargar el alta. */
+function splitName(full: string): { firstName: string; lastName: string } {
+  const parts = full.trim().split(/\s+/).filter(Boolean);
+  return { firstName: parts[0] ?? '', lastName: parts.slice(1).join(' ') };
 }
 
 function hhmm(minute: number): string {
@@ -67,13 +85,14 @@ export function AppointmentDialog({
   seed,
   professionals,
   treatments,
-  patients = [],
+  patientSearch = false,
   onClose,
 }: {
   seed: AppointmentDialogSeed;
   professionals: Professional[];
   treatments: Treatment[];
-  patients?: DialogPatient[];
+  /** Clínica con perfil: el paciente se elige de la ficha, buscando en el servidor. */
+  patientSearch?: boolean;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -135,30 +154,99 @@ export function AppointmentDialog({
     if (t) setDuration(t.durationMinutes);
   }
 
-  // Si lo tecleado coincide con un paciente de la ficha, la cita va a SU
-  // ficha (y el teléfono del tutor se rellena solo). Si no, es un nombre libre
-  // como siempre: dar cita no obliga a haber dado de alta antes.
+  // Buscador de pacientes (clínicas con perfil). Busca en el servidor con
+  // debounce: la lista entera no viaja a la página, y así no hay tope de 300.
+  const [results, setResults] = React.useState<DialogPatient[]>([]);
+  const [searching, setSearching] = React.useState(false);
+  const [searched, setSearched] = React.useState('');
+  const [listOpen, setListOpen] = React.useState(false);
+  const [phoneKids, setPhoneKids] = React.useState<DialogPatient[]>([]);
+
+  React.useEffect(() => {
+    const q = patientName.trim();
+    if (!patientSearch || patientId || q.length < 2) {
+      setResults([]);
+      setSearched('');
+      return;
+    }
+    let cancelled = false;
+    setSearching(true);
+    const t = setTimeout(() => {
+      fetchPatients({ q })
+        .then((found) => {
+          if (cancelled) return;
+          setResults(found);
+          setSearched(q);
+        })
+        .catch(() => {
+          if (!cancelled) setResults([]);
+        })
+        .finally(() => {
+          if (!cancelled) setSearching(false);
+        });
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [patientSearch, patientId, patientName]);
+
+  // Un teléfono que ya es de un tutor: se ofrecen sus niños antes de crear otro.
+  React.useEffect(() => {
+    const digits = patientPhone.replace(/\D/g, '');
+    if (!patientSearch || patientId || digits.length < 9) {
+      setPhoneKids([]);
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(() => {
+      fetchPatients({ phone: patientPhone })
+        .then((found) => {
+          if (!cancelled) setPhoneKids(found);
+        })
+        .catch(() => {
+          if (!cancelled) setPhoneKids([]);
+        });
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [patientSearch, patientId, patientPhone]);
+
   function onPatientNameChange(value: string) {
     setPatientName(value);
-    const match = patients.find((p) => p.label === value);
-    if (match) {
-      setPatientId(match.id);
-      if (match.phone && !patientPhone) setPatientPhone(match.phone);
-    } else {
-      setPatientId('');
-    }
+    setPatientId('');
+    setListOpen(true);
   }
+
+  function pickPatient(p: { id: string; name: string; phone: string | null }) {
+    setPatientId(p.id);
+    setPatientName(p.name);
+    if (p.phone) setPatientPhone(p.phone);
+    setListOpen(false);
+    setResults([]);
+    setPhoneKids([]);
+  }
+
+  // Con perfil la cita va siempre a una ficha: un nombre libre creaba otra
+  // identidad (`tel:`/`anon:`) y el paciente salía duplicado en el listado.
+  const needsPatient = patientSearch && !patientId;
+  const noMatch =
+    needsPatient &&
+    !searching &&
+    searched === patientName.trim() &&
+    searched.length >= 2 &&
+    results.length === 0;
 
   function submit() {
     setError(null);
     startTransition(async () => {
-      const match = patients.find((p) => p.id === patientId);
       const result = await createAppointmentAction({
         professionalId,
         treatmentId: treatmentId || null,
         patientId: patientId || null,
-        // A la cita va el nombre limpio, sin la edad del desplegable.
-        patientName: match ? match.label.split(' · ')[0] || patientName : patientName,
+        patientName,
         patientPhone,
         patientEmail,
         startDateKey: dateKey,
@@ -290,28 +378,81 @@ export function AppointmentDialog({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-1.5">
               <Label htmlFor="ap-name">Paciente</Label>
-              <Input
-                id="ap-name"
-                list={patients.length > 0 ? 'ap-patients' : undefined}
-                value={patientName}
-                onChange={(e) => onPatientNameChange(e.target.value)}
-                placeholder={
-                  patients.length > 0
-                    ? 'Busca en la ficha o escribe un nombre'
-                    : 'Nombre y apellidos'
-                }
-              />
-              {patients.length > 0 && (
-                <datalist id="ap-patients">
-                  {patients.map((p) => (
-                    <option key={p.id} value={p.label} />
-                  ))}
-                </datalist>
-              )}
+              <div className="relative">
+                <Input
+                  id="ap-name"
+                  value={patientName}
+                  autoComplete="off"
+                  onChange={(e) => onPatientNameChange(e.target.value)}
+                  onFocus={() => setListOpen(true)}
+                  onBlur={() => setTimeout(() => setListOpen(false), 150)}
+                  placeholder={
+                    patientSearch ? 'Busca por nombre, tutor o teléfono' : 'Nombre y apellidos'
+                  }
+                />
+                {searching && (
+                  <Loader2 className="absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 animate-spin text-zinc-400" />
+                )}
+                {patientSearch && listOpen && results.length > 0 && (
+                  <ul className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-[14px] bg-white p-1 shadow-lifted ring-1 ring-(--color-border)">
+                    {results.map((p) => (
+                      <li key={p.id}>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => pickPatient(p)}
+                          className="flex w-full flex-col rounded-[10px] px-3 py-2 text-left hover:bg-brand-50"
+                        >
+                          <span className="text-[13px] font-semibold text-zinc-800">{p.label}</span>
+                          {(p.tutor || p.phone) && (
+                            <span className="text-[12px] text-zinc-500">
+                              {[p.tutor, p.phone].filter(Boolean).join(' · ')}
+                            </span>
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
               {patientId && (
                 <p className="text-[12px] font-semibold text-emerald-700">
                   Paciente de la ficha: la cita queda en su historia.
                 </p>
+              )}
+              {noMatch && (
+                <div className="flex flex-wrap items-center gap-2 rounded-[14px] bg-amber-50 p-2.5 text-[12px] text-amber-900">
+                  <span>No existe ningún paciente con ese nombre.</span>
+                  <PatientDialog
+                    mode="create"
+                    seed={{ ...splitName(patientName), phone: patientPhone }}
+                    onCreated={(created) => pickPatient({ ...created, name: created.fullName })}
+                    trigger={
+                      <Button size="sm" variant="soft" type="button">
+                        <UserPlus className="h-3.5 w-3.5" /> ¿Crear paciente nuevo?
+                      </Button>
+                    }
+                  />
+                </div>
+              )}
+              {phoneKids.length > 0 && (
+                <div className="rounded-[14px] bg-brand-50 p-2.5 text-[12px] text-zinc-700">
+                  <p className="mb-1.5 font-semibold">
+                    Ese teléfono ya es de un tutor. ¿Es alguno de estos?
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {phoneKids.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => pickPatient(p)}
+                        className="rounded-full bg-white px-2.5 py-1 font-semibold ring-1 ring-(--color-border) hover:bg-brand-100"
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
             <div className="grid gap-1.5">
@@ -385,7 +526,15 @@ export function AppointmentDialog({
           <Button variant="ghost" onClick={onClose} disabled={pending}>
             Cancelar
           </Button>
-          <Button onClick={submit} disabled={pending || !patientName || !professionalId}>
+          {needsPatient && patientName.trim() && (
+            <p className="mr-auto self-center text-[12px] text-zinc-500">
+              Elige un paciente de la ficha o créalo.
+            </p>
+          )}
+          <Button
+            onClick={submit}
+            disabled={pending || !patientName || !professionalId || needsPatient}
+          >
             {pending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (

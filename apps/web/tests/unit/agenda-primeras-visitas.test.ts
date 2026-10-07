@@ -6,6 +6,7 @@ import {
   type BookedInterval,
   computeDaySlots,
   describeFirstVisitConflict,
+  firstVisitFromTreatment,
 } from '@/lib/agenda/availability';
 import { firstVisitRules, parseBookingPolicy } from '@/lib/care-profile/policy';
 import { zonedToUtc } from '@/lib/tasks/tz';
@@ -160,5 +161,18 @@ describe('el motor de huecos aplica las reglas sólo a primeras visitas', () => 
     expect(horas).toContain(at(LUNES, '10:30').toISOString());
     expect(horas).toContain(at(LUNES, '19:30').toISOString());
     expect(horas).toContain(at(LUNES, '20:15').toISOString());
+  });
+});
+
+describe('firstVisitFromTreatment', () => {
+  it('el tratamiento decide cuando está marcado', () => {
+    expect(firstVisitFromTreatment('FIRST')).toBe(true);
+    expect(firstVisitFromTreatment('FOLLOW_UP')).toBe(false);
+  });
+
+  it('sin marca se decide por el historial', () => {
+    expect(firstVisitFromTreatment(null)).toBeNull();
+    expect(firstVisitFromTreatment(undefined)).toBeNull();
+    expect(firstVisitFromTreatment('OTRA')).toBeNull();
   });
 });

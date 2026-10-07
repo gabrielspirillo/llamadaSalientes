@@ -106,6 +106,8 @@ export function PatientDialog({
   trigger,
   alertItems = [],
   answers = {},
+  seed,
+  onCreated,
 }: {
   mode: 'create' | 'edit';
   patient?: PatientDialogValues;
@@ -114,6 +116,10 @@ export function PatientDialog({
   /** Ítems de la anamnesis con `alert`: se editan aquí como "alertas clínicas". */
   alertItems?: AnamnesisItem[];
   answers?: AnamnesisAnswers;
+  /** Alta desde otra pantalla (la de nueva cita): lo ya tecleado viene puesto. */
+  seed?: { firstName: string; lastName: string; phone: string };
+  /** Si se da, al crear se devuelve el paciente en vez de ir a su ficha. */
+  onCreated?: (created: { id: string; fullName: string; phone: string | null }) => void;
 }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
@@ -170,6 +176,33 @@ export function PatientDialog({
   const primary = guardians.find((g) => g.primary) ?? null;
   const primaryMissingPhone = primary !== null && !primary.phone?.trim();
 
+  // Al abrir un alta con semilla, el formulario arranca con lo que se tecleó
+  // en la otra pantalla: el diálogo vive montado y su estado es de la vez anterior.
+  function onOpenChange(next: boolean) {
+    if (next && mode === 'create' && seed) {
+      setFirstName(seed.firstName);
+      setLastName(seed.lastName);
+      setGuardians(
+        seedGuardians(
+          seed.phone
+            ? {
+                id: '',
+                firstName: '',
+                lastName: null,
+                birthDate: null,
+                guardians: [],
+                contactPhone: seed.phone,
+                contactName: null,
+                notes: null,
+              }
+            : undefined,
+        ),
+      );
+      setError(null);
+    }
+    setOpen(next);
+  }
+
   function submit() {
     setError(null);
     if (primaryMissingPhone) {
@@ -204,13 +237,21 @@ export function PatientDialog({
         return;
       }
       setOpen(false);
+      if (onCreated) {
+        onCreated({
+          id: result.data.id,
+          fullName: [firstName.trim(), lastName.trim()].filter(Boolean).join(' '),
+          phone: primary?.phone?.trim() || null,
+        });
+        return;
+      }
       // Recién creado, lo natural es seguir en su ficha: anamnesis y primera cita.
       router.push(`/dashboard/agenda/pacientes/${encodeURIComponent(`pat:${result.data.id}`)}`);
     });
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         {trigger ?? (
           <Button variant={mode === 'create' ? 'primary' : 'secondary'} size="sm">

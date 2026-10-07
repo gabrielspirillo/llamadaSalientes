@@ -12,11 +12,7 @@ import { cn } from '@/lib/cn';
 import { CalendarDays, ChevronLeft, ChevronRight, Plus, Users } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import * as React from 'react';
-import {
-  AppointmentDialog,
-  type AppointmentDialogSeed,
-  type DialogPatient,
-} from './appointment-dialog';
+import { AppointmentDialog, type AppointmentDialogSeed } from './appointment-dialog';
 import { AppointmentSheet } from './appointment-sheet';
 import { PatientSignalBadges } from './patient-signals';
 
@@ -48,7 +44,8 @@ export interface CalendarViewProps {
    * mandan las clínicas que los llevan así; vacío, el alta sigue siendo a nombre
    * libre como siempre.
    */
-  patients?: DialogPatient[];
+  /** El alta de cita busca pacientes-persona en el servidor (clínicas con perfil). */
+  patientSearch?: boolean;
   timezone: string;
   window: { startMinute: number; endMinute: number };
   canWrite: boolean;
@@ -97,7 +94,7 @@ export function CalendarView(props: CalendarViewProps) {
     items,
     blocks,
     treatments,
-    patients = [],
+    patientSearch = false,
     window: dayWindow,
     canWrite,
     lockedToProfessional,
@@ -527,7 +524,7 @@ export function CalendarView(props: CalendarViewProps) {
           seed={seed}
           professionals={professionals.filter((p) => p.agendaEnabled)}
           treatments={treatments}
-          patients={patients}
+          patientSearch={patientSearch}
           onClose={closeDialog}
         />
       )}

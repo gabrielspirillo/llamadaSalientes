@@ -1,17 +1,27 @@
 import 'server-only';
 import { db } from '@/lib/db/client';
-import { calls, financeEntries, tenants, treatments } from '@/lib/db/schema';
+import {
+  calls,
+  financeEntries,
+  patients,
+  tenants,
+  treatments,
+  whatsappContacts,
+} from '@/lib/db/schema';
 import { listContacts } from '@/lib/ghl/contacts';
+import { patientSearchFilter } from '@/lib/patients/persons';
 import { and, desc, eq, ilike, or } from 'drizzle-orm';
 
 export type SearchHit =
   | { kind: 'call'; id: string; title: string; subtitle: string; href: string; when: Date | null }
   | { kind: 'treatment'; id: string; title: string; subtitle: string; href: string; when: null }
   | { kind: 'contact'; id: string; title: string; subtitle: string; href: string; when: null }
-  | { kind: 'finance'; id: string; title: string; subtitle: string; href: string; when: null };
+  | { kind: 'finance'; id: string; title: string; subtitle: string; href: string; when: null }
+  | { kind: 'patient'; id: string; title: string; subtitle: string; href: string; when: null };
 
 /**
- * Búsqueda global: llamadas (por número, summary, intent) + tratamientos.
+ * Búsqueda global: pacientes de la plataforma, llamadas (por número, summary,
+ * intent), tratamientos, movimientos de Finanzas y contactos del CRM.
  */
 export async function searchAll(tenantId: string, q: string, limit = 10): Promise<SearchHit[]> {
   const term = q.trim();
@@ -20,7 +30,33 @@ export async function searchAll(tenantId: string, q: string, limit = 10): Promis
 
   // Las tres van en paralelo: no dependen entre sí y esto corre en cada tecleo
   // del buscador global. Encadenadas eran tres round-trips por pulsación.
-  const [callRows, treatmentRows, financeRows] = await Promise.all([
+  const [patientRows, callRows, treatmentRows, financeRows] = await Promise.all([
+    // Pacientes-persona (clínicas con perfil de atención). Una clínica sin CRM
+    // sólo tiene aquí a sus pacientes: sin esto el buscador no encontraba a
+    // nadie y recepción acababa dándolos de alta otra vez.
+    (async () => {
+      try {
+        const filter = patientSearchFilter(term);
+        if (!filter) return [];
+        return await db
+          .select({
+            id: patients.id,
+            firstName: patients.firstName,
+            lastName: patients.lastName,
+            birthDate: patients.birthDate,
+            contactName: whatsappContacts.name,
+            contactPhone: whatsappContacts.phoneE164,
+          })
+          .from(patients)
+          .leftJoin(whatsappContacts, eq(whatsappContacts.id, patients.contactId))
+          .where(and(eq(patients.tenantId, tenantId), eq(patients.active, true), filter))
+          .orderBy(patients.lastName, patients.firstName)
+          .limit(5);
+      } catch {
+        return [];
+      }
+    })(),
+
     db
       .select({
         id: calls.id,
@@ -99,6 +135,18 @@ export async function searchAll(tenantId: string, q: string, limit = 10): Promis
   ]);
 
   const hits: SearchHit[] = [];
+
+  for (const p of patientRows) {
+    const tutor = [p.contactName, p.contactPhone].filter(Boolean).join(' · ');
+    hits.push({
+      kind: 'patient',
+      id: p.id,
+      title: [p.firstName, p.lastName].filter(Boolean).join(' '),
+      subtitle: tutor ? `Paciente · ${tutor}` : 'Paciente',
+      href: `/dashboard/agenda/pacientes/${encodeURIComponent(`pat:${p.id}`)}`,
+      when: null,
+    });
+  }
 
   for (const f of financeRows) {
     const amount = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(

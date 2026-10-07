@@ -21,7 +21,7 @@ import { getCareProfile } from '@/lib/care-profile/queries';
 import { EMPTY_RED_FLAGS, type RedFlagCounts } from '@/lib/care-profile/signals';
 import { db } from '@/lib/db/client';
 import { professionalShifts, treatments } from '@/lib/db/schema';
-import { getPatientPerson, listPatientPersons } from '@/lib/patients/persons';
+import { getPatientPerson } from '@/lib/patients/persons';
 import { localDateKey, zonedToUtc } from '@/lib/tasks/tz';
 import { and, asc, eq } from 'drizzle-orm';
 import { CalendarDays, Users } from 'lucide-react';
@@ -110,13 +110,15 @@ export default async function AgendaPage({
   const scopedIds =
     selectedProfessionalId === 'all' ? professionalIds : [selectedProfessionalId].filter(Boolean);
 
-  const [appointments, blocks, catalog, shiftRows, persons] = await Promise.all([
+  const [appointments, blocks, catalog, shiftRows] = await Promise.all([
     scopedIds.length > 0
       ? listAppointmentsInRange(ctx.tenantId, {
           from,
           to,
           professionalIds: scopedIds,
-          includeCancelled: true,
+          // Una cancelada deja el hueco libre a la vista; sigue en la ficha,
+          // en Actividad y contando para las banderas rojas. No se borra.
+          includeCancelled: false,
         })
       : Promise.resolve([]),
     scopedIds.length > 0
@@ -140,9 +142,6 @@ export default async function AgendaPage({
       .where(
         and(eq(professionalShifts.tenantId, ctx.tenantId), eq(professionalShifts.active, true)),
       ),
-    careProfile && ctx.canWriteAppointments
-      ? listPatientPersons(ctx.tenantId, { limit: 300 })
-      : Promise.resolve([]),
   ]);
 
   // Banderas rojas de los pacientes que salen en pantalla, contando TODAS sus
@@ -249,14 +248,9 @@ export default async function AgendaPage({
           items={items}
           blocks={calendarBlocks}
           treatments={catalog}
-          patients={persons.map((p) => {
-            const age = p.birthDate ? describeAge(p.birthDate, todayKey) : null;
-            return {
-              id: p.id,
-              label: age ? `${p.fullName} · ${age}` : p.fullName,
-              phone: p.contactPhone,
-            };
-          })}
+          // Con perfil, el alta de cita busca pacientes en el servidor
+          // (`/api/agenda/patients`) en vez de recibir la lista entera.
+          patientSearch={Boolean(careProfile) && ctx.canWriteAppointments}
           timezone={timezone}
           window={window}
           canWrite={ctx.canWriteAppointments}
