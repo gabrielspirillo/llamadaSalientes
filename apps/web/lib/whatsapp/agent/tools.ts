@@ -61,7 +61,9 @@ const bookAppointmentArgs = z.object({
 });
 
 const cancelAppointmentArgs = z.object({
-  appointment_id: z.string().min(1),
+  appointment_id: z.string().optional(),
+  patient_name: z.string().max(160).optional(),
+  date: z.string().max(10).optional(),
 });
 
 const getPatientInfoArgs = z.object({
@@ -276,16 +278,25 @@ function allToolDefinitions(): AgentToolDefinition[] {
     {
       name: 'cancel_appointment',
       description:
-        'Cancela una cita existente en el calendario. Solo si tienes el appointment_id (no lo inventes).',
+        'Cancela una cita del paciente que escribe. NUNCA le pidas un ID: basta con el nombre del paciente de la cita (y el día si tiene varias); la cita se busca entre las de su teléfono. Si get_patient_info te dio el appointment_id, pásalo.',
       parameters: {
         type: 'object',
         properties: {
+          patient_name: {
+            type: 'string',
+            description: 'Nombre del paciente de la cita, como lo dice quien escribe.',
+          },
+          date: {
+            type: 'string',
+            description: 'Opcional. Día de la cita, YYYY-MM-DD, si tiene más de una.',
+          },
           appointment_id: {
             type: 'string',
-            description: 'ID GHL de la cita.',
+            description:
+              'Opcional. Sólo si lo devolvió get_patient_info. No lo inventes ni lo pidas.',
           },
         },
-        required: ['appointment_id'],
+        required: [],
         additionalProperties: false,
       },
     },

@@ -93,6 +93,17 @@ const CAMPOS_NUEVOS: Record<string, Record<string, { type: string; description?:
     },
     email: { type: 'string', description: 'Opcional. Email del paciente.' },
   },
+  cancel_appointment: {
+    patient_name: {
+      type: 'string',
+      description:
+        'Nombre del paciente de la cita. Con esto basta: la cita se busca entre las del teléfono que llama. Nunca pidas un id.',
+    },
+    date: {
+      type: 'string',
+      description: 'Opcional. Día de la cita, YYYY-MM-DD, si el paciente tiene varias.',
+    },
+  },
   register_patient: {
     birth_date: {
       type: 'string',
@@ -163,6 +174,17 @@ export function reconciliar(existentes: RetellTool[]): { tools: RetellTool[]; fa
         faltaba.push(`${nombre}.${campo}`);
       }
     }
+  }
+
+  // cancel_appointment ya no exige el id: con el nombre del paciente basta.
+  // Si el LLM lo sigue viendo como obligatorio, se lo pide al paciente.
+  const cancel = tools.find((t) => t.name === 'cancel_appointment');
+  if (cancel?.parameters?.required?.includes('appointment_id')) {
+    cancel.parameters = {
+      ...cancel.parameters,
+      required: cancel.parameters.required.filter((r) => r !== 'appointment_id'),
+    };
+    faltaba.push('cancel_appointment.appointment_id opcional');
   }
 
   return { tools, faltaba };
