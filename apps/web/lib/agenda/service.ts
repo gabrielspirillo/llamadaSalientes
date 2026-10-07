@@ -6,6 +6,7 @@ import type { AgendaContext } from '@/lib/agenda/auth';
 import {
   describeConflict,
   describeFirstVisitConflict,
+  firstVisitFromTreatment,
   isInsideWorkingHours,
 } from '@/lib/agenda/availability';
 import { normalizePatientPhone, patientIdFromKey, patientKeyFor } from '@/lib/agenda/patients';
@@ -702,15 +703,17 @@ export async function createAppointment(
 
   // El tratamiento llega del cliente: se comprueba que es de este tenant antes
   // de guardarlo (y de usar su duración).
+  let treatmentFirstVisit: boolean | null = null;
   if (input.treatmentId) {
     const rows = await db
-      .select({ id: treatments.id })
+      .select({ id: treatments.id, visitKind: treatments.visitKind })
       .from(treatments)
       .where(and(eq(treatments.tenantId, ctx.tenantId), eq(treatments.id, input.treatmentId)))
       .limit(1);
     if (rows.length === 0) {
       throw new AgendaValidationError('Ese tratamiento no existe en esta clínica.');
     }
+    treatmentFirstVisit = firstVisitFromTreatment(rows[0]?.visitKind);
   }
 
   // El paciente como persona (clínicas con perfil): tiene que ser de esta
@@ -761,6 +764,7 @@ export async function createAppointment(
         startsAt: agendaAppointments.startsAt,
         endsAt: agendaAppointments.endsAt,
         isFirstVisit: agendaAppointments.isFirstVisit,
+        patientName: agendaAppointments.patientName,
       })
       .from(agendaAppointments)
       .where(
@@ -788,9 +792,11 @@ export async function createAppointment(
     const conflict = describeConflict(
       startsAt,
       endsAt,
-      busy.map((b) => ({ start: b.startsAt, end: b.endsAt })),
+      busy.map((b) => ({ start: b.startsAt, end: b.endsAt, label: b.patientName })),
       blocks.map((b) => ({ start: b.startsAt, end: b.endsAt })),
       professional.bufferMinutes,
+      // Sólo el panel ve con quién choca; un agente no puede nombrar a otro paciente.
+      (input.source ?? 'PANEL') === 'PANEL' ? { timezone } : undefined,
     );
     if (conflict) throw new AgendaValidationError(conflict);
 
@@ -813,12 +819,17 @@ export async function createAppointment(
       }
     }
 
-    // Primera visita = el paciente no tenía ninguna cita que ocupara hueco.
-    // Se fija al crear y no se recalcula: es lo que leen las reglas de reserva
-    // de las clínicas con perfil (no encadenar primeras, tardes sin nuevos).
-    // Sin identidad no hay forma de saberlo y se deja en falso.
-    let isFirstVisit = input.isFirstVisit ?? false;
-    if (input.isFirstVisit === undefined && patientKey !== 'anon:sin-datos') {
+    // Primera visita: lo explícito manda; si no, el tratamiento ("PRIMERA
+    // VISITA…" / "VISITA RECURRENTE…"); y si el tratamiento no lo dice, el
+    // historial (el paciente no tenía ninguna cita que ocupara hueco). Es lo
+    // que leen las reglas de reserva de las clínicas con perfil. Sin
+    // identidad no hay forma de saberlo y se deja en falso.
+    let isFirstVisit = input.isFirstVisit ?? treatmentFirstVisit ?? false;
+    if (
+      input.isFirstVisit === undefined &&
+      treatmentFirstVisit === null &&
+      patientKey !== 'anon:sin-datos'
+    ) {
       const previous = await tx
         .select({ id: agendaAppointments.id })
         .from(agendaAppointments)
@@ -919,7 +930,11 @@ export async function rescheduleAppointment(
 
   const moved = await withProfessionalLock(professionalId, async (tx) => {
     const busy = await tx
-      .select({ startsAt: agendaAppointments.startsAt, endsAt: agendaAppointments.endsAt })
+      .select({
+        startsAt: agendaAppointments.startsAt,
+        endsAt: agendaAppointments.endsAt,
+        patientName: agendaAppointments.patientName,
+      })
       .from(agendaAppointments)
       .where(
         and(
@@ -948,9 +963,11 @@ export async function rescheduleAppointment(
     const conflict = describeConflict(
       startsAt,
       endsAt,
-      busy.map((b) => ({ start: b.startsAt, end: b.endsAt })),
+      busy.map((b) => ({ start: b.startsAt, end: b.endsAt, label: b.patientName })),
       blocks.map((b) => ({ start: b.startsAt, end: b.endsAt })),
       professional.bufferMinutes,
+      // Mover una cita sólo se hace desde el panel.
+      { timezone },
     );
     if (conflict) throw new AgendaValidationError(conflict);
 
@@ -1032,13 +1049,17 @@ export async function updateAppointment(
   if (patch.treatmentId !== undefined) {
     if (patch.treatmentId) {
       const rows = await db
-        .select({ id: treatments.id })
+        .select({ id: treatments.id, visitKind: treatments.visitKind })
         .from(treatments)
         .where(and(eq(treatments.tenantId, ctx.tenantId), eq(treatments.id, patch.treatmentId)))
         .limit(1);
       if (rows.length === 0) {
         throw new AgendaValidationError('Ese tratamiento no existe en esta clínica.');
       }
+      // Cambiar a un tratamiento que dice qué visita es recalcula la marca:
+      // corregir "primera" por "recurrente" tiene que liberar la regla.
+      const fromTreatment = firstVisitFromTreatment(rows[0]?.visitKind);
+      if (fromTreatment !== null) values.isFirstVisit = fromTreatment;
     }
     values.treatmentId = patch.treatmentId;
   }

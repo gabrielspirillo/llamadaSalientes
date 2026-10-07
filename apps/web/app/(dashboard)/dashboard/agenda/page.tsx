@@ -116,7 +116,9 @@ export default async function AgendaPage({
           from,
           to,
           professionalIds: scopedIds,
-          includeCancelled: true,
+          // Una cancelada deja el hueco libre a la vista; sigue en la ficha,
+          // en Actividad y contando para las banderas rojas. No se borra.
+          includeCancelled: false,
         })
       : Promise.resolve([]),
     scopedIds.length > 0

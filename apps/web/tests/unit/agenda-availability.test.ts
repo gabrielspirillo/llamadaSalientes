@@ -282,6 +282,33 @@ describe('describeConflict', () => {
 
     expect(describeConflict(start, end, [], [])).toBeNull();
   });
+  it('en el panel nombra la cita con la que choca, en hora local', () => {
+    const start = new Date('2026-10-06T16:30:00Z'); // 18:30 en Madrid
+    const end = new Date('2026-10-06T17:00:00Z');
+    const other = {
+      start: new Date('2026-10-06T16:00:00Z'),
+      end: new Date('2026-10-06T16:45:00Z'),
+      label: 'Hugo Moreno',
+    };
+    expect(describeConflict(start, end, [other], [], 0, { timezone: 'Europe/Madrid' })).toBe(
+      'Ese horario se pisa con Hugo Moreno (18:00–18:45).',
+    );
+    // Sin `reveal` (agentes) nunca sale el nombre de otro paciente.
+    expect(describeConflict(start, end, [other], [])).not.toMatch(/Hugo/);
+  });
+
+  it('dice cuándo el choque es sólo por el descanso entre citas', () => {
+    const start = new Date('2026-10-06T16:30:00Z');
+    const end = new Date('2026-10-06T17:00:00Z');
+    const before = {
+      start: new Date('2026-10-06T16:00:00Z'),
+      end: new Date('2026-10-06T16:30:00Z'),
+      label: 'Hugo Moreno',
+    };
+    expect(describeConflict(start, end, [before], [], 10)).toMatch(
+      /descanso de 10 min entre citas/,
+    );
+  });
 });
 
 describe('overlaps', () => {
