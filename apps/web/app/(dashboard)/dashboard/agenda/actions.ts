@@ -719,7 +719,7 @@ export async function sendConsentAction(
 export async function refreshConsentAction(
   patientId: string,
   consentId: string,
-): Promise<ActionResult<{ status: string; signed: boolean }>> {
+): Promise<ActionResult<{ status: string; signed: boolean; pdfError?: string }>> {
   try {
     const ctx = await requireAgendaWriter();
     const result = await refreshConsent({ tenantId: ctx.tenantId, consentId });

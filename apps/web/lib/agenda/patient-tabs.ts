@@ -4,16 +4,9 @@
 // cliente no se puede llamar desde el servidor, y así se cayó la ficha en
 // producción el 2026-09-23.
 
-export type PatientTab = 'visita' | 'anamnesis' | 'historia' | 'citas' | 'contable' | 'actividad';
+export type PatientTab = 'visita' | 'anamnesis' | 'historia' | 'citas' | 'contable';
 
-export const PATIENT_TABS: PatientTab[] = [
-  'visita',
-  'anamnesis',
-  'historia',
-  'citas',
-  'contable',
-  'actividad',
-];
+export const PATIENT_TABS: PatientTab[] = ['visita', 'anamnesis', 'historia', 'citas', 'contable'];
 
 export function isPatientTab(value: unknown): value is PatientTab {
   return typeof value === 'string' && (PATIENT_TABS as string[]).includes(value);

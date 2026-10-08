@@ -52,18 +52,9 @@ import { getCareProfile } from '@/lib/care-profile/queries';
 import { EMPTY_RED_FLAGS, type RedFlagCounts } from '@/lib/care-profile/signals';
 import { listPatientConsents, tenantHasEsign } from '@/lib/consents/service';
 import { getInvoiceContext, listPatientInvoices } from '@/lib/invoices/service';
-import { describeActivity, listPatientActivity } from '@/lib/patients/activity';
 import { formatPhoneDisplay, initialsOf, phoneDigits } from '@/lib/patients/names';
 import { localDateKey } from '@/lib/tasks/tz';
-import {
-  Activity,
-  CalendarDays,
-  CalendarPlus,
-  MessageCircle,
-  Pencil,
-  Phone,
-  Star,
-} from 'lucide-react';
+import { CalendarDays, CalendarPlus, MessageCircle, Pencil, Phone, Star } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AgendaNav } from '../../agenda-nav';
@@ -80,7 +71,7 @@ const HEADER_ID = 'patient-header';
 /**
  * Ficha del paciente: cabecera con lo que se mira antes de atender, banner
  * de alertas clínicas, pestañas por URL (visita de hoy, anamnesis, historia,
- * citas, contable, actividad) y, en la de hoy, un resumen fijo a la derecha.
+ * citas, contable) y, en la de hoy, un resumen fijo a la derecha.
  *
  * Las pestañas son contenido de servidor y sólo se pinta la activa: `?tab=`
  * decide cuál, y `?nota=<cita>` sigue abriendo la nota de esa cita.
@@ -283,7 +274,6 @@ export default async function PacienteDossierPage({
       mobileCount: billingTotals.dueCount > 0 ? String(billingTotals.dueCount) : null,
       warn: billingTotals.dueCount > 0,
     },
-    { value: 'actividad', href: hrefFor('actividad'), label: 'Actividad' },
   ];
 
   // ─── Cabecera ───────────────────────────────────────────────────────────
@@ -392,14 +382,6 @@ export default async function PacienteDossierPage({
   const consents =
     (tab === 'visita' || tab === 'contable') && hasEsign && person
       ? await listPatientConsents(ctx.tenantId, person.id).catch(() => [])
-      : [];
-  const activity =
-    tab === 'actividad'
-      ? await listPatientActivity(ctx.tenantId, {
-          patientId: person?.id ?? null,
-          patientKey,
-          chargeIds: charges.map((c) => c.id),
-        }).catch(() => [])
       : [];
 
   // ─── Facturas (pestaña Contable) ────────────────────────────────────────
@@ -802,44 +784,6 @@ export default async function PacienteDossierPage({
                   canWrite={ctx.canWriteAppointments}
                 />
               </>
-            )}
-
-            {tab === 'actividad' && (
-              <div className="p-4 md:p-6">
-                <h2 className="mb-1 text-[18px] font-bold tracking-tight text-zinc-900">
-                  Actividad
-                </h2>
-                <p className="mb-4 text-[13px] text-zinc-600">
-                  Quién cambió qué en esta ficha y cuándo. Datos, anamnesis, notas, consentimiento y
-                  cobros.
-                </p>
-                {activity.length === 0 ? (
-                  <EmptyState
-                    icon={<Activity className="h-5 w-5" />}
-                    title="Sin actividad registrada"
-                    description="A partir de ahora, cada cambio en la ficha queda anotado aquí con su autor."
-                  />
-                ) : (
-                  <ol className="divide-y divide-(--color-border-subtle)">
-                    {activity.map((entry) => (
-                      <li
-                        key={entry.id}
-                        className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-2.5"
-                      >
-                        <span className="w-[150px] shrink-0 text-[12px] tabular-nums text-zinc-600">
-                          {fmt.format(entry.createdAt)}
-                        </span>
-                        <span className="min-w-0 flex-1 text-[14px] text-zinc-800">
-                          {describeActivity(entry)}
-                        </span>
-                        <span className="text-[12px] text-zinc-600">
-                          {entry.actorEmail ?? 'Asistente / sistema'}
-                        </span>
-                      </li>
-                    ))}
-                  </ol>
-                )}
-              </div>
             )}
           </Card>
 

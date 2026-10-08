@@ -75,6 +75,11 @@ export async function POST(
       externalId: body.payload.externalId ?? null,
       completedAt: body.payload.completedAt ? new Date(body.payload.completedAt) : new Date(),
     });
+    // La firma ya quedó registrada; si el PDF no se pudo archivar, 500 para
+    // que Documenso reintente y lo archive en el próximo aviso.
+    if (result.pdfError) {
+      return NextResponse.json({ error: 'retry', detail: result.pdfError }, { status: 500 });
+    }
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
     // 500 a propósito: que Documenso lo reintente. El PDF firmado no puede

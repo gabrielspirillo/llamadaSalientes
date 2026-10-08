@@ -1,6 +1,6 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, ne } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { getClinicTimezone } from '@/lib/agenda/queries';
@@ -448,7 +448,7 @@ export async function completeConsent(input: {
   providerDocumentId: number | null;
   externalId: string | null;
   completedAt: Date;
-}): Promise<{ consentId: string | null; already: boolean }> {
+}): Promise<{ consentId: string | null; already: boolean; pdfError?: string }> {
   const byExternal =
     input.externalId && /^[0-9a-f-]{36}$/i.test(input.externalId)
       ? await db
@@ -479,53 +479,76 @@ export async function completeConsent(input: {
   if (!row) return { consentId: null, already: false };
   if (row.status === 'SIGNED' && row.pdfKey) return { consentId: row.id, already: true };
 
-  const integration = await getEsignIntegration(input.tenantId);
-  if (!integration) throw new ConsentError('La clínica ya no tiene la firma digital configurada.');
-  const documentId = row.providerDocumentId ?? input.providerDocumentId;
-  if (documentId === null)
-    throw new ConsentError('El consentimiento no tiene documento en Documenso.');
-
-  const bytes = await downloadSignedPdf(
-    { baseUrl: integration.baseUrl, apiToken: integration.apiToken },
-    documentId,
-  );
-  const key = `tenants/${input.tenantId}/consents/${row.id}.pdf`;
-  await mediaUpload({
-    bucket: internalBucket(),
-    path: key,
-    body: Buffer.from(bytes),
-    contentType: 'application/pdf',
-  });
-
-  await db
-    .update(patientConsents)
-    .set({
-      status: 'SIGNED',
-      signedAt: input.completedAt,
-      pdfKey: key,
-      error: null,
-      updatedAt: new Date(),
-    })
-    .where(eq(patientConsents.id, row.id));
-
-  // Aviso en el chat interno, best-effort: que recepción se entere sin mirar.
-  try {
-    const [{ postConsentSigned }, person] = await Promise.all([
-      import('@/lib/messaging/bot'),
-      getPatientPerson(input.tenantId, row.patientId),
-    ]);
-    await postConsentSigned({
-      tenantId: input.tenantId,
-      consentId: row.id,
-      patientId: row.patientId,
-      patientName: person?.fullName ?? 'paciente',
-      guardianName: row.recipientName,
-    });
-  } catch (err) {
-    console.warn('[consents] no se pudo avisar en el chat interno', (err as Error).message);
+  // La firma se registra ANTES de archivar el PDF: el tutor ya firmó en
+  // Documenso y eso no puede depender de que el bucket o la descarga
+  // respondan. Antes, un fallo al guardar el PDF dejaba la ficha en
+  // "pendiente" con el documento firmado, y "Comprobar firma" fallaba igual.
+  // Condicional: si el webhook y "Comprobar firma" llegan a la vez, sólo uno
+  // pasa la fila a firmada y avisa en el chat.
+  const firstTime =
+    row.status !== 'SIGNED' &&
+    (
+      await db
+        .update(patientConsents)
+        .set({ status: 'SIGNED', signedAt: input.completedAt, error: null, updatedAt: new Date() })
+        .where(and(eq(patientConsents.id, row.id), ne(patientConsents.status, 'SIGNED')))
+        .returning({ id: patientConsents.id })
+    ).length > 0;
+  if (firstTime) {
+    // Aviso en el chat interno, best-effort: que recepción se entere sin mirar.
+    try {
+      const [{ postConsentSigned }, person] = await Promise.all([
+        import('@/lib/messaging/bot'),
+        getPatientPerson(input.tenantId, row.patientId),
+      ]);
+      await postConsentSigned({
+        tenantId: input.tenantId,
+        consentId: row.id,
+        patientId: row.patientId,
+        patientName: person?.fullName ?? 'paciente',
+        guardianName: row.recipientName,
+      });
+    } catch (err) {
+      console.warn('[consents] no se pudo avisar en el chat interno', (err as Error).message);
+    }
   }
 
-  return { consentId: row.id, already: false };
+  const documentId = row.providerDocumentId ?? input.providerDocumentId;
+  try {
+    const integration = await getEsignIntegration(input.tenantId);
+    if (!integration) throw new Error('la clínica ya no tiene la firma digital configurada');
+    if (documentId === null) throw new Error('el consentimiento no tiene documento en Documenso');
+
+    const bytes = await downloadSignedPdf(
+      { baseUrl: integration.baseUrl, apiToken: integration.apiToken },
+      documentId,
+    ).catch((err: Error) => {
+      throw new Error(`no se pudo bajar de Documenso (${err.message})`);
+    });
+    const key = `tenants/${input.tenantId}/consents/${row.id}.pdf`;
+    await mediaUpload({
+      bucket: internalBucket(),
+      path: key,
+      body: Buffer.from(bytes),
+      contentType: 'application/pdf',
+    }).catch((err: Error) => {
+      throw new Error(`no se pudo guardar en el almacenamiento (${err.message})`);
+    });
+
+    await db
+      .update(patientConsents)
+      .set({ pdfKey: key, error: null, updatedAt: new Date() })
+      .where(eq(patientConsents.id, row.id));
+    return { consentId: row.id, already: false };
+  } catch (err) {
+    const pdfError = `Firmado, pero el PDF ${(err as Error).message}`.slice(0, 500);
+    console.error('[consents] firma registrada sin PDF', { consentId: row.id, err: pdfError });
+    await db
+      .update(patientConsents)
+      .set({ error: pdfError, updatedAt: new Date() })
+      .where(eq(patientConsents.id, row.id));
+    return { consentId: row.id, already: false, pdfError };
+  }
 }
 
 /**
@@ -537,7 +560,7 @@ export async function completeConsent(input: {
 export async function refreshConsent(input: {
   tenantId: string;
   consentId: string;
-}): Promise<{ status: string; signed: boolean }> {
+}): Promise<{ status: string; signed: boolean; pdfError?: string }> {
   const rows = await db
     .select()
     .from(patientConsents)
@@ -561,13 +584,13 @@ export async function refreshConsent(input: {
   );
   if (doc.status !== 'COMPLETED') return { status: doc.status, signed: false };
 
-  await completeConsent({
+  const result = await completeConsent({
     tenantId: input.tenantId,
     providerDocumentId: row.providerDocumentId,
     externalId: row.id,
     completedAt: doc.completedAt ? new Date(doc.completedAt) : new Date(),
   });
-  return { status: 'SIGNED', signed: true };
+  return { status: 'SIGNED', signed: true, pdfError: result.pdfError };
 }
 
 /** URL firmada y efímera del PDF firmado, o null si no existe o no está firmado. */

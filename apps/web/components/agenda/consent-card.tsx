@@ -145,7 +145,13 @@ export function ConsentCard({
         ) : (
           <ul className="grid gap-2.5">
             {consents.map((c) => (
-              <ConsentRow key={c.id} consent={c} fmt={fmt} />
+              <ConsentRow
+                key={c.id}
+                consent={c}
+                fmt={fmt}
+                patientId={patientId}
+                canWrite={canWrite}
+              />
             ))}
           </ul>
         )}
@@ -154,7 +160,20 @@ export function ConsentCard({
   );
 }
 
-function ConsentRow({ consent: c, fmt }: { consent: ConsentListItem; fmt: Intl.DateTimeFormat }) {
+function ConsentRow({
+  consent: c,
+  fmt,
+  patientId,
+  canWrite,
+}: {
+  consent: ConsentListItem;
+  fmt: Intl.DateTimeFormat;
+  patientId: string;
+  canWrite: boolean;
+}) {
+  // Firmado en Documenso pero sin el PDF archivado aquí: la firma vale, sólo
+  // falta traer el documento.
+  const pdfMissing = c.status === 'SIGNED' && !c.hasPdf;
   const noWhatsapp = c.error?.includes('Sin WhatsApp conectado') ?? false;
   const badge: { tone: 'warn' | 'success' | 'neutral' | 'danger'; label: string } =
     c.status === 'SIGNED'
@@ -205,6 +224,15 @@ function ConsentRow({ consent: c, fmt }: { consent: ConsentListItem; fmt: Intl.D
           )}
         </p>
       )}
+      {pdfMissing && (
+        <div className="grid gap-2 rounded-[10px] bg-amber-50 px-2.5 py-2 text-[12px] text-amber-900">
+          <p className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+            <span>{c.error ?? 'Firmado. Falta traer el PDF firmado de Documenso.'}</span>
+          </p>
+          {canWrite && <RefreshConsent patientId={patientId} consentId={c.id} label="Traer PDF" />}
+        </div>
+      )}
       {(c.hasPdf || (c.status === 'SENT' && c.signingUrl)) && (
         <div className="flex flex-wrap gap-2">
           {c.hasPdf && (
@@ -230,10 +258,12 @@ function RefreshConsent({
   patientId,
   consentId,
   primary = false,
+  label = 'Comprobar firma',
 }: {
   patientId: string;
   consentId: string;
   primary?: boolean;
+  label?: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
@@ -250,7 +280,11 @@ function RefreshConsent({
         return;
       }
       if (result.data.signed) {
-        setNote({ tone: 'ok', text: 'Firmado. Ya está el PDF.' });
+        setNote(
+          result.data.pdfError
+            ? { tone: 'warn', text: result.data.pdfError }
+            : { tone: 'ok', text: 'Firmado. Ya está el PDF.' },
+        );
         router.refresh();
       } else {
         setNote({
@@ -270,7 +304,7 @@ function RefreshConsent({
         disabled={pending}
       >
         {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-        Comprobar firma
+        {label}
       </Button>
       {note && (
         <span

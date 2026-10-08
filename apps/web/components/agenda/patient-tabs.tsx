@@ -3,7 +3,6 @@
 import type { PatientTab, PatientTabItem } from '@/lib/agenda/patient-tabs';
 import { cn } from '@/lib/cn';
 import {
-  Activity,
   CalendarDays,
   ClipboardList,
   History,
@@ -22,7 +21,6 @@ const ICONS: Record<PatientTab, LucideIcon> = {
   historia: History,
   citas: CalendarDays,
   contable: Receipt,
-  actividad: Activity,
 };
 
 /**
