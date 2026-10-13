@@ -48,6 +48,11 @@ const treatmentSchema = z.object({
       return Math.round(n * 100);
     }),
   active: checkboxString,
+  // Si el tratamiento decide si la cita es primera visita. Vacío = por historial.
+  visitKind: z
+    .enum(['', 'FIRST', 'FOLLOW_UP'])
+    .optional()
+    .transform((v) => (v ? v : null)),
   // Schedule (opcional). Si vienen, creamos calendario en GHL al crear el treatment.
   scheduleDays: daysCsv,
   scheduleStart: z.string().optional(), // "09:00"
@@ -105,6 +110,7 @@ export async function createTreatmentAction(formData: FormData): Promise<ActionR
       priceMax: parsed.data.priceMax,
       priceCents: parsed.data.price,
       active: parsed.data.active,
+      visitKind: parsed.data.visitKind ?? null,
       ghlCalendarId,
     });
 
@@ -150,6 +156,7 @@ export async function updateTreatmentAction(id: string, formData: FormData): Pro
     if (parsed.data.priceMax !== undefined) patch.priceMax = parsed.data.priceMax;
     if (parsed.data.price !== undefined) patch.priceCents = parsed.data.price;
     if (parsed.data.active !== undefined) patch.active = parsed.data.active;
+    if (parsed.data.visitKind !== undefined) patch.visitKind = parsed.data.visitKind;
 
     const after = await updateTreatment(tenant.id, id, patch);
 

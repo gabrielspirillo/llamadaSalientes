@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Input, Label, Textarea } from '@/components/ui/input';
+import { Input, Label, Select, Textarea } from '@/components/ui/input';
 import { Calendar, Loader2 } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import { type ActionResult, createTreatmentAction, updateTreatmentAction } from './actions';
@@ -24,6 +24,7 @@ type Treatment = {
   priceMax: string | null;
   priceCents: number | null;
   active: boolean | null;
+  visitKind?: string | null;
 };
 
 const WEEK_DAYS: { key: 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun'; label: string }[] = [
@@ -152,6 +153,25 @@ export function TreatmentDialog({
                 className="mt-1.5"
               />
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="visitKind">Tipo de visita</Label>
+            <Select
+              id="visitKind"
+              name="visitKind"
+              defaultValue={treatment?.visitKind ?? ''}
+              className="mt-1.5"
+            >
+              <option value="">Según el historial del paciente</option>
+              <option value="FIRST">Primera visita</option>
+              <option value="FOLLOW_UP">Seguimiento (visita recurrente)</option>
+            </Select>
+            <p className="text-xs text-zinc-500 mt-1.5">
+              Decide si una cita con este tratamiento cuenta como primera visita para las reglas de
+              reserva. &quot;Según el historial&quot; la cuenta como primera si el paciente no tenía
+              citas antes.
+            </p>
           </div>
 
           <div>
