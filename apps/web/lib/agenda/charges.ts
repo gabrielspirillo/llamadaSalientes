@@ -21,7 +21,7 @@ import {
   treatments,
 } from '@/lib/db/schema';
 import { env } from '@/lib/env';
-import { mediaSignedUrl, mediaUpload } from '@/lib/storage/media';
+import { mediaFileResponse, mediaUpload } from '@/lib/storage/media';
 
 /**
  * Cobros por cita y sus comprobantes (migración 0034).
@@ -376,28 +376,36 @@ export async function attachChargeFile(
 }
 
 /**
- * URL firmada (10 min) de un comprobante. Se busca por (clínica, id) y, si
+ * El comprobante, servido por la app. Se busca por (clínica, id) y, si
  * quien mira sólo ve su agenda, por su cita: un id de otra clínica o de otra
  * consulta es un null, no un archivo ajeno.
  */
-export async function chargeFileSignedUrl(
+export async function chargeFileResponse(
   tenantId: string,
   fileId: string,
   opts: { viewerProfessionalId?: string | null } = {},
-): Promise<string | null> {
+): Promise<Response | null> {
   if (!/^[0-9a-f-]{36}$/i.test(fileId)) return null;
   const where = [eq(patientChargeFiles.tenantId, tenantId), eq(patientChargeFiles.id, fileId)];
   if (opts.viewerProfessionalId) {
     where.push(eq(agendaAppointments.professionalId, opts.viewerProfessionalId));
   }
   const rows = await db
-    .select({ key: patientChargeFiles.storageKey })
+    .select({
+      key: patientChargeFiles.storageKey,
+      fileName: patientChargeFiles.fileName,
+      mimeType: patientChargeFiles.mimeType,
+    })
     .from(patientChargeFiles)
     .innerJoin(patientCharges, eq(patientCharges.id, patientChargeFiles.chargeId))
     .leftJoin(agendaAppointments, eq(agendaAppointments.id, patientCharges.appointmentId))
     .where(and(...where))
     .limit(1);
-  const key = rows[0]?.key;
-  if (!key) return null;
-  return mediaSignedUrl(key, { bucket: internalBucket(), expiresInSeconds: 60 * 10 });
+  const row = rows[0];
+  if (!row?.key) return null;
+  return mediaFileResponse(row.key, {
+    bucket: internalBucket(),
+    filename: row.fileName ?? undefined,
+    contentType: row.mimeType ?? undefined,
+  });
 }

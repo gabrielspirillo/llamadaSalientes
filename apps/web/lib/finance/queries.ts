@@ -41,7 +41,7 @@ import {
   isFinanceRecurrence,
   recurrenceSourceMonth,
 } from '@/lib/finance/model';
-import { mediaSignedUrl } from '@/lib/storage/media';
+import { mediaFileResponse } from '@/lib/storage/media';
 
 /**
  * Lecturas del módulo Finanzas.
@@ -425,22 +425,30 @@ export async function getFinanceEntry(tenantId: string, id: string) {
 }
 
 /**
- * URL firmada (10 min) de un comprobante del libro. Se busca por (clínica de
+ * El comprobante del libro, servido por la app. Se busca por (clínica de
  * la sesión, id): un id de otra clínica es un null, no un archivo ajeno.
  */
-export async function financeFileSignedUrl(
+export async function financeFileResponse(
   tenantId: string,
   fileId: string,
-): Promise<string | null> {
+): Promise<Response | null> {
   if (!/^[0-9a-f-]{36}$/i.test(fileId)) return null;
   const rows = await db
-    .select({ key: financeEntryFiles.storageKey })
+    .select({
+      key: financeEntryFiles.storageKey,
+      fileName: financeEntryFiles.fileName,
+      mimeType: financeEntryFiles.mimeType,
+    })
     .from(financeEntryFiles)
     .where(and(eq(financeEntryFiles.tenantId, tenantId), eq(financeEntryFiles.id, fileId)))
     .limit(1);
-  const key = rows[0]?.key;
-  if (!key) return null;
-  return mediaSignedUrl(key, { bucket: env.S3_BUCKET_INTERNAL, expiresInSeconds: 60 * 10 });
+  const row = rows[0];
+  if (!row?.key) return null;
+  return mediaFileResponse(row.key, {
+    bucket: env.S3_BUCKET_INTERNAL,
+    filename: row.fileName ?? undefined,
+    contentType: row.mimeType ?? undefined,
+  });
 }
 
 // ─── Ayudas para el alta y los ajustes ──────────────────────────────────────

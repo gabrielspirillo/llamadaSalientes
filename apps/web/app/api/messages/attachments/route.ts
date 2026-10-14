@@ -5,14 +5,14 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { badRequest, messagingErrorResponse } from '@/lib/messaging/api';
 import { MessagingNotFoundError, requireMessagingRole } from '@/lib/messaging/auth';
 import { MAX_ATTACHMENT_BYTES } from '@/lib/messaging/constants';
-import { mediaSignedUrl, mediaUpload } from '@/lib/storage/media';
+import { mediaFileResponse, mediaUpload } from '@/lib/storage/media';
 
 export const runtime = 'nodejs';
 
 /**
- * Lectura de un adjunto: firma la URL EN CADA LECTURA y redirige.
+ * Lectura de un adjunto: lo sirve la app (nada de redirigir a MinIO).
  *
- * Por qué no se guarda la URL firmada en el mensaje: caduca. Un adjunto de hace
+ * Por qué no se guarda una URL firmada en el mensaje: caduca. Un adjunto de hace
  * una semana tiene que seguir abriéndose, así que lo durable es la `key` y la
  * URL se acuña al leer. Guardarla en el jsonb haría que los adjuntos murieran
  * en silencio a las pocas horas — que es peor que fallar al subirlos.
@@ -21,7 +21,7 @@ export const runtime = 'nodejs';
  * el prefijo del tenant del que pide. Sin eso, conocer una key de otra clínica
  * bastaría para leer su adjunto.
  */
-export async function GET(req: NextRequest): Promise<NextResponse> {
+export async function GET(req: NextRequest): Promise<Response> {
   try {
     const auth = await requireMessagingRole('viewer');
     const key = req.nextUrl.searchParams.get('key') ?? '';
@@ -30,12 +30,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       throw new MessagingNotFoundError('Adjunto');
     }
 
+    // Se sirve a través de la app: redirigir a una URL firmada mandaba al
+    // navegador a la dirección interna de MinIO, que fuera de Docker no existe.
     const bucket = internalBucket();
-    const url = await mediaSignedUrl(key, {
-      ...(bucket ? { bucket } : {}),
-      expiresInSeconds: SIGNED_URL_TTL_SECONDS,
-    });
-    return NextResponse.redirect(url, 302);
+    const file = await mediaFileResponse(key, bucket ? { bucket } : {});
+    if (!file) throw new MessagingNotFoundError('Adjunto');
+    return file;
   } catch (err) {
     return messagingErrorResponse(err);
   }
@@ -53,9 +53,6 @@ function internalBucket(): string | undefined {
   const b = process.env.S3_BUCKET_INTERNAL?.trim();
   return b && b.length > 0 ? b : undefined;
 }
-
-/** Cuánto vive el link que ve el navegador. Corto a propósito. */
-const SIGNED_URL_TTL_SECONDS = 60 * 60 * 6;
 
 // Allowlist explícita. Nada de `image/*`: un SVG es HTML ejecutable y un
 // `application/*` cualquiera es un binario que no queremos servir.
@@ -193,17 +190,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       contentType: mime,
     });
 
-    // URL firmada y de vida corta. Si el firmado falla (endpoint mal
-    // configurado) el adjunto igual queda subido y referenciable por `key`.
-    let url: string | null = null;
-    try {
-      url = await mediaSignedUrl(key, {
-        ...(bucket ? { bucket } : {}),
-        expiresInSeconds: SIGNED_URL_TTL_SECONDS,
-      });
-    } catch (err) {
-      console.warn('[messaging-attachments] no se pudo firmar la URL', err);
-    }
+    // Enlace de la propia app (el GET de arriba sirve el archivo).
+    const url = `/api/messages/attachments?key=${encodeURIComponent(key)}`;
 
     return NextResponse.json(
       { key, name, mime, size: file.size, ...(url ? { url } : {}) },

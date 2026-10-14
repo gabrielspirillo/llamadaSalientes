@@ -857,8 +857,16 @@ duplicadas, la IA podía agendar en la que no tiene la historia clínica.
   misma cita o del mismo paciente, profesional y día (privada con privada); la
   ficha abre esa nota en el formulario para completarla. La migración `0047`
   juntó las repetidas y corrigió los `+6xxxxxxxx`.
-- **Primera visita en el calendario**: chip en ámbar con "1ª" (sólo con perfil
-  de atención).
+- **Calendario por colores**: cada estado tiene su color (Agendada teal,
+  Confirmada verde, En sala índigo, En gabinete violeta, Atendida gris, No se
+  presentó coral; `STATUS_COLORS` en `calendar-view.tsx`) y la leyenda los
+  muestra. La primera visita va enmarcada en miel con "1ª visita" (sólo con
+  perfil de atención).
+- ⚠️ **Los archivos privados los sirve la app, nunca una redirección a MinIO**
+  (`mediaFileResponse` en `lib/storage/media.ts`). Una URL firmada con el
+  endpoint interno (`cliniq-minio-…:9000`) no existe fuera de Docker: el PDF
+  del consentimiento, los comprobantes, los documentos de Finanzas y los
+  adjuntos del chat abrían "No se puede acceder a este sitio".
 
 ## Señales de conducta del paciente (Respinens): duda y banderas rojas
 

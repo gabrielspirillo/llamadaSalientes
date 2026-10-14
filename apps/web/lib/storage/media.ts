@@ -3,6 +3,7 @@ import {
   CreateBucketCommand,
   DeleteObjectCommand,
   GetObjectCommand,
+  type GetObjectCommandOutput,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -181,4 +182,46 @@ export function buildWhatsappMediaPath(
 ): string {
   const safeExt = ext.replace(/[^a-z0-9]/gi, '').toLowerCase() || 'bin';
   return `tenants/${tenantId}/whatsapp/${conversationId}/${crypto.randomUUID()}.${safeExt}`;
+}
+
+/**
+ * Sirve un objeto del bucket A TRAVÉS DE LA APP, sin redirigir a MinIO.
+ *
+ * Redirigir a una URL firmada mandaba al navegador al endpoint interno
+ * (`cliniq-minio-…:9000`), que fuera de Docker no existe: el PDF del
+ * consentimiento, los comprobantes y los adjuntos daban "No se puede acceder
+ * a este sitio". Así el enlace es siempre de la propia app y el bucket puede
+ * seguir siendo privado. Devuelve null si el objeto no existe.
+ */
+export async function mediaFileResponse(
+  path: string,
+  options: { bucket?: string; filename?: string; download?: boolean; contentType?: string } = {},
+): Promise<Response | null> {
+  const bucket = options.bucket ?? env.S3_BUCKET_WHATSAPP;
+  let out: GetObjectCommandOutput;
+  try {
+    out = await getClient().send(new GetObjectCommand({ Bucket: bucket, Key: path }), {
+      abortSignal: AbortSignal.timeout(30_000),
+    });
+  } catch (err) {
+    const name = (err as { name?: string }).name;
+    if (name === 'NoSuchKey' || name === 'NotFound' || isNoSuchBucket(err)) return null;
+    throw err;
+  }
+  if (!out.Body) return null;
+  // Las cabeceras sólo admiten ASCII: "Lucía.pdf" → "Lucia.pdf".
+  const filename =
+    (options.filename ?? path.split('/').pop() ?? 'archivo')
+      .normalize('NFD')
+      .replace(/\p{M}/gu, '')
+      .replace(/[^\x20-\x7e]|["\\]/g, '')
+      .trim() || 'archivo';
+  const headers = new Headers({
+    'Content-Type': options.contentType ?? out.ContentType ?? 'application/octet-stream',
+    'Content-Disposition': `${options.download ? 'attachment' : 'inline'}; filename="${filename}"`,
+    'Cache-Control': 'private, no-store',
+    'X-Content-Type-Options': 'nosniff',
+  });
+  if (out.ContentLength) headers.set('Content-Length', String(out.ContentLength));
+  return new Response(out.Body.transformToWebStream(), { status: 200, headers });
 }

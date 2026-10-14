@@ -28,7 +28,7 @@ import { db } from '@/lib/db/client';
 import { consentTemplates, esignIntegrations, patientConsents } from '@/lib/db/schema';
 import { env } from '@/lib/env';
 import { getPatientPerson } from '@/lib/patients/persons';
-import { mediaSignedUrl, mediaUpload } from '@/lib/storage/media';
+import { mediaFileResponse, mediaUpload } from '@/lib/storage/media';
 import { localDateKey } from '@/lib/tasks/tz';
 import { getConnectorForTenant } from '@/lib/whatsapp/factory';
 import { sendAgentResponse } from '@/lib/whatsapp/outbound/send-response';
@@ -608,11 +608,12 @@ async function refreshConsentInner(input: {
   return { status: 'SIGNED', signed: true, pdfError: result.pdfError };
 }
 
-/** URL firmada y efímera del PDF firmado, o null si no existe o no está firmado. */
-export async function consentPdfSignedUrl(
+/** El PDF firmado servido por la app, o null si no existe o no está firmado. */
+export async function consentPdfResponse(
   tenantId: string,
   consentId: string,
-): Promise<string | null> {
+  download = false,
+): Promise<Response | null> {
   if (!/^[0-9a-f-]{36}$/i.test(consentId)) return null;
   const rows = await db
     .select({ pdfKey: patientConsents.pdfKey })
@@ -621,5 +622,10 @@ export async function consentPdfSignedUrl(
     .limit(1);
   const key = rows[0]?.pdfKey;
   if (!key) return null;
-  return mediaSignedUrl(key, { bucket: internalBucket(), expiresInSeconds: 60 * 10 });
+  return mediaFileResponse(key, {
+    bucket: internalBucket(),
+    filename: 'consentimiento-firmado.pdf',
+    contentType: 'application/pdf',
+    download,
+  });
 }

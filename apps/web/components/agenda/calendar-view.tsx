@@ -1,6 +1,5 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
 import { Button, IconButton } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/feedback';
@@ -77,15 +76,31 @@ function hhmm(minute: number): string {
 const STATUS_STYLES: Record<string, string> = {
   SCHEDULED: 'border-l-4',
   CONFIRMED: 'border-l-4',
-  ARRIVED: 'border-l-4 ring-1 ring-brand-300',
-  IN_PROGRESS: 'border-l-4 ring-1 ring-brand-400',
-  COMPLETED: 'border-l-4 opacity-80',
-  CANCELLED: 'border-l-4 opacity-45 line-through',
-  NO_SHOW: 'border-l-4 opacity-60',
+  ARRIVED: 'border-l-4',
+  IN_PROGRESS: 'border-l-4',
+  COMPLETED: 'border-l-4',
+  CANCELLED: 'border-l-4 opacity-50 line-through',
+  NO_SHOW: 'border-l-4',
 };
 
-/** Fondo de la primera visita: ámbar opaco, se distingue del color del profesional. */
-const FIRST_VISIT_BG = '#fde68a';
+/**
+ * Cada estado con su color, de la paleta de la plataforma: así el día se lee
+ * de un vistazo (quién está confirmado, quién ya llegó, quién faltó) en vez de
+ * una columna de tarjetas iguales. `accent` va en el borde y el punto; `soft`,
+ * de fondo.
+ */
+const STATUS_COLORS: Record<string, { accent: string; soft: string; text: string }> = {
+  SCHEDULED: { accent: '#3d8b8b', soft: '#e7f3f3', text: '#24504f' },
+  CONFIRMED: { accent: '#10b981', soft: '#dcf7ec', text: '#065f46' },
+  ARRIVED: { accent: '#6366f1', soft: '#e9eafe', text: '#3730a3' },
+  IN_PROGRESS: { accent: '#8b5cf6', soft: '#efe8fe', text: '#5b21b6' },
+  COMPLETED: { accent: '#94a3b8', soft: '#f1f3f6', text: '#475569' },
+  CANCELLED: { accent: '#cbd5e1', soft: '#f8fafc', text: '#64748b' },
+  NO_SHOW: { accent: '#f43f5e', soft: '#ffe4e8', text: '#9f1239' },
+};
+
+/** La primera visita: miel de la paleta, en el borde y en la etiqueta "1ª". */
+const FIRST_VISIT = { accent: '#f59e0b', soft: '#fdf0d5' };
 
 export function CalendarView(props: CalendarViewProps) {
   const {
@@ -458,23 +473,29 @@ export function CalendarView(props: CalendarViewProps) {
                           className={cn(
                             'absolute overflow-hidden rounded-lg bg-white px-2 py-1 text-left shadow-[0_6px_16px_-10px_rgba(20,33,29,0.5)] ring-1 ring-black/5 transition-transform duration-200 hover:z-10 hover:scale-[1.01]',
                             STATUS_STYLES[item.status],
-                            item.firstVisit && 'ring-2 ring-amber-400',
+                            item.firstVisit && 'ring-2 ring-[#f59e0b]',
                           )}
                           style={{
                             top: minutesToTop(item.startMinute, dayWindow.startMinute),
                             height: alto,
                             left: `calc(${(lane / lanes) * 100}% + 4px)`,
                             width: `calc(${100 / lanes}% - 8px)`,
-                            borderLeftColor: item.color,
-                            // La primera visita va en ámbar: recepción tiene que verla
-                            // de un vistazo en el listado del día, no leer la etiqueta.
-                            backgroundColor: item.firstVisit ? FIRST_VISIT_BG : `${item.color}12`,
+                            // El color dice el estado; la primera visita, además,
+                            // va enmarcada en miel con su "1ª" delante del nombre.
+                            borderLeftColor: (STATUS_COLORS[item.status] ?? STATUS_COLORS.SCHEDULED)
+                              ?.accent,
+                            backgroundColor: (STATUS_COLORS[item.status] ?? STATUS_COLORS.SCHEDULED)
+                              ?.soft,
                           }}
+                          title={`${STATUS_LABELS[item.status]}${item.firstVisit ? ' · Primera visita' : ''}${visibleProfessionals.length > 1 ? ` · ${item.professionalName}` : ''}`}
                         >
                           <span className="block truncate text-[12px] font-bold leading-tight text-zinc-900">
                             {item.firstVisit && (
-                              <span className="mr-1 rounded-full bg-amber-500 px-1.5 py-px align-[1px] text-[10px] font-bold text-white">
-                                1ª
+                              <span
+                                className="mr-1 rounded-full px-1.5 py-px align-[1px] text-[10px] font-bold text-white"
+                                style={{ backgroundColor: FIRST_VISIT.accent }}
+                              >
+                                1ª visita
                               </span>
                             )}
                             {/* Banderas rojas y duda antes del nombre: es lo primero que recepción mira. */}
@@ -495,6 +516,19 @@ export function CalendarView(props: CalendarViewProps) {
                               <span className="font-semibold text-zinc-500">
                                 {' '}
                                 · {item.patientAge}
+                              </span>
+                            )}
+                            {/* El estado escrito al final de la línea, en su color. */}
+                            {lineas < 3 && (
+                              <span
+                                className="ml-1.5 rounded-full px-1.5 py-px text-[10px] font-semibold"
+                                style={{
+                                  color: (STATUS_COLORS[item.status] ?? STATUS_COLORS.SCHEDULED)
+                                    ?.text,
+                                  backgroundColor: 'rgba(255,255,255,0.7)',
+                                }}
+                              >
+                                {STATUS_LABELS[item.status]}
                               </span>
                             )}
                           </span>
@@ -523,17 +557,34 @@ export function CalendarView(props: CalendarViewProps) {
 
       {/* Leyenda de estados */}
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {(['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'COMPLETED', 'NO_SHOW'] as const).map((s) => (
-          <Badge key={s} tone="neutral" className="text-[11px]">
-            {STATUS_LABELS[s]}
-          </Badge>
-        ))}
+        {(
+          ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'NO_SHOW'] as const
+        ).map((s) => {
+          const c = STATUS_COLORS[s] ?? STATUS_COLORS.SCHEDULED;
+          return (
+            <span
+              key={s}
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold"
+              style={{ backgroundColor: c?.soft, color: c?.text }}
+            >
+              <span
+                className="h-2.5 w-2.5 rounded-full"
+                style={{ backgroundColor: c?.accent }}
+                aria-hidden
+              />
+              {STATUS_LABELS[s]}
+            </span>
+          );
+        })}
         {items.some((i) => i.firstVisit) && (
           <span
-            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-amber-900 ring-2 ring-amber-400"
-            style={{ backgroundColor: FIRST_VISIT_BG }}
+            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold text-amber-900 ring-2 ring-[#f59e0b]"
+            style={{ backgroundColor: FIRST_VISIT.soft }}
           >
-            <span className="rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">
+            <span
+              className="rounded-full px-1.5 text-[10px] font-bold text-white"
+              style={{ backgroundColor: FIRST_VISIT.accent }}
+            >
               1ª
             </span>
             Primera visita
