@@ -1,4 +1,8 @@
 import { ContactsImportDialog } from '@/components/agenda/contacts-import-dialog';
+import {
+  type MergeCandidate,
+  MergePatientsButton,
+} from '@/components/agenda/merge-patients-button';
 import { PatientDialog } from '@/components/agenda/patient-dialog';
 import { PatientSignalBadges } from '@/components/agenda/patient-signals';
 import { RemovePatientButton } from '@/components/agenda/remove-patient-button';
@@ -78,6 +82,35 @@ export default async function AgendaPacientesPage({
     month: 'short',
     year: 'numeric',
   });
+
+  // Fichas que parecen la misma persona (mismo nombre): el administrador las
+  // une en una para que la historia y las citas nuevas no queden repartidas.
+  const duplicates = new Map<string, MergeCandidate[]>();
+  if (ctx.canManageProfessionals) {
+    const byName = new Map<string, typeof patients>();
+    for (const p of patients) {
+      const k = nameKey(p.patientName);
+      if (!k) continue;
+      byName.set(k, [...(byName.get(k) ?? []), p]);
+    }
+    for (const group of byName.values()) {
+      if (group.length < 2 || !group.some((p) => p.patientId)) continue;
+      const candidates = group.map((p) => ({
+        patientKey: p.patientKey,
+        name: p.patientName,
+        detail: [
+          p.birthDate ? `Nacido ${p.birthDate.split('-').reverse().join('/')}` : null,
+          p.patientPhone,
+          `${p.totalAppointments} cita(s) · ${p.noteCount} nota(s)`,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+        canKeep: p.patientId !== null,
+        history: p.totalAppointments + p.noteCount,
+      }));
+      for (const p of group) duplicates.set(p.patientKey, candidates);
+    }
+  }
 
   return (
     <>
@@ -162,6 +195,11 @@ export default async function AgendaPacientesPage({
                     <TR key={p.patientKey}>
                       <TD>
                         <span className="text-[15px] font-bold text-zinc-900">{p.patientName}</span>
+                        {duplicates.has(p.patientKey) && (
+                          <Badge tone="warn" size="sm" className="ml-2">
+                            Posible duplicado
+                          </Badge>
+                        )}
                         {p.priorityFlag && (
                           <Badge tone="warn" size="sm" className="ml-2">
                             Prioritario
@@ -211,6 +249,9 @@ export default async function AgendaPacientesPage({
                               Abrir ficha
                             </Link>
                           </Button>
+                          {duplicates.has(p.patientKey) && (
+                            <MergePatientsButton candidates={duplicates.get(p.patientKey) ?? []} />
+                          )}
                           {/* Sólo sin historia y sólo admin: las altas de prueba del asistente. */}
                           {ctx.canManageProfessionals &&
                             p.totalAppointments === 0 &&
@@ -230,4 +271,9 @@ export default async function AgendaPacientesPage({
       </div>
     </>
   );
+}
+
+/** Nombre para comparar: sin tildes, mayúsculas ni espacios de más. */
+function nameKey(name: string): string {
+  return name.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
 }

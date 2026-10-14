@@ -14,6 +14,7 @@ import {
   priorityLevel,
 } from '@/lib/care-profile/policy';
 import {
+  DuplicatePatientError,
   type PatientPerson,
   createPatient,
   getPatientPerson,
@@ -95,23 +96,24 @@ export async function registerPatientPerson(
     .filter(Boolean)
     .join(' ');
 
-  // Idempotencia: el mismo niño dicho dos veces en la misma conversación (o en
-  // otra llamada) no puede acabar en dos fichas. Mismo teléfono y mismo nombre
-  // basta; la fecha de nacimiento desempata cuando el nombre se repite.
+  // Idempotencia: el mismo niño dicho dos veces (en esta conversación, en otra
+  // llamada o desde el móvil del otro tutor) no puede acabar en dos fichas. Si
+  // el nombre coincide con un hijo de ese teléfono es ESE niño aunque la fecha
+  // dictada no cuadre: abrirle otra ficha dejaría su historia en la vieja y las
+  // citas nuevas en la vacía. La fecha sólo desempata.
   const siblings = await listPatientsForPhone(tenantId, args.phone);
+  const sameName = (p: (typeof siblings)[number]) =>
+    normalizeName(p.fullName) === normalizeName(fullName) ||
+    normalizeName(p.firstName) === normalizeName(args.firstName);
   const existing =
-    siblings.find(
-      (p) => normalizeName(p.fullName) === normalizeName(fullName) && p.birthDate === birthDate,
-    ) ??
-    siblings.find(
-      (p) =>
-        normalizeName(p.firstName) === normalizeName(args.firstName) && p.birthDate === birthDate,
-    ) ??
+    siblings.find((p) => sameName(p) && p.birthDate === birthDate) ??
+    siblings.find((p) => normalizeName(p.fullName) === normalizeName(fullName)) ??
+    siblings.find(sameName) ??
     null;
+  if (existing) return finishRegistration(tenantId, existing, true, args, profile, todayKey);
 
-  const person =
-    existing ??
-    (await createPatient(
+  try {
+    const created = await createPatient(
       { tenantId, userId: null },
       {
         firstName: args.firstName.trim(),
@@ -121,8 +123,23 @@ export async function registerPatientPerson(
         contactName: args.guardianName?.trim() ?? '',
         notes: '',
       },
-    ));
+    );
+    return finishRegistration(tenantId, created, false, args, profile, todayKey);
+  } catch (err) {
+    // Ya tenía ficha con otro teléfono de la familia: es esa.
+    if (!(err instanceof DuplicatePatientError)) throw err;
+    return finishRegistration(tenantId, err.existing, true, args, profile, todayKey);
+  }
+}
 
+async function finishRegistration(
+  tenantId: string,
+  person: PatientPerson,
+  existing: boolean,
+  args: RegisterPersonArgs,
+  profile: CareProfile,
+  todayKey: string,
+): Promise<ToolResult> {
   const alert = args.medicalAlert?.trim();
   if (alert) {
     await setPatientReview({ tenantId, userId: null }, person.id, {

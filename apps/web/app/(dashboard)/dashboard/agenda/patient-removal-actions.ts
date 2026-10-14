@@ -4,9 +4,11 @@ import { revalidatePath } from 'next/cache';
 
 import { AgendaForbiddenError, requireAgendaManager } from '@/lib/agenda/auth';
 import { patientIdFromKey, phoneFromPatientKey } from '@/lib/agenda/patients';
+import { recordAudit } from '@/lib/audit';
 import {
   PatientValidationError,
   deletePatient,
+  mergePatients,
   previewPatientDeletion,
 } from '@/lib/patients/persons';
 import { deleteContact, findPatientByPhone, previewContactDeletion } from '@/lib/patients/registry';
@@ -117,6 +119,39 @@ export async function removePatientAction(patientKey: string): Promise<Result<nu
     revalidatePath('/dashboard/agenda/pacientes');
     revalidatePath('/dashboard/agenda');
     return { ok: true, data: null };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+/**
+ * Une fichas duplicadas en la que se queda (`keepKey`, siempre `pat:`). Sólo
+ * administrador: mueve historia clínica de una ficha a otra.
+ */
+export async function mergePatientsAction(
+  keepKey: string,
+  dropKeys: string[],
+): Promise<Result<{ moved: number }>> {
+  try {
+    const ctx = await requireAgendaManager();
+    const keepId = patientIdFromKey(keepKey);
+    if (!keepId) return { ok: false, error: 'La ficha que se queda tiene que ser de un paciente.' };
+    const result = await mergePatients(
+      { tenantId: ctx.tenantId, userId: ctx.userId },
+      keepId,
+      dropKeys,
+    );
+    await recordAudit({
+      tenantId: ctx.tenantId,
+      actorUserId: ctx.userId,
+      action: 'merge',
+      entity: 'patient',
+      entityId: keepId,
+      after: { patientKey: keepKey, merged: dropKeys, moved: result.moved },
+    }).catch(() => undefined);
+    revalidatePath('/dashboard/agenda/pacientes', 'layout');
+    revalidatePath('/dashboard/agenda');
+    return { ok: true, data: result };
   } catch (err) {
     return fail(err);
   }

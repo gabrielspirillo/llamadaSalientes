@@ -10,6 +10,7 @@ import { tryHandleWaitlistTextReply } from '@/lib/waitlist/handle-text-reply';
 import { readWebhookToken, verifyWebhookToken } from '@/lib/webhooks/tenant-token';
 import {
   evolutionMessagesUpsertSchema,
+  isEvolutionGroupMessage,
   normalizeEvolutionMessage,
   persistInboundMessage,
 } from '@/lib/whatsapp';
@@ -162,6 +163,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         }
         // Filtramos outbound (fromMe=true) para no procesar nuestros propios envíos.
         if (parsed.data.data.key.fromMe) break;
+        if (isEvolutionGroupMessage(parsed.data)) break;
         const inbound = normalizeEvolutionMessage(parsed.data, conn.tenantId);
         // Comparación crudo → normalizado: si el remoteJid es "@lid" y el
         // fromPhoneE164 quedó como un "+<id_lid>" (número inexistente), acá se

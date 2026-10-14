@@ -8,6 +8,7 @@ export {
   evolutionMessagesUpsertSchema,
   twilioInboundFormSchema,
   normalizeCloudMessage,
+  isEvolutionGroupMessage,
   normalizeEvolutionMessage,
   normalizeTwilioMessage,
 } from './inbound';

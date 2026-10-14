@@ -12,7 +12,7 @@ import {
   overlaps,
   shiftAppliesOn,
 } from '@/lib/agenda/availability';
-import { normalizePatientPhone, patientKeyFor } from '@/lib/agenda/patients';
+import { normalizePatientPhone, patientKeyFor, samePhone } from '@/lib/agenda/patients';
 import { hhmmToMinutes, minutesToHHMM } from '@/lib/agenda/shared';
 import {
   computeDayWindow,
@@ -329,7 +329,17 @@ describe('patientKeyFor', () => {
   it('normaliza el teléfono para que el mismo paciente sea la misma clave', () => {
     expect(patientKeyFor({ phone: '+34 600 111 222' })).toBe('tel:+34600111222');
     expect(patientKeyFor({ phone: '0034600111222' })).toBe('tel:+34600111222');
-    expect(patientKeyFor({ phone: '600111222' })).toBe('tel:+600111222');
+    // Un móvil español sin prefijo es el mismo número que llega por WhatsApp.
+    expect(patientKeyFor({ phone: '600111222' })).toBe('tel:+34600111222');
+    expect(patientKeyFor({ phone: '+600111222' })).toBe('tel:+34600111222');
+  });
+
+  it('reconoce el mismo teléfono con y sin prefijo de país', () => {
+    expect(samePhone('+600111222', '+34600111222')).toBe(true);
+    expect(samePhone('+34 600 111 222', '34600111222')).toBe(true);
+    expect(samePhone('+34600111222', '+34600111223')).toBe(false);
+    // Con menos de nueve dígitos cualquier final coincidiría.
+    expect(samePhone('11222', '+34600111222')).toBe(false);
   });
 
   it('cae al email y, en último extremo, al nombre', () => {

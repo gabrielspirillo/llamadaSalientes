@@ -121,6 +121,9 @@ const evolutionKeySchema = z.object({
   remoteJid: z.string(),
   fromMe: z.boolean(),
   id: z.string(),
+  // Cuando remoteJid es un "@lid", el teléfono real viene aquí (Evolution 2.3+).
+  remoteJidAlt: z.string().nullish(),
+  senderPn: z.string().nullish(),
 });
 
 const evolutionMessageContentSchema = z.object({
@@ -148,6 +151,7 @@ export const evolutionMessagesUpsertSchema = z.object({
   instance: z.string(),
   data: z.object({
     key: evolutionKeySchema,
+    senderPn: z.string().nullish(),
     pushName: z.string().optional(),
     messageTimestamp: z.union([z.number(), z.string()]).optional(),
     message: evolutionMessageContentSchema.optional(),
@@ -192,16 +196,36 @@ function evolutionMediaInfo(data: EvolutionUpsert['data']): { mimeType: string |
   return { mimeType };
 }
 
+/**
+ * El JID con el TELÉFONO del remitente. Un "<id>@lid" no es un número: es un
+ * identificador opaco de WhatsApp, y usarlo como teléfono creaba un contacto
+ * nuevo ("+<id>") para alguien que ya estaba en la libreta, con su ficha y su
+ * historia en el otro. Evolution trae el número real en `remoteJidAlt` o
+ * `senderPn`.
+ */
+function evolutionPhoneJid(data: EvolutionUpsert['data']): string {
+  const { key } = data;
+  if (!key.remoteJid.endsWith('@lid')) return key.remoteJid;
+  return (
+    [key.remoteJidAlt, key.senderPn, data.senderPn].find((j) => j && !j.endsWith('@lid')) ??
+    key.remoteJid
+  );
+}
+
+/** Un grupo no es un paciente: sus mensajes no crean contacto ni conversación. */
+export function isEvolutionGroupMessage(payload: EvolutionUpsert): boolean {
+  return payload.data.key.remoteJid.endsWith('@g.us');
+}
+
 export function normalizeEvolutionMessage(
   payload: EvolutionUpsert,
   tenantId: string,
 ): NormalizedInboundMessage {
   const { key, pushName, messageTimestamp } = payload.data;
-  const remoteJid = key.remoteJid;
+  const remoteJid = evolutionPhoneJid(payload.data);
   // remoteJid puede venir como:
   //   "5491155555555@s.whatsapp.net"            (clásico)
   //   "5491155555555:17@s.whatsapp.net"         (Multi-Device, ":NN" es el lid)
-  //   "5491155555555@lid"                       (grupo / lid id)
   // Para el contacto solo nos interesa el número crudo: quitamos lo de después
   // de "@" y el sufijo ":NN" si está. ensureE164 después le pone el "+".
   const phone = stripJidSuffix(remoteJid.split('@')[0] ?? remoteJid);

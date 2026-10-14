@@ -166,6 +166,7 @@ export default async function AgendaPage({
       // la etiqueta de primera visita, sólo en las clínicas con perfil.
       patientAge: a.patientBirthDate ? describeAge(a.patientBirthDate, todayKey) : null,
       badge: careProfile && a.isFirstVisit ? '1ª visita' : null,
+      firstVisit: Boolean(careProfile && a.isFirstVisit),
       signals: careProfile
         ? {
             redFlags: {

@@ -822,6 +822,17 @@ async function patientsWithoutAppointments(
   where.push(
     sql`not exists (select 1 from ${patients} where ${patients.contactId} = ${whatsappContacts.id})`,
   );
+  // Tampoco el otro tutor: el padre que escribe desde su móvil (guardado en
+  // los tutores de la ficha del niño) no es un paciente nuevo.
+  where.push(
+    sql`not exists (
+      select 1 from ${patients} p,
+        jsonb_array_elements(case when jsonb_typeof(p.guardians) = 'array' then p.guardians else '[]'::jsonb end) g
+      where p.tenant_id = ${whatsappContacts.tenantId}
+        and length(regexp_replace(coalesce(g->>'phone', ''), '\\D', '', 'g')) >= 9
+        and right(regexp_replace(g->>'phone', '\\D', '', 'g'), 9) = right(regexp_replace(${whatsappContacts.phoneE164}, '\\D', '', 'g'), 9)
+    )`,
+  );
 
   const rows = await db
     .select({

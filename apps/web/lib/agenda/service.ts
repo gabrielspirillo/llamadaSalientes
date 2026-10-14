@@ -11,6 +11,7 @@ import {
 } from '@/lib/agenda/availability';
 import { normalizePatientPhone, patientIdFromKey, patientKeyFor } from '@/lib/agenda/patients';
 import {
+  getClinicTimezone,
   getProfessional,
   resolveDuration,
   resolveTimezone,
@@ -1113,6 +1114,49 @@ export async function cancelAppointment(
 
 // ─── Historia clínica ────────────────────────────────────────────────────────
 
+function nonEmpty(fields: Record<string, string | null | undefined>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(fields)) {
+    const clean = v?.trim();
+    if (clean) out[k] = clean;
+  }
+  return out;
+}
+
+/**
+ * La nota que ya existe para esta visita: la de la misma cita o, si no, la del
+ * mismo paciente y profesional ese mismo día (el de la cita, o hoy en la hora
+ * de la clínica cuando la nota va suelta). Privada con privada y pública con
+ * pública.
+ */
+async function findSameVisitNote(
+  tenantId: string,
+  input: z.infer<typeof clinicalNoteInputSchema>,
+): Promise<{ id: string; appointmentId: string | null } | null> {
+  const timezone = await getClinicTimezone(tenantId);
+  const visitDay = input.appointmentId
+    ? sql`(select (${agendaAppointments.startsAt} at time zone ${timezone})::date from ${agendaAppointments} where ${agendaAppointments.tenantId} = ${tenantId} and ${agendaAppointments.id} = ${input.appointmentId})`
+    : sql`(now() at time zone ${timezone})::date`;
+  const noteDay = sql`(coalesce((select a.starts_at from ${agendaAppointments} a where a.id = ${clinicalNotes.appointmentId}), ${clinicalNotes.createdAt}) at time zone ${timezone})::date`;
+  const rows = await db
+    .select({ id: clinicalNotes.id, appointmentId: clinicalNotes.appointmentId })
+    .from(clinicalNotes)
+    .where(
+      and(
+        eq(clinicalNotes.tenantId, tenantId),
+        eq(clinicalNotes.patientKey, input.patientKey),
+        // Una valoración privada no es la nota de la visita: va aparte.
+        eq(clinicalNotes.private, input.private ?? false),
+        input.appointmentId
+          ? sql`(${clinicalNotes.appointmentId} = ${input.appointmentId} or (${clinicalNotes.professionalId} = ${input.professionalId} and ${noteDay} = ${visitDay}))`
+          : sql`(${clinicalNotes.professionalId} = ${input.professionalId} and ${noteDay} = ${visitDay})`,
+      ),
+    )
+    .orderBy(clinicalNotes.createdAt)
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 export async function saveClinicalNote(
   ctx: AgendaContext,
   raw: z.infer<typeof clinicalNoteInputSchema>,
@@ -1136,6 +1180,39 @@ export async function saveClinicalNote(
       .limit(1);
     if (rows.length === 0) {
       throw new AgendaValidationError('Esa cita no es de este profesional.');
+    }
+  }
+
+  // Una visita, una nota. Volver a abrir la ficha para añadir o corregir algo
+  // de la sesión de hoy tiene que tocar ESA nota, no sumar otra visita a la
+  // historia. El formulario ya manda el id cuando la nota del día existe; esto
+  // cubre la pestaña que se abrió antes de guardar la primera vez.
+  if (!noteId) {
+    const sameVisit = await findSameVisitNote(ctx.tenantId, input);
+    if (sameVisit) {
+      const [row] = await db
+        .update(clinicalNotes)
+        .set({
+          // Lo que llega vacío no borra lo que ya estaba: quien no vio la nota
+          // guardada sólo puede estar añadiendo.
+          summary: input.summary,
+          ...nonEmpty({
+            treatmentPerformed: input.treatmentPerformed,
+            observations: input.observations,
+            nextSteps: input.nextSteps,
+            symptoms: input.symptoms,
+            examination: input.examination,
+          }),
+          ...(input.sessionBehavior ? { sessionBehavior: input.sessionBehavior } : {}),
+          ...(input.appointmentId && !sameVisit.appointmentId
+            ? { appointmentId: input.appointmentId }
+            : {}),
+          private: input.private ?? false,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(clinicalNotes.tenantId, ctx.tenantId), eq(clinicalNotes.id, sameVisit.id)))
+        .returning();
+      if (row) return row;
     }
   }
 

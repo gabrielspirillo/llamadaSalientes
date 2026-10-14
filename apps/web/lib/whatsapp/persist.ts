@@ -3,6 +3,7 @@ import { and, desc, eq, sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import { whatsappContacts, whatsappConversations, whatsappMessages } from '@/lib/db/schema';
+import { canonicalContactPhone } from '@/lib/patients/registry';
 
 import { publishMessageEvent } from './realtime/publisher';
 import type { NormalizedInboundMessage } from './types';
@@ -11,17 +12,22 @@ import type { NormalizedInboundMessage } from './types';
  * Upsert de contacto WhatsApp por (tenant_id, phone_e164).
  * Preferencia: si ya hay un nombre guardado, lo conservamos; sólo lo pisamos
  * cuando estaba null y llega uno nuevo.
+ *
+ * Antes de insertar se busca el mismo número escrito de otra forma: el tutor
+ * dado de alta en el panel como "600 11 22 33" escribe desde +34600112233, y
+ * sin esto nacía un segundo contacto al lado del que tiene la historia.
  */
 export async function upsertWhatsappContact(input: {
   tenantId: string;
   phoneE164: string;
   name: string | null;
 }) {
+  const phoneE164 = await canonicalContactPhone(input.tenantId, input.phoneE164);
   const [row] = await db
     .insert(whatsappContacts)
     .values({
       tenantId: input.tenantId,
-      phoneE164: input.phoneE164,
+      phoneE164,
       name: input.name,
     })
     .onConflictDoUpdate({

@@ -14,15 +14,48 @@
 // contacto que llama: en una clínica pediátrica el teléfono es del tutor y
 // detrás hay hermanos. Sin esta clave, dos gemelos compartirían historia.
 
+/**
+ * Un móvil o fijo español tecleado sin prefijo ("600 11 22 33"): nueve dígitos
+ * que empiezan por 6, 7, 8 o 9. Ningún E.164 real es "+6" seguido de ocho
+ * dígitos, así que no se confunde con un número extranjero.
+ */
+const SPANISH_NATIONAL = /^[6-9]\d{8}$/;
+
 /** E.164 (`+` y dígitos). Devuelve null si no hay forma de normalizarlo. */
 export function normalizePatientPhone(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const cleaned = raw.replace(/[\s().-]/g, '').trim();
   if (!cleaned) return null;
-  if (cleaned.startsWith('+')) return /^\+\d{7,15}$/.test(cleaned) ? cleaned : null;
+  if (cleaned.startsWith('+')) {
+    if (!/^\+\d{7,15}$/.test(cleaned)) return null;
+    // "+600112233": el "+" puesto a mano delante de un número nacional.
+    return SPANISH_NATIONAL.test(cleaned.slice(1)) ? `+34${cleaned.slice(1)}` : cleaned;
+  }
   if (/^00\d{7,15}$/.test(cleaned)) return `+${cleaned.slice(2)}`;
+  // Sin esto "600112233" se guardaba como "+600112233" y, cuando ese tutor
+  // escribía por WhatsApp (+34600112233), nacía un segundo contacto.
+  if (SPANISH_NATIONAL.test(cleaned)) return `+34${cleaned}`;
   if (/^\d{7,15}$/.test(cleaned)) return `+${cleaned}`;
   return null;
+}
+
+/** Sólo los dígitos de un teléfono: lo que se compara para no duplicar. */
+export function phoneDigits(raw: string | null | undefined): string {
+  return (raw ?? '').replace(/\D/g, '');
+}
+
+/**
+ * ¿Es el mismo teléfono escrito de dos formas? Iguales, o uno es el otro sin
+ * el prefijo de país ("600112233" dentro de "34600112233"). El corto tiene que
+ * tener al menos nueve dígitos: con menos, cualquier final coincidiría.
+ */
+export function samePhone(a: string | null | undefined, b: string | null | undefined): boolean {
+  const da = phoneDigits(a);
+  const db = phoneDigits(b);
+  if (!da || !db) return false;
+  if (da === db) return true;
+  const [short, long] = da.length < db.length ? [da, db] : [db, da];
+  return short.length >= 9 && long.endsWith(short);
 }
 
 export interface PatientIdentity {

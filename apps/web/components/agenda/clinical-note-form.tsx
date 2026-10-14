@@ -28,6 +28,21 @@ export interface PreviousNote {
   nextSteps: string | null;
 }
 
+/** La nota de esta visita, ya guardada: se abre para completarla. */
+export interface ExistingNote {
+  id: string;
+  appointmentId: string | null;
+  professionalId: string;
+  summary: string;
+  symptoms: string | null;
+  examination: string | null;
+  treatmentPerformed: string | null;
+  observations: string | null;
+  nextSteps: string | null;
+  sessionBehavior: SessionBehavior | null;
+  private: boolean;
+}
+
 /**
  * Nota clínica: lo que el profesional escribe DESPUÉS de atender.
  *
@@ -54,6 +69,7 @@ export function ClinicalNoteForm({
   subtitle,
   previous = null,
   professionals = [],
+  existing = null,
 }: {
   patientKey: string;
   patientName: string;
@@ -69,6 +85,11 @@ export function ClinicalNoteForm({
    * la nota no cuelga de una cita. Con uno solo no se pregunta.
    */
   professionals?: { id: string; fullName: string }[];
+  /**
+   * La nota de esta visita si ya se guardó. Una visita es UNA nota: volver a
+   * abrir la ficha para añadir algo edita esa, no suma otra a la historia.
+   */
+  existing?: ExistingNote | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
@@ -77,16 +98,22 @@ export function ClinicalNoteForm({
 
   const pediatric = template === 'PEDIATRIC';
 
-  const [appointmentId, setAppointmentId] = React.useState(defaultAppointmentId ?? '');
-  const [signerId, setSignerId] = React.useState(professionalId);
-  const [symptoms, setSymptoms] = React.useState('');
-  const [examination, setExamination] = React.useState('');
-  const [summary, setSummary] = React.useState('');
-  const [treatmentPerformed, setTreatmentPerformed] = React.useState('');
-  const [observations, setObservations] = React.useState('');
-  const [nextSteps, setNextSteps] = React.useState('');
-  const [behavior, setBehavior] = React.useState<SessionBehavior | null>(null);
-  const [isPrivate, setIsPrivate] = React.useState(false);
+  const [appointmentId, setAppointmentId] = React.useState(
+    existing?.appointmentId ?? defaultAppointmentId ?? '',
+  );
+  const [signerId, setSignerId] = React.useState(existing?.professionalId ?? professionalId);
+  const [symptoms, setSymptoms] = React.useState(existing?.symptoms ?? '');
+  const [examination, setExamination] = React.useState(existing?.examination ?? '');
+  const [summary, setSummary] = React.useState(existing?.summary ?? '');
+  const [treatmentPerformed, setTreatmentPerformed] = React.useState(
+    existing?.treatmentPerformed ?? '',
+  );
+  const [observations, setObservations] = React.useState(existing?.observations ?? '');
+  const [nextSteps, setNextSteps] = React.useState(existing?.nextSteps ?? '');
+  const [behavior, setBehavior] = React.useState<SessionBehavior | null>(
+    existing?.sessionBehavior ?? null,
+  );
+  const [isPrivate, setIsPrivate] = React.useState(existing?.private ?? false);
 
   function copyPrevious() {
     if (!previous) return;
@@ -106,29 +133,27 @@ export function ClinicalNoteForm({
     // nota de la Dra. Ruiz podría acabar firmada por quien la teclea.
     const linked = appointments.find((a) => a.id === appointmentId);
     startTransition(async () => {
-      const result = await saveClinicalNoteAction({
-        appointmentId: appointmentId || null,
-        professionalId: linked?.professionalId ?? signerId ?? professionalId,
-        patientKey,
-        patientName,
-        summary,
-        treatmentPerformed,
-        observations,
-        nextSteps,
-        symptoms: pediatric ? symptoms : '',
-        examination: pediatric ? examination : '',
-        sessionBehavior: pediatric ? behavior : null,
-        private: isPrivate,
-      });
+      const result = await saveClinicalNoteAction(
+        {
+          appointmentId: appointmentId || null,
+          professionalId: linked?.professionalId ?? signerId ?? professionalId,
+          patientKey,
+          patientName,
+          summary,
+          treatmentPerformed,
+          observations,
+          nextSteps,
+          symptoms: pediatric ? symptoms : '',
+          examination: pediatric ? examination : '',
+          sessionBehavior: pediatric ? behavior : null,
+          private: isPrivate,
+        },
+        existing?.id,
+      );
       if (result.ok) {
+        // El texto se queda: es la nota de hoy, y al refrescar la ficha vuelve
+        // como nota guardada para seguir completándola.
         setSaved(true);
-        setSymptoms('');
-        setExamination('');
-        setSummary('');
-        setTreatmentPerformed('');
-        setObservations('');
-        setNextSteps('');
-        setBehavior(null);
         router.refresh();
       } else {
         setError(result.error);
@@ -329,13 +354,18 @@ export function ClinicalNoteForm({
             <Check className="h-4 w-4" /> Nota guardada
           </span>
         )}
+        {existing && !saved && (
+          <span className="text-[13px] text-zinc-600">
+            Ya guardada hoy · los cambios la actualizan
+          </span>
+        )}
         <Button onClick={submit} disabled={!canSave} className="h-12 w-full md:h-11 md:w-auto">
           {pending ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <NotebookPen className="h-4 w-4" />
           )}
-          Guardar nota
+          {existing ? 'Guardar cambios' : 'Guardar nota'}
         </Button>
       </div>
     </div>

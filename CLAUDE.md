@@ -820,6 +820,42 @@ nuevos, prioridad por edad. Todo eso va **sólo para ella** y sin interruptores:
   `patient_id`, `birth_date`, `guardian_name` y `medical_alert`; (3) el DID de
   Zadarma de la clínica apuntando a ese agente.
 
+## Sin contactos ni fichas duplicadas, y una nota por visita
+
+Respinens no conectaba su WhatsApp hasta que esto estuviera resuelto: con fichas
+duplicadas, la IA podía agendar en la que no tiene la historia clínica.
+
+- **Teléfonos**: `normalizePatientPhone` pone `+34` a un número español de nueve
+  dígitos tecleado sin prefijo (antes salía `+600112233`, que no es el
+  `+34600112233` de WhatsApp). `samePhone`/`samePhoneSql` comparan con y sin
+  prefijo de país.
+- **Un número, un contacto**: todo alta en la libreta (`upsertWhatsappContact`,
+  `upsertPatientRecord`, `setPatientEmail`) pasa antes por
+  `canonicalContactPhone` (`lib/patients/registry.ts`): si el número ya existe
+  escrito de otra forma se usa ese contacto, y si lo que llega trae el prefijo
+  se corrige lo guardado (y las claves `tel:` de citas, notas, cobros y
+  facturas).
+- **Evolution `@lid`**: un `<id>@lid` no es un teléfono; se usa
+  `remoteJidAlt`/`senderPn`. Los mensajes de grupos (`@g.us`) se ignoran.
+- **Otro tutor**: `listPatientsForPhone` encuentra a los niños también por el
+  teléfono de cualquier tutor de `guardians`, y la lista de pacientes no
+  muestra a ese tutor como paciente nuevo.
+- **Fichas**: `createPatient` rechaza (`DuplicatePatientError`) un niño con el
+  mismo nombre y misma fecha de nacimiento (o mismo teléfono si falta la
+  fecha). El asistente y la importación reutilizan la existente; el asistente
+  además casa por nombre entre los hijos del teléfono aunque la fecha dictada
+  no cuadre.
+- **Unir duplicados ya creados**: en Agenda → Pacientes, las filas con el mismo
+  nombre salen como "Posible duplicado" con el botón **Unir** (sólo admin,
+  `mergePatients`): citas, notas, cobros, facturas y consentimientos pasan a la
+  ficha elegida y el resto se borra.
+- **Una nota por visita**: `saveClinicalNote` sin id actualiza la nota de la
+  misma cita o del mismo paciente, profesional y día (privada con privada); la
+  ficha abre esa nota en el formulario para completarla. La migración `0047`
+  juntó las repetidas y corrigió los `+6xxxxxxxx`.
+- **Primera visita en el calendario**: chip en ámbar con "1ª" (sólo con perfil
+  de atención).
+
 ## Señales de conducta del paciente (Respinens): duda y banderas rojas
 
 La clínica las llevaba con emojis en el nombre de cada contacto de Google (🤔

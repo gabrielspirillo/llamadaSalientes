@@ -1,11 +1,18 @@
 import 'server-only';
-import { and, count, eq, inArray, or, sql } from 'drizzle-orm';
+import { type AnyColumn, type SQL, and, count, eq, inArray, or, sql } from 'drizzle-orm';
 
-import { contactRefsFor, normalizePatientPhone } from '@/lib/agenda/patients';
+import {
+  contactRefsFor,
+  normalizePatientPhone,
+  phoneDigits,
+  samePhone,
+} from '@/lib/agenda/patients';
 import { db } from '@/lib/db/client';
 import {
   agendaAppointments,
   clinicalNotes,
+  invoices,
+  patientCharges,
   patients,
   whatsappContacts,
   whatsappConversations,
@@ -75,6 +82,117 @@ export function joinName(
   return full || null;
 }
 
+/**
+ * SQL: ¿el teléfono guardado en `column` es `digits` escrito de otra forma?
+ * La misma regla que `samePhone`, para filtrar en la base.
+ */
+export function samePhoneSql(column: SQL | AnyColumn, digits: string): SQL {
+  const stored = sql`regexp_replace(coalesce(${column}, ''), '\\D', '', 'g')`;
+  return sql`(${stored} = ${digits} or (length(${stored}) >= 9 and ${digits} like '%' || ${stored}) or (length(${digits}) >= 9 and length(${stored}) > 0 and ${stored} like ${`%${digits}`}))`;
+}
+
+/**
+ * Contactos de la clínica con el MISMO teléfono escrito de otra forma (con o
+ * sin prefijo de país, ver `samePhone`), del mejor candidato al peor: el que
+ * coincide exacto, el que tiene pacientes colgando (la ficha con historia), el
+ * que trae el prefijo y el más antiguo.
+ */
+async function contactsWithSamePhone(tenantId: string, phoneE164: string) {
+  const digits = phoneDigits(phoneE164);
+  if (digits.length < 9) return [];
+  const rows = await db
+    .select({
+      ...COLUMNS,
+      createdAt: whatsappContacts.createdAt,
+      hasPatients: sql<boolean>`exists (select 1 from ${patients} where ${patients.contactId} = ${whatsappContacts.id})`,
+    })
+    .from(whatsappContacts)
+    .where(
+      and(
+        eq(whatsappContacts.tenantId, tenantId),
+        samePhoneSql(whatsappContacts.phoneE164, digits),
+      ),
+    )
+    .limit(20);
+  return rows
+    .filter((r) => samePhone(r.phoneE164, phoneE164))
+    .sort(
+      (a, b) =>
+        Number(b.phoneE164 === phoneE164) - Number(a.phoneE164 === phoneE164) ||
+        Number(b.hasPatients) - Number(a.hasPatients) ||
+        phoneDigits(b.phoneE164).length - phoneDigits(a.phoneE164).length ||
+        a.createdAt.getTime() - b.createdAt.getTime(),
+    );
+}
+
+/**
+ * Cambia el teléfono de un contacto y de todo lo que lo usa como identidad
+ * (`tel:<teléfono>` en citas, notas, cobros y facturas), en una transacción.
+ */
+async function renameContactPhone(
+  tenantId: string,
+  contactId: string,
+  from: string,
+  to: string,
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx
+      .update(whatsappContacts)
+      .set({ phoneE164: to, updatedAt: new Date() })
+      .where(and(eq(whatsappContacts.tenantId, tenantId), eq(whatsappContacts.id, contactId)));
+    await tx
+      .update(agendaAppointments)
+      .set({ patientPhone: to })
+      .where(
+        and(eq(agendaAppointments.tenantId, tenantId), eq(agendaAppointments.patientPhone, from)),
+      );
+    const fromKey = `tel:${from}`;
+    const toKey = `tel:${to}`;
+    await tx
+      .update(agendaAppointments)
+      .set({ patientKey: toKey })
+      .where(
+        and(eq(agendaAppointments.tenantId, tenantId), eq(agendaAppointments.patientKey, fromKey)),
+      );
+    await tx
+      .update(clinicalNotes)
+      .set({ patientKey: toKey })
+      .where(and(eq(clinicalNotes.tenantId, tenantId), eq(clinicalNotes.patientKey, fromKey)));
+    await tx
+      .update(patientCharges)
+      .set({ patientKey: toKey })
+      .where(and(eq(patientCharges.tenantId, tenantId), eq(patientCharges.patientKey, fromKey)));
+    await tx
+      .update(invoices)
+      .set({ patientKey: toKey })
+      .where(and(eq(invoices.tenantId, tenantId), eq(invoices.patientKey, fromKey)));
+  });
+}
+
+/**
+ * El teléfono con el que se guarda un contacto, sin crear un segundo para la
+ * misma persona.
+ *
+ * Si la clínica ya tiene ese número escrito de otra forma, se usa ESE
+ * contacto: el tutor que ya tiene a sus hijos con ficha e historia no puede
+ * aparecer de nuevo porque ahora escribe por WhatsApp. Cuando lo que llega
+ * trae el prefijo de país y lo guardado no, se corrige lo guardado: es el
+ * número al que hay que contestar.
+ */
+export async function canonicalContactPhone(tenantId: string, phoneE164: string): Promise<string> {
+  const [best] = await contactsWithSamePhone(tenantId, phoneE164).catch(() => []);
+  if (!best || best.phoneE164 === phoneE164) return phoneE164;
+  if (phoneDigits(phoneE164).length > phoneDigits(best.phoneE164).length) {
+    try {
+      await renameContactPhone(tenantId, best.id, best.phoneE164, phoneE164);
+      return phoneE164;
+    } catch (err) {
+      console.warn('[contacts] no se pudo corregir el teléfono guardado', err);
+    }
+  }
+  return best.phoneE164;
+}
+
 /** Ficha por teléfono, o null si el teléfono no es utilizable o no existe. */
 export async function findPatientByPhone(
   tenantId: string,
@@ -83,12 +201,10 @@ export async function findPatientByPhone(
   const phoneE164 = normalizePatientPhone(phone);
   if (!phoneE164) return null;
 
-  const rows = await db
-    .select(COLUMNS)
-    .from(whatsappContacts)
-    .where(and(eq(whatsappContacts.tenantId, tenantId), eq(whatsappContacts.phoneE164, phoneE164)))
-    .limit(1);
-  return rows[0] ?? null;
+  const [best] = await contactsWithSamePhone(tenantId, phoneE164);
+  if (!best) return null;
+  const { createdAt: _c, hasPatients: _h, ...record } = best;
+  return record;
 }
 
 export interface UpsertPatientInput {
@@ -117,8 +233,9 @@ export interface UpsertPatientInput {
 export async function upsertPatientRecord(
   input: UpsertPatientInput,
 ): Promise<PatientRecord | null> {
-  const phoneE164 = normalizePatientPhone(input.phone);
-  if (!phoneE164) return null;
+  const normalized = normalizePatientPhone(input.phone);
+  if (!normalized) return null;
+  const phoneE164 = await canonicalContactPhone(input.tenantId, normalized);
 
   const fromFull = splitFullName(input.fullName);
   const firstName = input.firstName?.trim() || fromFull.firstName;
@@ -156,9 +273,10 @@ export async function setPatientEmail(
   phone: string | null | undefined,
   email: string,
 ): Promise<PatientRecord | null> {
-  const phoneE164 = normalizePatientPhone(phone);
+  const normalized = normalizePatientPhone(phone);
   const clean = email.trim();
-  if (!phoneE164 || !clean) return null;
+  if (!normalized || !clean) return null;
+  const phoneE164 = await canonicalContactPhone(tenantId, normalized);
 
   const [row] = await db
     .insert(whatsappContacts)

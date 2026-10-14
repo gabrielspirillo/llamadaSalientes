@@ -10,7 +10,9 @@ export type AuditAction =
   | 'invite'
   | 'remove'
   | 'connect'
-  | 'disconnect';
+  | 'disconnect'
+  // Fichas de paciente duplicadas unidas en una.
+  | 'merge';
 
 export type AuditEntity =
   | 'tenant'

@@ -1,9 +1,15 @@
 import 'server-only';
-import { type SQL, and, asc, count, eq, inArray, or, sql } from 'drizzle-orm';
+import { type AnyColumn, type SQL, and, asc, count, eq, inArray, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { z } from 'zod';
 
-import { normalizePatientPhone, patientKeyForPerson } from '@/lib/agenda/patients';
+import {
+  normalizePatientPhone,
+  patientIdFromKey,
+  patientKeyForPerson,
+  phoneDigits,
+  samePhone,
+} from '@/lib/agenda/patients';
 import {
   type AnamnesisAnswers,
   type Guardian,
@@ -18,13 +24,15 @@ import { db } from '@/lib/db/client';
 import {
   agendaAppointments,
   clinicalNotes,
+  invoices,
+  patientCharges,
   patientConsents,
   patients,
   users,
   whatsappContacts,
 } from '@/lib/db/schema';
 import { titleCaseName } from '@/lib/patients/names';
-import { upsertPatientRecord } from '@/lib/patients/registry';
+import { samePhoneSql, upsertPatientRecord } from '@/lib/patients/registry';
 import {
   FOLD_FROM,
   FOLD_TO,
@@ -51,6 +59,16 @@ export class PatientValidationError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'PatientValidationError';
+  }
+}
+
+/** Ya hay una ficha para ese niño: se usa esa, no se abre otra. */
+export class DuplicatePatientError extends PatientValidationError {
+  constructor(readonly existing: PatientPerson) {
+    super(
+      `${existing.fullName} ya tiene ficha${existing.contactPhone ? ` (${existing.contactPhone})` : ''}. Ábrela desde Pacientes en vez de crear otra: así su historia sigue en un solo sitio.`,
+    );
+    this.name = 'DuplicatePatientError';
   }
 }
 
@@ -284,17 +302,24 @@ export async function listPatientsForPhone(
 ): Promise<PatientPerson[]> {
   const phoneE164 = normalizePatientPhone(phone);
   if (!phoneE164) return [];
+  const digits = phoneDigits(phoneE164);
   const anamnesisUser = anamnesisUserAlias();
+  // El teléfono puede ser el del titular (el contacto de la ficha) o el de
+  // cualquier otro tutor: cuando escribe el padre desde su móvil, sus hijos
+  // son los mismos que ya tienen historia, no unos nuevos.
   const rows = await db
     .select(selectWith(anamnesisUser))
     .from(patients)
-    .innerJoin(whatsappContacts, eq(whatsappContacts.id, patients.contactId))
+    .leftJoin(whatsappContacts, eq(whatsappContacts.id, patients.contactId))
     .leftJoin(anamnesisUser, eq(anamnesisUser.id, patients.anamnesisUpdatedByUserId))
     .where(
       and(
         eq(patients.tenantId, tenantId),
         eq(patients.active, true),
-        eq(whatsappContacts.phoneE164, phoneE164),
+        or(
+          samePhoneSql(whatsappContacts.phoneE164, digits),
+          sql`exists (select 1 from jsonb_array_elements(case when jsonb_typeof(${patients.guardians}) = 'array' then ${patients.guardians} else '[]'::jsonb end) g where ${samePhoneSql(sql`g->>'phone'`, digits)})`,
+        ),
       ),
     )
     .orderBy(asc(patients.createdAt));
@@ -371,6 +396,67 @@ function checkBirthDate(value: string | null | undefined): string | null {
   return v;
 }
 
+/** Sin tildes, sin mayúsculas ni espacios de más: "José  Pérez" = "jose perez". */
+function nameForMatch(s: string | null | undefined): string {
+  return (s ?? '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * La ficha que ya existe para ese niño, si la hay. Mismo nombre completo y,
+ * además, misma fecha de nacimiento o (si a alguna le falta) el mismo
+ * teléfono de un tutor. Dos hermanos nunca se llaman igual; dos fichas con el
+ * mismo nombre y el mismo móvil son la misma persona dada de alta dos veces,
+ * y la IA acabaría agendando en la que no tiene la historia.
+ */
+export async function findDuplicatePatient(
+  tenantId: string,
+  input: {
+    firstName: string;
+    lastName?: string | null;
+    birthDate?: string | null;
+    phones: string[];
+  },
+): Promise<PatientPerson | null> {
+  const wanted = nameForMatch(`${input.firstName} ${input.lastName ?? ''}`);
+  if (!wanted) return null;
+  const rows = await db
+    .select({
+      id: patients.id,
+      firstName: patients.firstName,
+      lastName: patients.lastName,
+      birthDate: patients.birthDate,
+      guardians: patients.guardians,
+      phone: whatsappContacts.phoneE164,
+    })
+    .from(patients)
+    .leftJoin(whatsappContacts, eq(whatsappContacts.id, patients.contactId))
+    .where(and(eq(patients.tenantId, tenantId), eq(patients.active, true)));
+  const phones = input.phones.filter(Boolean);
+  const match = rows.find((r) => {
+    if (nameForMatch(`${r.firstName} ${r.lastName ?? ''}`) !== wanted) return false;
+    if (input.birthDate && r.birthDate) return input.birthDate === r.birthDate;
+    const theirs = [r.phone, ...guardianPhones(r.guardians)];
+    return (
+      phones.length === 0 ||
+      theirs.every((p) => !p) ||
+      phones.some((p) => theirs.some((t) => samePhone(p, t)))
+    );
+  });
+  return match ? getPatientPerson(tenantId, match.id) : null;
+}
+
+function guardianPhones(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((g) => (g && typeof g === 'object' ? (g as { phone?: unknown }).phone : null))
+    .filter((p): p is string => typeof p === 'string' && p.trim().length > 0);
+}
+
 export async function createPatient(
   scope: PatientScope,
   raw: PatientInput,
@@ -379,6 +465,13 @@ export async function createPatient(
   const birthDate = checkBirthDate(input.birthDate);
   const guardians = normalizeGuardians(input.guardians);
   const contact = contactFromInput(input, guardians);
+  const duplicate = await findDuplicatePatient(scope.tenantId, {
+    firstName: input.firstName,
+    lastName: input.lastName,
+    birthDate,
+    phones: [contact.phone ?? '', ...guardians.map((g) => g.phone ?? '')],
+  });
+  if (duplicate) throw new DuplicatePatientError(duplicate);
   const contactId = await resolveContactId(scope.tenantId, contact.phone, contact.name);
 
   const [row] = await db
@@ -609,4 +702,133 @@ export async function deletePatient(scope: PatientScope, patientId: string): Pro
   await db
     .delete(patients)
     .where(and(eq(patients.tenantId, scope.tenantId), eq(patients.id, patientId)));
+}
+
+// ─── Fichas duplicadas ───────────────────────────────────────────────────────
+
+/**
+ * Junta en UNA ficha lo que estaba repartido entre duplicados: el mismo niño
+ * dado de alta dos o tres veces (a mano, importado, por el asistente) o citas
+ * que quedaron colgando del teléfono del tutor en vez de del niño.
+ *
+ * `dropKeys` son claves de paciente: `pat:<id>` de otras fichas (que se borran
+ * después de mover todo) o `tel:`/`ghl:`/`email:`/`anon:` de citas sueltas
+ * (el contacto no se toca: es el tutor). Citas, notas, cobros, facturas y
+ * consentimientos pasan a la ficha que se queda; de los datos del niño, la que
+ * se queda manda y sólo se rellenan sus huecos. Todo en una transacción.
+ */
+export async function mergePatients(
+  scope: PatientScope,
+  keepId: string,
+  dropKeys: string[],
+): Promise<{ moved: number }> {
+  const keepKey = patientKeyForPerson(keepId);
+  const keys = [...new Set(dropKeys.map((k) => k.trim()))].filter((k) => k && k !== keepKey);
+  if (keys.length === 0) throw new PatientValidationError('Elige al menos una ficha para unir.');
+
+  return db.transaction(async (tx) => {
+    const [keep] = await tx
+      .select()
+      .from(patients)
+      .where(and(eq(patients.tenantId, scope.tenantId), eq(patients.id, keepId)))
+      .limit(1)
+      .for('update');
+    if (!keep) throw new PatientValidationError('La ficha que se queda ya no existe.');
+    const keepName = patientFullName(keep);
+
+    let moved = 0;
+    for (const key of keys) {
+      const dropId = patientIdFromKey(key);
+      const drop = dropId
+        ? (
+            await tx
+              .select()
+              .from(patients)
+              .where(and(eq(patients.tenantId, scope.tenantId), eq(patients.id, dropId)))
+              .limit(1)
+          )[0]
+        : null;
+      if (dropId && !drop) continue;
+
+      const owned = (table: { tenantId: AnyColumn; patientKey: AnyColumn; patientId: AnyColumn }) =>
+        and(
+          eq(table.tenantId, scope.tenantId),
+          dropId
+            ? or(eq(table.patientKey, key), eq(table.patientId, dropId))
+            : eq(table.patientKey, key),
+        );
+      const appts = await tx
+        .update(agendaAppointments)
+        .set({ patientKey: keepKey, patientId: keepId, patientName: keepName })
+        .where(owned(agendaAppointments))
+        .returning({ id: agendaAppointments.id });
+      const notes = await tx
+        .update(clinicalNotes)
+        .set({ patientKey: keepKey, patientId: keepId, patientName: keepName })
+        .where(owned(clinicalNotes))
+        .returning({ id: clinicalNotes.id });
+      await tx
+        .update(patientCharges)
+        .set({ patientKey: keepKey, patientId: keepId })
+        .where(owned(patientCharges));
+      await tx
+        .update(invoices)
+        .set({ patientKey: keepKey, patientId: keepId })
+        .where(owned(invoices));
+      moved += appts.length + notes.length;
+
+      if (!drop) continue;
+      await tx
+        .update(patientConsents)
+        .set({ patientId: keepId })
+        .where(
+          and(eq(patientConsents.tenantId, scope.tenantId), eq(patientConsents.patientId, drop.id)),
+        );
+
+      const keepGuardians = parseGuardians(keep.guardians);
+      const dropGuardians = parseGuardians(drop.guardians).filter(
+        (g) =>
+          !keepGuardians.some(
+            (k) =>
+              (g.phone && k.phone && samePhone(g.phone, k.phone)) ||
+              nameForMatch(g.name) === nameForMatch(k.name),
+          ),
+      );
+      // Lo contestado en la que se queda manda; la otra sólo rellena lo que falte.
+      const keepAnamnesis = keep.anamnesis ?? {};
+      const dropAnamnesis = drop.anamnesis ?? {};
+      const merged = {
+        contactId: keep.contactId ?? drop.contactId,
+        lastName: keep.lastName ?? drop.lastName,
+        birthDate: keep.birthDate ?? drop.birthDate,
+        guardians: [
+          ...keepGuardians,
+          ...dropGuardians.map((g) => ({ ...g, primary: false })),
+        ].slice(0, 4),
+        anamnesis: { ...dropAnamnesis, ...keepAnamnesis },
+        priorityFlag: keep.priorityFlag || drop.priorityFlag,
+        priorityReason: keep.priorityReason ?? drop.priorityReason,
+        googleReview: keep.googleReview || drop.googleReview,
+        needsHumanReview: keep.needsHumanReview || drop.needsHumanReview,
+        reviewReason: keep.reviewReason ?? drop.reviewReason,
+        hesitant: keep.hesitant || drop.hesitant,
+        hesitantNote: keep.hesitantNote ?? drop.hesitantNote,
+        priorRedFlags: Math.max(keep.priorRedFlags, drop.priorRedFlags),
+        notes:
+          [keep.notes, drop.notes]
+            .map((n) => n?.trim())
+            .filter((n, i, all): n is string => Boolean(n) && all.indexOf(n) === i)
+            .join('\n\n') || null,
+      };
+      Object.assign(keep, merged);
+      await tx
+        .update(patients)
+        .set({ ...merged, updatedAt: new Date() })
+        .where(and(eq(patients.tenantId, scope.tenantId), eq(patients.id, keepId)));
+      await tx
+        .delete(patients)
+        .where(and(eq(patients.tenantId, scope.tenantId), eq(patients.id, drop.id)));
+    }
+    return { moved };
+  });
 }

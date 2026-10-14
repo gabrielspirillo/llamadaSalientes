@@ -14,6 +14,7 @@
 // Puro, sin base: el servidor lo corre dos veces (vista previa y alta) sobre el
 // mismo archivo, así el navegador nunca manda registros ya "interpretados".
 
+import { normalizePatientPhone, phoneDigits } from '@/lib/agenda/patients';
 import type { GuardianRole } from '@/lib/care-profile/policy';
 
 export interface ImportedChild {
@@ -340,5 +341,9 @@ export function normalizeForMatch(s: string | null | undefined): string {
 
 /** La clave con la que se detecta que un niño ya está dado de alta. */
 export function childMatchKey(phone: string | null, firstName: string, lastName: string | null) {
-  return `${phone ?? ''}|${normalizeForMatch(firstName)}|${normalizeForMatch(lastName)}`;
+  // El teléfono por sus nueve últimos dígitos: "+34 600 11 22 33" en el CSV y
+  // "+34600112233" en la base son el mismo, y compararlos tal cual hacía que
+  // cada importación volviera a dar de alta a los mismos niños.
+  const tail = phoneDigits(normalizePatientPhone(phone) ?? phone).slice(-9);
+  return `${tail}|${normalizeForMatch(firstName)}|${normalizeForMatch(lastName)}`;
 }

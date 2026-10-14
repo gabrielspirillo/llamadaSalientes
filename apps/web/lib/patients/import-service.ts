@@ -9,7 +9,12 @@ import {
   childMatchKey,
   parseGoogleContacts,
 } from '@/lib/patients/import-contacts';
-import { type PatientScope, createPatient, setPatientMarks } from '@/lib/patients/persons';
+import {
+  DuplicatePatientError,
+  type PatientScope,
+  createPatient,
+  setPatientMarks,
+} from '@/lib/patients/persons';
 
 /**
  * Alta masiva de pacientes desde el CSV de Google Contactos.
@@ -167,6 +172,11 @@ export async function importContactsBatch(
         });
       }
     } catch (err) {
+      if (err instanceof DuplicatePatientError) {
+        seen.add(key);
+        result.skippedExisting++;
+        continue;
+      }
       result.errors.push({
         row: c.row,
         child: [c.firstName, c.lastName].filter(Boolean).join(' '),

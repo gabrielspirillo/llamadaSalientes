@@ -21,6 +21,8 @@ export interface CalendarItem {
   patientAge: string | null;
   /** Etiqueta corta junto al estado ("1ª visita"). La decide el servidor. */
   badge: string | null;
+  /** Primera visita del paciente: el calendario la pinta en otro color. */
+  firstVisit: boolean;
   /** Familia que duda y banderas rojas. Sólo en clínicas con perfil; si no, null. */
   signals: CalendarSignals | null;
   treatmentId: string | null;
@@ -69,6 +71,7 @@ interface SourceAppointment {
   patientPhone: string | null;
   patientAge?: string | null;
   badge?: string | null;
+  firstVisit?: boolean;
   signals?: CalendarSignals | null;
   treatmentId: string | null;
   treatmentName: string | null;
@@ -123,6 +126,7 @@ export function toCalendarItems(
         patientPhone: a.patientPhone,
         patientAge: a.patientAge ?? null,
         badge: a.badge ?? null,
+        firstVisit: a.firstVisit ?? false,
         signals: a.signals ?? null,
         treatmentId: a.treatmentId,
         treatmentName: a.treatmentName,

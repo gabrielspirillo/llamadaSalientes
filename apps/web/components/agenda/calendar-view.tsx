@@ -84,6 +84,9 @@ const STATUS_STYLES: Record<string, string> = {
   NO_SHOW: 'border-l-4 opacity-60',
 };
 
+/** Fondo de la primera visita: ámbar opaco, se distingue del color del profesional. */
+const FIRST_VISIT_BG = '#fde68a';
+
 export function CalendarView(props: CalendarViewProps) {
   const {
     view,
@@ -455,6 +458,7 @@ export function CalendarView(props: CalendarViewProps) {
                           className={cn(
                             'absolute overflow-hidden rounded-lg bg-white px-2 py-1 text-left shadow-[0_6px_16px_-10px_rgba(20,33,29,0.5)] ring-1 ring-black/5 transition-transform duration-200 hover:z-10 hover:scale-[1.01]',
                             STATUS_STYLES[item.status],
+                            item.firstVisit && 'ring-2 ring-amber-400',
                           )}
                           style={{
                             top: minutesToTop(item.startMinute, dayWindow.startMinute),
@@ -462,10 +466,17 @@ export function CalendarView(props: CalendarViewProps) {
                             left: `calc(${(lane / lanes) * 100}% + 4px)`,
                             width: `calc(${100 / lanes}% - 8px)`,
                             borderLeftColor: item.color,
-                            backgroundColor: `${item.color}12`,
+                            // La primera visita va en ámbar: recepción tiene que verla
+                            // de un vistazo en el listado del día, no leer la etiqueta.
+                            backgroundColor: item.firstVisit ? FIRST_VISIT_BG : `${item.color}12`,
                           }}
                         >
                           <span className="block truncate text-[12px] font-bold leading-tight text-zinc-900">
+                            {item.firstVisit && (
+                              <span className="mr-1 rounded-full bg-amber-500 px-1.5 py-px align-[1px] text-[10px] font-bold text-white">
+                                1ª
+                              </span>
+                            )}
                             {/* Banderas rojas y duda antes del nombre: es lo primero que recepción mira. */}
                             {item.signals && (
                               <PatientSignalBadges
@@ -517,6 +528,17 @@ export function CalendarView(props: CalendarViewProps) {
             {STATUS_LABELS[s]}
           </Badge>
         ))}
+        {items.some((i) => i.firstVisit) && (
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-amber-900 ring-2 ring-amber-400"
+            style={{ backgroundColor: FIRST_VISIT_BG }}
+          >
+            <span className="rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">
+              1ª
+            </span>
+            Primera visita
+          </span>
+        )}
       </div>
 
       {seed && (

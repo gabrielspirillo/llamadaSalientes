@@ -188,6 +188,26 @@ export default async function PacienteDossierPage({
   const canWriteToday = ctx.canWriteClinicalNotes && professionalIdForNote !== null;
   const seedAppointment = nota ? (dossier.appointments.find((a) => a.id === nota) ?? null) : null;
 
+  // La nota de esta visita, si ya se guardó: el formulario la abre para
+  // completarla. Una visita es una nota; guardar otra vez no suma otra visita.
+  const noteAppointment = seedAppointment ?? todaysAppointment;
+  const visitDayKey = noteAppointment ? localDateKey(noteAppointment.startsAt, timezone) : todayKey;
+  const startsAtById = new Map(dossier.appointments.map((a) => [a.id, a.startsAt]));
+  // La valoración privada no es la nota de la visita: sigue siendo aparte.
+  const visitNotes = visibleNotes.filter((n) => !n.private);
+  const visitNote =
+    (noteAppointment && visitNotes.find((n) => n.appointmentId === noteAppointment.id)) ||
+    visitNotes.find(
+      (n) =>
+        (!ctx.professional || n.professionalId === ctx.professional.id) &&
+        localDateKey(
+          (n.appointmentId && startsAtById.get(n.appointmentId)) || n.createdAt,
+          timezone,
+        ) === visitDayKey,
+    ) ||
+    null;
+  const previousNote = visibleNotes.find((n) => n.id !== visitNote?.id) ?? null;
+
   // ─── Contable ───────────────────────────────────────────────────────────
   const billingLines = buildBillingLines({
     appointments: dossier.appointments.map((a) => ({
@@ -367,15 +387,15 @@ export default async function PacienteDossierPage({
         agendaFact,
       ];
 
-  const previous: PreviousNote | null = lastNote
+  const previous: PreviousNote | null = previousNote
     ? {
-        whenLabel: fmtShort.format(lastNote.createdAt),
-        summary: lastNote.summary,
-        symptoms: lastNote.symptoms,
-        examination: lastNote.examination,
-        treatmentPerformed: lastNote.treatmentPerformed,
-        observations: lastNote.observations,
-        nextSteps: lastNote.nextSteps,
+        whenLabel: fmtShort.format(previousNote.createdAt),
+        summary: previousNote.summary,
+        symptoms: previousNote.symptoms,
+        examination: previousNote.examination,
+        treatmentPerformed: previousNote.treatmentPerformed,
+        observations: previousNote.observations,
+        nextSteps: previousNote.nextSteps,
       }
     : null;
 
@@ -641,12 +661,36 @@ export default async function PacienteDossierPage({
                 />
                 {canWriteToday && professionalIdForNote ? (
                   <ClinicalNoteForm
+                    key={visitNote?.id ?? 'nueva'}
+                    existing={
+                      visitNote
+                        ? {
+                            id: visitNote.id,
+                            appointmentId: visitNote.appointmentId,
+                            professionalId: visitNote.professionalId,
+                            summary: visitNote.summary,
+                            symptoms: visitNote.symptoms,
+                            examination: visitNote.examination,
+                            treatmentPerformed: visitNote.treatmentPerformed,
+                            observations: visitNote.observations,
+                            nextSteps: visitNote.nextSteps,
+                            sessionBehavior: isSessionBehavior(visitNote.sessionBehavior)
+                              ? visitNote.sessionBehavior
+                              : null,
+                            private: visitNote.private,
+                          }
+                        : null
+                    }
                     patientKey={dossier.patientKey}
                     patientName={dossier.patientName}
                     professionalId={professionalIdForNote}
                     professionals={ctx.professional ? [] : activeProfessionals}
                     template={pediatric ? 'PEDIATRIC' : 'DEFAULT'}
-                    title="Nota de hoy"
+                    title={
+                      seedAppointment && visitDayKey !== todayKey
+                        ? 'Nota de la visita'
+                        : 'Nota de hoy'
+                    }
                     subtitle={
                       todaysAppointment
                         ? `Hoy ${fmtTime.format(todaysAppointment.startsAt)} · ${todaysAppointment.professionalName}${todaysAppointment.treatmentName ? ` · ${todaysAppointment.treatmentName}` : ''}`
