@@ -2,6 +2,8 @@ import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import { RemovePatientButton } from '@/components/agenda/remove-patient-button';
+import { getAgendaContext } from '@/lib/agenda/auth';
 import { contactRefsFor } from '@/lib/agenda/patients';
 import { db } from '@/lib/db/client';
 import {
@@ -36,6 +38,10 @@ export default async function ContactDetailPage({ params }: Props) {
     .limit(1);
   const contact = contactRows[0];
   if (!contact) notFound();
+  // Quitar a un contacto (con todo lo suyo) es cosa del administrador.
+  const canRemove = await getAgendaContext()
+    .then((c) => c.canManageProfessionals)
+    .catch(() => false);
 
   // Conversaciones del contacto (una entrada por conversación).
   const conversations = await db
@@ -175,14 +181,24 @@ export default async function ContactDetailPage({ params }: Props) {
               <span>›</span>
               <span className="font-medium text-zinc-700">{fullName}</span>
             </nav>
-            {conversations[0] && (
-              <Link
-                href={`/dashboard/whatsapp/${conversations[0].id}`}
-                className="rounded-full bg-[linear-gradient(120deg,#059669,#10b981)] px-4 py-2 text-sm font-semibold text-white shadow-[0_8px_24px_-10px_rgba(16,185,129,0.7)] transition-all duration-300 hover:-translate-y-0.5 active:scale-95 hover:opacity-95"
-              >
-                Enviar mensaje
-              </Link>
-            )}
+            <div className="flex items-center gap-2">
+              {canRemove && (
+                <RemovePatientButton
+                  patientKey={`tel:${contact.phoneE164}`}
+                  name={fullName}
+                  label="Quitar"
+                  redirectTo="/dashboard/whatsapp"
+                />
+              )}
+              {conversations[0] && (
+                <Link
+                  href={`/dashboard/whatsapp/${conversations[0].id}`}
+                  className="rounded-full bg-[linear-gradient(120deg,#059669,#10b981)] px-4 py-2 text-sm font-semibold text-white shadow-[0_8px_24px_-10px_rgba(16,185,129,0.7)] transition-all duration-300 hover:-translate-y-0.5 active:scale-95 hover:opacity-95"
+                >
+                  Enviar mensaje
+                </Link>
+              )}
+            </div>
           </div>
         </div>
 

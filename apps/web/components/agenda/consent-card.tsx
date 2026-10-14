@@ -230,7 +230,14 @@ function ConsentRow({
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
             <span>{c.error ?? 'Firmado. Falta traer el PDF firmado de Documenso.'}</span>
           </p>
-          {canWrite && <RefreshConsent patientId={patientId} consentId={c.id} label="Traer PDF" />}
+          {canWrite && (
+            <RefreshConsent
+              patientId={patientId}
+              consentId={c.id}
+              label="Traer PDF"
+              shownError={c.error}
+            />
+          )}
         </div>
       )}
       {(c.hasPdf || (c.status === 'SENT' && c.signingUrl)) && (
@@ -259,7 +266,10 @@ function RefreshConsent({
   consentId,
   primary = false,
   label = 'Comprobar firma',
+  shownError = null,
 }: {
+  /** El error que la tarjeta ya enseña: no se repite debajo del botón. */
+  shownError?: string | null;
   patientId: string;
   consentId: string;
   primary?: boolean;
@@ -282,7 +292,9 @@ function RefreshConsent({
       if (result.data.signed) {
         setNote(
           result.data.pdfError
-            ? { tone: 'warn', text: result.data.pdfError }
+            ? result.data.pdfError === shownError
+              ? null
+              : { tone: 'warn', text: result.data.pdfError }
             : { tone: 'ok', text: 'Firmado. Ya está el PDF.' },
         );
         router.refresh();

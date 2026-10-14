@@ -35,6 +35,7 @@ import {
   users,
   whatsappContacts,
 } from '@/lib/db/schema';
+import { listPatientsForPhone } from '@/lib/patients/persons';
 import { zonedToUtc } from '@/lib/tasks/tz';
 import { normalizeWhatsappE164, parseWhatsappPhone } from '@/lib/whatsapp/phone';
 
@@ -730,6 +731,17 @@ export async function createAppointment(
       .limit(1);
     person = rows[0] ?? null;
     if (!person) throw new AgendaValidationError('Ese paciente no existe en esta clínica.');
+  } else if (!input.ghlContactId && normalizePatientPhone(input.patientPhone)) {
+    // Sin ficha elegida pero con teléfono y nombre de un niño que ya tiene
+    // ficha: la cita va a ESA ficha. Si no, quedaba colgando del teléfono
+    // (`tel:`) y la lista enseñaba al mismo paciente dos veces.
+    const wanted = nameKeyForMatch(input.patientName);
+    const matches = (await listPatientsForPhone(ctx.tenantId, input.patientPhone)).filter(
+      (p) => nameKeyForMatch(p.fullName) === wanted || nameKeyForMatch(p.firstName) === wanted,
+    );
+    if (matches.length === 1 && matches[0]) {
+      person = { id: matches[0].id, contactPhone: matches[0].contactPhone };
+    }
   }
 
   const phone =
@@ -1110,6 +1122,16 @@ export async function cancelAppointment(
     cancelReason: reason ?? null,
     cancelledBy,
   });
+}
+
+/** Sin tildes, mayúsculas ni espacios de más. */
+function nameKeyForMatch(s: string | null | undefined): string {
+  return (s ?? '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 // ─── Historia clínica ────────────────────────────────────────────────────────

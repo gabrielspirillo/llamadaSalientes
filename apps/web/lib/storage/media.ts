@@ -1,5 +1,6 @@
 import 'server-only';
 import {
+  CreateBucketCommand,
   DeleteObjectCommand,
   GetObjectCommand,
   PutObjectCommand,
@@ -61,18 +62,41 @@ export type UploadResult = {
   publicUrl: string;
 };
 
+function isNoSuchBucket(err: unknown): boolean {
+  const e = err as { name?: string; Code?: string; message?: string };
+  return (
+    e?.name === 'NoSuchBucket' ||
+    e?.Code === 'NoSuchBucket' ||
+    /specified bucket does not exist/i.test(e?.message ?? '')
+  );
+}
+
 export async function mediaUpload(input: UploadInput): Promise<UploadResult> {
   const bucket = input.bucket ?? env.S3_BUCKET_WHATSAPP;
   const client = getClient();
-  await client.send(
-    new PutObjectCommand({
-      Bucket: bucket,
-      Key: input.path,
-      Body: input.body,
-      ContentType: input.contentType,
-      CacheControl: 'max-age=3600',
-    }),
-  );
+  const put = () =>
+    client.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: input.path,
+        Body: input.body,
+        ContentType: input.contentType,
+        CacheControl: 'max-age=3600',
+      }),
+    );
+  try {
+    await put();
+  } catch (err) {
+    if (!isNoSuchBucket(err)) throw err;
+    // El bucket no existe todavía (pasó con el interno en producción: los PDF
+    // firmados, las facturas y los comprobantes no se podían guardar). Se crea
+    // privado —lo es por defecto en S3 y en MinIO— y se reintenta una vez.
+    await client.send(new CreateBucketCommand({ Bucket: bucket })).catch((createErr) => {
+      const name = (createErr as { name?: string }).name;
+      if (name !== 'BucketAlreadyOwnedByYou' && name !== 'BucketAlreadyExists') throw createErr;
+    });
+    await put();
+  }
   const base = publicBase().replace(/\/$/, '');
   // path-style: <base>/<bucket>/<key>. Es el formato que sirve MinIO por
   // default y también funciona con S3 cuando S3_FORCE_PATH_STYLE=true.

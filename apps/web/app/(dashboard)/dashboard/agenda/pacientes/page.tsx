@@ -94,19 +94,15 @@ export default async function AgendaPacientesPage({
       byName.set(k, [...(byName.get(k) ?? []), p]);
     }
     for (const group of byName.values()) {
-      if (group.length < 2 || !group.some((p) => p.patientId)) continue;
-      const candidates = group.map((p) => ({
+      if (group.length < 2) continue;
+      const candidates: MergeCandidate[] = group.map((p) => ({
         patientKey: p.patientKey,
         name: p.patientName,
-        detail: [
-          p.birthDate ? `Nacido ${p.birthDate.split('-').reverse().join('/')}` : null,
-          p.patientPhone,
-          `${p.totalAppointments} cita(s) · ${p.noteCount} nota(s)`,
-        ]
-          .filter(Boolean)
-          .join(' · '),
-        canKeep: p.patientId !== null,
-        history: p.totalAppointments + p.noteCount,
+        isPerson: p.patientId !== null,
+        birthDate: p.birthDate,
+        phone: p.patientPhone,
+        appointments: p.totalAppointments,
+        notes: p.noteCount,
       }));
       for (const p of group) duplicates.set(p.patientKey, candidates);
     }
@@ -252,13 +248,11 @@ export default async function AgendaPacientesPage({
                           {duplicates.has(p.patientKey) && (
                             <MergePatientsButton candidates={duplicates.get(p.patientKey) ?? []} />
                           )}
-                          {/* Sólo sin historia y sólo admin: las altas de prueba del asistente. */}
-                          {ctx.canManageProfessionals &&
-                            p.totalAppointments === 0 &&
-                            p.noteCount === 0 &&
-                            (p.patientId !== null || p.patientKey.startsWith('tel:')) && (
-                              <RemovePatientButton patientKey={p.patientKey} name={p.patientName} />
-                            )}
+                          {/* Cualquiera, con o sin historia: el diálogo enseña lo que se
+                              borra y, con historia, pide escribir BORRAR. Sólo admin. */}
+                          {ctx.canManageProfessionals && (
+                            <RemovePatientButton patientKey={p.patientKey} name={p.patientName} />
+                          )}
                         </div>
                       </TD>
                     </TR>

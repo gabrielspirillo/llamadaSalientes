@@ -12,6 +12,7 @@ import { PatientMarks } from '@/components/agenda/patient-marks';
 import { PatientReviewAlert } from '@/components/agenda/patient-review-alert';
 import { PatientSignalBadges } from '@/components/agenda/patient-signals';
 import { PatientTabs } from '@/components/agenda/patient-tabs';
+import { RemovePatientButton } from '@/components/agenda/remove-patient-button';
 import { TodayAppointmentCard, type TodayItem } from '@/components/agenda/today-appointment-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -601,6 +602,14 @@ export default async function PacienteDossierPage({
                       <span className="hidden sm:inline">Editar</span>
                     </Button>
                   }
+                />
+              )}
+              {ctx.canManageProfessionals && (
+                <RemovePatientButton
+                  patientKey={dossier.patientKey}
+                  name={dossier.patientName}
+                  label="Quitar"
+                  redirectTo="/dashboard/agenda/pacientes"
                 />
               )}
             </>

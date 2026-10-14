@@ -320,18 +320,14 @@ sus pacientes. Por eso el diálogo pregunta primero qué arrastra:
   los agentes, su historia sigue en la ficha de cada paciente, y se puede
   reactivar. El borrado duro se rechaza en el servicio, no sólo en la UI.
 
-**Quitar a un paciente o contacto sin historia** (`RemovePatientButton` en
-Agenda → Pacientes; acciones en `patient-removal-actions.ts`). Existe porque el
-banco de pruebas de `/dashboard/agent` corre con tools reales sobre la clínica
-que se está gestionando: cada prueba de `register_patient` deja un contacto de
-mentira en la libreta de esa clínica, y el panel no tenía forma de borrarlo.
-Sólo admin, sólo filas con 0 citas y 0 notas, y el servidor lo vuelve a
-comprobar (`previewPatientDeletion`/`deletePatient` en `lib/patients/persons.ts`,
-`previewContactDeletion`/`deleteContact` en `lib/patients/registry.ts`). Con
-citas, notas, un consentimiento firmado o niños a cargo se rechaza: eso es
-historia y no se borra desde aquí. Al borrar un contacto se van en cascada sus
-conversaciones y notas de WhatsApp (el diálogo avisa cuántos mensajes). Las
-filas `ghl:`/`email:` no se tocan: vienen del CRM.
+**Quitar a un paciente o contacto** (`RemovePatientButton` en Agenda →
+Pacientes, en la ficha y en el contacto de WhatsApp; lógica en
+`lib/patients/removal.ts`). Sólo admin. Se puede quitar a cualquiera, tenga o
+no historia: el diálogo enseña antes lo que se va (citas, notas, cobros,
+consentimientos, mensajes) y, con historia, pide escribir BORRAR. Los
+recordatorios pendientes de sus citas se cancelan. **Las facturas emitidas no
+se borran nunca** (documentos legales numerados): quedan en Finanzas sin
+paciente enlazado.
 
 **Roles**:
 - `admin` de la clínica y Futura: configuran profesionales, horarios,
@@ -847,8 +843,16 @@ duplicadas, la IA podía agendar en la que no tiene la historia clínica.
   no cuadre.
 - **Unir duplicados ya creados**: en Agenda → Pacientes, las filas con el mismo
   nombre salen como "Posible duplicado" con el botón **Unir** (sólo admin,
-  `mergePatients`): citas, notas, cobros, facturas y consentimientos pasan a la
-  ficha elegida y el resto se borra.
+  `mergePatientRecords`). Cualquier fila puede ser la que se queda y cualquiera
+  se puede dejar fuera ("no es la misma persona"). Si entre ellas hay una
+  ficha de paciente, el resultado es SIEMPRE esa ficha (nacimiento, anamnesis,
+  tutores, consentimientos); si se eligió otra fila, su nombre y teléfono pasan
+  a la ficha. Los teléfonos de lo unido quedan como tutores.
+- **Citas sin ficha elegida**: `createAppointment` sin `patientId` pero con el
+  teléfono y el nombre de un niño que ya tiene ficha la ata a esa ficha.
+- **Bucket interno**: `mediaUpload` crea el bucket si no existe (pasó con
+  `internal-files` en producción: PDF firmados, facturas y comprobantes no se
+  guardaban).
 - **Una nota por visita**: `saveClinicalNote` sin id actualiza la nota de la
   misma cita o del mismo paciente, profesional y día (privada con privada); la
   ficha abre esa nota en el formulario para completarla. La migración `0047`

@@ -18,6 +18,11 @@ import {
   mergePatients,
 } from '@/lib/patients/persons';
 import { upsertPatientRecord } from '@/lib/patients/registry';
+import {
+  mergePatientRecords,
+  previewRemoval,
+  removePatientEverywhere,
+} from '@/lib/patients/removal';
 import { upsertWhatsappContact } from '@/lib/whatsapp/persist';
 import { raw, seedTenant } from './_qa-tasks-helpers';
 
@@ -140,6 +145,74 @@ describe('contactos sin duplicar', () => {
     const notes =
       await raw`select patient_id from clinical_notes where patient_key = ${`pat:${a.id}`}`;
     expect(notes).toHaveLength(1);
+  });
+});
+
+describe('unir y quitar desde la lista', () => {
+  it('se puede quedar la fila de citas sueltas: la ficha del niño se conserva', async () => {
+    const scope = { tenantId, userId: userA };
+    const ctx = ctxFor(tenantId, userA);
+    const nino = await createPatient(scope, {
+      firstName: 'Bruno',
+      lastName: 'Sanz',
+      birthDate: '2025-05-26',
+      contactPhone: '+34620620900',
+    });
+    await saveClinicalNote(ctx, {
+      professionalId,
+      patientKey: `pat:${nino.id}`,
+      summary: 'Primera sesión',
+    });
+    // Una cita que quedó colgando del teléfono, con el mismo nombre.
+    await raw`insert into agenda_appointments (tenant_id, professional_id, patient_key, patient_name, patient_phone, starts_at, ends_at)
+      values (${tenantId}, ${professionalId}, 'tel:+34620620900', 'Bruno Sanz', '+34620620900', '2027-04-01 08:00Z', '2027-04-01 08:30Z')`;
+
+    const { patientKey } = await mergePatientRecords(scope, 'tel:+34620620900', [`pat:${nino.id}`]);
+    expect(patientKey).toBe(`pat:${nino.id}`);
+    const sueltas =
+      await raw`select id from agenda_appointments where tenant_id = ${tenantId} and patient_key = 'tel:+34620620900'`;
+    expect(sueltas).toHaveLength(0);
+    const [p] = await raw`select birth_date::text from patients where id = ${nino.id}`;
+    expect(p!.birth_date).toBe('2025-05-26');
+  });
+
+  it('une dos filas sin ficha de paciente en la elegida', async () => {
+    const scope = { tenantId, userId: userA };
+    await raw`insert into agenda_appointments (tenant_id, professional_id, patient_key, patient_name, starts_at, ends_at)
+      values (${tenantId}, ${professionalId}, 'anon:ines', 'Inés', '2027-04-02 08:00Z', '2027-04-02 08:30Z'),
+             (${tenantId}, ${professionalId}, 'email:ines@x.es', 'Inés', '2027-04-03 08:00Z', '2027-04-03 08:30Z')`;
+    await mergePatientRecords(scope, 'email:ines@x.es', ['anon:ines']);
+    const rows =
+      await raw`select patient_key from agenda_appointments where tenant_id = ${tenantId} and patient_name = 'Inés'`;
+    expect(rows.map((r) => r.patient_key)).toEqual(['email:ines@x.es', 'email:ines@x.es']);
+  });
+
+  it('quita a un paciente con historia y todo lo suyo', async () => {
+    const scope = { tenantId, userId: userA };
+    const ctx = ctxFor(tenantId, userA);
+    const p = await createPatient(scope, { firstName: 'Olga', contactPhone: '+34699111000' });
+    await saveClinicalNote(ctx, { professionalId, patientKey: `pat:${p.id}`, summary: 'Nota' });
+    const preview = await previewRemoval(tenantId, `pat:${p.id}`);
+    expect(preview?.notes).toBe(1);
+    await removePatientEverywhere(scope, `pat:${p.id}`);
+    expect(await raw`select id from patients where id = ${p.id}`).toHaveLength(0);
+    expect(
+      await raw`select id from clinical_notes where patient_key = ${`pat:${p.id}`}`,
+    ).toHaveLength(0);
+  });
+
+  it('quita un contacto con citas', async () => {
+    const scope = { tenantId, userId: userA };
+    await upsertWhatsappContact({ tenantId, phoneE164: '+34699222000', name: 'Prueba' });
+    await raw`insert into agenda_appointments (tenant_id, professional_id, patient_key, patient_name, patient_phone, starts_at, ends_at)
+      values (${tenantId}, ${professionalId}, 'tel:+34699222000', 'Prueba', '+34699222000', '2027-04-05 08:00Z', '2027-04-05 08:30Z')`;
+    await removePatientEverywhere(scope, 'tel:+34699222000');
+    expect(
+      await raw`select id from whatsapp_contacts where tenant_id = ${tenantId} and phone_e164 = '+34699222000'`,
+    ).toHaveLength(0);
+    expect(
+      await raw`select id from agenda_appointments where tenant_id = ${tenantId} and patient_key = 'tel:+34699222000'`,
+    ).toHaveLength(0);
   });
 });
 
