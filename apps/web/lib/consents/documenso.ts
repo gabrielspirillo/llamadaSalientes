@@ -193,11 +193,42 @@ export interface DocumensoDocumentStatus {
   completedAt: string | null;
 }
 
+/**
+ * Estado del documento. Primero la v2 y, si no responde con un documento
+ * (404, `null`, otra forma según la versión de la instancia), la v1. Antes
+ * una respuesta `null` de la v2 reventaba al leer `status` y "Comprobar firma"
+ * sólo decía "No se pudo completar la operación".
+ */
 export async function getDocument(
   cfg: DocumensoConfig,
   documentId: number,
 ): Promise<DocumensoDocumentStatus> {
-  return call<DocumensoDocumentStatus>(cfg, `/api/v2/document/${documentId}`);
+  const v2 = await call<unknown>(cfg, `/api/v2/document/${documentId}`).catch((err) => {
+    if (err instanceof DocumensoError && err.status !== null && err.status < 500) return null;
+    throw err;
+  });
+  const fromV2 = asDocumentStatus(v2);
+  if (fromV2) return fromV2;
+  const fromV1 = asDocumentStatus(await call<unknown>(cfg, `/api/v1/documents/${documentId}`));
+  if (fromV1) return fromV1;
+  throw new DocumensoError(
+    `Documenso no devolvió el documento ${documentId}. ¿Se borró o es de otra cuenta?`,
+  );
+}
+
+function asDocumentStatus(raw: unknown): DocumensoDocumentStatus | null {
+  if (!raw || typeof raw !== 'object') return null;
+  // Algunas versiones envuelven la respuesta (`{ document: {...} }`).
+  const doc = (
+    'status' in raw ? raw : ((raw as { document?: unknown }).document ?? null)
+  ) as Record<string, unknown> | null;
+  if (!doc || typeof doc.status !== 'string') return null;
+  const completedAt = typeof doc.completedAt === 'string' ? doc.completedAt : null;
+  return {
+    id: typeof doc.id === 'number' ? doc.id : Number(doc.id),
+    status: doc.status.toUpperCase(),
+    completedAt: completedAt && !Number.isNaN(Date.parse(completedAt)) ? completedAt : null,
+  };
 }
 
 /**

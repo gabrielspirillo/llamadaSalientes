@@ -561,6 +561,21 @@ export async function refreshConsent(input: {
   tenantId: string;
   consentId: string;
 }): Promise<{ status: string; signed: boolean; pdfError?: string }> {
+  try {
+    return await refreshConsentInner(input);
+  } catch (err) {
+    if (err instanceof ConsentError || err instanceof DocumensoError) throw err;
+    // Lo inesperado se enseña con su motivo: "No se pudo completar la
+    // operación" no le dice nada a la clínica ni a quien lo tiene que arreglar.
+    console.error('[consents] comprobar firma', err);
+    throw new ConsentError(`No se pudo comprobar la firma: ${(err as Error).message}`);
+  }
+}
+
+async function refreshConsentInner(input: {
+  tenantId: string;
+  consentId: string;
+}): Promise<{ status: string; signed: boolean; pdfError?: string }> {
   const rows = await db
     .select()
     .from(patientConsents)

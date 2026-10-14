@@ -85,7 +85,9 @@ function fail(err: unknown): { ok: false; error: string; code?: 'POLICY' } {
     err instanceof PatientValidationError ||
     err instanceof ConsentError ||
     err instanceof DocumensoError ||
-    err instanceof InvoiceValidationError
+    err instanceof InvoiceValidationError ||
+    // Por nombre también: una clase duplicada entre chunks no pasa el instanceof.
+    (err instanceof Error && ['ConsentError', 'DocumensoError'].includes(err.name))
   ) {
     return { ok: false, error: err.message };
   }
