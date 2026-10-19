@@ -10,16 +10,7 @@ import {
   richToPlain,
   sanitizeRich,
 } from '@/lib/rich-text';
-import {
-  Bold,
-  Highlighter,
-  Italic,
-  List,
-  ListOrdered,
-  Paintbrush,
-  RemoveFormatting,
-  Underline,
-} from 'lucide-react';
+import { Bold, Highlighter, Italic, List, ListOrdered, Paintbrush, Underline } from 'lucide-react';
 import * as React from 'react';
 
 /**
@@ -107,7 +98,7 @@ export function RichTextEditor({
 
   // El resaltado es un interruptor: sobre texto resaltado lo quita. Va con
   // styleWithCSS para que el navegador lo escriba como estilo en línea, que es
-  // lo que sabe partir, anular con 'transparent' y borrar con "Quitar formato".
+  // lo que sabe partir y anular con 'transparent'.
   function toggleHighlight() {
     ref.current?.focus();
     const on = highlightValue() === HIGHLIGHT_HEX;
@@ -233,10 +224,6 @@ export function RichTextEditor({
             onClick={() => exec('insertOrderedList')}
           >
             <ListOrdered className="h-4 w-4" />
-          </ToolButton>
-          <Divider />
-          <ToolButton label="Quitar formato" onClick={() => exec('removeFormat')}>
-            <RemoveFormatting className="h-4 w-4" />
           </ToolButton>
         </div>
       )}
