@@ -162,26 +162,20 @@ export default async function AgendaPage({
       appointments.map((a) => a.id),
     ).catch(() => new Map()),
     careProfile && appointments.some((a) => a.patientId)
-      ? listFamilyPatients(ctx.tenantId).catch(() => [])
+      ? listFamilyPatients(ctx.tenantId, timezone).catch(() => [])
       : Promise.resolve([]),
   ]);
 
   // Hermanos (H) y gemelos/mellizos (G/M), sobre los días que se ven.
   const families = groupFamilies(familyPatients);
   const familyById = new Map(familyPatients.map((p) => [p.id, p]));
-  const datesByPatient = new Map<string, Set<string>>();
-  for (const a of appointments) {
-    if (!a.patientId) continue;
-    const day = localDateKey(a.startsAt, timezone);
-    datesByPatient.set(a.patientId, (datesByPatient.get(a.patientId) ?? new Set()).add(day));
-  }
   const familyTagOf = (patientId: string | null, startsAt: Date) => {
     const me = patientId ? familyById.get(patientId) : undefined;
     if (!me) return null;
     const siblings = (families.get(me.id) ?? [])
       .map((id) => familyById.get(id))
       .filter((x): x is FamilyPatient => Boolean(x));
-    return familyTagFor(me, localDateKey(startsAt, timezone), siblings, datesByPatient);
+    return familyTagFor(me, localDateKey(startsAt, timezone), siblings);
   };
 
   const items = toCalendarItems(

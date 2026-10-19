@@ -259,7 +259,7 @@ export function PatientMarks({
         </Select>
         <span className="text-[12px] text-zinc-600">
           En automático, G/M sale con un hermano de la misma fecha de nacimiento y H cuando un
-          hermano tiene cita el mismo día.
+          hermano ya vino antes a la clínica.
         </span>
       </div>
 

@@ -892,8 +892,10 @@ diario para distinguir a cada paciente de un vistazo. Migración `0048`.
   cuenta como visita toda cita pasada no anulada ni faltada.
 - **Hermanos** (`lib/care-profile/siblings.ts`, puro con tests): familia = mismo
   contacto o teléfono de tutor; G/M = hermano con la misma fecha de nacimiento;
-  H = hermano con cita ESE día. `patients.sibling_mark` lo fuerza a mano
-  (Marcas del paciente).
+  H = un hermano YA VINO antes a la clínica (primera cita no anulada ni
+  faltada anterior a ese día; NO es "cita el mismo día", lo aclaró la
+  clínica). En una primera visita sale "1ª visita (H)". `patients.sibling_mark`
+  lo fuerza a mano (Marcas del paciente).
 - **Adelantar**: `agenda_appointments.advance_preference` (ACCEPTS | NO_MOVE)
   + `advance_note`, POR CITA. Se pregunta en Nueva cita, se cambia en la hoja de
   la cita, y Lista de espera muestra "Quieren adelantar su cita". Nada se envía

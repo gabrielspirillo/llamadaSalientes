@@ -131,11 +131,16 @@ const ALL_STATUSES = [
 const TYPE_TAGS = {
   FIRST: { label: '1ª visita', color: '#f97316', title: 'Primera visita' },
   GM: { label: 'G/M', color: '#3b82f6', title: 'Gemelo/mellizo' },
-  H: { label: 'H', color: '#ec4899', title: 'Hermano con cita este día' },
+  H: { label: 'H', color: '#ec4899', title: 'Hermano: la familia ya vino a la clínica' },
+  FIRST_H: {
+    label: '1ª visita (H)',
+    color: '#ec4899',
+    title: 'Primera visita de hermano: la familia ya vino a la clínica',
+  },
 } as const;
 
 function typeTagOf(item: CalendarItem): keyof typeof TYPE_TAGS | null {
-  if (item.firstVisit) return 'FIRST';
+  if (item.firstVisit) return item.familyTag === 'H' ? 'FIRST_H' : 'FIRST';
   return item.familyTag;
 }
 

@@ -881,7 +881,26 @@ export async function mergePatients(
  * Lo mínimo de cada paciente activo para calcular hermanos y gemelos en la
  * agenda (`lib/care-profile/siblings.ts`). Una consulta para toda la clínica.
  */
-export async function listFamilyPatients(tenantId: string): Promise<FamilyPatient[]> {
+export async function listFamilyPatients(
+  tenantId: string,
+  timezone: string,
+): Promise<FamilyPatient[]> {
+  // Primera cita que cuenta como "vino": ni anulada ni faltada.
+  const firstVisit = db
+    .select({
+      patientId: agendaAppointments.patientId,
+      firstAt: sql<Date>`min(${agendaAppointments.startsAt})`.as('first_at'),
+    })
+    .from(agendaAppointments)
+    .where(
+      and(
+        eq(agendaAppointments.tenantId, tenantId),
+        sql`${agendaAppointments.patientId} is not null`,
+        sql`${agendaAppointments.status} not in ('CANCELLED', 'NO_SHOW')`,
+      ),
+    )
+    .groupBy(agendaAppointments.patientId)
+    .as('first_visit');
   const rows = await db
     .select({
       id: patients.id,
@@ -890,9 +909,13 @@ export async function listFamilyPatients(tenantId: string): Promise<FamilyPatien
       guardians: patients.guardians,
       birthDate: patients.birthDate,
       siblingMark: patients.siblingMark,
+      firstVisitDate: sql<
+        string | null
+      >`to_char(${firstVisit.firstAt} at time zone ${timezone}, 'YYYY-MM-DD')`,
     })
     .from(patients)
     .leftJoin(whatsappContacts, eq(whatsappContacts.id, patients.contactId))
+    .leftJoin(firstVisit, eq(firstVisit.patientId, patients.id))
     .where(and(eq(patients.tenantId, tenantId), eq(patients.active, true)));
   return rows.map((r) => ({
     id: r.id,
@@ -900,5 +923,6 @@ export async function listFamilyPatients(tenantId: string): Promise<FamilyPatien
     phones: [r.contactPhone ?? '', ...guardianPhones(r.guardians)].filter(Boolean),
     birthDate: r.birthDate,
     siblingMark: r.siblingMark ?? null,
+    firstVisitDate: r.firstVisitDate ?? null,
   }));
 }

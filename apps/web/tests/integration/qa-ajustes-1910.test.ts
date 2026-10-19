@@ -17,7 +17,12 @@ import {
   setAdvancePreference,
 } from '@/lib/agenda/service';
 import { inactivePatients } from '@/lib/agenda/sweeps';
-import { createPatient, getPatientPerson, updatePatient } from '@/lib/patients/persons';
+import {
+  createPatient,
+  getPatientPerson,
+  listFamilyPatients,
+  updatePatient,
+} from '@/lib/patients/persons';
 import { raw, seedTenant } from './_qa-tasks-helpers';
 
 function ctxFor(tenantId: string, userId: string | null = null): AgendaContext {
@@ -168,5 +173,21 @@ describe('19/10', () => {
       values (${tenantId}, ${professionalId}, 'tel:+34611000999', 'Inactivo', now() - interval '400 days', now() - interval '400 days' + interval '30 minutes', 'SCHEDULED')`;
     const rows = await inactivePatients(tenantId, new Date(Date.now() - 180 * 86_400_000));
     expect(rows.map((r) => r.patientKey)).toContain('tel:+34611000999');
+  });
+
+  it('primera visita de cada paciente (para la H de hermano): sin anuladas ni faltadas', async () => {
+    const scope = { tenantId, userId: userA };
+    const mayor = await createPatient(scope, {
+      firstName: 'Mateo',
+      lastName: 'Ruiz',
+      contactPhone: '+34611000555',
+    });
+    await raw`insert into agenda_appointments (tenant_id, professional_id, patient_key, patient_id, patient_name, starts_at, ends_at, status)
+      values
+        (${tenantId}, ${professionalId}, ${`pat:${mayor.id}`}, ${mayor.id}, 'Mateo Ruiz', '2025-01-10 17:00+01', '2025-01-10 17:30+01', 'CANCELLED'),
+        (${tenantId}, ${professionalId}, ${`pat:${mayor.id}`}, ${mayor.id}, 'Mateo Ruiz', '2025-02-03 23:30+00', '2025-02-04 00:00+00', 'COMPLETED')`;
+    const rows = await listFamilyPatients(tenantId, 'Europe/Madrid');
+    // 23:30 UTC del 3 es ya el 4 en Madrid; la anulada del 10 de enero no cuenta.
+    expect(rows.find((r) => r.id === mayor.id)?.firstVisitDate).toBe('2025-02-04');
   });
 });
