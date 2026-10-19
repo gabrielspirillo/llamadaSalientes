@@ -2201,6 +2201,8 @@ export const patients = pgTable(
     hesitantNote: text('hesitant_note'),
     /** Faltas y cancelaciones de antes de la plataforma; las nuevas se cuentan de la agenda. */
     priorRedFlags: smallint('prior_red_flags').notNull().default(0),
+    /** Fuerza la etiqueta de hermanos (migración 0048). Null = se calcula. */
+    siblingMark: text('sibling_mark').$type<'TWIN' | 'SIBLING' | 'NONE'>(),
     notes: text('notes'),
     /** Quién contestó la anamnesis por última vez y cuándo (migración 0035). */
     anamnesisUpdatedAt: timestamp('anamnesis_updated_at', { withTimezone: true }),
@@ -2323,6 +2325,10 @@ export const agendaAppointments = pgTable(
     cancelReason: text('cancel_reason'),
     /** PATIENT | CLINIC. Sólo la de la familia cuenta como bandera roja; NULL = sin dato. */
     cancelledBy: text('cancelled_by').$type<'PATIENT' | 'CLINIC'>(),
+    /** ¿Quiere adelantar ESTA cita si se libera un hueco? (migración 0048). */
+    advancePreference: text('advance_preference').$type<'ACCEPTS' | 'NO_MOVE'>(),
+    /** Horario al que puede venir ("desde las 18h"). */
+    advanceNote: text('advance_note'),
     createdByUserId: uuid('created_by_user_id').references(() => users.id, {
       onDelete: 'set null',
     }),

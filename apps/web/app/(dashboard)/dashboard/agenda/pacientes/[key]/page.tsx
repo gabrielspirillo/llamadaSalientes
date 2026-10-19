@@ -54,6 +54,7 @@ import { EMPTY_RED_FLAGS, type RedFlagCounts } from '@/lib/care-profile/signals'
 import { listPatientConsents, tenantHasEsign } from '@/lib/consents/service';
 import { getInvoiceContext, listPatientInvoices } from '@/lib/invoices/service';
 import { formatPhoneDisplay, initialsOf, phoneDigits } from '@/lib/patients/names';
+import { dialPrefixForTimezone } from '@/lib/phone-prefix';
 import { localDateKey } from '@/lib/tasks/tz';
 import { CalendarDays, CalendarPlus, MessageCircle, Pencil, Phone, Star } from 'lucide-react';
 import Link from 'next/link';
@@ -584,6 +585,7 @@ export default async function PacienteDossierPage({
               {person && ctx.canWriteAppointments && (
                 <PatientDialog
                   mode="edit"
+                  phonePrefix={dialPrefixForTimezone(timezone)}
                   patient={{
                     id: person.id,
                     firstName: person.firstName,
@@ -667,6 +669,7 @@ export default async function PacienteDossierPage({
                   pendingItems={pendingItems}
                   scheduleHref={scheduleHref}
                   canWrite={ctx.canWriteAppointments}
+                  visibleStatuses={careProfile?.bookingPolicy.visibleStatuses ?? null}
                 />
                 {canWriteToday && professionalIdForNote ? (
                   <ClinicalNoteForm
@@ -880,6 +883,7 @@ export default async function PacienteDossierPage({
                       hesitant={person.hesitant}
                       hesitantNote={person.hesitantNote}
                       redFlags={redFlags ?? { ...EMPTY_RED_FLAGS, prior: person.priorRedFlags }}
+                      siblingMark={person.siblingMark}
                       canEdit={ctx.canWriteAppointments}
                     />
                   </CardContent>

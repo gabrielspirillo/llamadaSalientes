@@ -438,8 +438,13 @@ describe('modelo de vista del calendario', () => {
       [{ startMinute: 9 * 60, endMinute: 14 * 60 }],
       [{ startMinute: 21 * 60, endMinute: 22 * 60 }],
     );
-    expect(window.startMinute).toBe(8 * 60);
+    expect(window.startMinute).toBe(9 * 60);
     expect(window.endMinute).toBe(22 * 60);
+  });
+
+  it('por defecto se ve de 10 a 22, aunque la tarde acabe a las 20:30', () => {
+    const window = computeDayWindow([{ startMinute: 16 * 60, endMinute: 20 * 60 + 30 }], []);
+    expect(window).toEqual({ startMinute: 10 * 60, endMinute: 22 * 60 });
   });
 
   it('la semana empieza en lunes', () => {

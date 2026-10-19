@@ -1,5 +1,5 @@
 import 'server-only';
-import { type AnyColumn, type SQL, and, asc, count, eq, inArray, or, sql } from 'drizzle-orm';
+import { type AnyColumn, type SQL, and, asc, count, eq, inArray, ne, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { z } from 'zod';
 
@@ -19,6 +19,7 @@ import {
   parseGuardians,
   primaryGuardian,
 } from '@/lib/care-profile/policy';
+import type { FamilyPatient } from '@/lib/care-profile/siblings';
 import { MAX_PRIOR_RED_FLAGS } from '@/lib/care-profile/signals';
 import { db } from '@/lib/db/client';
 import {
@@ -104,6 +105,8 @@ export const patientMarksSchema = z.object({
   hesitantNote: z.string().trim().max(300).optional().or(z.literal('')),
   /** Banderas rojas de antes de la plataforma. Si no se manda, se deja como estaba. */
   priorRedFlags: z.number().int().min(0).max(MAX_PRIOR_RED_FLAGS).optional(),
+  /** Hermanos en la agenda: null = calcularlo. Si no se manda, se deja como estaba. */
+  siblingMark: z.enum(['TWIN', 'SIBLING', 'NONE']).nullable().optional(),
 });
 export type PatientMarksInput = z.infer<typeof patientMarksSchema>;
 
@@ -131,6 +134,8 @@ export interface PatientPerson {
   hesitantNote: string | null;
   /** Banderas rojas de antes de la plataforma; las nuevas salen de la agenda. */
   priorRedFlags: number;
+  /** Etiqueta de hermanos forzada a mano. Null = se calcula. */
+  siblingMark: 'TWIN' | 'SIBLING' | 'NONE' | null;
   notes: string | null;
   /** Quién contestó la anamnesis por última vez y cuándo. */
   anamnesisUpdatedAt: Date | null;
@@ -198,6 +203,7 @@ function toPerson(row: {
     hesitant: p.hesitant,
     hesitantNote: p.hesitantNote,
     priorRedFlags: p.priorRedFlags,
+    siblingMark: p.siblingMark ?? null,
     notes: p.notes,
     anamnesisUpdatedAt: p.anamnesisUpdatedAt,
     anamnesisUpdatedByEmail: row.anamnesisUpdatedByEmail,
@@ -280,6 +286,18 @@ export async function listPatientPersons(
  * julieta" encuentra a Julieta Santalla Cruz. Exige el join a
  * `whatsapp_contacts` en la query que lo use.
  */
+/**
+ * SQL: cada palabra buscada (sin tildes ni mayúsculas) aparece en `text`. Lo
+ * comparten todas las listas de pacientes para que "alvaro", "ALVARO" y
+ * "Álvaro" encuentren lo mismo en todas partes.
+ */
+export function foldedWordsFilter(text: SQL, search: string): SQL | undefined {
+  const words = foldSearchText(search).split(/\s+/).filter(Boolean).slice(0, 6);
+  if (words.length === 0) return undefined;
+  const haystack = sql`translate(lower(${text}), ${FOLD_FROM}, ${FOLD_TO})`;
+  return and(...words.map((w) => sql`${haystack} like ${`%${escapeLike(w)}%`}`));
+}
+
 export function patientSearchFilter(search: string): SQL | undefined {
   const digits = phoneDigitsQuery(search);
   if (digits) {
@@ -361,7 +379,9 @@ function normalizeGuardians(list: Guardian[] | undefined): Guardian[] {
     return {
       role: g.role,
       name: titleCaseName(g.name),
-      phone: emptyToNull(g.phone) ?? undefined,
+      // Normalizado como el resto de teléfonos ("646 55 66 19" → +34646556619):
+      // es lo que se compara para no duplicar contactos y lo que usan los agentes.
+      phone: (normalizePatientPhone(g.phone) ?? emptyToNull(g.phone)) || undefined,
       email: emptyToNull(g.email)?.toLowerCase() ?? undefined,
       channel: g.channel ?? null,
       primary,
@@ -541,6 +561,29 @@ export async function updatePatient(
 
   const person = await getPatientPerson(scope.tenantId, patientId);
   if (!person) throw new PatientValidationError('Ese paciente no existe en esta clínica.');
+
+  // El nombre va copiado en cada cita y nota (recordatorios, agentes y
+  // búsquedas lo leen de ahí): se pone al día con el de la ficha.
+  await db
+    .update(agendaAppointments)
+    .set({ patientName: person.fullName })
+    .where(
+      and(
+        eq(agendaAppointments.tenantId, scope.tenantId),
+        eq(agendaAppointments.patientId, patientId),
+        ne(agendaAppointments.patientName, person.fullName),
+      ),
+    );
+  await db
+    .update(clinicalNotes)
+    .set({ patientName: person.fullName })
+    .where(
+      and(
+        eq(clinicalNotes.tenantId, scope.tenantId),
+        eq(clinicalNotes.patientId, patientId),
+        sql`${clinicalNotes.patientName} is distinct from ${person.fullName}`,
+      ),
+    );
   return person;
 }
 
@@ -594,6 +637,7 @@ export async function setPatientMarks(
             hesitantNote: input.hesitant ? emptyToNull(input.hesitantNote) : null,
           }),
       ...(input.priorRedFlags === undefined ? {} : { priorRedFlags: input.priorRedFlags }),
+      ...(input.siblingMark === undefined ? {} : { siblingMark: input.siblingMark }),
       updatedAt: new Date(),
     })
     .where(and(eq(patients.tenantId, scope.tenantId), eq(patients.id, patientId)))
@@ -831,4 +875,30 @@ export async function mergePatients(
     }
     return { moved };
   });
+}
+
+/**
+ * Lo mínimo de cada paciente activo para calcular hermanos y gemelos en la
+ * agenda (`lib/care-profile/siblings.ts`). Una consulta para toda la clínica.
+ */
+export async function listFamilyPatients(tenantId: string): Promise<FamilyPatient[]> {
+  const rows = await db
+    .select({
+      id: patients.id,
+      contactId: patients.contactId,
+      contactPhone: whatsappContacts.phoneE164,
+      guardians: patients.guardians,
+      birthDate: patients.birthDate,
+      siblingMark: patients.siblingMark,
+    })
+    .from(patients)
+    .leftJoin(whatsappContacts, eq(whatsappContacts.id, patients.contactId))
+    .where(and(eq(patients.tenantId, tenantId), eq(patients.active, true)));
+  return rows.map((r) => ({
+    id: r.id,
+    contactId: r.contactId,
+    phones: [r.contactPhone ?? '', ...guardianPhones(r.guardians)].filter(Boolean),
+    birthDate: r.birthDate,
+    siblingMark: r.siblingMark ?? null,
+  }));
 }

@@ -2,7 +2,10 @@
 
 import {
   cancelAppointmentAction,
+  markAppointmentUnpaidAction,
+  registerPaymentAction,
   rescheduleAppointmentAction,
+  setAdvancePreferenceAction,
   updateAppointmentAction,
 } from '@/app/(dashboard)/dashboard/agenda/actions';
 import { PatientSignalBadges } from '@/components/agenda/patient-signals';
@@ -21,11 +24,16 @@ import type { CalendarItem } from '@/lib/agenda/view';
 import { cn } from '@/lib/cn';
 import {
   AlertTriangle,
+  ArrowUp,
   CalendarClock,
+  CreditCard,
+  Euro,
   Flag,
   Loader2,
+  Minus,
   NotebookPen,
   Phone,
+  Sparkles,
   User,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -33,6 +41,18 @@ import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
 const FLOW: AppointmentStatus[] = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED'];
+
+const PAY_OPTIONS: { method: 'CARD' | 'CASH' | 'BIZUM' | 'TRANSFER'; label: string }[] = [
+  { method: 'CARD', label: 'Datáfono' },
+  { method: 'CASH', label: 'Efectivo' },
+  { method: 'BIZUM', label: 'Bizum' },
+  { method: 'TRANSFER', label: 'Transferencia' },
+];
+
+function centsToInput(cents: number | null | undefined): string {
+  if (cents === null || cents === undefined) return '';
+  return (cents / 100).toFixed(2).replace('.', ',').replace(/,00$/, '');
+}
 
 function hhmm(minute: number): string {
   return `${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
@@ -43,11 +63,17 @@ export function AppointmentSheet({
   item,
   canWrite,
   treatments,
+  todayKey,
+  visibleStatuses = null,
   onClose,
 }: {
   item: CalendarItem;
   canWrite: boolean;
   treatments: { id: string; name: string; durationMinutes: number }[];
+  /** 'YYYY-MM-DD' de hoy en la clínica: la fecha del pago marcado aquí. */
+  todayKey: string;
+  /** Estados que usa la clínica. Null = todos. */
+  visibleStatuses?: string[] | null;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -62,6 +88,60 @@ export function AppointmentSheet({
   const [time, setTime] = React.useState(hhmm(item.startMinute));
   const [duration, setDuration] = React.useState(item.durationMinutes);
   const [treatmentId, setTreatmentId] = React.useState(item.treatmentId ?? '');
+  const [allowOutsideHours, setAllowOutsideHours] = React.useState(false);
+  const [slots, setSlots] = React.useState<number[]>([]);
+  const [loadingSlots, setLoadingSlots] = React.useState(false);
+
+  // Huecos libres del día elegido, sin contar la propia cita (si no, su hora y
+  // las de al lado salían ocupadas). Se recargan al cambiar día o duración.
+  React.useEffect(() => {
+    if (!showReschedule || !dateKey || !duration) return;
+    let cancelled = false;
+    setLoadingSlots(true);
+    const params = new URLSearchParams({
+      professionalId: item.professionalId,
+      from: dateKey,
+      to: dateKey,
+      duration: String(duration),
+      exclude: item.id,
+      ...(item.firstVisit ? { firstVisit: '1' } : {}),
+    });
+    fetch(`/api/agenda/availability?${params.toString()}`)
+      .then((r) => (r.ok ? r.json() : { slots: [] }))
+      .then((data: { slots?: { dateKey: string; startMinute: number }[] }) => {
+        if (!cancelled) {
+          setSlots(
+            (data.slots ?? []).filter((x) => x.dateKey === dateKey).map((x) => x.startMinute),
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setSlots([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingSlots(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showReschedule, dateKey, duration, item.id, item.professionalId, item.firstVisit]);
+
+  const flow = FLOW.filter((st) => !visibleStatuses || visibleStatuses.includes(st));
+  const showNoShow = !visibleStatuses || visibleStatuses.includes('NO_SHOW');
+  const [amount, setAmount] = React.useState(
+    centsToInput(item.payment?.amountCents ?? item.treatmentPriceCents),
+  );
+  const [advanceNote, setAdvanceNote] = React.useState(item.advanceNote ?? '');
+
+  /** Como `run`, pero la hoja sigue abierta: pago y adelanto se ajustan sin salir. */
+  function runStay(fn: () => Promise<{ ok: true } | { ok: false; error: string }>) {
+    setError(null);
+    startTransition(async () => {
+      const result = await fn();
+      if (result.ok) router.refresh();
+      else setError(result.error);
+    });
+  }
 
   function run(fn: () => Promise<{ ok: true } | { ok: false; error: string }>) {
     setError(null);
@@ -130,7 +210,7 @@ export function AppointmentSheet({
                 Estado
               </p>
               <div className="flex flex-wrap gap-1.5">
-                {FLOW.map((s) => (
+                {flow.map((s) => (
                   <button
                     key={s}
                     type="button"
@@ -146,15 +226,182 @@ export function AppointmentSheet({
                     {STATUS_LABELS[s]}
                   </button>
                 ))}
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={() => run(() => updateAppointmentAction(item.id, { status: 'NO_SHOW' }))}
-                  className="rounded-full bg-white px-3 py-1 text-[12px] font-semibold text-amber-700 ring-1 ring-amber-200 hover:bg-amber-50"
-                >
-                  No se presentó
-                </button>
+                {showNoShow && (
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() =>
+                      run(() => updateAppointmentAction(item.id, { status: 'NO_SHOW' }))
+                    }
+                    className={cn(
+                      'rounded-full px-3 py-1 text-[12px] font-semibold',
+                      item.status === 'NO_SHOW'
+                        ? 'bg-red-600 text-white'
+                        : 'bg-white text-red-700 ring-1 ring-red-200 hover:bg-red-50',
+                    )}
+                  >
+                    No se presentó
+                  </button>
+                )}
               </div>
+            </div>
+          )}
+
+          {canWrite && item.status !== 'CANCELLED' && (
+            <div className="rounded-[14px] border border-(--color-border) p-3">
+              <p className="mb-2 flex flex-wrap items-center gap-2 text-[12px] font-bold uppercase tracking-wide text-zinc-500">
+                Pago
+                <span
+                  className={cn(
+                    'rounded-full px-2 py-0.5 text-[11px] normal-case tracking-normal',
+                    item.payment?.paid
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : 'bg-zinc-100 text-zinc-600',
+                  )}
+                >
+                  {item.payment?.paid
+                    ? `Pagado${
+                        item.payment.method
+                          ? ` · ${PAY_OPTIONS.find((o) => o.method === item.payment?.method)?.label ?? ''}`
+                          : ''
+                      }`
+                    : 'No pagado'}
+                </span>
+              </p>
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="grid w-28 gap-1">
+                  <Label htmlFor="pay-amount">Importe (€)</Label>
+                  <Input
+                    id="pay-amount"
+                    inputMode="decimal"
+                    value={amount}
+                    placeholder="0"
+                    onChange={(e) => setAmount(e.target.value)}
+                  />
+                </div>
+                {PAY_OPTIONS.map((o) => {
+                  const active = item.payment?.paid && item.payment.method === o.method;
+                  return (
+                    <button
+                      key={o.method}
+                      type="button"
+                      disabled={pending || !amount.trim()}
+                      onClick={() =>
+                        runStay(() =>
+                          registerPaymentAction({
+                            appointmentId: item.id,
+                            amount,
+                            paidOn: todayKey,
+                            paymentMethod: o.method,
+                          }),
+                        )
+                      }
+                      className={cn(
+                        'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors disabled:opacity-50',
+                        active
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-white text-zinc-700 ring-1 ring-(--color-border) hover:bg-emerald-50',
+                      )}
+                    >
+                      {o.method === 'CARD' ? (
+                        <CreditCard className="h-3.5 w-3.5" />
+                      ) : o.method === 'CASH' ? (
+                        <Euro className="h-3.5 w-3.5" />
+                      ) : null}
+                      {o.label}
+                    </button>
+                  );
+                })}
+                {item.payment?.paid && (
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => runStay(() => markAppointmentUnpaidAction(item.id))}
+                    className="rounded-full bg-white px-3 py-1.5 text-[12px] font-semibold text-zinc-600 ring-1 ring-(--color-border) hover:bg-zinc-50"
+                  >
+                    No pagado
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {canWrite && item.status !== 'CANCELLED' && (
+            <div className="rounded-[14px] border border-(--color-border) p-3">
+              <p className="mb-2 text-[12px] font-bold uppercase tracking-wide text-zinc-500">
+                Si se libera un hueco antes
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {(
+                  [
+                    {
+                      value: 'ACCEPTS',
+                      label: 'Quiere adelantar',
+                      icon: <ArrowUp className="h-3.5 w-3.5" />,
+                    },
+                    {
+                      value: 'NO_MOVE',
+                      label: 'No mover',
+                      icon: <Minus className="h-3.5 w-3.5" />,
+                    },
+                    { value: null, label: 'Sin indicar', icon: null },
+                  ] as const
+                ).map((o) => (
+                  <button
+                    key={o.label}
+                    type="button"
+                    disabled={pending}
+                    onClick={() =>
+                      runStay(() =>
+                        setAdvancePreferenceAction(item.id, {
+                          preference: o.value,
+                          note: o.value === 'ACCEPTS' ? advanceNote : null,
+                        }),
+                      )
+                    }
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-semibold transition-colors',
+                      item.advancePreference === o.value
+                        ? o.value === 'ACCEPTS'
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-zinc-700 text-white'
+                        : 'bg-white text-zinc-700 ring-1 ring-(--color-border) hover:bg-zinc-50',
+                    )}
+                  >
+                    {o.icon}
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+              {item.advancePreference === 'ACCEPTS' && (
+                <div className="mt-2 flex flex-wrap items-end gap-2">
+                  <div className="grid min-w-[200px] flex-1 gap-1">
+                    <Label htmlFor="adv-note">Horario al que puede venir</Label>
+                    <Input
+                      id="adv-note"
+                      value={advanceNote}
+                      maxLength={200}
+                      placeholder="Ej.: desde las 18h, martes y jueves"
+                      onChange={(e) => setAdvanceNote(e.target.value)}
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={pending || advanceNote === (item.advanceNote ?? '')}
+                    onClick={() =>
+                      runStay(() =>
+                        setAdvancePreferenceAction(item.id, {
+                          preference: 'ACCEPTS',
+                          note: advanceNote,
+                        }),
+                      )
+                    }
+                  >
+                    Guardar horario
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
@@ -163,7 +410,7 @@ export function AppointmentSheet({
               <p className="mb-2 text-[12px] font-bold uppercase tracking-wide text-zinc-500">
                 Mover la cita
               </p>
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-1.5">
                   <Label htmlFor="rs-date">Día</Label>
                   <Input
@@ -174,16 +421,7 @@ export function AppointmentSheet({
                   />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="rs-time">Hora</Label>
-                  <Input
-                    id="rs-time"
-                    type="time"
-                    value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="rs-dur">Duración</Label>
+                  <Label htmlFor="rs-dur">Duración (min)</Label>
                   <Input
                     id="rs-dur"
                     type="number"
@@ -194,13 +432,70 @@ export function AppointmentSheet({
                   />
                 </div>
               </div>
+
+              {/* Huecos libres del día elegido: un clic y listo, como en Nueva cita. */}
+              <div className="mt-3 rounded-[14px] bg-zinc-50 p-3">
+                <div className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold text-zinc-600">
+                  <Sparkles className="h-3.5 w-3.5" /> Huecos libres ese día
+                  {loadingSlots && <Loader2 className="h-3 w-3 animate-spin" />}
+                </div>
+                {slots.length === 0 ? (
+                  <p className="text-[12px] text-zinc-500">
+                    {loadingSlots
+                      ? 'Buscando…'
+                      : 'No quedan huecos con esa duración ese día. Prueba otro día o pon otra hora abajo.'}
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {slots.slice(0, 30).map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setTime(hhmm(m))}
+                        className={cn(
+                          'rounded-full px-2.5 py-1 text-[12px] font-semibold tabular-nums transition-colors',
+                          time === hhmm(m)
+                            ? 'bg-brand-600 text-white'
+                            : 'bg-white text-zinc-700 ring-1 ring-(--color-border) hover:bg-brand-50',
+                        )}
+                      >
+                        {hhmm(m)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-3 grid gap-1.5 sm:max-w-[200px]">
+                <Label htmlFor="rs-time">Otra hora</Label>
+                <Input
+                  id="rs-time"
+                  type="time"
+                  step={300}
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                />
+              </div>
+              <label className="mt-2 flex items-start gap-2 text-[13px] text-zinc-600">
+                <input
+                  type="checkbox"
+                  checked={allowOutsideHours}
+                  onChange={(e) => setAllowOutsideHours(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  Permitir fuera del horario (urgencias). Se sigue comprobando que no se pise con
+                  otra cita.
+                </span>
+              </label>
+
               <div className="mt-3 flex justify-end gap-2">
                 <Button variant="ghost" size="sm" onClick={() => setShowReschedule(false)}>
                   Cerrar
                 </Button>
                 <Button
                   size="sm"
-                  disabled={pending}
+                  disabled={pending || !time}
                   onClick={() => {
                     const [h, m] = time.split(':').map(Number);
                     run(() =>
@@ -208,11 +503,12 @@ export function AppointmentSheet({
                         startDateKey: dateKey,
                         startMinute: (h ?? 9) * 60 + (m ?? 0),
                         durationMinutes: duration,
+                        allowOutsideHours,
                       }),
                     );
                   }}
                 >
-                  Guardar cambio
+                  Mover a las {time || '--:--'}
                 </Button>
               </div>
             </div>

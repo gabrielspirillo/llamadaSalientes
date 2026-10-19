@@ -4,7 +4,13 @@ import { and, asc, desc, eq, gte, inArray, lt, lte, ne, or, sql } from 'drizzle-
 import { type SlotOptions, computeRangeSlots } from '@/lib/agenda/availability';
 import { patientIdFromKey, patientKeyFor, patientKeyForPerson } from '@/lib/agenda/patients';
 import { BUSY_STATUSES, type ShiftRule, type SlotCandidate } from '@/lib/agenda/shared';
-import { firstVisitRules } from '@/lib/care-profile/policy';
+import {
+  GUARDIAN_ROLE_LABELS,
+  type Guardian,
+  firstVisitRules,
+  parseGuardians,
+  primaryGuardian,
+} from '@/lib/care-profile/policy';
 import { getCareProfile } from '@/lib/care-profile/queries';
 import { EMPTY_RED_FLAGS, type RedFlagCounts } from '@/lib/care-profile/signals';
 import { db } from '@/lib/db/client';
@@ -23,10 +29,13 @@ import {
 } from '@/lib/db/schema';
 import {
   type PatientPerson,
+  foldedWordsFilter,
   getPatientPerson,
   getPatientPersons,
   patientFullName,
+  patientSearchFilter,
 } from '@/lib/patients/persons';
+import { phoneDigitsQuery } from '@/lib/patients/search-text';
 import { addDaysToKey, localDateKey } from '@/lib/tasks/tz';
 
 export type ProfessionalRow = typeof professionals.$inferSelect;
@@ -317,6 +326,8 @@ export interface CalendarAppointment extends AppointmentRow {
   professionalName: string;
   professionalColor: string;
   treatmentName: string | null;
+  /** Precio del tratamiento: lo que se cobra por defecto desde la cita. */
+  treatmentPriceCents?: number | null;
   /** Del paciente como persona, si la cita lo tiene. 'YYYY-MM-DD'. */
   patientBirthDate: string | null;
   patientPriorityFlag: boolean;
@@ -347,6 +358,9 @@ export async function listAppointmentsInRange(
       professionalName: professionals.fullName,
       professionalColor: professionals.color,
       treatmentName: treatments.name,
+      treatmentPriceCents: treatments.priceCents,
+      patientFirstName: patients.firstName,
+      patientLastName: patients.lastName,
       patientBirthDate: patients.birthDate,
       patientPriorityFlag: patients.priorityFlag,
       patientHesitant: patients.hesitant,
@@ -362,9 +376,15 @@ export async function listAppointmentsInRange(
 
   return rows.map((r) => ({
     ...r.appointment,
+    // El nombre de la ficha manda: el de la cita es una copia de cuando se
+    // creó, y corregirlo en la ficha tiene que verse en el calendario.
+    patientName: r.patientFirstName
+      ? patientFullName({ firstName: r.patientFirstName, lastName: r.patientLastName })
+      : r.appointment.patientName,
     professionalName: r.professionalName,
     professionalColor: r.professionalColor,
     treatmentName: r.treatmentName ?? null,
+    treatmentPriceCents: r.treatmentPriceCents ?? null,
     patientBirthDate: r.patientBirthDate ?? null,
     patientPriorityFlag: r.patientPriorityFlag ?? false,
     patientHesitant: r.patientHesitant ?? false,
@@ -420,6 +440,11 @@ export interface AvailabilityParams {
    * primeras; en el resto no cambia nada.
    */
   firstVisit?: boolean;
+  /**
+   * Cita que se está moviendo: no ocupa su propio hueco. Sin esto, al mover
+   * una cita su hora y las de al lado salían como ocupadas por ella misma.
+   */
+  excludeAppointmentId?: string;
 }
 
 export interface AvailabilityResult {
@@ -475,6 +500,9 @@ export async function getAvailability(
           inArray(agendaAppointments.status, BUSY_STATUSES),
           lt(agendaAppointments.startsAt, rangeEnd),
           gte(agendaAppointments.endsAt, rangeStart),
+          ...(params.excludeAppointmentId
+            ? [ne(agendaAppointments.id, params.excludeAppointmentId)]
+            : []),
         ),
       ),
     db
@@ -599,10 +627,23 @@ export async function countRedFlagsByPatientKey(
   );
 }
 
+/** "Mamá: Vanesa" — el titular del teléfono, para leerlo encima del número. */
+function phoneOwnerOf(guardians: Guardian[], contactName: string | null): string | null {
+  const owner = primaryGuardian(guardians);
+  if (owner?.name.trim()) {
+    return owner.role === 'NINGUNO'
+      ? owner.name.trim()
+      : `${GUARDIAN_ROLE_LABELS[owner.role]}: ${owner.name.trim()}`;
+  }
+  return contactName?.trim() || null;
+}
+
 export interface PatientSummary {
   patientKey: string;
   patientName: string;
   patientPhone: string | null;
+  /** "Mamá: Vanesa": quién es el titular del teléfono (pacientes-persona). */
+  phoneOwner: string | null;
   patientEmail: string | null;
   ghlContactId: string | null;
   /** Sólo en clínicas que llevan a sus pacientes como personas. */
@@ -633,11 +674,21 @@ export async function listAgendaPatients(
     where.push(eq(agendaAppointments.professionalId, opts.professionalId));
   }
   if (opts.search?.trim()) {
-    const q = `%${opts.search.trim().toLowerCase()}%`;
+    // Sin tildes ni mayúsculas, y por la FICHA cuando la cita tiene paciente:
+    // `patient_name` es el nombre copiado al crear la cita y puede estar viejo.
+    const search = opts.search.trim();
+    const digits = phoneDigitsQuery(search);
+    const byPerson = patientSearchFilter(search);
     const filter = or(
-      sql`lower(${agendaAppointments.patientName}) like ${q}`,
-      sql`lower(coalesce(${agendaAppointments.patientPhone}, '')) like ${q}`,
-      sql`lower(coalesce(${agendaAppointments.patientEmail}, '')) like ${q}`,
+      digits
+        ? sql`regexp_replace(coalesce(${agendaAppointments.patientPhone}, ''), '[^0-9]', '', 'g') like ${`%${digits}%`}`
+        : foldedWordsFilter(
+            sql`${agendaAppointments.patientName} || ' ' || coalesce(${agendaAppointments.patientEmail}, '')`,
+            search,
+          ),
+      byPerson
+        ? sql`${agendaAppointments.patientId} in (select ${patients.id} from ${patients} left join ${whatsappContacts} on ${whatsappContacts.id} = ${patients.contactId} where ${patients.tenantId} = ${tenantId} and ${byPerson})`
+        : undefined,
     );
     if (filter) where.push(filter);
   }
@@ -701,6 +752,7 @@ export async function listAgendaPatients(
       patientKey: r.patientKey,
       patientName: person?.fullName || r.patientName,
       patientPhone: person?.contactPhone ?? r.patientPhone,
+      phoneOwner: person ? phoneOwnerOf(person.guardians, person.contactName) : null,
       patientEmail: person?.contactEmail ?? r.patientEmail,
       ghlContactId: r.ghlContactId,
       patientId: person?.id ?? null,
@@ -738,12 +790,7 @@ async function personsWithoutAppointments(
 ): Promise<PatientSummary[]> {
   const where = [eq(patients.tenantId, tenantId), eq(patients.active, true)];
   if (opts.search?.trim()) {
-    const q = `%${opts.search.trim().toLowerCase()}%`;
-    const filter = or(
-      sql`lower(${patients.firstName} || ' ' || coalesce(${patients.lastName}, '')) like ${q}`,
-      sql`lower(coalesce(${whatsappContacts.phoneE164}, '')) like ${q}`,
-      sql`lower(coalesce(${whatsappContacts.name}, '')) like ${q}`,
-    );
+    const filter = patientSearchFilter(opts.search.trim());
     if (filter) where.push(filter);
   }
   const rows = await db
@@ -756,6 +803,8 @@ async function personsWithoutAppointments(
       hesitant: patients.hesitant,
       hesitantNote: patients.hesitantNote,
       priorRedFlags: patients.priorRedFlags,
+      guardians: patients.guardians,
+      contactName: whatsappContacts.name,
       phone: whatsappContacts.phoneE164,
       email: whatsappContacts.email,
       ghlContactId: whatsappContacts.ghlContactId,
@@ -775,6 +824,7 @@ async function personsWithoutAppointments(
       patientKey,
       patientName: patientFullName(r),
       patientPhone: r.phone,
+      phoneOwner: phoneOwnerOf(parseGuardians(r.guardians), r.contactName),
       patientEmail: r.email,
       ghlContactId: r.ghlContactId,
       patientId: r.id,
@@ -808,12 +858,14 @@ async function patientsWithoutAppointments(
 ): Promise<PatientSummary[]> {
   const where = [eq(whatsappContacts.tenantId, tenantId)];
   if (opts.search?.trim()) {
-    const q = `%${opts.search.trim().toLowerCase()}%`;
-    const filter = or(
-      sql`lower(coalesce(${whatsappContacts.name}, '')) like ${q}`,
-      sql`lower(${whatsappContacts.phoneE164}) like ${q}`,
-      sql`lower(coalesce(${whatsappContacts.email}, '')) like ${q}`,
-    );
+    const search = opts.search.trim();
+    const digits = phoneDigitsQuery(search);
+    const filter = digits
+      ? sql`regexp_replace(${whatsappContacts.phoneE164}, '[^0-9]', '', 'g') like ${`%${digits}%`}`
+      : foldedWordsFilter(
+          sql`coalesce(${whatsappContacts.name}, '') || ' ' || coalesce(${whatsappContacts.firstName}, '') || ' ' || coalesce(${whatsappContacts.lastName}, '') || ' ' || coalesce(${whatsappContacts.email}, '')`,
+          search,
+        );
     if (filter) where.push(filter);
   }
 
@@ -865,6 +917,7 @@ async function patientsWithoutAppointments(
       patientName:
         r.name?.trim() || [r.firstName, r.lastName].filter(Boolean).join(' ').trim() || r.phoneE164,
       patientPhone: r.phoneE164,
+      phoneOwner: null,
       patientEmail: r.email,
       ghlContactId: r.ghlContactId,
       patientId: null,

@@ -3,7 +3,7 @@
 import { setPatientMarksAction } from '@/app/(dashboard)/dashboard/agenda/actions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input, Switch } from '@/components/ui/input';
+import { Input, Select, Switch } from '@/components/ui/input';
 import { PRIORITY_LABELS, type PriorityDescription } from '@/lib/care-profile/policy';
 import {
   MAX_PRIOR_RED_FLAGS,
@@ -39,6 +39,7 @@ export function PatientMarks({
   hesitant,
   hesitantNote,
   redFlags,
+  siblingMark = null,
   canEdit,
 }: {
   patientId: string;
@@ -50,6 +51,8 @@ export function PatientMarks({
   hesitantNote: string | null;
   /** Contadas de la agenda + las de antes (`prior`). */
   redFlags: RedFlagCounts;
+  /** Etiqueta de hermanos en la agenda forzada a mano. Null = automática. */
+  siblingMark?: 'TWIN' | 'SIBLING' | 'NONE' | null;
   canEdit: boolean;
 }) {
   const router = useRouter();
@@ -63,6 +66,8 @@ export function PatientMarks({
   const [doubt, setDoubt] = React.useState(hesitant);
   const [doubtNote, setDoubtNote] = React.useState(hesitantNote ?? '');
   const [prior, setPrior] = React.useState(String(redFlags.prior));
+  const [sibling, setSibling] = React.useState<string>(siblingMark ?? 'AUTO');
+  const siblingId = React.useId();
   const priorId = React.useId();
 
   const priorValue = clampPrior(Number(prior || 0));
@@ -72,7 +77,8 @@ export function PatientMarks({
     (flag && reason !== (priorityReason ?? '')) ||
     doubt !== hesitant ||
     (doubt && doubtNote !== (hesitantNote ?? '')) ||
-    priorValue !== redFlags.prior;
+    priorValue !== redFlags.prior ||
+    sibling !== (siblingMark ?? 'AUTO');
   const liveFlags = { ...redFlags, prior: priorValue };
   const flagsTotal = totalRedFlags(liveFlags);
 
@@ -86,6 +92,7 @@ export function PatientMarks({
         hesitant: doubt,
         hesitantNote: doubtNote,
         priorRedFlags: priorValue,
+        siblingMark: sibling === 'AUTO' ? null : (sibling as 'TWIN' | 'SIBLING' | 'NONE'),
       });
       if (result.ok) {
         setSaved(true);
@@ -230,6 +237,30 @@ export function PatientMarks({
             className="w-20 text-right"
           />
         </div>
+      </div>
+
+      <div className="grid gap-1.5 rounded-[14px] border border-(--color-border) px-3 py-2.5 text-[13px] text-zinc-700">
+        <label htmlFor={siblingId} className="font-semibold">
+          Hermanos en la agenda
+        </label>
+        <Select
+          id={siblingId}
+          value={sibling}
+          disabled={!canEdit}
+          onChange={(e) => {
+            setSibling(e.target.value);
+            setSaved(false);
+          }}
+        >
+          <option value="AUTO">Automático (por teléfono y fecha de nacimiento)</option>
+          <option value="TWIN">Gemelo/mellizo (G/M)</option>
+          <option value="SIBLING">Hermano (H)</option>
+          <option value="NONE">Ninguno</option>
+        </Select>
+        <span className="text-[12px] text-zinc-600">
+          En automático, G/M sale con un hermano de la misma fecha de nacimiento y H cuando un
+          hermano tiene cita el mismo día.
+        </span>
       </div>
 
       {error && (

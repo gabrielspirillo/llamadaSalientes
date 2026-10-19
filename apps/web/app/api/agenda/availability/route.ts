@@ -47,12 +47,17 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Duración inválida' }, { status: 400 });
     }
 
+    // Al mover una cita: no se cuenta a sí misma, y si es primera visita se
+    // aplican sus reglas igual que al darla de alta.
+    const exclude = url.searchParams.get('exclude');
     const result = await getAvailability(ctx.tenantId, {
       professionalId,
       fromDateKey: from,
       toDateKey: to,
       durationMinutes: duration,
       limit: 120,
+      firstVisit: url.searchParams.get('firstVisit') === '1',
+      ...(exclude && /^[0-9a-f-]{36}$/i.test(exclude) ? { excludeAppointmentId: exclude } : {}),
     });
 
     return NextResponse.json({

@@ -2,6 +2,7 @@ import 'server-only';
 import { and, desc, eq, isNotNull, lt, sql } from 'drizzle-orm';
 
 import { describePatientKey, phoneFromPatientKey } from '@/lib/agenda/patients';
+import { getCareProfile } from '@/lib/care-profile/queries';
 import { db } from '@/lib/db/client';
 import { agendaAppointments, clinicalNotes } from '@/lib/db/schema';
 
@@ -85,6 +86,15 @@ export async function inactivePatients(
   cutoff: Date,
   limit = 200,
 ): Promise<SweepPatient[]> {
+  // Una clínica que no usa "Atendida" (la oculta en su perfil) nunca marca
+  // COMPLETED: para ella, visita es toda cita pasada que no se anuló ni faltó.
+  // Si no, el barrido no vería ninguna visita y no avisaría de nadie.
+  const profile = await getCareProfile(tenantId).catch(() => null);
+  const visible = profile?.bookingPolicy.visibleStatuses;
+  const completedHidden = Boolean(visible && !visible.includes('COMPLETED'));
+  const visited = completedHidden
+    ? sql`(${agendaAppointments.status} = 'COMPLETED' or (${agendaAppointments.startsAt} < now() and ${agendaAppointments.status} not in ('CANCELLED', 'NO_SHOW')))`
+    : eq(agendaAppointments.status, 'COMPLETED');
   const rows = await db
     .select({
       patientKey: agendaAppointments.patientKey,
@@ -93,9 +103,7 @@ export async function inactivePatients(
       lastVisitAt: sql<Date>`max(${agendaAppointments.startsAt})`,
     })
     .from(agendaAppointments)
-    .where(
-      and(eq(agendaAppointments.tenantId, tenantId), eq(agendaAppointments.status, 'COMPLETED')),
-    )
+    .where(and(eq(agendaAppointments.tenantId, tenantId), visited))
     .groupBy(agendaAppointments.patientKey)
     // La fecha va como ISO con cast explícito: dentro de un fragmento `sql`
     // crudo el driver no sabe el tipo del parámetro y una Date suelta revienta

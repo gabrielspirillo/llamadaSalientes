@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input, Label, Select, Textarea } from '@/components/ui/input';
+import { PhoneInput } from '@/components/ui/phone-input';
 import { cn } from '@/lib/cn';
 import { AlertTriangle, CalendarPlus, Loader2, Sparkles, UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -86,6 +87,7 @@ export function AppointmentDialog({
   professionals,
   treatments,
   patientSearch = false,
+  phonePrefix = null,
   onClose,
 }: {
   seed: AppointmentDialogSeed;
@@ -93,6 +95,8 @@ export function AppointmentDialog({
   treatments: Treatment[];
   /** Clínica con perfil: el paciente se elige de la ficha, buscando en el servidor. */
   patientSearch?: boolean;
+  /** Prefijo del país de la clínica ("+34"): se teclean sólo los nueve dígitos. */
+  phonePrefix?: string | null;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -112,6 +116,10 @@ export function AppointmentDialog({
   const [patientEmail, setPatientEmail] = React.useState('');
   const [notes, setNotes] = React.useState('');
   const [allowOutsideHours, setAllowOutsideHours] = React.useState(false);
+  // "¿Quieres que te avisemos si se libera un hueco antes?": se pregunta en
+  // cada reserva (es por cita, no por paciente).
+  const [advance, setAdvance] = React.useState<'NONE' | 'ACCEPTS' | 'NO_MOVE'>('NONE');
+  const [advanceNote, setAdvanceNote] = React.useState('');
   // Sólo aparece cuando el servidor rechazó la cita por una regla de reserva
   // (primeras visitas). Recepción decide; los agentes nunca pueden.
   const [policyBlocked, setPolicyBlocked] = React.useState(false);
@@ -255,6 +263,8 @@ export function AppointmentDialog({
         notes,
         allowOutsideHours,
         overridePolicy,
+        advancePreference: advance === 'NONE' ? null : advance,
+        advanceNote: advance === 'ACCEPTS' ? advanceNote : '',
       });
       if (result.ok) {
         onClose();
@@ -425,6 +435,7 @@ export function AppointmentDialog({
                   <span>No existe ningún paciente con ese nombre.</span>
                   <PatientDialog
                     mode="create"
+                    phonePrefix={phonePrefix}
                     seed={{ ...splitName(patientName), phone: patientPhone }}
                     onCreated={(created) => pickPatient({ ...created, name: created.fullName })}
                     trigger={
@@ -457,11 +468,12 @@ export function AppointmentDialog({
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="ap-phone">Teléfono</Label>
-              <Input
+              <PhoneInput
                 id="ap-phone"
                 value={patientPhone}
-                onChange={(e) => setPatientPhone(e.target.value)}
-                placeholder="+34 600 000 000"
+                onChange={setPatientPhone}
+                dialPrefix={phonePrefix}
+                placeholder={phonePrefix ? '600 000 000' : '+34 600 000 000'}
               />
             </div>
           </div>
@@ -485,6 +497,45 @@ export function AppointmentDialog({
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Motivo, avisos, alergias…"
             />
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label>¿Quiere que le avisemos si se libera un hueco antes?</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {(
+                [
+                  ['NONE', 'Sin indicar'],
+                  ['ACCEPTS', '↑ Quiere adelantar'],
+                  ['NO_MOVE', '— No mover'],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setAdvance(value)}
+                  className={cn(
+                    'rounded-full px-3 py-1 text-[12px] font-semibold transition-colors',
+                    advance === value
+                      ? value === 'ACCEPTS'
+                        ? 'bg-emerald-600 text-white'
+                        : value === 'NO_MOVE'
+                          ? 'bg-zinc-700 text-white'
+                          : 'bg-brand-600 text-white'
+                      : 'bg-white text-zinc-700 ring-1 ring-(--color-border) hover:bg-zinc-50',
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {advance === 'ACCEPTS' && (
+              <Input
+                value={advanceNote}
+                maxLength={200}
+                onChange={(e) => setAdvanceNote(e.target.value)}
+                placeholder="Días y horario en que puede venir (ej.: desde las 18h)"
+              />
+            )}
           </div>
 
           <label className="flex items-start gap-2 text-[13px] text-zinc-600">

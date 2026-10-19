@@ -23,6 +23,16 @@ export interface CalendarItem {
   badge: string | null;
   /** Primera visita del paciente: el calendario la pinta en otro color. */
   firstVisit: boolean;
+  /** G/M = gemelo/mellizo; H = hermano con cita ese día. Sólo con perfil. */
+  familyTag: 'GM' | 'H' | null;
+  /** El cobro de la cita, si hay: el chip pinta datáfono o euro. */
+  payment: CalendarPayment | null;
+  /** Precio del tratamiento: importe por defecto al cobrar desde la cita. */
+  treatmentPriceCents: number | null;
+  /** ↑ quiere adelantar / — no quiere que se la muevan. Null = no dijo. */
+  advancePreference: 'ACCEPTS' | 'NO_MOVE' | null;
+  /** Horario al que puede venir ("desde las 18h"). */
+  advanceNote: string | null;
   /** Familia que duda y banderas rojas. Sólo en clínicas con perfil; si no, null. */
   signals: CalendarSignals | null;
   treatmentId: string | null;
@@ -42,6 +52,12 @@ export interface CalendarItem {
   /** true si la cita se sale del día (empezó ayer o termina mañana). */
   continuesBefore: boolean;
   continuesAfter: boolean;
+}
+
+export interface CalendarPayment {
+  paid: boolean;
+  method: 'CARD' | 'CASH' | 'BIZUM' | 'TRANSFER' | null;
+  amountCents: number | null;
 }
 
 export interface CalendarSignals {
@@ -72,6 +88,11 @@ interface SourceAppointment {
   patientAge?: string | null;
   badge?: string | null;
   firstVisit?: boolean;
+  familyTag?: 'GM' | 'H' | null;
+  payment?: CalendarPayment | null;
+  treatmentPriceCents?: number | null;
+  advancePreference?: 'ACCEPTS' | 'NO_MOVE' | null;
+  advanceNote?: string | null;
   signals?: CalendarSignals | null;
   treatmentId: string | null;
   treatmentName: string | null;
@@ -127,6 +148,11 @@ export function toCalendarItems(
         patientAge: a.patientAge ?? null,
         badge: a.badge ?? null,
         firstVisit: a.firstVisit ?? false,
+        familyTag: a.familyTag ?? null,
+        payment: a.payment ?? null,
+        treatmentPriceCents: a.treatmentPriceCents ?? null,
+        advancePreference: a.advancePreference ?? null,
+        advanceNote: a.advanceNote ?? null,
         signals: a.signals ?? null,
         treatmentId: a.treatmentId,
         treatmentName: a.treatmentName,
@@ -194,8 +220,10 @@ export function computeDayWindow(
   shifts: { startMinute: number; endMinute: number }[],
   items: { startMinute: number; endMinute: number }[],
 ): { startMinute: number; endMinute: number } {
-  let start = 8 * 60;
-  let end = 20 * 60;
+  // De 10 a 22 por defecto (lo que pidió Respinens, que atiende hasta las
+  // 20:30); el horario de cada clínica la estira si empieza antes.
+  let start = 10 * 60;
+  let end = 22 * 60;
 
   const mins = [...shifts.map((s) => s.startMinute), ...items.map((i) => i.startMinute)];
   const maxs = [...shifts.map((s) => s.endMinute), ...items.map((i) => i.endMinute)];

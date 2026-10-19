@@ -2,6 +2,7 @@ import { CalendarView } from '@/components/agenda/calendar-view';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Button } from '@/components/ui/button';
 import { getAgendaContext } from '@/lib/agenda/auth';
+import { paymentsForAppointments } from '@/lib/agenda/charges';
 import { patientIdFromKey, phoneFromPatientKey } from '@/lib/agenda/patients';
 import {
   countRedFlagsByPatientKey,
@@ -18,10 +19,11 @@ import {
 } from '@/lib/agenda/view';
 import { describeAge } from '@/lib/care-profile/policy';
 import { getCareProfile } from '@/lib/care-profile/queries';
+import { type FamilyPatient, familyTagFor, groupFamilies } from '@/lib/care-profile/siblings';
 import { EMPTY_RED_FLAGS, type RedFlagCounts } from '@/lib/care-profile/signals';
 import { db } from '@/lib/db/client';
 import { professionalShifts, treatments } from '@/lib/db/schema';
-import { getPatientPerson } from '@/lib/patients/persons';
+import { getPatientPerson, listFamilyPatients } from '@/lib/patients/persons';
 import { localDateKey, zonedToUtc } from '@/lib/tasks/tz';
 import { and, asc, eq } from 'drizzle-orm';
 import { CalendarDays, Users } from 'lucide-react';
@@ -144,14 +146,43 @@ export default async function AgendaPage({
       ),
   ]);
 
-  // Banderas rojas de los pacientes que salen en pantalla, contando TODAS sus
-  // citas (no sólo las del rango): recepción las ve al abrir el día.
-  const redFlagsByKey = careProfile
-    ? await countRedFlagsByPatientKey(
-        ctx.tenantId,
-        appointments.map((a) => a.patientKey),
-      ).catch(() => new Map<string, RedFlagCounts>())
-    : new Map<string, RedFlagCounts>();
+  // Lo que depende de las citas del rango, en una sola tanda:
+  // - banderas rojas, contando TODAS las citas del paciente (no sólo las del rango);
+  // - el cobro de cada cita (el chip pinta datáfono o euro);
+  // - los pacientes de la clínica para saber quién es hermano o gemelo.
+  const [redFlagsByKey, paymentsById, familyPatients] = await Promise.all([
+    careProfile
+      ? countRedFlagsByPatientKey(
+          ctx.tenantId,
+          appointments.map((a) => a.patientKey),
+        ).catch(() => new Map<string, RedFlagCounts>())
+      : Promise.resolve(new Map<string, RedFlagCounts>()),
+    paymentsForAppointments(
+      ctx.tenantId,
+      appointments.map((a) => a.id),
+    ).catch(() => new Map()),
+    careProfile && appointments.some((a) => a.patientId)
+      ? listFamilyPatients(ctx.tenantId).catch(() => [])
+      : Promise.resolve([]),
+  ]);
+
+  // Hermanos (H) y gemelos/mellizos (G/M), sobre los días que se ven.
+  const families = groupFamilies(familyPatients);
+  const familyById = new Map(familyPatients.map((p) => [p.id, p]));
+  const datesByPatient = new Map<string, Set<string>>();
+  for (const a of appointments) {
+    if (!a.patientId) continue;
+    const day = localDateKey(a.startsAt, timezone);
+    datesByPatient.set(a.patientId, (datesByPatient.get(a.patientId) ?? new Set()).add(day));
+  }
+  const familyTagOf = (patientId: string | null, startsAt: Date) => {
+    const me = patientId ? familyById.get(patientId) : undefined;
+    if (!me) return null;
+    const siblings = (families.get(me.id) ?? [])
+      .map((id) => familyById.get(id))
+      .filter((x): x is FamilyPatient => Boolean(x));
+    return familyTagFor(me, localDateKey(startsAt, timezone), siblings, datesByPatient);
+  };
 
   const items = toCalendarItems(
     appointments.map((a) => ({
@@ -167,6 +198,11 @@ export default async function AgendaPage({
       patientAge: a.patientBirthDate ? describeAge(a.patientBirthDate, todayKey) : null,
       badge: careProfile && a.isFirstVisit ? '1ª visita' : null,
       firstVisit: Boolean(careProfile && a.isFirstVisit),
+      familyTag: careProfile ? familyTagOf(a.patientId, a.startsAt) : null,
+      payment: paymentsById.get(a.id) ?? null,
+      treatmentPriceCents: a.treatmentPriceCents,
+      advancePreference: a.advancePreference ?? null,
+      advanceNote: a.advanceNote ?? null,
       signals: careProfile
         ? {
             redFlags: {
@@ -257,6 +293,8 @@ export default async function AgendaPage({
           canWrite={ctx.canWriteAppointments}
           lockedToProfessional={lockedToProfessional}
           newAppointmentFor={newAppointmentFor}
+          visibleStatuses={careProfile?.bookingPolicy.visibleStatuses ?? null}
+          showFamilyTags={Boolean(careProfile)}
         />
       </div>
     </>

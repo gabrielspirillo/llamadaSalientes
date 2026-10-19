@@ -23,6 +23,8 @@ import {
 import { describeAge } from '@/lib/care-profile/policy';
 import { getCareProfile } from '@/lib/care-profile/queries';
 import { EMPTY_RED_FLAGS, type RedFlagCounts } from '@/lib/care-profile/signals';
+import { formatPhoneDisplay } from '@/lib/patients/names';
+import { dialPrefixForTimezone } from '@/lib/phone-prefix';
 import { localDateKey } from '@/lib/tasks/tz';
 import { Contact, Search } from 'lucide-react';
 import Link from 'next/link';
@@ -120,7 +122,7 @@ export default async function AgendaPacientesPage({
             <div className="flex flex-wrap gap-2">
               {/* Alta masiva: sólo el administrador de la clínica (o Futura). */}
               {ctx.canManageProfessionals && <ContactsImportDialog />}
-              <PatientDialog mode="create" />
+              <PatientDialog mode="create" phonePrefix={dialPrefixForTimezone(timezone)} />
             </div>
           ) : undefined
         }
@@ -220,7 +222,13 @@ export default async function AgendaPacientesPage({
                         </TD>
                       )}
                       <TD className="text-[13px] text-zinc-600">
-                        {p.patientPhone ?? p.patientEmail ?? '—'}
+                        {/* El titular encima del número: "Mamá: Vanesa" / +34 646 55 66 19. */}
+                        {p.phoneOwner && (
+                          <span className="block font-semibold text-zinc-800">{p.phoneOwner}</span>
+                        )}
+                        {p.patientPhone
+                          ? formatPhoneDisplay(p.patientPhone)
+                          : (p.patientEmail ?? '—')}
                       </TD>
                       <TD className="tabular-nums text-zinc-600">{p.totalAppointments}</TD>
                       <TD className="text-[13px] text-zinc-600">

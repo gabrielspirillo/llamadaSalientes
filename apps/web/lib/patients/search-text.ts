@@ -5,9 +5,13 @@
 // extensión `unaccent` porque instalarla pide superusuario y no queremos que
 // la búsqueda dependa de cómo se creó la base: `translate` es estándar.
 
-/** Letras con tilde (ya en minúscula) y su versión sin tilde, posición a posición. */
-export const FOLD_FROM = 'áàäâãåéèëêíìïîóòöôõúùüûñçý';
-export const FOLD_TO = 'aaaaaaeeeeiiiiooooouuuuncy';
+/**
+ * Letras con tilde y su versión sin tilde, posición a posición. Van también
+ * las mayúsculas: `lower()` de Postgres depende del LC_CTYPE de la base, y con
+ * locale C no baja la "Á" —"Álvaro" no salía buscando "alvaro"—.
+ */
+export const FOLD_FROM = 'áàäâãåéèëêíìïîóòöôõúùüûñçýÁÀÄÂÃÅÉÈËÊÍÌÏÎÓÒÖÔÕÚÙÜÛÑÇÝ';
+export const FOLD_TO = 'aaaaaaeeeeiiiiooooouuuuncyaaaaaaeeeeiiiiooooouuuuncy';
 
 /** Minúsculas y sin tildes: lo mismo que hace `foldSql` del lado de Postgres. */
 export function foldSearchText(value: string): string {

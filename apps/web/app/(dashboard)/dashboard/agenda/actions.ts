@@ -12,6 +12,7 @@ import { type PaymentMethod, parseAmountToCents } from '@/lib/agenda/billing';
 import {
   assertChargeAppointmentInScope,
   assertChargeInScope,
+  markAppointmentUnpaid,
   registerPayment,
 } from '@/lib/agenda/charges';
 import { getAppointment } from '@/lib/agenda/queries';
@@ -34,6 +35,7 @@ import {
   replaceShifts,
   rescheduleAppointment,
   saveClinicalNote,
+  setAdvancePreference,
   setProfessionalTreatments,
   updateAppointment,
   updateProfessional,
@@ -473,6 +475,57 @@ export async function updateAppointmentAction(
     await updateAppointment(ctx, appointmentId, patch);
     revalidateAgenda();
     revalidatePath('/dashboard/agenda/pacientes');
+    return { ok: true };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+/** Adelantar la cita: ↑ quiere, — no quiere que se la muevan, y el horario. */
+export async function setAdvancePreferenceAction(
+  appointmentId: string,
+  input: { preference: 'ACCEPTS' | 'NO_MOVE' | null; note?: string | null },
+): Promise<ActionResult> {
+  try {
+    const ctx = await requireAgendaWriter();
+    await assertAppointmentInScope(
+      ctx.tenantId,
+      appointmentId,
+      ctx.scope === 'OWN' ? ctx.professional?.id : undefined,
+    );
+    await setAdvancePreference(ctx, appointmentId, input);
+    revalidateAgenda();
+    revalidatePath('/dashboard/waitlist');
+    return { ok: true };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+/** "No pagado" desde la cita: el cobro vuelve a pendiente. */
+export async function markAppointmentUnpaidAction(appointmentId: string): Promise<ActionResult> {
+  try {
+    const ctx = await requireAgendaWriter();
+    await assertChargeAppointmentInScope(
+      ctx.tenantId,
+      appointmentId,
+      ctx.scope === 'OWN' ? ctx.professional?.id : undefined,
+    );
+    const row = await markAppointmentUnpaid(
+      { tenantId: ctx.tenantId, userId: ctx.userId },
+      appointmentId,
+    );
+    if (row) {
+      await recordAudit({
+        tenantId: ctx.tenantId,
+        actorUserId: ctx.userId,
+        action: 'update',
+        entity: 'patient_charge',
+        entityId: null,
+        after: { patientKey: row.patientKey, appointmentId, status: 'PENDING' },
+      }).catch(() => undefined);
+    }
+    revalidateAgenda();
     return { ok: true };
   } catch (err) {
     return fail(err);

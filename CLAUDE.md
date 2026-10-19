@@ -868,6 +868,45 @@ duplicadas, la IA podía agendar en la que no tiene la historia clínica.
   del consentimiento, los comprobantes, los documentos de Finanzas y los
   adjuntos del chat abrían "No se puede acceder a este sitio".
 
+## Ajustes de Respinens del 19/10 (agenda de papel → agenda)
+
+La clínica marca su agenda de papel con flechas, (H), (1), [D]… y lo usa a
+diario para distinguir a cada paciente de un vistazo. Migración `0048`.
+
+- **Chip del calendario**, en el orden en que lo lee: ↑/— (adelantar) · tipo
+  (1ª visita naranja, G/M azul, H rosa; también el borde) · hora · nombre ·
+  edad · estado (fondo: Agendada teal, Confirmada verde, No se presentó rojo) ·
+  pago (datáfono = tarjeta, € = efectivo, ✓ = Bizum/transferencia).
+- **Estados visibles**: `booking_policy.visibleStatuses` del perfil (Respinens:
+  Agendada, Confirmada, No se presentó). Se OCULTAN en leyenda, hoja de la cita
+  y tarjeta "Hoy"; el enum no cambia. Con COMPLETED oculto, `inactivePatients`
+  cuenta como visita toda cita pasada no anulada ni faltada.
+- **Hermanos** (`lib/care-profile/siblings.ts`, puro con tests): familia = mismo
+  contacto o teléfono de tutor; G/M = hermano con la misma fecha de nacimiento;
+  H = hermano con cita ESE día. `patients.sibling_mark` lo fuerza a mano
+  (Marcas del paciente).
+- **Adelantar**: `agenda_appointments.advance_preference` (ACCEPTS | NO_MOVE)
+  + `advance_note`, POR CITA. Se pregunta en Nueva cita, se cambia en la hoja de
+  la cita, y Lista de espera muestra "Quieren adelantar su cita". Nada se envía
+  solo (Fase 1).
+- **Pago desde la cita**: botones Datáfono/Efectivo/Bizum/Transferencia y "No
+  pagado" en la hoja (`registerPaymentAction`, `markAppointmentUnpaidAction`);
+  el calendario carga los cobros del rango en UNA consulta
+  (`paymentsForAppointments`).
+- **Mover cita** con "Huecos libres ese día": `getAvailability` acepta
+  `excludeAppointmentId` (la cita no se bloquea a sí misma).
+- **Nombre de la ficha manda**: `listAppointmentsInRange` pinta el nombre de
+  `patients`, y `updatePatient` reescribe `patient_name` de sus citas y notas.
+- **Búsqueda sin tildes** en Agenda → Pacientes (`foldedWordsFilter`,
+  `patientSearchFilter`; `FOLD_FROM` incluye mayúsculas con tilde porque
+  `lower()` con locale C no las baja).
+- **+34 por defecto**: `PhoneInput` con el prefijo de `dialPrefixForTimezone`
+  (nada fijo en el código); los teléfonos de tutores se normalizan al guardar.
+- **Fecha de nacimiento < 7 días**: el diálogo pide confirmarla ("0 días" era
+  la fecha de hoy puesta sin querer).
+- Calendario de 10:00 a 22:00 por defecto; el titular del teléfono ("Mamá:
+  Vanesa") encima del número en el listado de pacientes.
+
 ## Señales de conducta del paciente (Respinens): duda y banderas rojas
 
 La clínica las llevaba con emojis en el nombre de cada contacto de Google (🤔

@@ -3,16 +3,19 @@ import Link from 'next/link';
 
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardTopbar } from '@/components/ui/card';
 import { type HistoryRow, HistoryTable } from '@/components/waitlist/HistoryTable';
 import { type OfferRow, OffersTable } from '@/components/waitlist/OffersTable';
 import { type QueueRow, QueueTable } from '@/components/waitlist/QueueTable';
 import { WaitlistTabs } from '@/components/waitlist/Tabs';
 import { db } from '@/lib/db/client';
 import {
+  agendaAppointments,
   appointmentsCache,
   cancelledSlots,
   clinicSettings,
   patientsCache,
+  professionals,
   schedulingOffers,
   treatments,
   waitlistEntries,
@@ -21,7 +24,7 @@ import {
 import { resolveContactNames } from '@/lib/patients/registry';
 import { getCurrentTenant } from '@/lib/tenant';
 import { getOrCreateWaitlistSettings } from '@/lib/waitlist/settings';
-import { ListChecks, Settings2 } from 'lucide-react';
+import { ArrowUp, ListChecks, Settings2 } from 'lucide-react';
 import { after } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -325,6 +328,8 @@ export default async function WaitlistPage() {
         }
       />
 
+      <AdvanceRequests tenantId={tenant.id} tz={tz} />
+
       <WaitlistTabs
         queueCount={queueRows.length}
         offersCount={activeOffers.length}
@@ -334,6 +339,109 @@ export default async function WaitlistPage() {
         history={<HistoryTable rows={historyRows} tz={tz} totals={totals} />}
       />
     </>
+  );
+}
+
+/**
+ * Las citas marcadas en la agenda con ↑ (quiere adelantar), de la más próxima a
+ * la más lejana, con el horario al que pueden venir. Es la "lista" que la
+ * clínica llevaba con flechas en el papel: cuando se libera un hueco, aquí ve a
+ * quién llamar. No envía nada sola.
+ */
+async function AdvanceRequests({ tenantId, tz }: { tenantId: string; tz: string }) {
+  const rows = await db
+    .select({
+      id: agendaAppointments.id,
+      startsAt: agendaAppointments.startsAt,
+      patientKey: agendaAppointments.patientKey,
+      patientName: agendaAppointments.patientName,
+      patientPhone: agendaAppointments.patientPhone,
+      note: agendaAppointments.advanceNote,
+      professionalName: professionals.fullName,
+      treatmentName: treatments.name,
+    })
+    .from(agendaAppointments)
+    .innerJoin(professionals, eq(professionals.id, agendaAppointments.professionalId))
+    .leftJoin(treatments, eq(treatments.id, agendaAppointments.treatmentId))
+    .where(
+      and(
+        eq(agendaAppointments.tenantId, tenantId),
+        eq(agendaAppointments.advancePreference, 'ACCEPTS'),
+        gte(agendaAppointments.startsAt, new Date()),
+        inArray(agendaAppointments.status, ['SCHEDULED', 'CONFIRMED']),
+      ),
+    )
+    .orderBy(agendaAppointments.startsAt)
+    .limit(100);
+
+  const fmt = new Intl.DateTimeFormat('es-ES', {
+    timeZone: tz,
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  const dayKey = new Intl.DateTimeFormat('en-CA', { timeZone: tz });
+
+  return (
+    <Card className="mt-5">
+      <CardTopbar
+        icon={<ArrowUp className="h-4 w-4" />}
+        title={`Quieren adelantar su cita (${rows.length})`}
+      />
+      <CardContent>
+        {rows.length === 0 ? (
+          <p className="text-[13px] text-zinc-600">
+            Nadie marcado. En la agenda, abre una cita y pulsa “Quiere adelantar”: aparecerá aquí
+            con el horario al que puede venir.
+          </p>
+        ) : (
+          <ul className="divide-y divide-(--color-border-subtle)">
+            {rows.map((r) => (
+              <li
+                key={r.id}
+                className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2.5 text-[13px]"
+              >
+                <span className="min-w-[180px] flex-1">
+                  <Link
+                    href={`/dashboard/agenda/pacientes/${encodeURIComponent(r.patientKey)}`}
+                    className="font-bold text-zinc-900 hover:underline"
+                  >
+                    {r.patientName}
+                  </Link>
+                  <span className="block text-zinc-600">
+                    Cita: {fmt.format(r.startsAt)} · {r.professionalName}
+                    {r.treatmentName ? ` · ${r.treatmentName}` : ''}
+                  </span>
+                </span>
+                <span className="min-w-[160px] text-zinc-700">
+                  {r.note ? (
+                    <>Puede: {r.note}</>
+                  ) : (
+                    <span className="text-zinc-400">Sin horario indicado</span>
+                  )}
+                </span>
+                {r.patientPhone && (
+                  <a
+                    href={`tel:${r.patientPhone}`}
+                    className="font-semibold text-brand-700 hover:underline"
+                  >
+                    {r.patientPhone}
+                  </a>
+                )}
+                <Link
+                  href={`/dashboard/agenda?date=${dayKey.format(r.startsAt)}`}
+                  className="text-[12px] font-semibold text-zinc-600 hover:underline"
+                >
+                  Ver en la agenda
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

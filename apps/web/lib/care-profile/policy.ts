@@ -314,6 +314,15 @@ export const bookingPolicySchema = z.object({
     .default(null),
   /** Hermanos que vienen juntos se agendan en huecos seguidos. */
   siblingsConsecutive: z.boolean().default(false),
+  /**
+   * Estados de cita que la clínica usa. Null = todos. Una clínica que trabaja
+   * sola en recepción no marca "En sala", "En gabinete" ni "Atendida": se
+   * ocultan del panel, no se borran del modelo.
+   */
+  visibleStatuses: z
+    .array(z.enum(['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'NO_SHOW']))
+    .nullable()
+    .default(null),
 });
 export type BookingPolicy = z.infer<typeof bookingPolicySchema>;
 

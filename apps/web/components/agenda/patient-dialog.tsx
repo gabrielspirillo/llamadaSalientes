@@ -15,6 +15,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input, Label, Select, Textarea } from '@/components/ui/input';
+import { PhoneInput } from '@/components/ui/phone-input';
 import {
   type AnamnesisAnswers,
   type AnamnesisItem,
@@ -108,6 +109,7 @@ export function PatientDialog({
   answers = {},
   seed,
   onCreated,
+  phonePrefix = null,
 }: {
   mode: 'create' | 'edit';
   patient?: PatientDialogValues;
@@ -120,6 +122,8 @@ export function PatientDialog({
   seed?: { firstName: string; lastName: string; phone: string };
   /** Si se da, al crear se devuelve el paciente en vez de ir a su ficha. */
   onCreated?: (created: { id: string; fullName: string; phone: string | null }) => void;
+  /** Prefijo del país de la clínica ("+34"): se teclean sólo los nueve dígitos. */
+  phonePrefix?: string | null;
 }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
@@ -138,6 +142,17 @@ export function PatientDialog({
   });
 
   const todayKey = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
+  // "0 días" en la agenda era casi siempre la fecha de HOY puesta sin querer
+  // (el selector de fecha arranca en hoy). Con menos de una semana se avisa y
+  // se pide confirmarlo antes de guardar.
+  const newbornDays = React.useMemo(() => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) return null;
+    const days = Math.round(
+      (Date.parse(`${todayKey}T00:00:00Z`) - Date.parse(`${birthDate}T00:00:00Z`)) / 86_400_000,
+    );
+    return days >= 0 && days < 7 ? days : null;
+  }, [birthDate, todayKey]);
+  const [newbornConfirmed, setNewbornConfirmed] = React.useState(false);
   const birthPreview = React.useMemo(() => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) return null;
     const label = new Intl.DateTimeFormat('es-ES', {
@@ -205,6 +220,12 @@ export function PatientDialog({
 
   function submit() {
     setError(null);
+    if (newbornDays !== null && !newbornConfirmed && birthDate !== (patient?.birthDate ?? '')) {
+      setError(
+        `¿Seguro? Con esa fecha de nacimiento el paciente tendría ${newbornDays === 1 ? '1 día' : `${newbornDays} días`}. Revísala o marca que es correcta.`,
+      );
+      return;
+    }
     if (primaryMissingPhone) {
       setError('El titular del teléfono necesita un teléfono.');
       return;
@@ -303,6 +324,25 @@ export function PatientDialog({
             <p className="text-[12px] text-zinc-600">
               {birthPreview ?? 'Con ella la agenda y la ficha enseñan la edad con número.'}
             </p>
+            {newbornDays !== null && birthDate !== (patient?.birthDate ?? '') && (
+              <label className="flex items-start gap-2 rounded-[10px] bg-amber-50 px-2.5 py-2 text-[12px] text-amber-900">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={newbornConfirmed}
+                  onChange={(e) => setNewbornConfirmed(e.target.checked)}
+                />
+                <span>
+                  El paciente tendría{' '}
+                  {newbornDays === 0
+                    ? '0 días (nació hoy)'
+                    : newbornDays === 1
+                      ? '1 día'
+                      : `${newbornDays} días`}
+                  . ¿Es correcto? Si no, cambia la fecha.
+                </span>
+              </label>
+            )}
           </div>
 
           <fieldset className="grid gap-2.5 border-0 p-0">
@@ -354,12 +394,12 @@ export function PatientDialog({
                   </Button>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-[1fr_1fr_140px]">
-                  <Input
+                  <PhoneInput
                     aria-label={`Tutor ${i + 1}: teléfono`}
                     value={g.phone ?? ''}
-                    onChange={(e) => setGuardian(i, { phone: e.target.value })}
-                    placeholder="+34 600 000 000"
-                    inputMode="tel"
+                    onChange={(phone) => setGuardian(i, { phone })}
+                    dialPrefix={phonePrefix}
+                    placeholder={phonePrefix ? '600 000 000' : '+34 600 000 000'}
                   />
                   <Input
                     aria-label={`Tutor ${i + 1}: email`}

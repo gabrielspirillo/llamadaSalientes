@@ -5,7 +5,15 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { type AppointmentStatus, STATUS_LABELS } from '@/lib/agenda/shared';
 import { cn } from '@/lib/cn';
-import { AlertTriangle, CalendarPlus, Check, DoorOpen, Loader2, Stethoscope } from 'lucide-react';
+import {
+  AlertTriangle,
+  CalendarPlus,
+  Check,
+  DoorOpen,
+  Loader2,
+  Stethoscope,
+  UserX,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
@@ -28,6 +36,7 @@ export function TodayAppointmentCard({
   pendingItems,
   scheduleHref,
   canWrite,
+  visibleStatuses = null,
 }: {
   appointment: {
     id: string;
@@ -40,6 +49,8 @@ export function TodayAppointmentCard({
   pendingItems: TodayItem[];
   scheduleHref: string;
   canWrite: boolean;
+  /** Estados que usa la clínica (perfil). Null = el flujo completo de siempre. */
+  visibleStatuses?: string[] | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
@@ -56,6 +67,18 @@ export function TodayAppointmentCard({
   }
 
   const status = appointment?.status;
+  // Una clínica que trabaja sola en recepción sólo confirma o marca la falta;
+  // "Llegó", "En gabinete" y "Atendida" no los usa (perfil de atención).
+  const allButtons: { status: AppointmentStatus; label: string; icon: React.ReactNode }[] = [
+    { status: 'CONFIRMED', label: 'Confirmada', icon: <Check className="h-4 w-4" /> },
+    { status: 'ARRIVED', label: 'Llegó', icon: <DoorOpen className="h-4 w-4" /> },
+    { status: 'IN_PROGRESS', label: 'En gabinete', icon: <Stethoscope className="h-4 w-4" /> },
+    { status: 'COMPLETED', label: 'Atendida', icon: <Check className="h-4 w-4" /> },
+    { status: 'NO_SHOW', label: 'No se presentó', icon: <UserX className="h-4 w-4" /> },
+  ];
+  const buttons = visibleStatuses
+    ? allButtons.filter((b) => visibleStatuses.includes(b.status))
+    : allButtons.filter((b) => ['ARRIVED', 'IN_PROGRESS', 'COMPLETED'].includes(b.status));
   const closed = status === 'COMPLETED' || status === 'CANCELLED' || status === 'NO_SHOW';
 
   return (
@@ -98,32 +121,23 @@ export function TodayAppointmentCard({
 
       {appointment && canWrite && !closed && (
         <div className="flex flex-wrap gap-2">
-          <StatusButton
-            active={status === 'ARRIVED'}
-            disabled={pending}
-            onClick={() => setStatus('ARRIVED')}
-            icon={<DoorOpen className="h-4 w-4" />}
-          >
-            Llegó
-          </StatusButton>
-          <StatusButton
-            active={status === 'IN_PROGRESS'}
-            disabled={pending}
-            onClick={() => setStatus('IN_PROGRESS')}
-            icon={<Stethoscope className="h-4 w-4" />}
-          >
-            En gabinete
-          </StatusButton>
-          <StatusButton
-            active={false}
-            disabled={pending}
-            onClick={() => setStatus('COMPLETED')}
-            icon={
-              pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />
-            }
-          >
-            Atendida
-          </StatusButton>
+          {buttons.map((b) => (
+            <StatusButton
+              key={b.status}
+              active={status === b.status}
+              disabled={pending}
+              onClick={() => setStatus(b.status)}
+              icon={
+                pending && b.status === 'COMPLETED' ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  b.icon
+                )
+              }
+            >
+              {b.label}
+            </StatusButton>
+          ))}
         </div>
       )}
 

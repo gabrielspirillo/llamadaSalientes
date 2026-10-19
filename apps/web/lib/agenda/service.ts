@@ -211,6 +211,9 @@ export const appointmentInputSchema = z.object({
    * panel, a sabiendas). Los agentes nunca lo mandan.
    */
   overridePolicy: z.boolean().optional(),
+  /** ¿Quiere adelantar esta cita si se libera un hueco? Se pregunta al reservar. */
+  advancePreference: z.enum(['ACCEPTS', 'NO_MOVE']).nullable().optional(),
+  advanceNote: z.string().trim().max(200).optional().or(z.literal('')),
   dedupeKey: z.string().trim().max(200).optional(),
 });
 
@@ -890,6 +893,8 @@ export async function createAppointment(
         status: input.status ?? 'SCHEDULED',
         source: input.source ?? 'PANEL',
         notes: emptyToNull(input.notes),
+        advancePreference: input.advancePreference ?? null,
+        advanceNote: input.advancePreference === 'ACCEPTS' ? emptyToNull(input.advanceNote) : null,
         createdByUserId: ctx.userId,
         dedupeKey: input.dedupeKey ?? null,
       })
@@ -1104,6 +1109,31 @@ export async function updateAppointment(
   });
 
   return row;
+}
+
+/**
+ * ¿Quiere adelantar ESTA cita si se libera un hueco? Es por cita, no por
+ * paciente: el mismo papá una semana dice que sí y otra que no. La nota es el
+ * horario al que puede venir ("desde las 18h"). No toca la hora de la cita ni
+ * dispara efectos.
+ */
+export async function setAdvancePreference(
+  ctx: AgendaContext,
+  appointmentId: string,
+  input: { preference: 'ACCEPTS' | 'NO_MOVE' | null; note?: string | null },
+) {
+  if (input.preference !== null && !['ACCEPTS', 'NO_MOVE'].includes(input.preference)) {
+    throw new AgendaValidationError('Preferencia de adelanto no válida.');
+  }
+  const note = input.note?.trim().slice(0, 200) || null;
+  const [row] = await db
+    .update(agendaAppointments)
+    .set({ advancePreference: input.preference, advanceNote: note, updatedAt: new Date() })
+    .where(
+      and(eq(agendaAppointments.tenantId, ctx.tenantId), eq(agendaAppointments.id, appointmentId)),
+    )
+    .returning({ id: agendaAppointments.id });
+  if (!row) throw new AgendaValidationError('Esa cita ya no existe.');
 }
 
 /**

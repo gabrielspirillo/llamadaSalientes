@@ -8,7 +8,19 @@ import { STATUS_LABELS } from '@/lib/agenda/shared';
 import type { CalendarBlock, CalendarItem } from '@/lib/agenda/view';
 import { formatDateKeyLong, formatDateKeyShort } from '@/lib/agenda/view';
 import { cn } from '@/lib/cn';
-import { CalendarDays, ChevronLeft, ChevronRight, Plus, Users } from 'lucide-react';
+import { dialPrefixForTimezone } from '@/lib/phone-prefix';
+import {
+  ArrowUp,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  CircleCheck,
+  CreditCard,
+  Euro,
+  Minus,
+  Plus,
+  Users,
+} from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import * as React from 'react';
 import { AppointmentDialog, type AppointmentDialogSeed } from './appointment-dialog';
@@ -60,6 +72,10 @@ export interface CalendarViewProps {
     patientName: string;
     patientPhone: string | null;
   } | null;
+  /** Estados que usa la clínica (perfil de atención). Null = todos. */
+  visibleStatuses?: string[] | null;
+  /** Leyenda de etiquetas (1ª visita, G/M, H, adelantar, pago). Sólo con perfil. */
+  showFamilyTags?: boolean;
 }
 
 /** Alto en píxeles de una hora de rejilla. */
@@ -91,16 +107,88 @@ const STATUS_STYLES: Record<string, string> = {
  */
 const STATUS_COLORS: Record<string, { accent: string; soft: string; text: string }> = {
   SCHEDULED: { accent: '#3d8b8b', soft: '#e7f3f3', text: '#24504f' },
-  CONFIRMED: { accent: '#10b981', soft: '#dcf7ec', text: '#065f46' },
+  CONFIRMED: { accent: '#16a34a', soft: '#dcfce7', text: '#166534' },
   ARRIVED: { accent: '#6366f1', soft: '#e9eafe', text: '#3730a3' },
   IN_PROGRESS: { accent: '#8b5cf6', soft: '#efe8fe', text: '#5b21b6' },
   COMPLETED: { accent: '#94a3b8', soft: '#f1f3f6', text: '#475569' },
   CANCELLED: { accent: '#cbd5e1', soft: '#f8fafc', text: '#64748b' },
-  NO_SHOW: { accent: '#f43f5e', soft: '#ffe4e8', text: '#9f1239' },
+  NO_SHOW: { accent: '#dc2626', soft: '#fee2e2', text: '#991b1b' },
 };
 
-/** La primera visita: miel de la paleta, en el borde y en la etiqueta "1ª". */
-const FIRST_VISIT = { accent: '#f59e0b', soft: '#fdf0d5' };
+const ALL_STATUSES = [
+  'SCHEDULED',
+  'CONFIRMED',
+  'ARRIVED',
+  'IN_PROGRESS',
+  'COMPLETED',
+  'NO_SHOW',
+] as const;
+
+/**
+ * Tipo de visita: etiqueta a la izquierda y borde del chip, como lo marca la
+ * clínica en su agenda de papel (resaltado, (H), …). El estado va en el fondo.
+ */
+const TYPE_TAGS = {
+  FIRST: { label: '1ª visita', color: '#f97316', title: 'Primera visita' },
+  GM: { label: 'G/M', color: '#3b82f6', title: 'Gemelo/mellizo' },
+  H: { label: 'H', color: '#ec4899', title: 'Hermano con cita este día' },
+} as const;
+
+function typeTagOf(item: CalendarItem): keyof typeof TYPE_TAGS | null {
+  if (item.firstVisit) return 'FIRST';
+  return item.familyTag;
+}
+
+/** Cómo pagó: datáfono, euro (efectivo) o "pagado" genérico (Bizum, transferencia). */
+function PaymentMark({ payment }: { payment: CalendarItem['payment'] }) {
+  if (!payment?.paid) return null;
+  if (payment.method === 'CARD') {
+    return (
+      <span title="Pagado con datáfono" aria-label="Pagado con datáfono">
+        <CreditCard className="h-3.5 w-3.5 text-zinc-700" />
+      </span>
+    );
+  }
+  if (payment.method === 'CASH') {
+    return (
+      <span title="Pagado en efectivo" aria-label="Pagado en efectivo">
+        <Euro className="h-3.5 w-3.5 text-zinc-700" />
+      </span>
+    );
+  }
+  return (
+    <span title="Pagado" aria-label="Pagado">
+      <CircleCheck className="h-3.5 w-3.5 text-zinc-700" />
+    </span>
+  );
+}
+
+/** ↑ quiere adelantar · — no quiere que le muevan la cita. */
+function AdvanceMark({ item }: { item: CalendarItem }) {
+  if (item.advancePreference === 'ACCEPTS') {
+    return (
+      <span
+        className="inline-grid h-4 w-4 shrink-0 place-items-center rounded-full bg-emerald-600 text-white"
+        title={`Quiere adelantar${item.advanceNote ? ` · ${item.advanceNote}` : ''}`}
+        aria-label="Quiere adelantar"
+      >
+        <ArrowUp className="h-3 w-3" strokeWidth={3} />
+      </span>
+    );
+  }
+  if (item.advancePreference === 'NO_MOVE') {
+    return (
+      <span
+        className="inline-grid h-4 w-4 shrink-0 place-items-center rounded-full bg-zinc-500 text-white"
+        title="No quiere que le muevan la cita"
+        aria-label="No mover"
+      >
+        <Minus className="h-3 w-3" strokeWidth={3} />
+      </span>
+    );
+  }
+  return null;
+}
 
 export function CalendarView(props: CalendarViewProps) {
   const {
@@ -119,7 +207,12 @@ export function CalendarView(props: CalendarViewProps) {
     todayKey,
     timezone,
     newAppointmentFor = null,
+    visibleStatuses = null,
+    showFamilyTags = false,
   } = props;
+  const legendStatuses = ALL_STATUSES.filter(
+    (s) => !visibleStatuses || visibleStatuses.includes(s),
+  );
 
   const router = useRouter();
   const pathname = usePathname();
@@ -155,6 +248,11 @@ export function CalendarView(props: CalendarViewProps) {
     }
   }
   const [openItem, setOpenItem] = React.useState<CalendarItem | null>(null);
+  // La hoja se pinta con la versión ACTUAL de la cita: al marcar el pago o el
+  // adelanto la página se refresca y la hoja tiene que verlo sin cerrarse.
+  const liveOpenItem = openItem
+    ? (items.find((i) => i.id === openItem.id && i.dateKey === openItem.dateKey) ?? openItem)
+    : null;
 
   const hours = React.useMemo(() => {
     const out: number[] = [];
@@ -462,6 +560,8 @@ export function CalendarView(props: CalendarViewProps) {
                       // En un bloque de 30 min sólo entran dos líneas; en uno de
                       // 15, una. Escribir tres deja el texto cortado por la mitad.
                       const lineas = alto >= 56 ? 3 : alto >= 32 ? 2 : 1;
+                      const tag = typeTagOf(item);
+                      const colors = STATUS_COLORS[item.status] ?? STATUS_COLORS.SCHEDULED;
                       return (
                         <button
                           key={`${item.id}-${item.dateKey}`}
@@ -473,75 +573,83 @@ export function CalendarView(props: CalendarViewProps) {
                           className={cn(
                             'absolute overflow-hidden rounded-lg bg-white px-2 py-1 text-left shadow-[0_6px_16px_-10px_rgba(20,33,29,0.5)] ring-1 ring-black/5 transition-transform duration-200 hover:z-10 hover:scale-[1.01]',
                             STATUS_STYLES[item.status],
-                            item.firstVisit && 'ring-2 ring-[#f59e0b]',
                           )}
                           style={{
                             top: minutesToTop(item.startMinute, dayWindow.startMinute),
                             height: alto,
                             left: `calc(${(lane / lanes) * 100}% + 4px)`,
                             width: `calc(${100 / lanes}% - 8px)`,
-                            // El color dice el estado; la primera visita, además,
-                            // va enmarcada en miel con su "1ª" delante del nombre.
-                            borderLeftColor: (STATUS_COLORS[item.status] ?? STATUS_COLORS.SCHEDULED)
-                              ?.accent,
-                            backgroundColor: (STATUS_COLORS[item.status] ?? STATUS_COLORS.SCHEDULED)
-                              ?.soft,
+                            // Fondo = estado (agendada, confirmada en verde, no vino en
+                            // rojo); borde = tipo de visita (1ª, gemelos, hermano).
+                            borderLeftColor: tag ? TYPE_TAGS[tag].color : colors?.accent,
+                            backgroundColor: colors?.soft,
                           }}
-                          title={`${STATUS_LABELS[item.status]}${item.firstVisit ? ' · Primera visita' : ''}${visibleProfessionals.length > 1 ? ` · ${item.professionalName}` : ''}`}
+                          title={[
+                            STATUS_LABELS[item.status],
+                            tag ? TYPE_TAGS[tag].title : null,
+                            item.advancePreference === 'ACCEPTS'
+                              ? `Quiere adelantar${item.advanceNote ? ` (${item.advanceNote})` : ''}`
+                              : item.advancePreference === 'NO_MOVE'
+                                ? 'No mover'
+                                : null,
+                            visibleProfessionals.length > 1 ? item.professionalName : null,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
                         >
-                          <span className="block truncate text-[12px] font-bold leading-tight text-zinc-900">
-                            {item.firstVisit && (
+                          <span className="flex items-center gap-1 text-[12px] font-bold leading-tight text-zinc-900">
+                            <AdvanceMark item={item} />
+                            {tag && (
                               <span
-                                className="mr-1 rounded-full px-1.5 py-px align-[1px] text-[10px] font-bold text-white"
-                                style={{ backgroundColor: FIRST_VISIT.accent }}
+                                className="shrink-0 rounded-full px-1.5 py-px text-[10px] font-bold text-white"
+                                style={{ backgroundColor: TYPE_TAGS[tag].color }}
                               >
-                                1ª visita
+                                {TYPE_TAGS[tag].label}
                               </span>
                             )}
                             {/* Banderas rojas y duda antes del nombre: es lo primero que recepción mira. */}
                             {item.signals && (
                               <PatientSignalBadges
                                 size="xs"
-                                className="mr-1"
+                                className="shrink-0"
                                 redFlags={item.signals.redFlags}
                                 hesitant={item.signals.hesitant}
                                 hesitantNote={item.signals.hesitantNote}
                               />
                             )}
-                            {lineas === 1
-                              ? `${hhmm(item.startMinute)} ${item.patientName}`
-                              : item.patientName}
-                            {/* La edad con número: es lo que una clínica pediátrica mira antes que el nombre. */}
-                            {item.patientAge && (
-                              <span className="font-semibold text-zinc-500">
-                                {' '}
-                                · {item.patientAge}
-                              </span>
-                            )}
-                            {/* El estado escrito al final de la línea, en su color. */}
-                            {lineas < 3 && (
+                            <span className="min-w-0 truncate">
+                              <span className="tabular-nums">{hhmm(item.startMinute)}</span>{' '}
+                              {item.patientName}
+                              {/* La edad con número: es lo que una clínica pediátrica mira antes que el nombre. */}
+                              {item.patientAge && (
+                                <span className="font-semibold text-zinc-500">
+                                  {' '}
+                                  · {item.patientAge}
+                                </span>
+                              )}
+                            </span>
+                            {/* A la derecha: el estado en su color y cómo pagó. */}
+                            <span className="ml-auto flex shrink-0 items-center gap-1 pl-1">
                               <span
-                                className="ml-1.5 rounded-full px-1.5 py-px text-[10px] font-semibold"
+                                className="rounded-full px-1.5 py-px text-[10px] font-semibold"
                                 style={{
-                                  color: (STATUS_COLORS[item.status] ?? STATUS_COLORS.SCHEDULED)
-                                    ?.text,
-                                  backgroundColor: 'rgba(255,255,255,0.7)',
+                                  color: colors?.text,
+                                  backgroundColor: 'rgba(255,255,255,0.75)',
                                 }}
                               >
                                 {STATUS_LABELS[item.status]}
                               </span>
-                            )}
-                          </span>
-                          {lineas >= 2 && (
-                            <span className="block truncate text-[11px] leading-tight text-zinc-600">
-                              {hhmm(item.startMinute)}
-                              {item.treatmentName ? ` · ${item.treatmentName}` : ''}
+                              <PaymentMark payment={item.payment} />
                             </span>
-                          )}
-                          {lineas >= 3 && (
-                            <span className="block truncate text-[10px] leading-tight text-zinc-500">
-                              {STATUS_LABELS[item.status]}
-                              {item.badge ? ` · ${item.badge}` : ''}
+                          </span>
+                          {lineas >= 2 && (item.treatmentName || item.advanceNote) && (
+                            <span className="block truncate text-[11px] leading-tight text-zinc-600">
+                              {[
+                                item.treatmentName,
+                                item.advanceNote ? `Puede: ${item.advanceNote}` : null,
+                              ]
+                                .filter(Boolean)
+                                .join(' · ')}
                             </span>
                           )}
                         </button>
@@ -555,15 +663,13 @@ export function CalendarView(props: CalendarViewProps) {
         )}
       </Card>
 
-      {/* Leyenda de estados */}
+      {/* Leyenda: estados (fondo) y, con perfil, etiquetas del chip. */}
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {(
-          ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'NO_SHOW'] as const
-        ).map((s) => {
-          const c = STATUS_COLORS[s] ?? STATUS_COLORS.SCHEDULED;
+        {legendStatuses.map((st) => {
+          const c = STATUS_COLORS[st] ?? STATUS_COLORS.SCHEDULED;
           return (
             <span
-              key={s}
+              key={st}
               className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold"
               style={{ backgroundColor: c?.soft, color: c?.text }}
             >
@@ -572,24 +678,44 @@ export function CalendarView(props: CalendarViewProps) {
                 style={{ backgroundColor: c?.accent }}
                 aria-hidden
               />
-              {STATUS_LABELS[s]}
+              {STATUS_LABELS[st]}
             </span>
           );
         })}
-        {items.some((i) => i.firstVisit) && (
-          <span
-            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold text-amber-900 ring-2 ring-[#f59e0b]"
-            style={{ backgroundColor: FIRST_VISIT.soft }}
-          >
-            <span
-              className="rounded-full px-1.5 text-[10px] font-bold text-white"
-              style={{ backgroundColor: FIRST_VISIT.accent }}
-            >
-              1ª
+        {showFamilyTags && (
+          <>
+            {(Object.keys(TYPE_TAGS) as (keyof typeof TYPE_TAGS)[]).map((k) => (
+              <span
+                key={k}
+                className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[12px] font-semibold text-zinc-700 ring-1 ring-(--color-border)"
+              >
+                <span
+                  className="rounded-full px-1.5 text-[10px] font-bold text-white"
+                  style={{ backgroundColor: TYPE_TAGS[k].color }}
+                >
+                  {TYPE_TAGS[k].label}
+                </span>
+                {TYPE_TAGS[k].title}
+              </span>
+            ))}
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[12px] font-semibold text-zinc-700 ring-1 ring-(--color-border)">
+              <span className="inline-grid h-4 w-4 place-items-center rounded-full bg-emerald-600 text-white">
+                <ArrowUp className="h-3 w-3" strokeWidth={3} />
+              </span>
+              Quiere adelantar
             </span>
-            Primera visita
-          </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[12px] font-semibold text-zinc-700 ring-1 ring-(--color-border)">
+              <span className="inline-grid h-4 w-4 place-items-center rounded-full bg-zinc-500 text-white">
+                <Minus className="h-3 w-3" strokeWidth={3} />
+              </span>
+              No mover
+            </span>
+          </>
         )}
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[12px] font-semibold text-zinc-700 ring-1 ring-(--color-border)">
+          <CreditCard className="h-3.5 w-3.5" /> Datáfono
+          <Euro className="ml-1 h-3.5 w-3.5" /> Efectivo
+        </span>
       </div>
 
       {seed && (
@@ -598,15 +724,18 @@ export function CalendarView(props: CalendarViewProps) {
           professionals={professionals.filter((p) => p.agendaEnabled)}
           treatments={treatments}
           patientSearch={patientSearch}
+          phonePrefix={dialPrefixForTimezone(timezone)}
           onClose={closeDialog}
         />
       )}
 
-      {openItem && (
+      {liveOpenItem && (
         <AppointmentSheet
-          item={openItem}
+          item={liveOpenItem}
           canWrite={canWrite}
           treatments={treatments}
+          todayKey={todayKey}
+          visibleStatuses={visibleStatuses}
           onClose={() => setOpenItem(null)}
         />
       )}

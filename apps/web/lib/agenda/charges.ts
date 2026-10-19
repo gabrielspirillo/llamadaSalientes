@@ -318,6 +318,73 @@ export async function registerPayment(
   return { chargeId: row.id, patientKey: row.patientKey };
 }
 
+/**
+ * "No pagado": el cargo de la cita vuelve a PENDIENTE (sin método ni fecha).
+ * Para corregir un pago marcado por error desde la agenda.
+ */
+export async function markAppointmentUnpaid(
+  scope: ChargeScope,
+  appointmentId: string,
+): Promise<{ patientKey: string } | null> {
+  const [row] = await db
+    .update(patientCharges)
+    .set({
+      status: 'PENDING',
+      paymentMethod: null,
+      paidOn: null,
+      paidByUserId: null,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(patientCharges.tenantId, scope.tenantId),
+        eq(patientCharges.appointmentId, appointmentId),
+      ),
+    )
+    .returning({ patientKey: patientCharges.patientKey });
+  return row ?? null;
+}
+
+/**
+ * El pago de cada cita que se ve en el calendario, en UNA consulta: el chip
+ * pinta el datáfono o el euro sin abrir la cita.
+ */
+export async function paymentsForAppointments(
+  tenantId: string,
+  appointmentIds: string[],
+): Promise<
+  Map<string, { paid: boolean; method: PaymentMethod | null; amountCents: number | null }>
+> {
+  const out = new Map<
+    string,
+    { paid: boolean; method: PaymentMethod | null; amountCents: number | null }
+  >();
+  if (appointmentIds.length === 0) return out;
+  const rows = await db
+    .select({
+      appointmentId: patientCharges.appointmentId,
+      status: patientCharges.status,
+      method: patientCharges.paymentMethod,
+      amountCents: patientCharges.amountCents,
+    })
+    .from(patientCharges)
+    .where(
+      and(
+        eq(patientCharges.tenantId, tenantId),
+        inArray(patientCharges.appointmentId, appointmentIds),
+      ),
+    );
+  for (const r of rows) {
+    if (!r.appointmentId) continue;
+    out.set(r.appointmentId, {
+      paid: r.status === 'PAID',
+      method: isPaymentMethod(r.method) ? r.method : null,
+      amountCents: r.amountCents,
+    });
+  }
+  return out;
+}
+
 /** Extensión segura para la key del bucket. */
 function extensionFor(fileName: string, mime: string): string {
   const fromName = fileName
