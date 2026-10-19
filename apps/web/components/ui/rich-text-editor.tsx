@@ -68,7 +68,7 @@ export function RichTextEditor({
   function emit() {
     const el = ref.current;
     if (!el) return;
-    const next = sanitizeRich(serializeDom(el));
+    const next = sanitizeRich(serializeDom(el).replace(/<\/mark><mark>/g, ''));
     lastEmitted.current = next;
     setEmpty(!richToPlain(next));
     onChange(next);
@@ -89,7 +89,33 @@ export function RichTextEditor({
       underline: state('underline'),
       insertUnorderedList: state('insertUnorderedList'),
       insertOrderedList: state('insertOrderedList'),
+      highlight: highlightValue() === HIGHLIGHT_HEX,
     });
+  }
+
+  function highlightValue(): string | null {
+    try {
+      // Chrome y Safari lo responden por backColor; Firefox, por hiliteColor.
+      return (
+        hexOf(String(document.queryCommandValue('backColor') || '')) ??
+        hexOf(String(document.queryCommandValue('hiliteColor') || ''))
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  // El resaltado es un interruptor: sobre texto resaltado lo quita. Va con
+  // styleWithCSS para que el navegador lo escriba como estilo en línea, que es
+  // lo que sabe partir, anular con 'transparent' y borrar con "Quitar formato".
+  function toggleHighlight() {
+    ref.current?.focus();
+    const on = highlightValue() === HIGHLIGHT_HEX;
+    document.execCommand('styleWithCSS', false, 'true');
+    document.execCommand('hiliteColor', false, on ? 'transparent' : HIGHLIGHT_HEX);
+    document.execCommand('styleWithCSS', false, 'false');
+    emit();
+    refreshActive();
   }
 
   function exec(command: string, arg?: string) {
@@ -186,7 +212,11 @@ export function RichTextEditor({
               aria-hidden
             />
           </ToolButton>
-          <ToolButton label="Resaltar" onClick={() => exec('hiliteColor', HIGHLIGHT_HEX)}>
+          <ToolButton
+            label={active.highlight ? 'Quitar resaltado' : 'Resaltar'}
+            active={active.highlight}
+            onClick={toggleHighlight}
+          >
             <Highlighter className="h-4 w-4" />
           </ToolButton>
           <Divider />
@@ -229,7 +259,7 @@ export function RichTextEditor({
           contentEditable
           suppressContentEditableWarning
           tabIndex={0}
-          className="rich-editor py-2.5 pl-3.5 pr-12 text-[16px] leading-relaxed text-zinc-900 outline-none [&_li]:my-0.5 [&_mark]:rounded-[3px] [&_mark]:bg-yellow-200 [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5"
+          className="rich-editor py-2.5 pl-3.5 pr-12 text-[16px] leading-relaxed text-zinc-900 outline-none [&_li]:my-0.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5"
           // El foco ya lo marca el marco; el contorno global quedaría como una raya.
           style={{ minHeight, outline: 'none' }}
           onInput={emit}
@@ -309,6 +339,9 @@ function nodesToHtml(nodes: RichNode[]): string {
     else if (n.type === 'br') out += '<br>';
     else if (n.type === 'color') {
       out += `<font color="${RICH_COLORS[n.color].hex}">${nodesToHtml(n.children)}</font>`;
+    } else if (n.type === 'mark') {
+      // Como estilo en línea, no <mark>: es lo que el navegador sabe quitar.
+      out += `<span style="background-color: ${HIGHLIGHT_HEX}">${nodesToHtml(n.children)}</span>`;
     } else out += `<${n.type}>${nodesToHtml(n.children)}</${n.type}>`;
   }
   return out;
@@ -339,12 +372,20 @@ function colorKey(raw: string | null | undefined): RichColor | null {
   return null;
 }
 
-/** El contenido del área en el formato reducido (se sanea después). */
-function serializeDom(root: Node): string {
+/**
+ * El contenido del área en el formato reducido (se sanea después). El
+ * resaltado se resuelve por tramo de texto (`highlighted` se hereda y un fondo
+ * 'transparent' lo corta), porque el navegador lo quita anidando un fondo
+ * transparente dentro del amarillo en vez de partir el amarillo.
+ */
+function serializeDom(root: Node, highlighted = false): string {
   let out = '';
   root.childNodes.forEach((child, index) => {
     if (child.nodeType === Node.TEXT_NODE) {
-      out += escapeRichText((child.textContent ?? '').replace(/ /g, ' '));
+      const text = escapeRichText(
+        (child.textContent ?? '').replace(/ /g, ' ').replace(/\u200b/g, ''),
+      );
+      out += highlighted && text ? `<mark>${text}</mark>` : text;
       return;
     }
     if (!(child instanceof HTMLElement)) return;
@@ -353,11 +394,13 @@ function serializeDom(root: Node): string {
       out += '<br>';
       return;
     }
-    let inner = serializeDom(child);
     const style = child.style;
+    const childHighlighted =
+      tag === 'MARK' ||
+      (style.backgroundColor ? hexOf(style.backgroundColor) !== null : highlighted);
+    let inner = serializeDom(child, childHighlighted);
     const color = colorKey(tag === 'FONT' ? child.getAttribute('color') : style.color);
     if (color) inner = `<span data-c="${color}">${inner}</span>`;
-    if (tag === 'MARK' || hexOf(style.backgroundColor)) inner = `<mark>${inner}</mark>`;
     if (
       tag === 'B' ||
       tag === 'STRONG' ||
