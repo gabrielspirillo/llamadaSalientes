@@ -16,6 +16,7 @@ import {
   Italic,
   List,
   ListOrdered,
+  Paintbrush,
   RemoveFormatting,
   Underline,
 } from 'lucide-react';
@@ -27,7 +28,9 @@ import * as React from 'react';
  * `lib/rich-text.ts` (nunca HTML tal cual). Se pega siempre como texto plano:
  * lo que viene de Word o de un correo trae estilos que romperían la ficha.
  *
- * Atajos de teclado de siempre: ⌘/Ctrl+B, ⌘/Ctrl+I, ⌘/Ctrl+U.
+ * Las herramientas van recogidas tras el pincel: el campo se ve limpio y el
+ * formato aparece sólo cuando se pide. Los atajos funcionan siempre:
+ * ⌘/Ctrl+B, ⌘/Ctrl+I, ⌘/Ctrl+U.
  */
 export function RichTextEditor({
   id,
@@ -50,6 +53,7 @@ export function RichTextEditor({
   const [empty, setEmpty] = React.useState(!richToPlain(value));
   const [active, setActive] = React.useState<Record<string, boolean>>({});
   const [focused, setFocused] = React.useState(false);
+  const [tools, setTools] = React.useState(false);
 
   // Lo que viene de fuera ("Partir de la anterior", nota guardada) se carga en
   // el área; lo que acabamos de emitir nosotros no, o el cursor saltaría.
@@ -99,80 +103,119 @@ export function RichTextEditor({
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-[14px] border bg-white transition-shadow',
+        'relative overflow-hidden rounded-[14px] border bg-white transition-shadow',
         focused
           ? 'border-brand-400 ring-4 ring-brand-100'
           : 'border-(--color-border) hover:border-zinc-300',
       )}
     >
-      <div
-        className="flex flex-wrap items-center gap-0.5 border-b border-(--color-border-subtle) bg-zinc-50/80 px-1.5 py-1"
-        role="toolbar"
-        aria-label="Formato del texto"
+      <button
+        type="button"
+        title={tools ? 'Ocultar formato' : 'Dar formato al texto'}
+        aria-label={tools ? 'Ocultar formato' : 'Dar formato al texto'}
+        aria-expanded={tools}
+        // mousedown: que abrir el pincel no le quite la selección al texto.
+        onMouseDown={(e) => {
+          e.preventDefault();
+          setTools((v) => !v);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setTools((v) => !v);
+          }
+        }}
+        className={cn(
+          'press absolute right-1.5 top-1 z-10 grid h-8 w-8 place-items-center rounded-full transition-all',
+          tools
+            ? 'bg-[linear-gradient(120deg,#37766a_0%,#479183_45%,#5fa896_100%)] text-white shadow-[0_6px_16px_-8px_rgba(55,118,106,0.8)]'
+            : 'bg-white text-brand-700 ring-1 ring-(--color-border) hover:-translate-y-0.5 hover:bg-brand-50 hover:ring-brand-200',
+        )}
       >
-        <ToolButton label="Negrita (⌘B)" active={active.bold} onClick={() => exec('bold')}>
-          <Bold className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton label="Cursiva (⌘I)" active={active.italic} onClick={() => exec('italic')}>
-          <Italic className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton
-          label="Subrayado (⌘U)"
-          active={active.underline}
-          onClick={() => exec('underline')}
+        <Paintbrush className="h-4 w-4" />
+        {!tools && (
+          <span
+            aria-hidden
+            className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-white"
+            style={{
+              background: `conic-gradient(${Object.values(RICH_COLORS)
+                .map((c) => c.hex)
+                .join(',')},${RICH_COLORS.red.hex})`,
+            }}
+          />
+        )}
+      </button>
+
+      {tools && (
+        <div
+          className="flex animate-fade-up flex-wrap items-center gap-0.5 border-b border-(--color-border-subtle) bg-zinc-50/80 py-1 pl-1.5 pr-11"
+          role="toolbar"
+          aria-label="Formato del texto"
         >
-          <Underline className="h-4 w-4" />
-        </ToolButton>
-        <Divider />
-        {(Object.keys(RICH_COLORS) as RichColor[]).map((c) => (
+          <ToolButton label="Negrita (⌘B)" active={active.bold} onClick={() => exec('bold')}>
+            <Bold className="h-4 w-4" />
+          </ToolButton>
+          <ToolButton label="Cursiva (⌘I)" active={active.italic} onClick={() => exec('italic')}>
+            <Italic className="h-4 w-4" />
+          </ToolButton>
           <ToolButton
-            key={c}
-            label={`Texto en ${RICH_COLORS[c].label.toLowerCase()}`}
-            onClick={() => exec('foreColor', RICH_COLORS[c].hex)}
+            label="Subrayado (⌘U)"
+            active={active.underline}
+            onClick={() => exec('underline')}
           >
+            <Underline className="h-4 w-4" />
+          </ToolButton>
+          <Divider />
+          {(Object.keys(RICH_COLORS) as RichColor[]).map((c) => (
+            <ToolButton
+              key={c}
+              label={`Texto en ${RICH_COLORS[c].label.toLowerCase()}`}
+              onClick={() => exec('foreColor', RICH_COLORS[c].hex)}
+            >
+              <span
+                className="h-4 w-4 rounded-full ring-2 ring-white"
+                style={{ backgroundColor: RICH_COLORS[c].hex, boxShadow: '0 0 0 1px #d4d4d8' }}
+                aria-hidden
+              />
+            </ToolButton>
+          ))}
+          <ToolButton label="Quitar color" onClick={() => exec('foreColor', NEUTRAL_HEX)}>
             <span
-              className="h-4 w-4 rounded-full ring-2 ring-white"
-              style={{ backgroundColor: RICH_COLORS[c].hex, boxShadow: '0 0 0 1px #d4d4d8' }}
+              className="h-4 w-4 rounded-full bg-zinc-900 ring-2 ring-white"
+              style={{ boxShadow: '0 0 0 1px #d4d4d8' }}
               aria-hidden
             />
           </ToolButton>
-        ))}
-        <ToolButton label="Quitar color" onClick={() => exec('foreColor', NEUTRAL_HEX)}>
-          <span
-            className="h-4 w-4 rounded-full bg-zinc-900 ring-2 ring-white"
-            style={{ boxShadow: '0 0 0 1px #d4d4d8' }}
-            aria-hidden
-          />
-        </ToolButton>
-        <ToolButton label="Resaltar" onClick={() => exec('hiliteColor', HIGHLIGHT_HEX)}>
-          <Highlighter className="h-4 w-4" />
-        </ToolButton>
-        <Divider />
-        <ToolButton
-          label="Lista con viñetas"
-          active={active.insertUnorderedList}
-          onClick={() => exec('insertUnorderedList')}
-        >
-          <List className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton
-          label="Lista numerada"
-          active={active.insertOrderedList}
-          onClick={() => exec('insertOrderedList')}
-        >
-          <ListOrdered className="h-4 w-4" />
-        </ToolButton>
-        <Divider />
-        <ToolButton label="Quitar formato" onClick={() => exec('removeFormat')}>
-          <RemoveFormatting className="h-4 w-4" />
-        </ToolButton>
-      </div>
+          <ToolButton label="Resaltar" onClick={() => exec('hiliteColor', HIGHLIGHT_HEX)}>
+            <Highlighter className="h-4 w-4" />
+          </ToolButton>
+          <Divider />
+          <ToolButton
+            label="Lista con viñetas"
+            active={active.insertUnorderedList}
+            onClick={() => exec('insertUnorderedList')}
+          >
+            <List className="h-4 w-4" />
+          </ToolButton>
+          <ToolButton
+            label="Lista numerada"
+            active={active.insertOrderedList}
+            onClick={() => exec('insertOrderedList')}
+          >
+            <ListOrdered className="h-4 w-4" />
+          </ToolButton>
+          <Divider />
+          <ToolButton label="Quitar formato" onClick={() => exec('removeFormat')}>
+            <RemoveFormatting className="h-4 w-4" />
+          </ToolButton>
+        </div>
+      )}
 
       <div className="relative">
         {empty && placeholder && (
           <span
             aria-hidden
-            className="pointer-events-none absolute left-3.5 top-2.5 text-[16px] text-zinc-400"
+            className="pointer-events-none absolute left-3.5 right-12 top-2.5 truncate text-[16px] text-zinc-400"
           >
             {placeholder}
           </span>
@@ -186,8 +229,9 @@ export function RichTextEditor({
           contentEditable
           suppressContentEditableWarning
           tabIndex={0}
-          className="rich-editor px-3.5 py-2.5 text-[16px] leading-relaxed text-zinc-900 outline-none [&_li]:my-0.5 [&_mark]:rounded-[3px] [&_mark]:bg-yellow-200 [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5"
-          style={{ minHeight }}
+          className="rich-editor py-2.5 pl-3.5 pr-12 text-[16px] leading-relaxed text-zinc-900 outline-none [&_li]:my-0.5 [&_mark]:rounded-[3px] [&_mark]:bg-yellow-200 [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5"
+          // El foco ya lo marca el marco; el contorno global quedaría como una raya.
+          style={{ minHeight, outline: 'none' }}
           onInput={emit}
           onBlur={() => {
             setFocused(false);

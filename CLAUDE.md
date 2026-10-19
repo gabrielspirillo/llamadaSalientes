@@ -864,7 +864,8 @@ duplicadas, la IA podía agendar en la que no tiene la historia clínica.
   (`lib/rich-text.ts`, con tests): `sanitizeRich` al guardar, `<RichText>` para
   pintar (árbol de elementos, **nunca `dangerouslySetInnerHTML`**) y
   `richToPlain` para quien necesita texto (agentes, barridos). El editor
-  (`components/ui/rich-text-editor.tsx`) pega siempre como texto plano. Sin
+  (`components/ui/rich-text-editor.tsx`) recoge las herramientas tras un botón
+  de pincel (se despliegan al pulsarlo) y pega siempre como texto plano. Sin
   selector de tipografía: la ficha usa la del panel.
 - **Calendario por colores**: cada estado tiene su color (Agendada teal,
   Confirmada verde, En sala índigo, En gabinete violeta, Atendida gris, No se
