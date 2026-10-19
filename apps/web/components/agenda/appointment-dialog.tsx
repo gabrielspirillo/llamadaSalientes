@@ -116,6 +116,7 @@ export function AppointmentDialog({
   const [patientEmail, setPatientEmail] = React.useState('');
   const [notes, setNotes] = React.useState('');
   const [allowOutsideHours, setAllowOutsideHours] = React.useState(false);
+  const [customTime, setCustomTime] = React.useState(false);
   // "¿Quieres que te avisemos si se libera un hueco antes?": se pregunta en
   // cada reserva (es por cita, no por paciente).
   const [advance, setAdvance] = React.useState<'NONE' | 'ACCEPTS' | 'NO_MOVE'>('NONE');
@@ -319,60 +320,39 @@ export function AppointmentDialog({
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="ap-date">Día</Label>
-              <Input
-                id="ap-date"
-                type="date"
-                value={dateKey}
-                onChange={(e) => setDateKey(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="ap-time">Hora</Label>
-              <Input
-                id="ap-time"
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="ap-dur">Duración (min)</Label>
-              <Input
-                id="ap-dur"
-                type="number"
-                min={5}
-                max={600}
-                step={5}
-                value={duration}
-                onChange={(e) => setDuration(Number(e.target.value))}
-              />
-            </div>
+          {/* Lo sencillo: el día y un hueco libre con un clic. Hora a mano,
+              duración y "fuera de horario" quedan en "Personalizar". */}
+          <div className="grid gap-1.5 sm:max-w-[240px]">
+            <Label htmlFor="ap-date">Día</Label>
+            <Input
+              id="ap-date"
+              type="date"
+              value={dateKey}
+              onChange={(e) => setDateKey(e.target.value)}
+            />
           </div>
 
-          {/* Huecos libres del día */}
           <div className="rounded-[14px] bg-zinc-50 p-3">
-            <div className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold text-zinc-600">
+            <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[12px] font-semibold text-zinc-600">
               <Sparkles className="h-3.5 w-3.5" /> Huecos libres ese día
+              <span className="font-normal text-zinc-500">· {duration} min</span>
               {loadingSlots && <Loader2 className="h-3 w-3 animate-spin" />}
             </div>
             {slots.length === 0 ? (
               <p className="text-[12px] text-zinc-500">
                 {loadingSlots
                   ? 'Buscando…'
-                  : 'No quedan huecos con esa duración. Puedes encajarla igualmente marcando “fuera de horario”.'}
+                  : 'No quedan huecos ese día. Prueba otro día o usa “Personalizar”.'}
               </p>
             ) : (
               <div className="flex flex-wrap gap-1.5">
-                {slots.slice(0, 24).map((s) => (
+                {slots.slice(0, 30).map((s) => (
                   <button
                     key={`${s.dateKey}-${s.startMinute}`}
                     type="button"
                     onClick={() => setTime(hhmm(s.startMinute))}
                     className={cn(
-                      'rounded-full px-2.5 py-1 text-[12px] font-semibold tabular-nums transition-colors',
+                      'rounded-full px-3 py-1.5 text-[13px] font-semibold tabular-nums transition-colors',
                       time === hhmm(s.startMinute)
                         ? 'bg-brand-600 text-white'
                         : 'bg-white text-zinc-700 ring-1 ring-(--color-border) hover:bg-brand-50',
@@ -383,7 +363,62 @@ export function AppointmentDialog({
                 ))}
               </div>
             )}
+            <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-[12px]">
+              <span className="text-zinc-600">
+                Cita: <strong className="tabular-nums text-zinc-900">{time || '--:--'}</strong> ·{' '}
+                {duration} min
+              </span>
+              <button
+                type="button"
+                onClick={() => setCustomTime((v) => !v)}
+                className="font-semibold text-brand-700 hover:underline"
+                aria-expanded={customTime}
+              >
+                {customTime ? 'Ocultar personalizar' : 'Personalizar hora o duración'}
+              </button>
+            </div>
           </div>
+
+          {customTime && (
+            <div className="grid gap-3 rounded-[14px] border border-(--color-border) p-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="ap-time">Hora</Label>
+                  <Input
+                    id="ap-time"
+                    type="time"
+                    step={300}
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="ap-dur">Duración (min)</Label>
+                  <Input
+                    id="ap-dur"
+                    type="number"
+                    min={5}
+                    max={600}
+                    step={5}
+                    value={duration}
+                    onChange={(e) => setDuration(Number(e.target.value))}
+                  />
+                </div>
+              </div>
+              <label className="flex items-start gap-2 text-[13px] text-zinc-600">
+                <input
+                  type="checkbox"
+                  checked={allowOutsideHours}
+                  onChange={(e) => setAllowOutsideHours(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  Permitir fuera del horario del profesional (urgencias). Se sigue comprobando que
+                  no se pise con otra cita.
+                </span>
+              </label>
+            </div>
+          )}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-1.5">
@@ -537,19 +572,6 @@ export function AppointmentDialog({
               />
             )}
           </div>
-
-          <label className="flex items-start gap-2 text-[13px] text-zinc-600">
-            <input
-              type="checkbox"
-              checked={allowOutsideHours}
-              onChange={(e) => setAllowOutsideHours(e.target.checked)}
-              className="mt-0.5"
-            />
-            <span>
-              Permitir fuera del horario del profesional (urgencias). Se sigue comprobando que no se
-              pise con otra cita.
-            </span>
-          </label>
 
           {policyBlocked && (
             <label className="flex items-start gap-2 text-[13px] text-zinc-600">

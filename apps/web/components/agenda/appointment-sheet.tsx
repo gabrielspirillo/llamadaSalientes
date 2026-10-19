@@ -89,6 +89,7 @@ export function AppointmentSheet({
   const [duration, setDuration] = React.useState(item.durationMinutes);
   const [treatmentId, setTreatmentId] = React.useState(item.treatmentId ?? '');
   const [allowOutsideHours, setAllowOutsideHours] = React.useState(false);
+  const [customTime, setCustomTime] = React.useState(false);
   const [slots, setSlots] = React.useState<number[]>([]);
   const [loadingSlots, setLoadingSlots] = React.useState(false);
 
@@ -410,40 +411,28 @@ export function AppointmentSheet({
               <p className="mb-2 text-[12px] font-bold uppercase tracking-wide text-zinc-500">
                 Mover la cita
               </p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="grid gap-1.5">
-                  <Label htmlFor="rs-date">Día</Label>
-                  <Input
-                    id="rs-date"
-                    type="date"
-                    value={dateKey}
-                    onChange={(e) => setDateKey(e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="rs-dur">Duración (min)</Label>
-                  <Input
-                    id="rs-dur"
-                    type="number"
-                    min={5}
-                    step={5}
-                    value={duration}
-                    onChange={(e) => setDuration(Number(e.target.value))}
-                  />
-                </div>
+              <div className="grid gap-1.5 sm:max-w-[240px]">
+                <Label htmlFor="rs-date">Día</Label>
+                <Input
+                  id="rs-date"
+                  type="date"
+                  value={dateKey}
+                  onChange={(e) => setDateKey(e.target.value)}
+                />
               </div>
 
               {/* Huecos libres del día elegido: un clic y listo, como en Nueva cita. */}
               <div className="mt-3 rounded-[14px] bg-zinc-50 p-3">
                 <div className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold text-zinc-600">
                   <Sparkles className="h-3.5 w-3.5" /> Huecos libres ese día
+                  <span className="font-normal text-zinc-500">· {duration} min</span>
                   {loadingSlots && <Loader2 className="h-3 w-3 animate-spin" />}
                 </div>
                 {slots.length === 0 ? (
                   <p className="text-[12px] text-zinc-500">
                     {loadingSlots
                       ? 'Buscando…'
-                      : 'No quedan huecos con esa duración ese día. Prueba otro día o pon otra hora abajo.'}
+                      : 'No quedan huecos ese día. Prueba otro día o usa “Personalizar”.'}
                   </p>
                 ) : (
                   <div className="flex flex-wrap gap-1.5">
@@ -466,28 +455,55 @@ export function AppointmentSheet({
                 )}
               </div>
 
-              <div className="mt-3 grid gap-1.5 sm:max-w-[200px]">
-                <Label htmlFor="rs-time">Otra hora</Label>
-                <Input
-                  id="rs-time"
-                  type="time"
-                  step={300}
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                />
+              <div className="mt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setCustomTime((v) => !v)}
+                  className="text-[12px] font-semibold text-brand-700 hover:underline"
+                  aria-expanded={customTime}
+                >
+                  {customTime ? 'Ocultar personalizar' : 'Personalizar hora o duración'}
+                </button>
               </div>
-              <label className="mt-2 flex items-start gap-2 text-[13px] text-zinc-600">
-                <input
-                  type="checkbox"
-                  checked={allowOutsideHours}
-                  onChange={(e) => setAllowOutsideHours(e.target.checked)}
-                  className="mt-0.5"
-                />
-                <span>
-                  Permitir fuera del horario (urgencias). Se sigue comprobando que no se pise con
-                  otra cita.
-                </span>
-              </label>
+              {customTime && (
+                <div className="mt-2 grid gap-3 rounded-[14px] border border-(--color-border) p-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="rs-time">Hora</Label>
+                      <Input
+                        id="rs-time"
+                        type="time"
+                        step={300}
+                        value={time}
+                        onChange={(e) => setTime(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="rs-dur">Duración (min)</Label>
+                      <Input
+                        id="rs-dur"
+                        type="number"
+                        min={5}
+                        step={5}
+                        value={duration}
+                        onChange={(e) => setDuration(Number(e.target.value))}
+                      />
+                    </div>
+                  </div>
+                  <label className="flex items-start gap-2 text-[13px] text-zinc-600">
+                    <input
+                      type="checkbox"
+                      checked={allowOutsideHours}
+                      onChange={(e) => setAllowOutsideHours(e.target.checked)}
+                      className="mt-0.5"
+                    />
+                    <span>
+                      Permitir fuera del horario (urgencias). Se sigue comprobando que no se pise
+                      con otra cita.
+                    </span>
+                  </label>
+                </div>
+              )}
 
               <div className="mt-3 flex justify-end gap-2">
                 <Button variant="ghost" size="sm" onClick={() => setShowReschedule(false)}>
