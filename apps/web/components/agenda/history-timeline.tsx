@@ -3,6 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/feedback';
+import { RichText } from '@/components/ui/rich-text';
 import {
   SESSION_BEHAVIOR_FACES,
   SESSION_BEHAVIOR_LABELS,
@@ -137,16 +138,16 @@ export function HistoryTimeline({
                     <span className="text-zinc-600">
                       {pediatric ? 'Diagnóstico: ' : 'Motivo: '}
                     </span>
-                    {n.summary}
+                    <RichText value={n.summary} />
                   </p>
                   {n.symptoms && (
                     <p className="whitespace-pre-line text-[13px] leading-relaxed text-zinc-700">
-                      <strong>Síntomas:</strong> {n.symptoms}
+                      <strong>Síntomas:</strong> <RichText value={n.symptoms} />
                     </p>
                   )}
                   {n.examination && (
                     <p className="whitespace-pre-line text-[13px] leading-relaxed text-zinc-700">
-                      <strong>Exploración:</strong> {n.examination}
+                      <strong>Exploración:</strong> <RichText value={n.examination} />
                     </p>
                   )}
                   {n.treatmentPerformed && (
@@ -156,13 +157,15 @@ export function HistoryTimeline({
                     </p>
                   )}
                   {n.observations && (
-                    <p className="whitespace-pre-line text-[13px] leading-relaxed text-zinc-700">
-                      {n.observations}
-                    </p>
+                    <RichText
+                      as="div"
+                      value={n.observations}
+                      className="text-[13px] leading-relaxed text-zinc-700"
+                    />
                   )}
                   {n.nextSteps && (
                     <p className="mt-1 rounded-[10px] bg-brand-50 p-2.5 text-[13px] text-brand-800">
-                      <strong>Próximo paso:</strong> {n.nextSteps}
+                      <strong>Próximo paso:</strong> <RichText value={n.nextSteps} />
                     </p>
                   )}
                 </div>

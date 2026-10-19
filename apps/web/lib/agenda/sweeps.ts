@@ -5,6 +5,7 @@ import { describePatientKey, phoneFromPatientKey } from '@/lib/agenda/patients';
 import { getCareProfile } from '@/lib/care-profile/queries';
 import { db } from '@/lib/db/client';
 import { agendaAppointments, clinicalNotes } from '@/lib/db/schema';
+import { richToPlain } from '@/lib/rich-text';
 
 /**
  * Los dos barridos diarios de Tareas, resueltos con la agenda de la
@@ -73,7 +74,7 @@ export async function patientsWithPendingFollowUp(
       name: nameFor(r.patientKey, r.patientName),
       phone: phoneFromPatientKey(r.patientKey),
       lastVisitAt: r.createdAt,
-      pending: r.nextSteps?.trim() ?? null,
+      pending: r.nextSteps ? richToPlain(r.nextSteps) || null : null,
     });
     if (seen.size >= limit) break;
   }

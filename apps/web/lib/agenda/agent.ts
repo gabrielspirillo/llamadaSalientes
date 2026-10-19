@@ -1,4 +1,5 @@
 import 'server-only';
+import { richToPlain } from '@/lib/rich-text';
 import { and, asc, desc, eq, gte, inArray, ne, or } from 'drizzle-orm';
 
 import type { AgendaContext } from '@/lib/agenda/auth';
@@ -596,7 +597,8 @@ export async function getAgentPatientContext(
       : null,
     lastVisitAt: past[0]?.startsAt ?? null,
     lastProfessionalName: past[0]?.professionalName ?? null,
-    pendingFollowUp: note?.nextSteps ?? null,
+    // Sin formato: el agente lo lee como texto.
+    pendingFollowUp: note?.nextSteps ? richToPlain(note.nextSteps) || null : null,
   };
 }
 

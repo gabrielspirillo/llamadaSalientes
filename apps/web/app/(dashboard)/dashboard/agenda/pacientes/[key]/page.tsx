@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardTopbar } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/feedback';
+import { RichText } from '@/components/ui/rich-text';
 import { getAgendaContext } from '@/lib/agenda/auth';
 import {
   buildBillingLines,
@@ -850,7 +851,9 @@ export default async function PacienteDossierPage({
                   <span className="text-[12px] font-bold uppercase tracking-[0.14em] text-zinc-600">
                     Última visita · {fmtShort.format(lastNote.createdAt)}
                   </span>
-                  <p className="text-[14px] font-semibold text-zinc-900">{lastNote.summary}</p>
+                  <p className="text-[14px] font-semibold text-zinc-900">
+                    <RichText value={lastNote.summary} />
+                  </p>
                   <p className="text-[13px] text-zinc-600">
                     {lastBehavior
                       ? `${SESSION_BEHAVIOR_FACES[lastBehavior]} ${SESSION_BEHAVIOR_LABELS[lastBehavior]} · `
@@ -859,7 +862,7 @@ export default async function PacienteDossierPage({
                   </p>
                   {lastNote.nextSteps && (
                     <p className="rounded-[10px] bg-brand-50 p-2.5 text-[13px] text-brand-800">
-                      <strong>Próximo paso:</strong> {lastNote.nextSteps}
+                      <strong>Próximo paso:</strong> <RichText value={lastNote.nextSteps} />
                     </p>
                   )}
                 </div>

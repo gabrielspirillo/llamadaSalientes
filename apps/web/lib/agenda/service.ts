@@ -36,6 +36,7 @@ import {
   whatsappContacts,
 } from '@/lib/db/schema';
 import { listPatientsForPhone } from '@/lib/patients/persons';
+import { richToPlain, sanitizeRich } from '@/lib/rich-text';
 import { zonedToUtc } from '@/lib/tasks/tz';
 import { normalizeWhatsappE164, parseWhatsappPhone } from '@/lib/whatsapp/phone';
 
@@ -1214,7 +1215,20 @@ export async function saveClinicalNote(
   raw: z.infer<typeof clinicalNoteInputSchema>,
   noteId?: string,
 ) {
-  const input = clinicalNoteInputSchema.parse(raw);
+  const parsed = clinicalNoteInputSchema.parse(raw);
+  // Los campos con formato (negrita, color…) se guardan saneados: sólo las
+  // etiquetas de `lib/rich-text.ts`. "Tratamiento" va en texto llano.
+  const input = {
+    ...parsed,
+    summary: sanitizeRich(parsed.summary),
+    symptoms: sanitizeRich(parsed.symptoms),
+    examination: sanitizeRich(parsed.examination),
+    observations: sanitizeRich(parsed.observations),
+    nextSteps: sanitizeRich(parsed.nextSteps),
+  };
+  if (richToPlain(input.summary).length < 3) {
+    throw new AgendaValidationError('Escribe al menos el motivo de la consulta');
+  }
 
   if (input.appointmentId) {
     // La cita tiene que ser de este tenant Y de ese profesional: si no,

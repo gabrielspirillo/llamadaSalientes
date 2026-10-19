@@ -857,6 +857,15 @@ duplicadas, la IA podía agendar en la que no tiene la historia clínica.
   misma cita o del mismo paciente, profesional y día (privada con privada); la
   ficha abre esa nota en el formulario para completarla. La migración `0047`
   juntó las repetidas y corrigió los `+6xxxxxxxx`.
+- **Notas con formato** (negrita, cursiva, subrayado, rojo/naranja/verde/azul,
+  resaltado, listas) en Síntomas, Exploración, Diagnóstico, Observaciones y
+  Próximo paso; **Tratamiento queda en texto plano** (lo pidió así la clínica).
+  Se guarda en las mismas columnas con un subconjunto mínimo de etiquetas
+  (`lib/rich-text.ts`, con tests): `sanitizeRich` al guardar, `<RichText>` para
+  pintar (árbol de elementos, **nunca `dangerouslySetInnerHTML`**) y
+  `richToPlain` para quien necesita texto (agentes, barridos). El editor
+  (`components/ui/rich-text-editor.tsx`) pega siempre como texto plano. Sin
+  selector de tipografía: la ficha usa la del panel.
 - **Calendario por colores**: cada estado tiene su color (Agendada teal,
   Confirmada verde, En sala índigo, En gabinete violeta, Atendida gris, No se
   presentó coral; `STATUS_COLORS` en `calendar-view.tsx`) y la leyenda los

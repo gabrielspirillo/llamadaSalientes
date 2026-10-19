@@ -2,7 +2,8 @@
 
 import { saveClinicalNoteAction } from '@/app/(dashboard)/dashboard/agenda/actions';
 import { Button } from '@/components/ui/button';
-import { Input, Label, Select, Textarea } from '@/components/ui/input';
+import { Input, Label, Select } from '@/components/ui/input';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import {
   SESSION_BEHAVIORS,
   SESSION_BEHAVIOR_FACES,
@@ -10,6 +11,7 @@ import {
   type SessionBehavior,
 } from '@/lib/care-profile/policy';
 import { cn } from '@/lib/cn';
+import { richToPlain } from '@/lib/rich-text';
 import { AlertTriangle, Check, Copy, History, Loader2, NotebookPen } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
@@ -161,7 +163,7 @@ export function ClinicalNoteForm({
     });
   }
 
-  const canSave = !pending && summary.trim().length >= 3;
+  const canSave = !pending && richToPlain(summary).length >= 3;
 
   return (
     <div className="flex flex-col gap-5 p-4 md:gap-4 md:p-6">
@@ -181,8 +183,8 @@ export function ClinicalNoteForm({
         <div className="flex items-start gap-2.5 rounded-[14px] bg-brand-50 px-3.5 py-3 text-[13px] text-brand-800 lg:hidden">
           <History className="mt-px h-4 w-4 shrink-0" aria-hidden />
           <span>
-            <strong>La última vez ({previous.whenLabel}):</strong> {previous.summary}
-            {previous.nextSteps ? ` Próximo paso: ${previous.nextSteps}` : ''}
+            <strong>La última vez ({previous.whenLabel}):</strong> {richToPlain(previous.summary)}
+            {previous.nextSteps ? ` Próximo paso: ${richToPlain(previous.nextSteps)}` : ''}
           </span>
         </div>
       )}
@@ -223,21 +225,19 @@ export function ClinicalNoteForm({
           <>
             <div className="grid gap-1.5">
               <Label htmlFor="cn-symptoms">Síntomas</Label>
-              <Textarea
+              <RichTextEditor
                 id="cn-symptoms"
-                className="min-h-[80px] text-[16px]"
                 value={symptoms}
-                onChange={(e) => setSymptoms(e.target.value)}
+                onChange={setSymptoms}
                 placeholder="Lo que cuenta la familia: tos, mocos, fiebre…"
               />
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="cn-exam">Exploración</Label>
-              <Textarea
+              <RichTextEditor
                 id="cn-exam"
-                className="min-h-[80px] text-[16px]"
                 value={examination}
-                onChange={(e) => setExamination(e.target.value)}
+                onChange={setExamination}
                 placeholder="Auscultación, SatO2, FR…"
               />
             </div>
@@ -257,11 +257,11 @@ export function ClinicalNoteForm({
 
         <div className="grid gap-1.5">
           <Label htmlFor="cn-summary">{pediatric ? 'Diagnóstico' : 'Motivo / diagnóstico'}</Label>
-          <Input
+          <RichTextEditor
             id="cn-summary"
-            className="text-[16px]"
             value={summary}
-            onChange={(e) => setSummary(e.target.value)}
+            onChange={setSummary}
+            minHeight={44}
             placeholder={pediatric ? 'Bronquiolitis leve' : 'Dolor en 36, caries profunda'}
           />
         </div>
@@ -269,11 +269,10 @@ export function ClinicalNoteForm({
 
       <div className="grid gap-1.5">
         <Label htmlFor="cn-obs">Observaciones</Label>
-        <Textarea
+        <RichTextEditor
           id="cn-obs"
-          className="min-h-[70px] text-[16px]"
           value={observations}
-          onChange={(e) => setObservations(e.target.value)}
+          onChange={setObservations}
           placeholder={
             pediatric
               ? 'Tolerancia, vómitos, indicaciones a la familia…'
@@ -284,11 +283,11 @@ export function ClinicalNoteForm({
 
       <div className="grid gap-1.5">
         <Label htmlFor="cn-next">Próximo paso</Label>
-        <Input
+        <RichTextEditor
           id="cn-next"
-          className="text-[16px]"
           value={nextSteps}
-          onChange={(e) => setNextSteps(e.target.value)}
+          onChange={setNextSteps}
+          minHeight={44}
           placeholder={
             pediatric
               ? 'Nueva sesión en 48 h; lavados en casa'
