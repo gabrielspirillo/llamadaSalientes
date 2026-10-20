@@ -56,6 +56,7 @@ export async function GET(req: Request) {
       toDateKey: to,
       durationMinutes: duration,
       limit: 120,
+      staff: true,
       firstVisit: url.searchParams.get('firstVisit') === '1',
       ...(exclude && /^[0-9a-f-]{36}$/i.test(exclude) ? { excludeAppointmentId: exclude } : {}),
     });
@@ -63,6 +64,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       timezone: result.timezone,
       reason: result.reason,
+      workingWeekdays: result.workingWeekdays ?? [],
       slots: result.slots.map((s) => ({
         dateKey: localDateKey(s.start, result.timezone),
         startMinute: minuteOfDay(s.start, result.timezone),

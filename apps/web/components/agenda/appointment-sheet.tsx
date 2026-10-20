@@ -8,6 +8,7 @@ import {
   setAdvancePreferenceAction,
   updateAppointmentAction,
 } from '@/app/(dashboard)/dashboard/agenda/actions';
+import { type AvailabilityReason, NoSlotsNotice } from '@/components/agenda/no-slots-notice';
 import { PatientSignalBadges } from '@/components/agenda/patient-signals';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -92,6 +93,9 @@ export function AppointmentSheet({
   const [customTime, setCustomTime] = React.useState(false);
   const [slots, setSlots] = React.useState<number[]>([]);
   const [loadingSlots, setLoadingSlots] = React.useState(false);
+  const [slotReason, setSlotReason] = React.useState<AvailabilityReason>('OK');
+  const [workingWeekdays, setWorkingWeekdays] = React.useState<number[]>([]);
+  const [outsideBlocked, setOutsideBlocked] = React.useState(false);
 
   // Huecos libres del día elegido, sin contar la propia cita (si no, su hora y
   // las de al lado salían ocupadas). Se recargan al cambiar día o duración.
@@ -109,13 +113,20 @@ export function AppointmentSheet({
     });
     fetch(`/api/agenda/availability?${params.toString()}`)
       .then((r) => (r.ok ? r.json() : { slots: [] }))
-      .then((data: { slots?: { dateKey: string; startMinute: number }[] }) => {
-        if (!cancelled) {
+      .then(
+        (data: {
+          slots?: { dateKey: string; startMinute: number }[];
+          reason?: AvailabilityReason;
+          workingWeekdays?: number[];
+        }) => {
+          if (cancelled) return;
           setSlots(
             (data.slots ?? []).filter((x) => x.dateKey === dateKey).map((x) => x.startMinute),
           );
-        }
-      })
+          setSlotReason(data.reason ?? 'OK');
+          setWorkingWeekdays(data.workingWeekdays ?? []);
+        },
+      )
       .catch(() => {
         if (!cancelled) setSlots([]);
       })
@@ -141,6 +152,27 @@ export function AppointmentSheet({
       const result = await fn();
       if (result.ok) router.refresh();
       else setError(result.error);
+    });
+  }
+
+  function move(forceOutsideHours: boolean) {
+    const [h, m] = time.split(':').map(Number);
+    setError(null);
+    if (forceOutsideHours) setAllowOutsideHours(true);
+    startTransition(async () => {
+      const result = await rescheduleAppointmentAction(item.id, {
+        startDateKey: dateKey,
+        startMinute: (h ?? 9) * 60 + (m ?? 0),
+        durationMinutes: duration,
+        allowOutsideHours: allowOutsideHours || forceOutsideHours,
+      });
+      if (result.ok) {
+        router.refresh();
+        onClose();
+      } else {
+        setError(result.error);
+        setOutsideBlocked(result.code === 'OUTSIDE_HOURS');
+      }
     });
   }
 
@@ -429,11 +461,16 @@ export function AppointmentSheet({
                   {loadingSlots && <Loader2 className="h-3 w-3 animate-spin" />}
                 </div>
                 {slots.length === 0 ? (
-                  <p className="text-[12px] text-zinc-500">
-                    {loadingSlots
-                      ? 'Buscando…'
-                      : 'No quedan huecos ese día. Prueba otro día o usa “Personalizar”.'}
-                  </p>
+                  <NoSlotsNotice
+                    loading={loadingSlots}
+                    reason={slotReason}
+                    workingWeekdays={workingWeekdays}
+                    forceLabel="Moverla igualmente"
+                    onForce={() => {
+                      setCustomTime(true);
+                      setAllowOutsideHours(true);
+                    }}
+                  />
                 ) : (
                   <div className="flex flex-wrap gap-1.5">
                     {slots.slice(0, 30).map((m) => (
@@ -509,21 +546,17 @@ export function AppointmentSheet({
                 <Button variant="ghost" size="sm" onClick={() => setShowReschedule(false)}>
                   Cerrar
                 </Button>
-                <Button
-                  size="sm"
-                  disabled={pending || !time}
-                  onClick={() => {
-                    const [h, m] = time.split(':').map(Number);
-                    run(() =>
-                      rescheduleAppointmentAction(item.id, {
-                        startDateKey: dateKey,
-                        startMinute: (h ?? 9) * 60 + (m ?? 0),
-                        durationMinutes: duration,
-                        allowOutsideHours,
-                      }),
-                    );
-                  }}
-                >
+                {outsideBlocked && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={pending || !time}
+                    onClick={() => move(true)}
+                  >
+                    Moverla igualmente fuera de horario
+                  </Button>
+                )}
+                <Button size="sm" disabled={pending || !time} onClick={() => move(false)}>
                   Mover a las {time || '--:--'}
                 </Button>
               </div>

@@ -17,6 +17,7 @@ import {
 } from '@/lib/agenda/charges';
 import { getAppointment } from '@/lib/agenda/queries';
 import {
+  AgendaOutsideHoursError,
   AgendaPolicyError,
   AgendaValidationError,
   type AppointmentInput,
@@ -73,13 +74,19 @@ export type ActionResult<T = undefined> =
   | {
       ok: false;
       error: string;
-      /** 'POLICY' = incumple una regla de reserva que el panel puede saltarse a sabiendas. */
-      code?: 'POLICY';
+      /**
+       * Lo que el panel puede saltarse a sabiendas: 'POLICY' = una regla de
+       * reserva; 'OUTSIDE_HOURS' = fuera del horario del profesional.
+       */
+      code?: 'POLICY' | 'OUTSIDE_HOURS';
     };
 
-function fail(err: unknown): { ok: false; error: string; code?: 'POLICY' } {
+function fail(err: unknown): { ok: false; error: string; code?: 'POLICY' | 'OUTSIDE_HOURS' } {
   if (err instanceof AgendaPolicyError) {
     return { ok: false, error: err.message, code: 'POLICY' };
+  }
+  if (err instanceof AgendaOutsideHoursError) {
+    return { ok: false, error: err.message, code: 'OUTSIDE_HOURS' };
   }
   if (
     err instanceof AgendaValidationError ||

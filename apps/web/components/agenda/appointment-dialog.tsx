@@ -1,6 +1,7 @@
 'use client';
 
 import { createAppointmentAction } from '@/app/(dashboard)/dashboard/agenda/actions';
+import { type AvailabilityReason, NoSlotsNotice } from '@/components/agenda/no-slots-notice';
 import { PatientDialog } from '@/components/agenda/patient-dialog';
 import { Button } from '@/components/ui/button';
 import {
@@ -117,6 +118,8 @@ export function AppointmentDialog({
   const [notes, setNotes] = React.useState('');
   const [allowOutsideHours, setAllowOutsideHours] = React.useState(false);
   const [customTime, setCustomTime] = React.useState(false);
+  const customTimeRef = React.useRef(false);
+  customTimeRef.current = customTime;
   // "¿Quieres que te avisemos si se libera un hueco antes?": se pregunta en
   // cada reserva (es por cita, no por paciente).
   const [advance, setAdvance] = React.useState<'NONE' | 'ACCEPTS' | 'NO_MOVE'>('NONE');
@@ -128,6 +131,11 @@ export function AppointmentDialog({
 
   const [slots, setSlots] = React.useState<{ startMinute: number; dateKey: string }[]>([]);
   const [loadingSlots, setLoadingSlots] = React.useState(false);
+  const [slotReason, setSlotReason] = React.useState<AvailabilityReason>('OK');
+  const [workingWeekdays, setWorkingWeekdays] = React.useState<number[]>([]);
+  // El servidor la rechazó por caer fuera del horario: se ofrece guardarla igual.
+  const [outsideBlocked, setOutsideBlocked] = React.useState(false);
+  const errorRef = React.useRef<HTMLParagraphElement>(null);
 
   // Huecos sugeridos del día elegido: es lo que evita que recepción tenga que
   // adivinar dónde cabe la cita.
@@ -143,9 +151,28 @@ export function AppointmentDialog({
     });
     fetch(`/api/agenda/availability?${params.toString()}`)
       .then((r) => (r.ok ? r.json() : { slots: [] }))
-      .then((data: { slots?: { dateKey: string; startMinute: number }[] }) => {
-        if (!cancelled) setSlots(data.slots ?? []);
-      })
+      .then(
+        (data: {
+          slots?: { dateKey: string; startMinute: number }[];
+          reason?: AvailabilityReason;
+          workingWeekdays?: number[];
+        }) => {
+          if (cancelled) return;
+          const found = data.slots ?? [];
+          setSlots(found);
+          setSlotReason(data.reason ?? 'OK');
+          setWorkingWeekdays(data.workingWeekdays ?? []);
+          // La hora queda en un hueco libre: si la que venía no lo es (un día
+          // nuevo, otra duración), se pasa al primero en vez de guardar a
+          // ciegas una hora que el servidor va a rechazar.
+          const first = found[0];
+          if (!customTimeRef.current && first) {
+            setTime((t) =>
+              found.some((x) => hhmm(x.startMinute) === t) ? t : hhmm(first.startMinute),
+            );
+          }
+        },
+      )
       .catch(() => {
         if (!cancelled) setSlots([]);
       })
@@ -248,8 +275,21 @@ export function AppointmentDialog({
     searched.length >= 2 &&
     results.length === 0;
 
-  function submit() {
+  // Por qué no se puede guardar todavía, dicho junto al botón: un botón gris
+  // sin explicación se lee como que la agenda no deja.
+  const missing = !professionalId
+    ? 'Elige el profesional.'
+    : !patientName.trim()
+      ? 'Falta el paciente.'
+      : needsPatient
+        ? 'Elige un paciente de la ficha o créalo.'
+        : !time
+          ? 'Elige la hora.'
+          : null;
+
+  function submit(forceOutsideHours = false) {
     setError(null);
+    if (forceOutsideHours) setAllowOutsideHours(true);
     startTransition(async () => {
       const result = await createAppointmentAction({
         professionalId,
@@ -262,7 +302,7 @@ export function AppointmentDialog({
         startMinute: toMinute(time),
         durationMinutes: duration,
         notes,
-        allowOutsideHours,
+        allowOutsideHours: allowOutsideHours || forceOutsideHours,
         overridePolicy,
         advancePreference: advance === 'NONE' ? null : advance,
         advanceNote: advance === 'ACCEPTS' ? advanceNote : '',
@@ -272,7 +312,12 @@ export function AppointmentDialog({
         router.refresh();
       } else {
         setError(result.error);
+        setOutsideBlocked(result.code === 'OUTSIDE_HOURS');
         if (result.code === 'POLICY') setPolicyBlocked(true);
+        // El error sale abajo del todo: que se vea aunque el diálogo tenga scroll.
+        requestAnimationFrame(() =>
+          errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
+        );
       }
     });
   }
@@ -339,11 +384,16 @@ export function AppointmentDialog({
               {loadingSlots && <Loader2 className="h-3 w-3 animate-spin" />}
             </div>
             {slots.length === 0 ? (
-              <p className="text-[12px] text-zinc-500">
-                {loadingSlots
-                  ? 'Buscando…'
-                  : 'No quedan huecos ese día. Prueba otro día o usa “Personalizar”.'}
-              </p>
+              <NoSlotsNotice
+                loading={loadingSlots}
+                reason={slotReason}
+                workingWeekdays={workingWeekdays}
+                forceLabel="Darla igualmente"
+                onForce={() => {
+                  setCustomTime(true);
+                  setAllowOutsideHours(true);
+                }}
+              />
             ) : (
               <div className="flex flex-wrap gap-1.5">
                 {slots.slice(0, 30).map((s) => (
@@ -421,7 +471,7 @@ export function AppointmentDialog({
           )}
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-1.5">
+            <div className="grid content-start gap-1.5">
               <Label htmlFor="ap-name">Paciente</Label>
               <div className="relative">
                 <Input
@@ -501,7 +551,7 @@ export function AppointmentDialog({
                 </div>
               )}
             </div>
-            <div className="grid gap-1.5">
+            <div className="grid content-start gap-1.5">
               <Label htmlFor="ap-phone">Teléfono</Label>
               <PhoneInput
                 id="ap-phone"
@@ -589,9 +639,26 @@ export function AppointmentDialog({
           )}
 
           {error && (
-            <p className="flex items-start gap-2 rounded-[14px] bg-rose-50 p-3 text-[13px] text-rose-700">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {error}
-            </p>
+            <div
+              ref={errorRef}
+              className="grid gap-2 rounded-[14px] bg-rose-50 p-3 text-[13px] text-rose-700"
+            >
+              <p className="flex items-start gap-2">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {error}
+              </p>
+              {outsideBlocked && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="justify-self-start"
+                  disabled={pending}
+                  onClick={() => submit(true)}
+                >
+                  Guardar igualmente fuera de horario
+                </Button>
+              )}
+            </div>
           )}
         </div>
 
@@ -599,15 +666,12 @@ export function AppointmentDialog({
           <Button variant="ghost" onClick={onClose} disabled={pending}>
             Cancelar
           </Button>
-          {needsPatient && patientName.trim() && (
-            <p className="mr-auto self-center text-[12px] text-zinc-500">
-              Elige un paciente de la ficha o créalo.
+          {missing && (
+            <p className="mr-auto self-center text-[12px] font-semibold text-amber-700">
+              {missing}
             </p>
           )}
-          <Button
-            onClick={submit}
-            disabled={pending || !patientName || !professionalId || needsPatient}
-          >
+          <Button onClick={() => submit()} disabled={pending || Boolean(missing)}>
             {pending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (

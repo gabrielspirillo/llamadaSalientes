@@ -59,6 +59,17 @@ export class AgendaPolicyError extends AgendaValidationError {
   }
 }
 
+/**
+ * La cita cae fuera del horario del profesional. El panel puede guardarla
+ * igual a sabiendas (`allowOutsideHours`); los agentes nunca.
+ */
+export class AgendaOutsideHoursError extends AgendaValidationError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AgendaOutsideHoursError';
+  }
+}
+
 // ─── Esquemas ────────────────────────────────────────────────────────────────
 
 const hexColor = z
@@ -830,7 +841,7 @@ export async function createAppointment(
         );
       const inside = isInsideWorkingHours(startsAt, endsAt, shiftRows.map(toShiftRule), timezone);
       if (!inside) {
-        throw new AgendaValidationError(
+        throw new AgendaOutsideHoursError(
           `Ese horario cae fuera del horario de trabajo de ${professional.fullName}.`,
         );
       }
@@ -1002,7 +1013,7 @@ export async function rescheduleAppointment(
           ),
         );
       if (!isInsideWorkingHours(startsAt, endsAt, shiftRows.map(toShiftRule), timezone)) {
-        throw new AgendaValidationError(
+        throw new AgendaOutsideHoursError(
           `Ese horario cae fuera del horario de trabajo de ${professional.fullName}.`,
         );
       }

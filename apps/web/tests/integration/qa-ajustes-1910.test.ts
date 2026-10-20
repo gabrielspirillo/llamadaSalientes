@@ -11,6 +11,7 @@ import {
 } from '@/lib/agenda/charges';
 import { getAvailability, listAgendaPatients, listAppointmentsInRange } from '@/lib/agenda/queries';
 import {
+  AgendaOutsideHoursError,
   createAppointment,
   createProfessional,
   replaceShifts,
@@ -189,5 +190,60 @@ describe('19/10', () => {
     const rows = await listFamilyPatients(tenantId, 'Europe/Madrid');
     // 23:30 UTC del 3 es ya el 4 en Madrid; la anulada del 10 de enero no cuenta.
     expect(rows.find((r) => r.id === mayor.id)?.firstVisitDate).toBe('2025-02-04');
+  });
+
+  it('el panel da citas más allá de "reservable hasta"; los agentes no', async () => {
+    await raw`update professionals set max_advance_days = 7 where id = ${professionalId}`;
+    const now = new Date('2027-01-11T09:00:00Z');
+    const lejos = '2027-02-23'; // martes, 43 días después
+    const panel = await getAvailability(tenantId, {
+      professionalId,
+      fromDateKey: lejos,
+      toDateKey: lejos,
+      durationMinutes: 30,
+      now,
+      staff: true,
+    });
+    const agente = await getAvailability(tenantId, {
+      professionalId,
+      fromDateKey: lejos,
+      toDateKey: lejos,
+      durationMinutes: 30,
+      now,
+    });
+    expect(panel.slots.length).toBeGreaterThan(0);
+    expect(agente.slots).toHaveLength(0);
+    await raw`update professionals set max_advance_days = 90 where id = ${professionalId}`;
+  });
+
+  it('un día sin horario se explica (DAY_OFF) y fuera de horario es un error propio', async () => {
+    const sabado = '2027-03-13';
+    const av = await getAvailability(tenantId, {
+      professionalId,
+      fromDateKey: sabado,
+      toDateKey: sabado,
+      durationMinutes: 30,
+      staff: true,
+    });
+    expect(av.reason).toBe('DAY_OFF');
+    expect(av.workingWeekdays).toEqual([1, 2, 3, 4, 5]);
+    await expect(
+      createAppointment(ctxFor(tenantId, userA), {
+        professionalId,
+        patientName: 'Sábado',
+        startDateKey: sabado,
+        startMinute: 10 * 60,
+        durationMinutes: 30,
+      }),
+    ).rejects.toBeInstanceOf(AgendaOutsideHoursError);
+    const { appointment } = await createAppointment(ctxFor(tenantId, userA), {
+      professionalId,
+      patientName: 'Sábado',
+      startDateKey: sabado,
+      startMinute: 10 * 60,
+      durationMinutes: 30,
+      allowOutsideHours: true,
+    });
+    expect(appointment.id).toBeTruthy();
   });
 });

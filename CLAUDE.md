@@ -907,6 +907,14 @@ diario para distinguir a cada paciente de un vistazo. Migración `0048`.
   (`paymentsForAppointments`).
 - **Mover cita** con "Huecos libres ese día": `getAvailability` acepta
   `excludeAppointmentId` (la cita no se bloquea a sí misma).
+- ⚠️ **"Reservable hasta" y la antelación mínima son reglas de los AGENTES,
+  no del panel.** `getAvailability({ staff: true })` (lo que pide
+  `/api/agenda/availability`) las ignora. Con Respinens en 7 días, recepción
+  no podía dar ninguna cita de noviembre a mediados de octubre; la `0049` lo
+  subió a 60. Sin huecos, la API dice por qué (`DAY_OFF` + `workingWeekdays`)
+  y el diálogo ofrece "Darla igualmente"; fuera de horario el servidor lanza
+  `AgendaOutsideHoursError` (código `OUTSIDE_HOURS`) y el panel ofrece
+  "Guardar igualmente fuera de horario". El botón de guardar dice qué falta.
 - **Nombre de la ficha manda**: `listAppointmentsInRange` pinta el nombre de
   `patients`, y `updatePatient` reescribe `patient_name` de sus citas y notas.
 - **Búsqueda sin tildes** en Agenda → Pacientes (`foldedWordsFilter`,

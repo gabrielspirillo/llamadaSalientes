@@ -1,7 +1,7 @@
 import 'server-only';
 import { and, asc, desc, eq, gte, inArray, lt, lte, ne, or, sql } from 'drizzle-orm';
 
-import { type SlotOptions, computeRangeSlots } from '@/lib/agenda/availability';
+import { type SlotOptions, computeRangeSlots, shiftAppliesOn } from '@/lib/agenda/availability';
 import { patientIdFromKey, patientKeyFor, patientKeyForPerson } from '@/lib/agenda/patients';
 import { BUSY_STATUSES, type ShiftRule, type SlotCandidate } from '@/lib/agenda/shared';
 import {
@@ -445,13 +445,25 @@ export interface AvailabilityParams {
    * una cita su hora y las de al lado salían como ocupadas por ella misma.
    */
   excludeAppointmentId?: string;
+  /**
+   * Quien busca es el equipo (el panel), no un agente: la antelación mínima y
+   * el "se puede reservar hasta N días" son reglas para los pacientes. Con
+   * ellas aplicadas al panel, recepción no podía dar una cita más allá de esa
+   * ventana (con 30 días, nada de noviembre a mediados de octubre).
+   */
+  staff?: boolean;
 }
 
 export interface AvailabilityResult {
   timezone: string;
   slots: SlotCandidate[];
-  /** Motivo por el que no hay huecos, cuando la causa es de configuración. */
-  reason: 'OK' | 'NO_PROFESSIONAL' | 'AGENDA_DISABLED' | 'NO_SHIFTS';
+  /**
+   * Motivo por el que no hay huecos, cuando la causa es de configuración.
+   * DAY_OFF: ninguna franja del profesional cae en el rango pedido.
+   */
+  reason: 'OK' | 'NO_PROFESSIONAL' | 'AGENDA_DISABLED' | 'NO_SHIFTS' | 'DAY_OFF';
+  /** Días de la semana (ISO) en que trabaja; para explicar un DAY_OFF. */
+  workingWeekdays?: number[];
 }
 
 /**
@@ -529,16 +541,17 @@ export async function getAvailability(
     // Null en base = automático; el motor lo recibe como 0.
     granularityMinutes: professional.slotGranularityMinutes ?? 0,
     bufferMinutes: professional.bufferMinutes,
-    minNoticeHours: professional.minNoticeHours,
-    maxAdvanceDays: professional.maxAdvanceDays,
+    minNoticeHours: params.staff ? 0 : professional.minNoticeHours,
+    maxAdvanceDays: params.staff ? 400 : professional.maxAdvanceDays,
     now: params.now ?? new Date(),
     firstVisit: careProfile ? firstVisitRules(careProfile.bookingPolicy) : null,
   };
 
+  const shiftRules = shiftRows.map(toShiftRule);
   const slots = computeRangeSlots({
     fromDateKey: params.fromDateKey,
     toDateKey: params.toDateKey,
-    shifts: shiftRows.map(toShiftRule),
+    shifts: shiftRules,
     appointments: appointmentRows.map((a) => ({
       start: a.startsAt,
       end: a.endsAt,
@@ -549,7 +562,16 @@ export async function getAvailability(
     limit: params.limit,
   });
 
-  return { timezone, slots, reason: 'OK' };
+  const workingWeekdays = [...new Set(shiftRules.map((s) => s.weekday))].sort();
+  let worksInRange = false;
+  for (
+    let day = params.fromDateKey, guard = 0;
+    day <= params.toDateKey && guard < 400 && !worksInRange;
+    day = addDaysToKey(day, 1), guard++
+  ) {
+    worksInRange = shiftRules.some((s) => shiftAppliesOn(s, day));
+  }
+  return { timezone, slots, reason: worksInRange ? 'OK' : 'DAY_OFF', workingWeekdays };
 }
 
 export function toShiftRule(row: ShiftRow): ShiftRule {

@@ -26,11 +26,13 @@ export function PhoneInput({
   const local = withoutDialPrefix(value, prefix);
   const ownPrefix = !prefix || local.trim().startsWith('+') || local.trim().startsWith('00');
   return (
-    <div className="relative">
+    // h-11 = alto del Input: el prefijo se centra en el campo, no en lo que
+    // mida la celda de la rejilla donde caiga (salía debajo del campo).
+    <div className="relative self-start">
       {!ownPrefix && (
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[14px] font-semibold text-zinc-500"
+          className="pointer-events-none absolute top-0 left-4 flex h-11 items-center text-sm font-semibold text-zinc-500"
         >
           {prefix}
         </span>
@@ -41,7 +43,7 @@ export function PhoneInput({
         inputMode="tel"
         value={local}
         onChange={(e) => onChange(withDialPrefix(e.target.value, prefix))}
-        className={cn(!ownPrefix && 'pl-12', className)}
+        className={cn(!ownPrefix && 'pl-[3.25rem]', className)}
       />
     </div>
   );
