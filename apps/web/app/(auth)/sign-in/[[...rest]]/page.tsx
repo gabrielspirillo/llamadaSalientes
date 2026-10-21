@@ -1,4 +1,4 @@
-import { AuthAside, AuthPanel, authAppearance } from '@/components/auth/auth-aside';
+import { AuthAside, AuthPanel, GLASS, authAppearance } from '@/components/auth/auth-aside';
 import { SignIn } from '@clerk/nextjs';
 import { Quote } from 'lucide-react';
 
@@ -18,7 +18,7 @@ export default function SignInPage() {
       </AuthPanel>
 
       <AuthAside image={IMAGE} imagePosition={IMAGE_POSITION} eyebrow="Caso real">
-        <div className="rounded-[26px] bg-white/10 p-7 ring-1 ring-inset ring-white/15 backdrop-blur-xl">
+        <div className={`rounded-[26px] p-7 ${GLASS}`}>
           <Quote className="mb-4 h-7 w-7 text-[#6bc2a4]" />
           <blockquote className="text-[24px] font-bold leading-snug tracking-tight xl:text-[27px]">
             Pasamos de perder 3 de cada 10 llamadas a contestarlas todas. Las citas cerradas por
@@ -43,7 +43,7 @@ export default function SignInPage() {
           ].map((s, i) => (
             <div
               key={s.k}
-              className="animate-fade-up rounded-2xl bg-white/10 p-4 ring-1 ring-inset ring-white/15 backdrop-blur-xl"
+              className={`animate-[fade-in_700ms_ease-out_backwards] rounded-2xl p-4 ${GLASS}`}
               style={{ animationDelay: `${300 + i * 120}ms` }}
             >
               <dt className="text-[24px] font-extrabold leading-none tracking-tight">{s.k}</dt>

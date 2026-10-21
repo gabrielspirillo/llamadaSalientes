@@ -80,6 +80,14 @@ export function AuthPanel({
 }
 
 /**
+ * Cristal oscuro y muy desenfocado para lo que va delante de la foto: con el
+ * blanco translúcido de antes, sobre zonas claras de la imagen el texto se
+ * perdía.
+ */
+export const GLASS =
+  'bg-[#0b1512]/45 ring-1 ring-inset ring-white/15 backdrop-blur-2xl backdrop-saturate-150 shadow-[0_24px_60px_-24px_rgba(0,0,0,0.7)]';
+
+/**
  * Panel derecho de las pantallas de acceso (sólo escritorio): una foto real a
  * sangre, un velo verde de la marca para que el texto se lea, y el contenido
  * sobre una tarjeta de cristal abajo.
@@ -110,17 +118,27 @@ export function AuthAside({
         className="object-cover"
         style={{ objectPosition: imagePosition }}
       />
-      {/* Velo: oscuro abajo (donde va el texto), limpio arriba (donde se ve la foto). */}
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,31,27,0.15)_0%,rgba(15,31,27,0.25)_40%,rgba(15,31,27,0.88)_78%,rgba(15,31,27,0.96)_100%)]" />
+      {/* Sombra sobre toda la foto (y viñeta en los bordes) para que lo de
+          delante contraste; más oscura abajo, donde va el texto. */}
+      <div className="absolute inset-0 bg-[#0b1512]/35 shadow-[inset_0_0_180px_rgba(0,0,0,0.6)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,21,18,0.25)_0%,rgba(11,21,18,0.2)_35%,rgba(11,21,18,0.75)_70%,rgba(11,21,18,0.92)_100%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(95,168,150,0.25),transparent_55%)]" />
 
-      <div className="absolute right-8 top-8 inline-flex items-center gap-2 rounded-full bg-white/15 px-3.5 py-1.5 text-[12px] font-semibold text-white/90 ring-1 ring-inset ring-white/25 backdrop-blur-md">
+      <div
+        className={`absolute right-8 top-8 inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[12px] font-semibold text-white/90 ${GLASS}`}
+      >
         <ShieldCheck className="h-3.5 w-3.5" /> Hecho para clínicas
       </div>
 
       <div className="absolute inset-x-0 bottom-0 p-10 xl:p-14">
-        <div className="max-w-xl animate-fade-up">
-          <p className="mb-5 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-white/80 ring-1 ring-inset ring-white/20 backdrop-blur-md">
+        {/* Entrada con fill-mode `backwards`: una animación que se queda
+            aplicada al terminar (`both`, como `animate-fade-up`) deja al
+            navegador sin backdrop-blur en el cristal de dentro, y la foto se
+            veía nítida detrás de la tarjeta. */}
+        <div className="max-w-xl animate-[fade-in_700ms_ease-out_backwards]">
+          <p
+            className={`mb-5 inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-white/85 ${GLASS}`}
+          >
             <span className="h-1.5 w-1.5 rounded-full bg-[#6bc2a4]" />
             {eyebrow}
           </p>

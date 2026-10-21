@@ -1,4 +1,4 @@
-import { AuthAside, AuthPanel, authAppearance } from '@/components/auth/auth-aside';
+import { AuthAside, AuthPanel, GLASS, authAppearance } from '@/components/auth/auth-aside';
 import { SignUp } from '@clerk/nextjs';
 import { CheckCircle2 } from 'lucide-react';
 
@@ -27,7 +27,7 @@ export default function SignUpPage() {
       </AuthPanel>
 
       <AuthAside image={IMAGE} imagePosition={IMAGE_POSITION} eyebrow="Lo que incluye">
-        <div className="rounded-[26px] bg-white/10 p-7 ring-1 ring-inset ring-white/15 backdrop-blur-xl">
+        <div className={`rounded-[26px] p-7 ${GLASS}`}>
           <h2 className="text-[26px] font-extrabold leading-tight tracking-tight xl:text-[29px]">
             Tu asistente de voz, atendiendo llamadas esta semana.
           </h2>
@@ -35,7 +35,7 @@ export default function SignUpPage() {
             {BENEFITS.map((b, i) => (
               <li
                 key={b}
-                className="flex animate-fade-up items-start gap-2.5 text-[14px] leading-snug text-white/90"
+                className="flex animate-[fade-in_700ms_ease-out_backwards] items-start gap-2.5 text-[14px] leading-snug text-white/90"
                 style={{ animationDelay: `${200 + i * 90}ms` }}
               >
                 <CheckCircle2 className="mt-0.5 h-4.5 w-4.5 shrink-0 text-[#6bc2a4]" />
