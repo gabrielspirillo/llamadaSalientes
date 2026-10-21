@@ -1,3 +1,4 @@
+import { esES } from '@clerk/localizations';
 import { ClerkProvider } from '@clerk/nextjs';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
@@ -23,6 +24,16 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider
+      // Todo Clerk en español: el acceso, el registro y los menús de usuario y
+      // organización del panel.
+      localization={{
+        ...esES,
+        // De tú, como el resto del panel (la traducción oficial va de usted).
+        formFieldInputPlaceholder__emailAddress: 'nombre@tuclinica.com',
+        formFieldInputPlaceholder__password: 'Tu contraseña',
+        formFieldInputPlaceholder__firstName: 'Tu nombre',
+        formFieldInputPlaceholder__lastName: 'Tus apellidos',
+      }}
       appearance={{
         variables: {
           colorPrimary: '#37766a',
