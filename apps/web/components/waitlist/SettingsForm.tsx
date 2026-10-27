@@ -213,6 +213,7 @@ function Row({
   return (
     // <label>: el control de dentro (interruptor, select, número) toma de aquí
     // su nombre accesible; sin él el lector de pantalla decía "botón".
+    // biome-ignore lint/a11y/noLabelWithoutControl: el control llega por `children`.
     <label className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
       <div className="flex-1">
         <div className="text-sm font-medium text-zinc-900">{label}</div>
