@@ -45,6 +45,8 @@ export function titleCaseName(raw: string | null | undefined): string {
   return s
     .split(' ')
     .map((word, index) => {
+      // Siglas con cifras ("E2E", "3D") se dejan como vienen.
+      if (/\d/.test(word) && word === word.toLocaleUpperCase('es')) return word;
       const lower = word.toLocaleLowerCase('es');
       if (index > 0 && PARTICLES.has(lower)) return lower;
       return lower

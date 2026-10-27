@@ -9,6 +9,7 @@ export {
   twilioInboundFormSchema,
   normalizeCloudMessage,
   isEvolutionGroupMessage,
+  isEvolutionUnresolvedLid,
   normalizeEvolutionMessage,
   normalizeTwilioMessage,
 } from './inbound';

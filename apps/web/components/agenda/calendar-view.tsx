@@ -361,7 +361,7 @@ export function CalendarView(props: CalendarViewProps) {
               <ChevronRight className="h-4 w-4" />
             </IconButton>
             <div className="ml-1 min-w-0">
-              <p className="truncate text-[15px] font-bold capitalize text-zinc-900">
+              <p className="text-[15px] font-bold text-zinc-900 first-letter:uppercase sm:truncate">
                 {view === 'week'
                   ? `Semana del ${formatDateKeyLong(dateKeys[0] ?? dateKey)}`
                   : formatDateKeyLong(dateKey)}

@@ -446,6 +446,13 @@ export async function rescheduleAppointmentAction(
 ): Promise<ActionResult> {
   try {
     const ctx = await requireAgendaWriter();
+    // La cita de origen también tiene que ser suya: sólo miraba el destino y un
+    // profesional restringido movía las citas de otra.
+    await assertAppointmentInScope(
+      ctx.tenantId,
+      appointmentId,
+      ctx.scope === 'OWN' ? ctx.professional?.id : undefined,
+    );
     if (params.professionalId) await assertProfessionalInScope(ctx, params.professionalId);
     await rescheduleAppointment(ctx, appointmentId, params);
     revalidateAgenda();

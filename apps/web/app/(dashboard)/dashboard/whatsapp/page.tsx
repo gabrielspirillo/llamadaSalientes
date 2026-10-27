@@ -1,4 +1,5 @@
-import { desc, eq, sql } from 'drizzle-orm';
+import { foldedWordsFilter } from '@/lib/patients/persons';
+import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
 import { MessageCircle, Settings2 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -62,8 +63,13 @@ function channelLabel(channel: string): string {
       : 'Evolution';
 }
 
-export default async function WhatsappConversationsPage() {
+export default async function WhatsappConversationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
   const { tenant, isSuperAdmin } = await getCurrentTenant();
+  const q = ((await searchParams).q ?? '').trim().slice(0, 80);
 
   // El alta de WhatsApp es del administrador de la clínica: la pantalla
   // técnica de conexiones sólo la ve Futura, así que sin este botón una
@@ -99,7 +105,19 @@ export default async function WhatsappConversationsPage() {
     })
     .from(whatsappConversations)
     .innerJoin(whatsappContacts, eq(whatsappContacts.id, whatsappConversations.contactId))
-    .where(eq(whatsappConversations.tenantId, tenant.id))
+    // Con 100 por pantalla, las conversaciones viejas sólo se alcanzan
+    // buscando por nombre o teléfono.
+    .where(
+      and(
+        eq(whatsappConversations.tenantId, tenant.id),
+        q
+          ? or(
+              foldedWordsFilter(sql`coalesce(${whatsappContacts.name}, '')`, q),
+              ilike(whatsappContacts.phoneE164, `%${q.replace(/[^\d+]/g, '') || q}%`),
+            )
+          : undefined,
+      ),
+    )
     // Orden por última actividad. Usamos coalesce(lastMsgAt, createdAt) para
     // que las conversaciones sin lastMsgAt no queden arriba (Postgres pone
     // NULLS FIRST en DESC por default → ese era el bug del orden).
@@ -193,7 +211,26 @@ export default async function WhatsappConversationsPage() {
         }
       />
 
-      {rows.length === 0 ? (
+      <form className="mb-4" action="/dashboard/whatsapp">
+        <input
+          type="search"
+          name="q"
+          defaultValue={q}
+          placeholder="Buscar por nombre o teléfono"
+          aria-label="Buscar conversaciones"
+          className="h-11 w-full rounded-[14px] border border-(--color-border) bg-white px-4 text-[15px] focus:border-brand-400 focus:outline-none sm:max-w-sm"
+        />
+      </form>
+
+      {rows.length === 0 && q ? (
+        <Card>
+          <EmptyState
+            icon={<MessageCircle className="h-5 w-5" />}
+            title="Sin resultados"
+            description={`Ninguna conversación coincide con «${q}».`}
+          />
+        </Card>
+      ) : rows.length === 0 ? (
         <Card>
           <EmptyState
             icon={<MessageCircle className="h-5 w-5" />}

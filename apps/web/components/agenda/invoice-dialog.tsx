@@ -212,6 +212,18 @@ export function InvoiceDialog({
     appointmentIds: l.appointmentIds,
   }));
   const totals = computeTotals(parsedItems, vatRate);
+  // Cada línea con concepto, cantidad y precio: una factura de 0 € gasta un
+  // número legal que ya no se puede reutilizar.
+  const linesValid =
+    allLines.length > 0 &&
+    allLines.every(
+      (l) =>
+        l.concept.trim() !== '' &&
+        Number.isInteger(Number(l.quantity)) &&
+        Number(l.quantity) >= 1 &&
+        parseAmountToCents(l.unit) !== null,
+    ) &&
+    totals.totalCents > 0;
   const anyPendingSelected = invoiceable.some(
     (c) => selected.has(c.appointmentId) && c.chargeStatus === 'PENDING',
   );
@@ -711,7 +723,7 @@ export function InvoiceDialog({
               <Button variant="ghost" onClick={() => setOpen(false)} disabled={pending}>
                 Cancelar
               </Button>
-              <Button onClick={submit} disabled={pending || allLines.length === 0}>
+              <Button onClick={submit} disabled={pending || !linesValid}>
                 {pending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (

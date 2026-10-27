@@ -1,3 +1,4 @@
+import { zonedToUtc } from '@/lib/tasks/tz';
 // Parser de la barra de alta rápida.
 //
 // La recepcionista no va a abrir un formulario de nueve campos entre paciente
@@ -68,7 +69,16 @@ const WEEKDAY_WORDS: Record<string, number> = {
   domingo: 7,
 };
 
-export function parseQuickTask(raw: string, now: Date = new Date()): QuickParseResult {
+/**
+ * `tz`: zona de la clínica. La hora dicha ("mañana 10:00") es de pared de la
+ * clínica; sin esto se tomaba la del navegador y quien agenda desde otro país
+ * guardaba la tarea corrida.
+ */
+export function parseQuickTask(
+  raw: string,
+  now: Date = new Date(),
+  tz?: string | null,
+): QuickParseResult {
   let text = ` ${raw} `;
   const result: QuickParseResult = {
     title: '',
@@ -176,7 +186,16 @@ export function parseQuickTask(raw: string, now: Date = new Date()): QuickParseR
       dueDate.setHours(18, 0, 0, 0);
       result.dueAllDay = true;
     }
-    result.dueAt = dueDate;
+    result.dueAt = tz
+      ? zonedToUtc(
+          dueDate.getFullYear(),
+          dueDate.getMonth() + 1,
+          dueDate.getDate(),
+          dueDate.getHours(),
+          dueDate.getMinutes(),
+          tz,
+        )
+      : dueDate;
   }
 
   result.title = text.replace(/\s+/g, ' ').trim();

@@ -481,6 +481,15 @@ export async function completeConsent(input: {
       : [];
   const row = byExternal[0] ?? byDocument[0];
   if (!row) return { consentId: null, already: false };
+  // El documento dice de qué consentimiento es: si no es este, no se marca
+  // como firmado el de otro paciente.
+  if (input.externalId && row.id !== input.externalId) {
+    console.warn('[consents] webhook con externalId que no cuadra', {
+      consentId: row.id,
+      externalId: input.externalId,
+    });
+    return { consentId: null, already: false };
+  }
   if (row.status === 'SIGNED' && row.pdfKey) return { consentId: row.id, already: true };
 
   // La firma se registra ANTES de archivar el PDF: el tutor ya firmó en

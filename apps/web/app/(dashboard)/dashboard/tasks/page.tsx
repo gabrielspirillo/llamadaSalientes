@@ -78,6 +78,7 @@ export default async function TasksPage() {
         rules={rules}
         currentUserId={currentUserId}
         role={role}
+        timezone={await getTenantTimezone(tenant.id).catch(() => null)}
       />
     );
   } catch (err) {

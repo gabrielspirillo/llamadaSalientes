@@ -28,7 +28,10 @@ export function QuickAdd({
   onCancel,
   onExpand,
   autoFocus = true,
+  timezone,
 }: {
+  /** Zona de la clínica: la hora tecleada es de la clínica, no del navegador. */
+  timezone?: string | null;
   members: TaskMember[];
   status: TaskStatus;
   onCreated: () => void;
@@ -42,7 +45,7 @@ export function QuickAdd({
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const parsed = useMemo(() => parseQuickTask(value), [value]);
+  const parsed = useMemo(() => parseQuickTask(value, new Date(), timezone), [value, timezone]);
 
   const matchedMembers = useMemo(() => {
     if (parsed.assigneeHints.length === 0) return [];

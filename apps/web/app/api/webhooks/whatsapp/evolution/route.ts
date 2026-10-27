@@ -11,6 +11,7 @@ import { readWebhookToken, verifyWebhookToken } from '@/lib/webhooks/tenant-toke
 import {
   evolutionMessagesUpsertSchema,
   isEvolutionGroupMessage,
+  isEvolutionUnresolvedLid,
   normalizeEvolutionMessage,
   persistInboundMessage,
 } from '@/lib/whatsapp';
@@ -164,6 +165,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         // Filtramos outbound (fromMe=true) para no procesar nuestros propios envíos.
         if (parsed.data.data.key.fromMe) break;
         if (isEvolutionGroupMessage(parsed.data)) break;
+        if (isEvolutionUnresolvedLid(parsed.data)) {
+          console.warn('[wa-evolution-webhook] @lid sin teléfono real; se ignora', {
+            instance: conn.evolutionInstance,
+          });
+          break;
+        }
         const inbound = normalizeEvolutionMessage(parsed.data, conn.tenantId);
         // Comparación crudo → normalizado: si el remoteJid es "@lid" y el
         // fromPhoneE164 quedó como un "+<id_lid>" (número inexistente), acá se

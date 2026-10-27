@@ -60,6 +60,8 @@ interface Target {
   name: string;
   patientId: string | null;
   contactId: string | null;
+  /** Teléfono de contacto (en una ficha `pat:`, el del titular). */
+  phone: string | null;
   /** Todas las claves con las que pueden estar guardadas sus citas y notas. */
   keys: string[];
 }
@@ -68,8 +70,13 @@ async function resolveTarget(tenantId: string, patientKey: string): Promise<Targ
   const patientId = patientIdFromKey(patientKey);
   if (patientId) {
     const [row] = await db
-      .select({ firstName: patients.firstName, lastName: patients.lastName })
+      .select({
+        firstName: patients.firstName,
+        lastName: patients.lastName,
+        phone: whatsappContacts.phoneE164,
+      })
       .from(patients)
+      .leftJoin(whatsappContacts, eq(whatsappContacts.id, patients.contactId))
       .where(and(eq(patients.tenantId, tenantId), eq(patients.id, patientId)))
       .limit(1);
     if (!row) return null;
@@ -78,6 +85,7 @@ async function resolveTarget(tenantId: string, patientKey: string): Promise<Targ
       name: patientFullName(row),
       patientId,
       contactId: null,
+      phone: row.phone ?? null,
       keys: [patientKey],
     };
   }
@@ -109,6 +117,7 @@ async function resolveTarget(tenantId: string, patientKey: string): Promise<Targ
     name,
     patientId: null,
     contactId: contact?.id ?? null,
+    phone: contact?.phoneE164 ?? phone,
     keys: [...keys],
   };
 }
@@ -327,7 +336,8 @@ export async function mergePatientRecords(
     const guardians = parseGuardians(person?.guardians);
     const known = [person?.contactPhone, ...guardians.map((g) => g.phone)];
     for (const key of drops) {
-      const phone = phoneFromPatientKey(key);
+      // En una ficha `pat:` la clave no lleva teléfono: se perdía el del tutor.
+      const phone = targets.get(key)?.phone ?? phoneFromPatientKey(key);
       if (!phone || known.some((p) => samePhone(p, phone)) || guardians.length >= 4) continue;
       // La fila suele llevar el nombre del niño, no el del tutor: no se copia.
       const rowName = targets.get(key)?.name ?? '';

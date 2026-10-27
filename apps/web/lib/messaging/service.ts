@@ -259,6 +259,28 @@ export async function sendMessage(input: SendMessageInput): Promise<{
       mentioned = [...new Set([...mentioned, ...resolved.userIds])];
     }
   }
+  // En un canal que no es público sólo se avisa a sus miembros: la mención
+  // llevaba el texto a la campana de gente que no puede leer el canal.
+  if (mentioned.length > 0) {
+    const [channel] = await db
+      .select({ kind: imChannels.kind })
+      .from(imChannels)
+      .where(and(eq(imChannels.tenantId, input.tenantId), eq(imChannels.id, input.channelId)))
+      .limit(1);
+    if (channel && channel.kind !== 'PUBLIC') {
+      const members = await db
+        .select({ userId: imChannelMembers.userId })
+        .from(imChannelMembers)
+        .where(
+          and(
+            eq(imChannelMembers.channelId, input.channelId),
+            inArray(imChannelMembers.userId, mentioned),
+          ),
+        );
+      const allowed = new Set(members.map((m) => m.userId));
+      mentioned = mentioned.filter((id) => allowed.has(id));
+    }
+  }
   // Uno no se menciona a sí mismo: no genera badge ni entrada en la bandeja.
   const notifyIds = mentioned.filter((id) => id !== senderUserId);
 

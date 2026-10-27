@@ -367,7 +367,7 @@ function RuleRow(props: {
           <option value="VOICE">Si no responde, llamada</option>
         </select>
         {props.rule.fallbackChannel && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <input
               type="number"
               defaultValue={props.rule.fallbackWindowHours ?? 1}
@@ -619,7 +619,7 @@ function TemplateEditor(props: {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {available.length > 1 ? (
           <select
             value={selectedDriver}
@@ -719,7 +719,7 @@ function TemplateEditor(props: {
         <Button size="sm" variant="secondary" onClick={loadPreview}>
           Previsualizar
         </Button>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <input
             type="text"
             placeholder="+34..."
@@ -785,7 +785,7 @@ function TreatmentOverridesSection(props: {
       })}
 
       {available.length > 0 && (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <select
             id="addOverride"
             className="rounded-md border border-(--color-border) px-2 py-1.5 text-sm"

@@ -85,7 +85,7 @@ export function ScheduleFields({
                   <span className="text-[13px] text-zinc-500">No trabaja</span>
                 )}
                 {indexes.map(({ r, i }) => (
-                  <div key={`${day}-${i}`} className="flex items-center gap-1.5">
+                  <div key={`${day}-${i}`} className="flex flex-wrap items-center gap-1.5">
                     <Input
                       type="time"
                       aria-label={`Inicio ${WEEKDAY_LABELS[day]}`}

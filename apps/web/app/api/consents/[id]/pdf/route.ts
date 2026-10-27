@@ -1,6 +1,7 @@
+import { isUuid } from '@/lib/agenda/appointment-ref';
 import { NextResponse } from 'next/server';
 
-import { getAgendaContext } from '@/lib/agenda/auth';
+import { canOpenPatientDocument, getAgendaContext } from '@/lib/agenda/auth';
 import { consentPdfResponse } from '@/lib/consents/service';
 
 export const runtime = 'nodejs';
@@ -17,13 +18,17 @@ export async function GET(
   req: Request,
   ctx: { params: Promise<{ id: string }> },
 ): Promise<Response> {
-  let tenantId: string;
+  let agenda: Awaited<ReturnType<typeof getAgendaContext>>;
   try {
-    tenantId = (await getAgendaContext()).tenantId;
+    agenda = await getAgendaContext();
   } catch {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
+  const tenantId = agenda.tenantId;
   const { id } = await ctx.params;
+  if (!isUuid(id) || !(await canOpenPatientDocument(agenda, { consentId: id }))) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  }
   const file = await consentPdfResponse(
     tenantId,
     id,

@@ -79,7 +79,13 @@ export const CHARGE_STATUS_LABELS: Record<ChargeStatus, string> = {
 
 /** "45,00 €" en formato español. */
 export function formatCents(cents: number, currency = 'EUR'): string {
-  return new Intl.NumberFormat('es-ES', { style: 'currency', currency }).format(cents / 100);
+  // `useGrouping: 'always'`: en es-ES "1250,00 €" salía sin punto y "12.500,00 €"
+  // con él, en la misma factura.
+  return new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency,
+    useGrouping: 'always',
+  } as Intl.NumberFormatOptions).format(cents / 100);
 }
 
 /**
@@ -184,7 +190,10 @@ export interface BillingLine {
 export function buildBillingLines(input: {
   appointments: BillingAppointmentInput[];
   charges: BillingChargeInput[];
+  /** Referencia para "ya pasó"; inyectable en los tests. */
+  now?: Date;
 }): BillingLine[] {
+  const now = input.now ?? new Date();
   const byAppointment = new Map<string, BillingChargeInput>();
   for (const c of input.charges) {
     if (c.appointmentId) byAppointment.set(c.appointmentId, c);
@@ -196,6 +205,9 @@ export function buildBillingLines(input: {
   for (const a of input.appointments) {
     const charge = byAppointment.get(a.id) ?? null;
     if (!charge && a.status === 'CANCELLED') continue;
+    // Una cita futura sin cobro todavía no es una sesión que cobrar: contaba
+    // como Facturado y Pendiente antes de que el paciente viniera.
+    if (!charge && new Date(a.startsAt) > now) continue;
     if (charge) seen.add(charge.id);
     lines.push({
       key: charge?.id ?? a.id,

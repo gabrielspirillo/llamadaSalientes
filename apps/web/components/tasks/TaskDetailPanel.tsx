@@ -387,7 +387,7 @@ export function TaskDetailPanel({
                     )}
                     {task.whatsappConversationId && (
                       <Link
-                        href="/dashboard/whatsapp"
+                        href={`/dashboard/whatsapp/${task.whatsappConversationId}`}
                         className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:border-zinc-300"
                       >
                         <MessageCircle className="h-3.5 w-3.5" />
@@ -396,7 +396,7 @@ export function TaskDetailPanel({
                     )}
                     {task.patientGhlContactId && (
                       <Link
-                        href={`/dashboard/contacts/${task.patientGhlContactId}`}
+                        href={`/dashboard/agenda/pacientes/${encodeURIComponent(`ghl:${task.patientGhlContactId}`)}`}
                         className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:border-zinc-300"
                       >
                         Ficha del paciente

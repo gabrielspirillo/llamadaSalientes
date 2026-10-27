@@ -8,7 +8,7 @@ import {
 } from '@/lib/agenda/access';
 import { type TenantRole, normalizeRole, resolveTenantRole } from '@/lib/auth/tenant-role';
 import { db } from '@/lib/db/client';
-import { professionals } from '@/lib/db/schema';
+import { agendaAppointments, invoices, patientConsents, professionals } from '@/lib/db/schema';
 import { auth } from '@clerk/nextjs/server';
 
 export class AgendaForbiddenError extends Error {
@@ -134,4 +134,49 @@ export async function assertProfessionalInScope(
   if (rows.length === 0) {
     throw new AgendaForbiddenError('Ese profesional no existe en esta clínica.');
   }
+}
+
+/**
+ * Un documento de paciente (consentimiento, factura) que un profesional con
+ * agenda restringida puede abrir: sólo si ese paciente pasa por SU consulta.
+ * Sin esto, con el id, abría el PDF de cualquier paciente (DNI, dirección).
+ */
+export async function canOpenPatientDocument(
+  ctx: AgendaContext,
+  doc: { consentId?: string; invoiceId?: string },
+): Promise<boolean> {
+  if (ctx.scope !== 'OWN') return true;
+  if (!ctx.professional) return false;
+  const professionalId = ctx.professional.id;
+  const mine = (cond: ReturnType<typeof eq>) =>
+    db
+      .select({ id: agendaAppointments.id })
+      .from(agendaAppointments)
+      .where(
+        and(
+          eq(agendaAppointments.tenantId, ctx.tenantId),
+          eq(agendaAppointments.professionalId, professionalId),
+          cond,
+        ),
+      )
+      .limit(1);
+  if (doc.consentId) {
+    const [c] = await db
+      .select({ patientId: patientConsents.patientId })
+      .from(patientConsents)
+      .where(and(eq(patientConsents.tenantId, ctx.tenantId), eq(patientConsents.id, doc.consentId)))
+      .limit(1);
+    if (!c?.patientId) return false;
+    return (await mine(eq(agendaAppointments.patientId, c.patientId))).length > 0;
+  }
+  if (doc.invoiceId) {
+    const [i] = await db
+      .select({ patientKey: invoices.patientKey })
+      .from(invoices)
+      .where(and(eq(invoices.tenantId, ctx.tenantId), eq(invoices.id, doc.invoiceId)))
+      .limit(1);
+    if (!i?.patientKey) return false;
+    return (await mine(eq(agendaAppointments.patientKey, i.patientKey))).length > 0;
+  }
+  return false;
 }

@@ -24,13 +24,16 @@ const isPublicRoute = createRouteMatcher([
 export default clerkMiddleware(async (auth, req) => {
   if (!isPublicRoute(req)) {
     // Una página sin sesión va al login; `protect()` le devolvía un 404.
-    const { userId, redirectToSignIn } = await auth();
+    const { userId } = await auth();
     if (!userId) {
       // Una API sin sesión contesta 401 en JSON, no la página 404 de Clerk.
       if (req.nextUrl.pathname.startsWith('/api/')) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
-      return redirectToSignIn({ returnBackUrl: req.url });
+      // Al login propio (no al de Clerk alojado), volviendo después aquí.
+      const signIn = new URL('/sign-in', req.url);
+      signIn.searchParams.set('redirect_url', req.url);
+      return NextResponse.redirect(signIn);
     }
   }
 

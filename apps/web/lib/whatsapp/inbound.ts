@@ -212,6 +212,15 @@ function evolutionPhoneJid(data: EvolutionUpsert['data']): string {
   );
 }
 
+/**
+ * Un "@lid" sin el teléfono real al lado no se puede atender: usarlo como
+ * número creaba un contacto con un teléfono inventado ("+98765…") al que el
+ * agente contestaba y al que nadie podía llamar.
+ */
+export function isEvolutionUnresolvedLid(payload: EvolutionUpsert): boolean {
+  return evolutionPhoneJid(payload.data).endsWith('@lid');
+}
+
 /** Un grupo no es un paciente: sus mensajes no crean contacto ni conversación. */
 export function isEvolutionGroupMessage(payload: EvolutionUpsert): boolean {
   return payload.data.key.remoteJid.endsWith('@g.us');

@@ -445,6 +445,9 @@ export async function issueInvoice(
   const patientName = (input.patientName ?? '').trim().slice(0, 160);
   if (!patientName) throw new InvoiceValidationError('Falta el nombre del paciente.');
   const items = normalizeItems(input.items);
+  if (items.reduce((sum, it) => sum + it.quantity * it.unitCents, 0) <= 0) {
+    throw new InvoiceValidationError('La factura no puede ser de 0 €.');
+  }
   const billTo: InvoiceBillTo = {
     name: billToName,
     taxId: normalizeTaxId(input.billTo.taxId),

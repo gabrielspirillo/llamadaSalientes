@@ -652,7 +652,14 @@ function resolveStart(
   }
   if (input.startDateKey && input.startMinute !== undefined) {
     const [y, m, d] = input.startDateKey.split('-').map(Number);
-    if (!y || !m || !d) throw new AgendaValidationError('Fecha de inicio inválida.');
+    // "2026-02-31" no existe: se convertía en el 3 de marzo.
+    const real = y && m && d ? new Date(Date.UTC(y, m - 1, d)) : null;
+    if (!y || !m || !d || real?.getUTCMonth() !== m - 1 || real?.getUTCDate() !== d) {
+      throw new AgendaValidationError('Fecha de inicio inválida.');
+    }
+    if (input.startMinute < 0 || input.startMinute >= 24 * 60) {
+      throw new AgendaValidationError('Hora de inicio inválida.');
+    }
     return zonedToUtc(
       y,
       m,
@@ -762,7 +769,11 @@ export async function createAppointment(
   const phone =
     normalizePatientPhone(input.patientPhone) ??
     normalizePatientPhone(person?.contactPhone) ??
-    emptyToNull(input.patientPhone);
+    null;
+  if (!phone && emptyToNull(input.patientPhone)) {
+    // Lo que no es un teléfono no se guarda como teléfono ("<script>", "abc").
+    throw new AgendaValidationError('El teléfono no es válido.');
+  }
   const patientKey = patientKeyFor({
     patientId: person?.id,
     ghlContactId: input.ghlContactId,
@@ -1073,8 +1084,11 @@ export async function updateAppointment(
   if (patch.cancelledBy !== undefined) values.cancelledBy = patch.cancelledBy;
   if (patch.patientName !== undefined) values.patientName = patch.patientName;
   if (patch.patientPhone !== undefined) {
-    values.patientPhone =
-      normalizePatientPhone(patch.patientPhone) ?? emptyToNull(patch.patientPhone);
+    const normalized = normalizePatientPhone(patch.patientPhone);
+    if (!normalized && emptyToNull(patch.patientPhone)) {
+      throw new AgendaValidationError('El teléfono no es válido.');
+    }
+    values.patientPhone = normalized;
   }
   if (patch.treatmentId !== undefined) {
     if (patch.treatmentId) {

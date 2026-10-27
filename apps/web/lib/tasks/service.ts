@@ -296,6 +296,18 @@ export async function updateTask(input: UpdateTaskInput): Promise<void> {
     }
   }
 
+  // Una tarea ya cerrada con candado no puede quedarse sin su evidencia:
+  // borrar la nota después de cerrarla saltaba el candado.
+  if (
+    (input.status === undefined || input.status === 'DONE') &&
+    current.status === 'DONE' &&
+    current.requiresEvidence &&
+    input.evidenceNote !== undefined &&
+    !input.evidenceNote?.trim()
+  ) {
+    throw new TaskEvidenceRequiredError();
+  }
+
   if (input.status !== undefined && input.status !== current.status) {
     // `requiresEvidence` se lee SIEMPRE de la fila guardada. Tomarlo del body
     // permitía cerrar cualquier tarea mandando `requiresEvidence: false` en el

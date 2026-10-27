@@ -1,5 +1,6 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
+import { isDateKey } from '@/lib/finance/model';
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 
 import { AgendaForbiddenError } from '@/lib/agenda/auth';
@@ -281,11 +282,19 @@ export async function registerPayment(
   scope: ChargeScope,
   input: RegisterPaymentInput,
 ): Promise<{ chargeId: string; patientKey: string }> {
-  if (!Number.isInteger(input.amountCents) || input.amountCents < 0) {
+  if (
+    !Number.isInteger(input.amountCents) ||
+    input.amountCents <= 0 ||
+    input.amountCents > 1_000_000_000
+  ) {
     throw new AgendaValidationError('El importe no es válido.');
   }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.paidOn)) {
+  if (!isDateKey(input.paidOn)) {
     throw new AgendaValidationError('La fecha de pago no es válida.');
+  }
+  // Un cobro de 2027 contaba ya como cobrado. Un día de margen por las zonas.
+  if (input.paidOn > new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)) {
+    throw new AgendaValidationError('La fecha de pago no puede ser futura.');
   }
   if (!isPaymentMethod(input.paymentMethod)) {
     throw new AgendaValidationError('Elige cómo se pagó.');

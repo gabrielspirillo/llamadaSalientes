@@ -63,7 +63,9 @@ export function TasksWorkspace({
   rules: initialRules,
   currentUserId,
   role,
+  timezone,
 }: {
+  timezone?: string | null;
   initialTasks: TaskDTO[];
   initialStats: TaskStatsDTO;
   members: TaskMember[];
@@ -407,6 +409,7 @@ export function TasksWorkspace({
 
       {quickAddStatus && canEdit && (
         <QuickAdd
+          timezone={timezone}
           members={members}
           status={quickAddStatus}
           onCreated={() => void refresh()}

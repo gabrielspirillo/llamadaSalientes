@@ -223,16 +223,16 @@ export function ContactSidebar({
           {conversation.humanTakeoverUntil && conversation.status === 'HANDOFF' && (
             <div className="flex justify-between">
               <dt className="text-zinc-500">La atiende una persona hasta</dt>
-              <dd className="font-medium text-zinc-700">
-                {new Date(conversation.humanTakeoverUntil).toLocaleTimeString()}
+              <dd suppressHydrationWarning className="font-medium text-zinc-700">
+                {new Date(conversation.humanTakeoverUntil).toLocaleTimeString('es-ES')}
               </dd>
             </div>
           )}
           {conversation.lastMsgAt && (
             <div className="flex justify-between">
               <dt className="text-zinc-500">Último mensaje</dt>
-              <dd className="font-medium text-zinc-700">
-                {new Date(conversation.lastMsgAt).toLocaleString()}
+              <dd suppressHydrationWarning className="font-medium text-zinc-700">
+                {new Date(conversation.lastMsgAt).toLocaleString('es-ES')}
               </dd>
             </div>
           )}
@@ -269,8 +269,8 @@ export function ContactSidebar({
               ))}
             </dl>
           )}
-          <p className="mt-2 text-[11px] text-zinc-500">
-            Actualizada {new Date(leadMemory.updatedAt).toLocaleString()}
+          <p suppressHydrationWarning className="mt-2 text-[11px] text-zinc-500">
+            Actualizada {new Date(leadMemory.updatedAt).toLocaleString('es-ES')}
           </p>
         </div>
       ) : null}
@@ -300,8 +300,8 @@ export function ContactSidebar({
                     </span>
                   )}
                 </div>
-                <p className="mt-0.5 text-[11px] text-zinc-500">
-                  {a.startTime ? new Date(a.startTime).toLocaleString() : 'Sin fecha'}
+                <p suppressHydrationWarning className="mt-0.5 text-[11px] text-zinc-500">
+                  {a.startTime ? new Date(a.startTime).toLocaleString('es-ES') : 'Sin fecha'}
                 </p>
               </li>
             ))}

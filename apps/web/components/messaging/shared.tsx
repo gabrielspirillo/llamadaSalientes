@@ -488,8 +488,12 @@ function parseInline(
   let last = 0;
   let n = 0;
 
-  INLINE_RE.lastIndex = 0;
-  let m = INLINE_RE.exec(text);
+  // Una copia por llamada: la función se llama a sí misma (negrita dentro de
+  // un mensaje) y con la regex global compartida la llamada interna movía el
+  // `lastIndex` de la externa, que volvía a empezar desde cero para siempre.
+  // Un mensaje con **negrita** colgaba /dashboard/messages entero.
+  const re = new RegExp(INLINE_RE.source, INLINE_RE.flags);
+  let m = re.exec(text);
   while (m) {
     if (m.index > last) out.push(text.slice(last, m.index));
     const token = m[0];
@@ -547,7 +551,7 @@ function parseInline(
     }
 
     last = m.index + token.length;
-    m = INLINE_RE.exec(text);
+    m = re.exec(text);
   }
 
   if (last < text.length) out.push(text.slice(last));

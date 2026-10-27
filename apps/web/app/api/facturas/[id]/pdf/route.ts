@@ -1,6 +1,7 @@
+import { isUuid } from '@/lib/agenda/appointment-ref';
 import { type NextRequest, NextResponse } from 'next/server';
 
-import { getAgendaContext } from '@/lib/agenda/auth';
+import { canOpenPatientDocument, getAgendaContext } from '@/lib/agenda/auth';
 import { getInvoicePdf } from '@/lib/invoices/service';
 
 export const runtime = 'nodejs';
@@ -20,13 +21,17 @@ export async function GET(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
-  let tenantId: string;
+  let agenda: Awaited<ReturnType<typeof getAgendaContext>>;
   try {
-    tenantId = (await getAgendaContext()).tenantId;
+    agenda = await getAgendaContext();
   } catch {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
+  const tenantId = agenda.tenantId;
   const { id } = await ctx.params;
+  if (!isUuid(id) || !(await canOpenPatientDocument(agenda, { invoiceId: id }))) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  }
   let pdf: Awaited<ReturnType<typeof getInvoicePdf>>;
   try {
     pdf = await getInvoicePdf(tenantId, id);
