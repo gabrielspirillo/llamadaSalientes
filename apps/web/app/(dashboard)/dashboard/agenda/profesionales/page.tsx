@@ -149,7 +149,7 @@ export default async function ProfesionalesPage() {
                         ) : derivando && p.active ? (
                           <Badge tone="warn">Falta</Badge>
                         ) : (
-                          <span className="text-zinc-400">—</span>
+                          <span className="text-zinc-500">—</span>
                         )}
                       </TD>
                       <TD className="tabular-nums text-zinc-600">
@@ -171,7 +171,7 @@ export default async function ProfesionalesPage() {
                             </Badge>
                           </div>
                         ) : (
-                          <span className="text-[13px] text-zinc-400">Sin usuario</span>
+                          <span className="text-[13px] text-zinc-500">Sin usuario</span>
                         )}
                       </TD>
                       <TD>

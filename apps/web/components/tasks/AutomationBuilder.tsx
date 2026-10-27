@@ -363,7 +363,7 @@ export function AutomationBuilder({
                         type="button"
                         onClick={() => removeCondition(idx)}
                         aria-label="Quitar condición"
-                        className="rounded-lg p-1.5 text-zinc-400 hover:bg-white hover:text-red-600"
+                        className="rounded-lg p-1.5 text-zinc-500 hover:bg-white hover:text-red-600"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

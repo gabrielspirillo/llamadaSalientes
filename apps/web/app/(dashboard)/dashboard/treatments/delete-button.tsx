@@ -31,7 +31,12 @@ export function DeleteTreatmentButton({ id, name }: { id: string; name: string }
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="text-rose-600 hover:bg-rose-50">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Borrar"
+          className="text-rose-600 hover:bg-rose-50"
+        >
           <Trash2 className="h-4 w-4" />
         </Button>
       </DialogTrigger>

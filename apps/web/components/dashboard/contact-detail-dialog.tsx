@@ -294,7 +294,7 @@ export function ContactDetailDialog({
               <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-zinc-500">
                 {contact?.phone && (
                   <span className="inline-flex items-center gap-1 font-medium tabular-nums text-zinc-600">
-                    <Phone className="h-3.5 w-3.5 text-zinc-400" />
+                    <Phone className="h-3.5 w-3.5 text-zinc-500" />
                     {contact.phone}
                   </span>
                 )}
@@ -321,7 +321,7 @@ export function ContactDetailDialog({
               type="button"
               onClick={onClose}
               aria-label="Cerrar la ficha"
-              className="press inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-all duration-300 hover:rotate-90 hover:bg-zinc-100 hover:text-zinc-700"
+              className="press inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-zinc-500 transition-all duration-300 hover:rotate-90 hover:bg-zinc-100 hover:text-zinc-700"
             >
               <X className="h-4 w-4" />
             </button>
@@ -842,12 +842,12 @@ function TaskRow({ task }: { task: PatientTask }) {
         <span
           className={cn(
             'block truncate text-[14px]',
-            done ? 'text-zinc-400 line-through' : 'font-medium text-zinc-800',
+            done ? 'text-zinc-500 line-through' : 'font-medium text-zinc-800',
           )}
         >
           {task.title}
         </span>
-        <span className="text-[12px] text-zinc-400">
+        <span className="text-[12px] text-zinc-500">
           {done
             ? `Cerrada ${fmtRelative(task.completedAt)}`
             : task.dueAt
@@ -889,7 +889,7 @@ function DatosTab({
 
       {tags.length > 0 && (
         <div>
-          <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-400">
+          <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-500">
             Etiquetas
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -1014,7 +1014,7 @@ function NewTaskAction({
             type="button"
             onClick={() => setOpen(false)}
             aria-label="Cancelar"
-            className="press inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-100"
+            className="press inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-500 hover:bg-zinc-100"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -1044,11 +1044,11 @@ function Kpi({
       : tone === 'warn'
         ? 'text-amber-700'
         : tone === 'muted'
-          ? 'text-zinc-400'
+          ? 'text-zinc-500'
           : 'text-zinc-900';
   return (
     <div className="rounded-[14px] bg-white/85 px-3 py-2 ring-1 ring-(--color-border-subtle)">
-      <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-400">
+      <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-500">
         <span className="text-brand-500">{icon}</span>
         {label}
       </span>
@@ -1125,7 +1125,7 @@ function Callout({
 }) {
   return (
     <div className="flex items-start gap-3 rounded-[16px] border border-(--color-border) bg-white p-4">
-      <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-zinc-100 text-zinc-400">
+      <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-zinc-100 text-zinc-500">
         {icon}
       </span>
       <div className="min-w-0">
@@ -1139,7 +1139,7 @@ function Callout({
 function Field({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div>
-      <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-400">
+      <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-500">
         {label}
       </p>
       <p className={cn('text-[14px] text-zinc-800', mono && 'tabular-nums')}>{value || '—'}</p>

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardTopbar } from '@/components/ui/card';
+import { Callout } from '@/components/ui/feedback';
 import { type HistoryRow, HistoryTable } from '@/components/waitlist/HistoryTable';
 import { type OfferRow, OffersTable } from '@/components/waitlist/OffersTable';
 import { type QueueRow, QueueTable } from '@/components/waitlist/QueueTable';
@@ -53,6 +54,14 @@ export default async function WaitlistPage() {
     .where(eq(clinicSettings.tenantId, tenant.id))
     .limit(1);
   const tz = clinic?.timezone ?? 'Europe/Madrid';
+
+  // Sin ningún tratamiento marcado, toda oferta se descarta en silencio
+  // (`treatment_not_eligible`): se avisa aquí, que es donde se espera verla.
+  const [eligible] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(treatments)
+    .where(and(eq(treatments.tenantId, tenant.id), eq(treatments.waitlistEligible, true)));
+  const noEligibleTreatments = (eligible?.n ?? 0) === 0;
 
   // Las tres consultas grandes de la página (cola, ofertas e histórico) son
   // independientes entre sí; encadenadas eran tres viajes en serie y esta es
@@ -327,6 +336,16 @@ export default async function WaitlistPage() {
           </Link>
         }
       />
+      {noEligibleTreatments && (
+        <Callout tone="warn" title="Ningún tratamiento admite lista de espera" className="mb-5">
+          Mientras no marques al menos uno, los huecos liberados no se le ofrecen a nadie. Se marca
+          en{' '}
+          <Link href="/dashboard/waitlist/settings" className="font-semibold underline">
+            Configurar
+          </Link>
+          .
+        </Callout>
+      )}
 
       <AdvanceRequests tenantId={tenant.id} tz={tz} />
 
@@ -419,7 +438,7 @@ async function AdvanceRequests({ tenantId, tz }: { tenantId: string; tz: string 
                   {r.note ? (
                     <>Puede: {r.note}</>
                   ) : (
-                    <span className="text-zinc-400">Sin horario indicado</span>
+                    <span className="text-zinc-500">Sin horario indicado</span>
                   )}
                 </span>
                 {r.patientPhone && (

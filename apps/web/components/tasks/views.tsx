@@ -62,7 +62,7 @@ export function TaskRow({
           <span
             className={cn(
               'text-sm font-medium leading-snug text-zinc-800',
-              done && 'text-zinc-400 line-through',
+              done && 'text-zinc-500 line-through',
             )}
           >
             {task.title}
@@ -89,7 +89,7 @@ export function TaskRow({
           <a
             href={`tel:${task.patientPhone}`}
             aria-label={`Llamar a ${task.patientName ?? 'paciente'}`}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
           >
             <Phone className="h-3.5 w-3.5" />
           </a>
@@ -98,7 +98,7 @@ export function TaskRow({
           <Link
             href="/dashboard/whatsapp"
             aria-label="Abrir conversación de WhatsApp"
-            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
           >
             <MessageCircle className="h-3.5 w-3.5" />
           </Link>
@@ -335,7 +335,7 @@ export function WeekView({
                 <span
                   className={cn(
                     'text-[12px] font-semibold uppercase tracking-wide',
-                    isToday ? 'text-zinc-900' : 'text-zinc-400',
+                    isToday ? 'text-zinc-900' : 'text-zinc-500',
                   )}
                 >
                   {d.date.toLocaleDateString('es-ES', { weekday: 'short' })}
@@ -370,7 +370,7 @@ export function WeekView({
                       <span
                         className={cn(
                           'line-clamp-2 text-[13px] leading-snug',
-                          t.status === 'DONE' ? 'text-zinc-400 line-through' : 'text-zinc-700',
+                          t.status === 'DONE' ? 'text-zinc-500 line-through' : 'text-zinc-700',
                         )}
                       >
                         {t.title}

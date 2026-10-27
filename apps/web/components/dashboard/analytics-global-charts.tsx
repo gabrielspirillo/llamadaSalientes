@@ -24,7 +24,7 @@ import {
 
 function ChartEmpty({ label }: { label: string }) {
   return (
-    <div className="flex h-56 flex-col items-center justify-center gap-2 text-sm text-zinc-400">
+    <div className="flex h-56 flex-col items-center justify-center gap-2 text-sm text-zinc-500">
       <span className="inline-flex h-10 w-10 animate-float items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#effaf5,#ddf3ea)]" />
       {label}
     </div>
@@ -119,7 +119,7 @@ export function TopTreatmentsChart({ data }: { data: TopTreatment[] }) {
             />
             <span className="min-w-0 flex-1 truncate text-zinc-600">{d.name}</span>
             <span className="font-bold tabular-nums text-zinc-800">{d.value}</span>
-            <span className="w-9 text-right text-zinc-400 tabular-nums">
+            <span className="w-9 text-right text-zinc-500 tabular-nums">
               {Math.round((d.value / total) * 100)}%
             </span>
           </li>

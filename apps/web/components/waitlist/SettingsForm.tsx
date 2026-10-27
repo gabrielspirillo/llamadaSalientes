@@ -211,13 +211,15 @@ function Row({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+    // <label>: el control de dentro (interruptor, select, número) toma de aquí
+    // su nombre accesible; sin él el lector de pantalla decía "botón".
+    <label className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
       <div className="flex-1">
         <div className="text-sm font-medium text-zinc-900">{label}</div>
         {hint ? <div className="text-xs text-zinc-500 mt-0.5">{hint}</div> : null}
       </div>
       <div className="sm:shrink-0">{children}</div>
-    </div>
+    </label>
   );
 }
 
@@ -229,7 +231,8 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
       className={`inline-flex h-6 w-10 items-center rounded-full transition-colors ${
         value ? 'bg-emerald-600' : 'bg-zinc-200'
       }`}
-      aria-pressed={value}
+      role="switch"
+      aria-checked={value}
     >
       <span
         className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${

@@ -875,7 +875,9 @@ export async function buildVarsForOffer(offerId: string) {
     offerId,
   });
 
-  return { vars, offer, entry, slot, contactPhone: pt?.phone ?? null };
+  // `contactPhone` ya resuelve los pacientes de la agenda propia; `pt.phone`
+  // sólo existe con CRM y dejaba esas ofertas sin enviar (`no_phone`).
+  return { vars, offer, entry, slot, contactPhone: contactPhone ?? null };
 }
 
 // `or` y `desc` están en el header para uso futuro de helpers de listing.

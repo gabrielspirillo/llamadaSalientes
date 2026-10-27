@@ -156,13 +156,13 @@ export default async function EntrenamientoPage({
               <details className="group">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-5 text-[14px] font-semibold text-zinc-900">
                   <span className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-zinc-400" />
+                    <FileText className="h-4 w-4 text-zinc-500" />
                     Ver lo que lee tu asistente
                   </span>
-                  <span className="text-[12px] font-medium text-zinc-400 group-open:hidden">
+                  <span className="text-[12px] font-medium text-zinc-500 group-open:hidden">
                     Mostrar
                   </span>
-                  <span className="hidden text-[12px] font-medium text-zinc-400 group-open:inline">
+                  <span className="hidden text-[12px] font-medium text-zinc-500 group-open:inline">
                     Ocultar
                   </span>
                 </summary>
@@ -223,7 +223,7 @@ export default async function EntrenamientoPage({
                           </Badge>
                         )}
                         {l.source === 'MANUAL' && (
-                          <span className="text-[12px] text-zinc-400">escrita a mano</span>
+                          <span className="text-[12px] text-zinc-500">escrita a mano</span>
                         )}
                       </div>
                       <p className="text-[15px] font-semibold text-zinc-900">{l.title}</p>

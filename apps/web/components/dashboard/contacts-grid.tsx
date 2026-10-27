@@ -126,7 +126,7 @@ export function ContactsGrid({ initial }: { initial: Contact[] }) {
       <Card className="mb-4 sm:mb-5">
         <div className="flex items-center gap-3 p-3 sm:p-5">
           <div className="relative flex-1 min-w-0">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -198,13 +198,13 @@ export function ContactsGrid({ initial }: { initial: Contact[] }) {
                   <div className="mt-4 space-y-1.5 text-sm">
                     {c.phone && (
                       <div className="flex items-center gap-2 text-zinc-600">
-                        <Phone className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+                        <Phone className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
                         <span className="truncate tabular-nums">{c.phone}</span>
                       </div>
                     )}
                     {c.email && (
                       <div className="flex items-center gap-2 text-zinc-600">
-                        <Mail className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+                        <Mail className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
                         <span className="truncate">{c.email}</span>
                       </div>
                     )}

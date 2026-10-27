@@ -130,7 +130,7 @@ export function ThreadPanel({
             type="button"
             onClick={onClose}
             aria-label="Cerrar hilo"
-            className="press inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition-all duration-300 hover:rotate-90 hover:bg-zinc-100 hover:text-zinc-700"
+            className="press inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-500 transition-all duration-300 hover:rotate-90 hover:bg-zinc-100 hover:text-zinc-700"
           >
             <X className="h-4 w-4" />
           </button>

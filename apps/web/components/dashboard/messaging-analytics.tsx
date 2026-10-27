@@ -205,7 +205,7 @@ export function MessagingAnalyticsPanel({ data }: { data: MessagingAnalytics | n
                             {p.unread > 0 ? (
                               <Badge tone="warn">{p.unread}</Badge>
                             ) : (
-                              <span className="text-zinc-400">0</span>
+                              <span className="text-zinc-500">0</span>
                             )}
                           </TD>
                           <TD className="text-[13px] text-zinc-500">{formatAge(p.oldestAt)}</TD>

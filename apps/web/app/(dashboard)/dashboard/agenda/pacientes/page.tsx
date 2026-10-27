@@ -238,7 +238,7 @@ export default async function AgendaPacientesPage({
                         {p.nextVisitAt ? (
                           <Badge tone="success">{fmt.format(p.nextVisitAt)}</Badge>
                         ) : (
-                          <span className="text-zinc-400">Sin próxima cita</span>
+                          <span className="text-zinc-500">Sin próxima cita</span>
                         )}
                       </TD>
                       <TD className="tabular-nums text-zinc-600">

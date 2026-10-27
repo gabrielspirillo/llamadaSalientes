@@ -466,12 +466,12 @@ export function Composer({
             >
               <FileText className="h-3 w-3 text-brand-500" />
               <span className="max-w-[160px] truncate">{a.name}</span>
-              <span className="text-zinc-400">{formatBytes(a.size)}</span>
+              <span className="text-zinc-500">{formatBytes(a.size)}</span>
               <button
                 type="button"
                 aria-label={`Quitar ${a.name}`}
                 onClick={() => setAttachments((prev) => prev.filter((x) => x.key !== a.key))}
-                className="press rounded-full p-0.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
+                className="press rounded-full p-0.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-600"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -513,7 +513,7 @@ export function Composer({
           onClick={() => fileInputRef.current?.click()}
           aria-label="Adjuntar archivo"
           title="Adjuntar archivo"
-          className="press mb-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-colors duration-200 hover:bg-brand-50 hover:text-brand-600"
+          className="press mb-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-500 transition-colors duration-200 hover:bg-brand-50 hover:text-brand-600"
         >
           <Paperclip className="h-4 w-4" />
         </button>
@@ -528,7 +528,7 @@ export function Composer({
           rows={1}
           placeholder={placeholder ?? `Escribe en ${channelName}…  (/ comandos · @ menciones)`}
           aria-label={`Mensaje para ${channelName}`}
-          className="scrollbar-none max-h-[200px] min-h-[36px] flex-1 resize-none border-0 bg-transparent px-1 py-2 text-[14px] leading-relaxed text-zinc-900 outline-none ring-0 placeholder:text-zinc-400 focus:outline-none focus:ring-0 focus-visible:outline-none"
+          className="scrollbar-none max-h-[200px] min-h-[36px] flex-1 resize-none border-0 bg-transparent px-1 py-2 text-[14px] leading-relaxed text-zinc-900 outline-none ring-0 placeholder:text-zinc-500 focus:outline-none focus:ring-0 focus-visible:outline-none"
         />
 
         <div className="relative mb-0.5 shrink-0" data-composer-emoji>
@@ -543,7 +543,7 @@ export function Composer({
               'press inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors duration-200',
               emojiOpen
                 ? 'bg-brand-100 text-brand-700'
-                : 'text-zinc-400 hover:bg-brand-50 hover:text-brand-600',
+                : 'text-zinc-500 hover:bg-brand-50 hover:text-brand-600',
             )}
           >
             <Smile className="h-4 w-4" />
@@ -585,7 +585,7 @@ export function Composer({
           }}
           aria-label="Mencionar a alguien"
           title="Mencionar a alguien"
-          className="press mb-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-colors duration-200 hover:bg-brand-50 hover:text-brand-600"
+          className="press mb-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-500 transition-colors duration-200 hover:bg-brand-50 hover:text-brand-600"
         >
           <AtSign className="h-4 w-4" />
         </button>

@@ -121,7 +121,11 @@ export function ChecklistProgress({
         <span>Progreso</span>
         <span className="tabular-nums">{pct}%</span>
       </div>
-      <div className="mt-1 flex gap-[3px]" aria-label={`${done} de ${total} pasos hechos`}>
+      <div
+        className="mt-1 flex gap-[3px]"
+        role="img"
+        aria-label={`${done} de ${total} pasos hechos`}
+      >
         {Array.from({ length: segments }).map((_, i) => (
           <span
             key={`seg-${category}-${

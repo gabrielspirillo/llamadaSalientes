@@ -72,7 +72,7 @@ export function BoardColumn({
     <section className={cn('flex flex-col gap-3', className)}>
       <header className="flex items-center justify-between gap-2 px-1">
         <h3 className="flex items-center gap-1 text-[14px] font-bold tracking-tight text-zinc-700">
-          <ChevronRight className="h-3.5 w-3.5 text-zinc-400" />
+          <ChevronRight className="h-3.5 w-3.5 text-zinc-500" />
           {title}
           {typeof count === 'number' && (
             <span className="ml-1 rounded-full bg-white px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-zinc-500 ring-1 ring-(--color-border)">
@@ -80,7 +80,7 @@ export function BoardColumn({
             </span>
           )}
         </h3>
-        <div className="flex items-center gap-0.5 text-zinc-400">
+        <div className="flex items-center gap-0.5 text-zinc-500">
           {onAddHref && (
             <a
               href={onAddHref}
@@ -207,7 +207,7 @@ export function BoardCard({
             <BoardTag key={tag} label={tag} tone={tone} />
           ))}
         </div>
-        <MoreHorizontal className="h-4 w-4 shrink-0 text-zinc-400 opacity-0 transition-opacity group-hover:opacity-100" />
+        <MoreHorizontal className="h-4 w-4 shrink-0 text-zinc-500 opacity-0 transition-opacity group-hover:opacity-100" />
       </div>
 
       <p className={cn('text-[15px] font-semibold leading-snug', t.title)}>{title}</p>

@@ -410,7 +410,7 @@ export function MessageBubble(props: MessageBubbleProps) {
             type="button"
             onClick={() => setEmojiOpen(false)}
             aria-label="Cerrar"
-            className="ml-1 inline-flex h-7 w-7 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-100"
+            className="ml-1 inline-flex h-7 w-7 items-center justify-center rounded-full text-zinc-500 hover:bg-zinc-100"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -442,10 +442,10 @@ function ToolbarButton({
       className={cn(
         'press inline-flex h-7 w-7 items-center justify-center rounded-full transition-colors duration-200',
         danger
-          ? 'text-zinc-400 hover:bg-rose-50 hover:text-rose-600'
+          ? 'text-zinc-500 hover:bg-rose-50 hover:text-rose-600'
           : active
             ? 'bg-brand-100 text-brand-700'
-            : 'text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700',
+            : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700',
       )}
     >
       {children}
@@ -498,7 +498,7 @@ function ReactionRow({
           onClick={onAdd}
           aria-label="Añadir una reacción"
           title="Añadir una reacción"
-          className="press inline-flex h-[26px] w-[26px] items-center justify-center rounded-full bg-white text-zinc-400 opacity-0 ring-1 ring-(--color-border) transition-all duration-200 hover:-translate-y-0.5 hover:text-brand-600 hover:ring-brand-200 group-hover:opacity-100 group-focus-within:opacity-100"
+          className="press inline-flex h-[26px] w-[26px] items-center justify-center rounded-full bg-white text-zinc-500 opacity-0 ring-1 ring-(--color-border) transition-all duration-200 hover:-translate-y-0.5 hover:text-brand-600 hover:ring-brand-200 group-hover:opacity-100 group-focus-within:opacity-100"
         >
           <Plus className="h-3.5 w-3.5" />
         </button>

@@ -233,12 +233,12 @@ export function TaskDetailPanel({
             {loading && <div className="h-6 w-48 animate-pulse rounded bg-zinc-100" />}
           </div>
           <div className="flex items-center gap-1">
-            {saving && <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />}
+            {saving && <Loader2 className="h-4 w-4 animate-spin text-zinc-500" />}
             <button
               type="button"
               onClick={onClose}
               aria-label="Cerrar"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700"
             >
               <X className="h-4 w-4" />
             </button>
@@ -448,7 +448,7 @@ export function TaskDetailPanel({
                     <span
                       className={cn(
                         'flex-1 text-sm leading-snug',
-                        item.done ? 'text-zinc-400 line-through' : 'text-zinc-700',
+                        item.done ? 'text-zinc-500 line-through' : 'text-zinc-700',
                       )}
                     >
                       {item.content}
@@ -460,7 +460,7 @@ export function TaskDetailPanel({
                         aria-label="Quitar de la lista"
                         className="opacity-0 transition-opacity group-hover:opacity-100"
                       >
-                        <Trash2 className="h-3.5 w-3.5 text-zinc-400 hover:text-red-600" />
+                        <Trash2 className="h-3.5 w-3.5 text-zinc-500 hover:text-red-600" />
                       </button>
                     )}
                   </li>
@@ -477,7 +477,7 @@ export function TaskDetailPanel({
                   }}
                   className="mt-2 flex items-center gap-2"
                 >
-                  <Plus className="h-3.5 w-3.5 text-zinc-400" />
+                  <Plus className="h-3.5 w-3.5 text-zinc-500" />
                   <input
                     value={newItem}
                     onChange={(e) => setNewItem(e.target.value)}
@@ -592,7 +592,7 @@ export function TaskDetailPanel({
                 onClick={() => void archive()}
                 aria-label="Archivar tarea"
                 title="Archivar tarea"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700"
               >
                 <Archive className="h-4 w-4" />
               </button>

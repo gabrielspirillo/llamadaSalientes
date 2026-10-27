@@ -3,7 +3,7 @@ import * as React from 'react';
 
 const fieldBase = [
   'w-full rounded-[14px] border border-(--color-border) bg-white text-sm text-zinc-900',
-  'placeholder:text-zinc-400',
+  'placeholder:text-zinc-500',
   'transition-[border-color,box-shadow,background-color] duration-300',
   'hover:border-brand-200',
   'focus-visible:outline-none focus-visible:border-brand-400 focus-visible:ring-4 focus-visible:ring-brand-500/12',
@@ -58,7 +58,7 @@ export const InputWithIcon = React.forwardRef<
   InputProps & { icon: React.ReactNode; trailing?: React.ReactNode }
 >(({ className, icon, trailing, ...props }, ref) => (
   <div className="relative">
-    <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 transition-colors duration-300 peer-focus:text-brand-500">
+    <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 transition-colors duration-300 peer-focus:text-brand-500">
       {icon}
     </span>
     <input
@@ -67,7 +67,7 @@ export const InputWithIcon = React.forwardRef<
       {...props}
     />
     {trailing && (
-      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400">{trailing}</span>
+      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500">{trailing}</span>
     )}
   </div>
 ));

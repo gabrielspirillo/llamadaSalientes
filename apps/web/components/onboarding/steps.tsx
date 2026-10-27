@@ -85,7 +85,7 @@ export function StepClinic({ form, mutate, errors }: StepProps) {
                   type="button"
                   aria-label="Eliminar teléfono"
                   onClick={() => mutate((d) => d.clinic.phones.splice(i, 1))}
-                  className="shrink-0 rounded-full p-2.5 text-zinc-400 hover:bg-zinc-100 hover:text-rose-600"
+                  className="shrink-0 rounded-full p-2.5 text-zinc-500 hover:bg-zinc-100 hover:text-rose-600"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -276,7 +276,7 @@ export function StepTreatments({ form, mutate, errors }: StepProps) {
               >
                 <ChevronDown
                   className={cn(
-                    'h-4 w-4 text-zinc-400 transition-transform',
+                    'h-4 w-4 text-zinc-500 transition-transform',
                     isOpen && 'rotate-180',
                   )}
                 />
@@ -292,7 +292,7 @@ export function StepTreatments({ form, mutate, errors }: StepProps) {
                     mutate((d) => d.treatments.splice(i, 1));
                     setOpenIdx(0);
                   }}
-                  className="rounded-full p-2 text-zinc-400 hover:bg-zinc-100 hover:text-rose-600"
+                  className="rounded-full p-2 text-zinc-500 hover:bg-zinc-100 hover:text-rose-600"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -409,7 +409,7 @@ export function StepFaqs({ form, mutate, errors }: StepProps) {
                 type="button"
                 aria-label="Eliminar pregunta"
                 onClick={() => mutate((d) => d.faqs.splice(i, 1))}
-                className="rounded-full p-2 text-zinc-400 hover:bg-zinc-100 hover:text-rose-600"
+                className="rounded-full p-2 text-zinc-500 hover:bg-zinc-100 hover:text-rose-600"
               >
                 <Trash2 className="h-4 w-4" />
               </button>

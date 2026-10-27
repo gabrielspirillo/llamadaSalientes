@@ -62,7 +62,7 @@ export function TwilioConnectionForm({ initial }: Props) {
       </div>
       <div>
         <label htmlFor="auth-token" className="mb-1 block text-xs font-medium text-zinc-700">
-          Auth Token <span className="text-zinc-400">(se cifra al guardar)</span>
+          Auth Token <span className="text-zinc-500">(se cifra al guardar)</span>
         </label>
         <input
           id="auth-token"

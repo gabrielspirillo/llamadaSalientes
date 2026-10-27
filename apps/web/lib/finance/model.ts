@@ -205,7 +205,13 @@ function keyOf(year: number, month: number, day: number): string {
 }
 
 export function isDateKey(value: unknown): value is string {
-  return typeof value === 'string' && parseDateKey(value) !== null;
+  if (typeof value !== 'string') return false;
+  const p = parseDateKey(value);
+  if (!p || p.year < 2000 || p.year > 2100) return false;
+  // "2026-02-31" tiene forma de fecha pero no existe: la base la rechazaba con
+  // un error genérico.
+  const d = new Date(Date.UTC(p.year, p.month - 1, p.day));
+  return d.getUTCMonth() === p.month - 1 && d.getUTCDate() === p.day;
 }
 
 /** 'YYYY-MM' de una clave. */
@@ -1167,7 +1173,9 @@ export function slugify(name: string): string {
 
 function csvCell(value: string | number | null): string {
   if (value === null) return '';
-  const s = String(value);
+  let s = String(value);
+  // Inyección de fórmulas: Excel ejecuta una celda que empieza por = + - @.
+  if (typeof value === 'string' && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 

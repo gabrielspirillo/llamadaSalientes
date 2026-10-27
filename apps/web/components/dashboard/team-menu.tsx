@@ -147,7 +147,7 @@ export function TeamMenu() {
               </span>
               Equipo
             </span>
-            <span className="text-[12px] font-semibold text-zinc-400">
+            <span className="text-[12px] font-semibold text-zinc-500">
               {team.length} {team.length === 1 ? 'persona' : 'personas'}
             </span>
           </div>
@@ -250,7 +250,7 @@ function TeamRow({
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[14px] font-semibold text-zinc-800">{name}</span>
-          <span className="block truncate text-[12px] text-zinc-400">
+          <span className="block truncate text-[12px] text-zinc-500">
             {online ? 'En línea' : role}
           </span>
         </span>
@@ -259,7 +259,7 @@ function TeamRow({
           onClick={onMessage}
           title={`Escribir a ${name}`}
           aria-label={`Escribir a ${name}`}
-          className="press inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-brand-50 hover:text-brand-600"
+          className="press inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-brand-50 hover:text-brand-600"
         >
           <MessageSquare className="h-4 w-4" />
         </button>
@@ -272,7 +272,7 @@ function TeamRow({
             'press inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors',
             taskOpen
               ? 'bg-brand-100 text-brand-700'
-              : 'text-zinc-400 hover:bg-brand-50 hover:text-brand-600',
+              : 'text-zinc-500 hover:bg-brand-50 hover:text-brand-600',
           )}
         >
           <ListTodo className="h-4 w-4" />
@@ -297,7 +297,7 @@ function TeamRow({
                   if (e.key === 'Escape') setTaskOpen(false);
                 }}
                 placeholder={`Tarea para ${name.split(' ')[0]}…`}
-                className="h-9 min-w-0 flex-1 rounded-full border border-(--color-border) bg-white px-3 text-[13px] outline-none transition-colors placeholder:text-zinc-400 focus:border-brand-300"
+                className="h-9 min-w-0 flex-1 rounded-full border border-(--color-border) bg-white px-3 text-[13px] outline-none transition-colors placeholder:text-zinc-500 focus:border-brand-300"
               />
               <button
                 type="button"
@@ -311,7 +311,7 @@ function TeamRow({
                 type="button"
                 onClick={() => setTaskOpen(false)}
                 aria-label="Cancelar"
-                className="press inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-100"
+                className="press inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-500 hover:bg-zinc-100"
               >
                 <X className="h-3.5 w-3.5" />
               </button>

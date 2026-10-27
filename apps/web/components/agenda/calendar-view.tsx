@@ -492,7 +492,7 @@ export function CalendarView(props: CalendarViewProps) {
                     <div
                       key={h}
                       className={cn(
-                        'absolute right-2 text-[11px] font-medium tabular-nums text-zinc-400',
+                        'absolute right-2 text-[11px] font-medium tabular-nums text-zinc-500',
                         // La primera etiqueta se alinea al borde: centrada se
                         // saldría por arriba de la rejilla y quedaba cortada.
                         i === 0 ? 'translate-y-0' : '-translate-y-1/2',

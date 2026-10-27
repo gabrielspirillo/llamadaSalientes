@@ -1,3 +1,4 @@
+import { contentMatchesMime } from '@/lib/file-sniff';
 import { revalidatePath } from 'next/cache';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -65,6 +66,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
+  // El MIME lo declara el cliente: se comprueban los bytes.
+  const body = Buffer.from(await file.arrayBuffer());
+  if (!contentMatchesMime(mime, body)) {
+    return NextResponse.json(
+      { error: 'El archivo no es un PDF ni una foto válida.' },
+      { status: 415 },
+    );
+  }
+
   try {
     const result = await attachEntryFile(
       { tenantId: ctx.tenantId, userId: ctx.userId },
@@ -73,7 +83,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         kind: isChargeFileKind(kindRaw) ? kindRaw : inferChargeFileKind(mime),
         fileName: file.name || 'comprobante',
         mimeType: mime,
-        body: Buffer.from(await file.arrayBuffer()),
+        body: body,
       },
     );
     await recordAudit({

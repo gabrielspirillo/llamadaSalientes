@@ -597,7 +597,10 @@ html.js [data-reveal].is-revealed {
    hay nada que "revelar al scrollear". La animación de entrada la sigue dando
    `.enter-page` sobre <main>, una sola en vez de cincuenta.
    La landing conserva el reveal por scroll, que ahí sí tiene sentido. */
-[data-instant-reveal] [data-reveal] {
+/* `html` delante: `html.js [data-reveal="left"]` tiene más especificidad que
+   `[data-instant-reveal] [data-reveal]` y dejaba esas tarjetas corridas 22 px
+   para siempre (scroll horizontal en móvil). */
+html [data-instant-reveal] [data-reveal] {
   opacity: 1;
   transform: none;
   transition: none;

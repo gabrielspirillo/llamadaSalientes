@@ -134,7 +134,7 @@ export function AudioPlayer({ callId }: Props) {
 
       {loadState === 'loading' && (
         <div className="flex flex-col items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 text-zinc-400 animate-spin mb-3" />
+          <Loader2 className="h-6 w-6 text-zinc-500 animate-spin mb-3" />
           <p className="text-sm text-zinc-500">Descargando grabación…</p>
         </div>
       )}

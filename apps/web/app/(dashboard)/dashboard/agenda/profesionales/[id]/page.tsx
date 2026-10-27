@@ -107,7 +107,7 @@ export default async function ProfesionalDetailPage({
 
       <AgendaNav active="profesionales" ctx={{ canManageProfessionals: true }} />
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-3">
+      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-3">
         <Card className="lg:col-span-1">
           <CardTopbar
             icon={<Clock className="h-4 w-4" />}

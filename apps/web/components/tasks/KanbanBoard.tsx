@@ -107,7 +107,7 @@ export function KanbanBoard({
                   type="button"
                   onClick={() => onQuickAdd(status)}
                   aria-label={`Nueva tarea en ${meta.label}`}
-                  className="ml-auto inline-flex h-6 w-6 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-white hover:text-zinc-700"
+                  className="ml-auto inline-flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-white hover:text-zinc-700"
                 >
                   <Plus className="h-3.5 w-3.5" />
                 </button>

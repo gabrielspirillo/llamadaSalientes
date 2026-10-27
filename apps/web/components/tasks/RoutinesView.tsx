@@ -129,7 +129,7 @@ export function RoutinesView({
         <header className="mb-3 flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="flex items-center gap-2 text-base font-semibold text-zinc-900">
-              <Repeat className="h-4 w-4 text-zinc-400" />
+              <Repeat className="h-4 w-4 text-zinc-500" />
               Rutinas de la clínica
             </h2>
             <p className="mt-0.5 max-w-2xl text-xs text-zinc-500">
@@ -188,7 +188,7 @@ export function RoutinesView({
         <header className="mb-3 flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="flex items-center gap-2 text-base font-semibold text-zinc-900">
-              <Bot className="h-4 w-4 text-zinc-400" />
+              <Bot className="h-4 w-4 text-zinc-500" />
               Tareas que se crean solas
             </h2>
             <p className="mt-0.5 max-w-2xl text-xs text-zinc-500">
@@ -338,7 +338,7 @@ function TemplateCard({
           <ol className="space-y-1">
             {template.items.map((i, idx) => (
               <li key={i.id} className="flex gap-2 text-xs text-zinc-600">
-                <span className="tabular-nums text-zinc-400">{idx + 1}.</span>
+                <span className="tabular-nums text-zinc-500">{idx + 1}.</span>
                 {i.content}
               </li>
             ))}
@@ -680,7 +680,7 @@ function PostOpSection({ isAdmin }: { isAdmin: boolean }) {
     <section>
       <header className="mb-3">
         <h2 className="flex items-center gap-2 text-base font-semibold text-zinc-900">
-          <ShieldCheck className="h-4 w-4 text-zinc-400" />
+          <ShieldCheck className="h-4 w-4 text-zinc-500" />
           Tratamientos con llamada postoperatoria
         </h2>
         <p className="mt-0.5 max-w-2xl text-xs text-zinc-500">

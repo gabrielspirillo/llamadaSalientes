@@ -423,7 +423,7 @@ export function InvoiceDialog({
                     value={billTo.taxId ?? ''}
                     onChange={(e) => setBillTo({ ...billTo, taxId: e.target.value || null })}
                     placeholder="Ej.: 70055622Z"
-                    className="placeholder:text-zinc-400/80"
+                    className="placeholder:text-zinc-500/80"
                     maxLength={24}
                   />
                 </div>

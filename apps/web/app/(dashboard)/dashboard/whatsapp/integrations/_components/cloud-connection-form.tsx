@@ -73,7 +73,7 @@ export function CloudConnectionForm({ initial }: Props) {
       </div>
       <div>
         <label htmlFor="access-token" className="mb-1 block text-xs font-medium text-zinc-700">
-          Access Token <span className="text-zinc-400">(se cifra al guardar)</span>
+          Access Token <span className="text-zinc-500">(se cifra al guardar)</span>
         </label>
         <input
           id="access-token"
@@ -87,7 +87,7 @@ export function CloudConnectionForm({ initial }: Props) {
       </div>
       <div>
         <label htmlFor="app-secret" className="mb-1 block text-xs font-medium text-zinc-700">
-          App Secret <span className="text-zinc-400">(se cifra al guardar)</span>
+          App Secret <span className="text-zinc-500">(se cifra al guardar)</span>
         </label>
         <input
           id="app-secret"

@@ -232,7 +232,7 @@ export function RichTextEditor({
         {empty && placeholder && (
           <span
             aria-hidden
-            className="pointer-events-none absolute left-3.5 right-12 top-2.5 truncate text-[16px] text-zinc-400"
+            className="pointer-events-none absolute left-3.5 right-12 top-2.5 truncate text-[16px] text-zinc-500"
           >
             {placeholder}
           </span>

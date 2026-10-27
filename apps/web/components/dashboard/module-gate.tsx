@@ -12,8 +12,8 @@ import { Lock } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 // Wrapper que muestra el contenido normal si el módulo está activo para el
-// tenant actual, o un overlay de "no implementado" con el contenido blurreado
-// debajo. Bloqueo solo visual: las APIs/webhooks siguen funcionando.
+// tenant actual, o el aviso de módulo no contratado. El contenido NO se pinta
+// debajo: difuminado seguía yendo entero en el HTML (datos reales incluidos).
 export async function ModuleGate({
   moduleKey,
   children,
@@ -30,9 +30,6 @@ export async function ModuleGate({
 
   return (
     <div className="relative min-h-[60vh]">
-      <div aria-hidden className="pointer-events-none select-none opacity-35 blur-md">
-        {children}
-      </div>
       <div className="absolute inset-0 z-10 flex items-start justify-center pt-24">
         <Card className="mx-4 max-w-md animate-pop overflow-hidden p-7 text-center shadow-[var(--shadow-float)]">
           <div

@@ -1,8 +1,10 @@
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
+import { resolveTenantRole } from '@/lib/auth/tenant-role';
 import { getCurrentTenant } from '@/lib/tenant';
 import { auth } from '@clerk/nextjs/server';
 import { IdCard } from 'lucide-react';
+import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +14,8 @@ export const metadata = { title: 'Info de cuenta · FUTURA' };
 // Sirve para configurar el super-admin (FUTURA_TENANT_ID) sin adivinar el UUID.
 // No expone datos de otras clínicas: solo los de tu propio tenant.
 export default async function WhoamiPage() {
+  // Diagnóstico para quien configura la cuenta, no para todo el equipo.
+  if ((await resolveTenantRole()).role !== 'admin') notFound();
   const ctx = await getCurrentTenant();
   // realTenant = tu tenant real (aunque estés impersonando).
   const t = ctx.realTenant ?? ctx.tenant;

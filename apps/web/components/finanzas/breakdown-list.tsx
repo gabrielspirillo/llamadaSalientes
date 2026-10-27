@@ -30,7 +30,7 @@ export function BreakdownList({
 }) {
   const rows = items.filter((i) => i.cents > 0).slice(0, max);
   if (rows.length === 0) {
-    return <p className="py-6 text-center text-[13px] text-zinc-400">{emptyLabel}</p>;
+    return <p className="py-6 text-center text-[13px] text-zinc-500">{emptyLabel}</p>;
   }
   const base = total ?? rows.reduce((acc, r) => acc + r.cents, 0);
   const top = Math.max(1, ...rows.map((r) => r.cents));
@@ -53,12 +53,12 @@ export function BreakdownList({
                 />
                 <span className="truncate font-medium text-zinc-700">{item.name}</span>
                 {item.hint && (
-                  <span className="shrink-0 text-[11px] text-zinc-400">{item.hint}</span>
+                  <span className="shrink-0 text-[11px] text-zinc-500">{item.hint}</span>
                 )}
               </span>
               <span className="shrink-0 font-bold tabular-nums text-zinc-800">
                 {formatCents(item.cents)}
-                <span className="ml-1.5 font-medium text-zinc-400">{pct} %</span>
+                <span className="ml-1.5 font-medium text-zinc-500">{pct} %</span>
               </span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-zinc-100">
@@ -85,7 +85,7 @@ export function FixedVariableBar({
 }: { fixedCents: number; variableCents: number }) {
   const total = fixedCents + variableCents;
   if (total === 0)
-    return <p className="py-4 text-center text-[13px] text-zinc-400">Sin gastos en el período</p>;
+    return <p className="py-4 text-center text-[13px] text-zinc-500">Sin gastos en el período</p>;
   const fixedPct = Math.round((fixedCents / total) * 100);
   return (
     <div>

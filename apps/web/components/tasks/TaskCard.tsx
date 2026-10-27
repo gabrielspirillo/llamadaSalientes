@@ -83,7 +83,7 @@ export function TaskCard({
             #{l}
           </span>
         ))}
-        <span className="ml-auto flex items-center gap-1 text-zinc-400">
+        <span className="ml-auto flex items-center gap-1 text-zinc-500">
           {task.source === 'AUTOMATION' && (
             <Bot className="h-3.5 w-3.5" aria-label={SOURCE_META.AUTOMATION.hint} />
           )}
@@ -133,10 +133,10 @@ export function TaskCard({
 
       {task.patientName && (
         <div className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-lg bg-white/70 px-2 py-1 text-[12px] font-medium text-zinc-600">
-          <User className="h-3 w-3 shrink-0 text-zinc-400" />
+          <User className="h-3 w-3 shrink-0 text-zinc-500" />
           <span className="truncate">{task.patientName}</span>
           {task.patientPhone && (
-            <span className="shrink-0 text-zinc-400">· {task.patientPhone}</span>
+            <span className="shrink-0 text-zinc-500">· {task.patientPhone}</span>
           )}
         </div>
       )}

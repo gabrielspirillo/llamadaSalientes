@@ -486,7 +486,7 @@ export function AppointmentDialog({
                   }
                 />
                 {searching && (
-                  <Loader2 className="absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 animate-spin text-zinc-400" />
+                  <Loader2 className="absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 animate-spin text-zinc-500" />
                 )}
                 {patientSearch && listOpen && results.length > 0 && (
                   <ul className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-[14px] bg-white p-1 shadow-lifted ring-1 ring-(--color-border)">

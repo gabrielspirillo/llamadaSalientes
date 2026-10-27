@@ -126,7 +126,16 @@ export async function materializeReminders(args: {
         ),
       )
       .limit(1);
-    if (rs) ruleSet = rs;
+    // Un conjunto propio del tratamiento sin ninguna regla activa no deja al
+    // tratamiento sin recordatorios: manda el global.
+    if (rs) {
+      const [anyRule] = await db
+        .select({ id: reminderRules.id })
+        .from(reminderRules)
+        .where(and(eq(reminderRules.ruleSetId, rs.id), eq(reminderRules.enabled, true)))
+        .limit(1);
+      if (anyRule) ruleSet = rs;
+    }
   }
   if (!ruleSet) {
     const [global] = await db

@@ -477,7 +477,7 @@ export function EntryDialog({
               }
               maxLength={200}
               aria-invalid={Boolean(errors.concept)}
-              className={cn('placeholder:text-zinc-400/80', invalid('concept'))}
+              className={cn('placeholder:text-zinc-500/80', invalid('concept'))}
             />
             {fieldError('concept')}
           </div>
@@ -490,7 +490,7 @@ export function EntryDialog({
               onChange={(e) => onAmountChange(e.target.value)}
               placeholder="Ej.: 450,00"
               aria-invalid={Boolean(errors.amount)}
-              className={cn('placeholder:text-zinc-400/80', invalid('amount'))}
+              className={cn('placeholder:text-zinc-500/80', invalid('amount'))}
             />
             {fieldError('amount')}
           </div>
@@ -517,7 +517,7 @@ export function EntryDialog({
                   value={form.tax}
                   onChange={(e) => set('tax', e.target.value)}
                   placeholder="Ej.: 78,10"
-                  className={cn('w-[120px] placeholder:text-zinc-400/80', invalid('tax'))}
+                  className={cn('w-[120px] placeholder:text-zinc-500/80', invalid('tax'))}
                 />
               ) : form.vatMode !== '' ? (
                 <span className="inline-flex h-11 min-w-[96px] items-center justify-end rounded-[14px] bg-zinc-100 px-3 text-[14px] font-semibold tabular-nums text-zinc-800">
@@ -552,7 +552,7 @@ export function EntryDialog({
               onChange={(e) => onCounterpartyChange(e.target.value)}
               placeholder={isExpense ? 'Ej.: Inmobiliaria Sol' : 'Ej.: Familia García'}
               maxLength={200}
-              className="placeholder:text-zinc-400/80"
+              className="placeholder:text-zinc-500/80"
             />
             <datalist id={datalistId}>
               {counterpartyOptions.map((c) => (

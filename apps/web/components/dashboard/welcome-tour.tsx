@@ -466,7 +466,7 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
             type="button"
             onClick={close}
             aria-label="Cerrar tutorial"
-            className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition-all duration-300 hover:rotate-90 hover:bg-zinc-100 hover:text-zinc-700"
+            className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-500 transition-all duration-300 hover:rotate-90 hover:bg-zinc-100 hover:text-zinc-700"
           >
             <X className="h-4 w-4" />
           </button>
@@ -556,7 +556,7 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
                 </button>
               )}
 
-              <span className="text-[12px] tabular-nums text-zinc-400">
+              <span className="text-[12px] tabular-nums text-zinc-500">
                 {step + 1} / {STEPS.length}
               </span>
 

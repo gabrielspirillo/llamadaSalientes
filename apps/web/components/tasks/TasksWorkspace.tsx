@@ -274,7 +274,7 @@ export function TasksWorkspace({
       <header className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative min-w-[200px] flex-1 xl:flex-none">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -370,7 +370,7 @@ export function TasksWorkspace({
 
       {/* ── Vistas ───────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <nav className="inline-flex rounded-full border border-zinc-200 bg-white p-0.5">
+        <nav className="inline-flex max-w-full overflow-x-auto rounded-full border border-zinc-200 bg-white p-0.5">
           {VIEWS.map((v) => {
             const Icon = v.icon;
             return (

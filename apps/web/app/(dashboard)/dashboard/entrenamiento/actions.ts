@@ -1,5 +1,6 @@
 'use server';
 
+import { isUuid } from '@/lib/agenda/appointment-ref';
 import { applyDataChange } from '@/lib/agent-training/clinic-data';
 import {
   createLesson,
@@ -235,6 +236,7 @@ export async function createLessonAction(formData: FormData): Promise<ActionResu
 }
 
 export async function updateLessonAction(id: string, formData: FormData): Promise<ActionResult> {
+  if (!isUuid(id)) return { ok: false, error: 'Esa enseñanza ya no existe' };
   try {
     const { tenantId, userId } = await guard();
     const parsed = lessonSchema.safeParse({
@@ -276,6 +278,7 @@ export async function updateLessonAction(id: string, formData: FormData): Promis
 
 /** Pausa o reactiva. Pausada sigue guardada pero el asistente no la ve. */
 export async function toggleLessonAction(id: string): Promise<ActionResult> {
+  if (!isUuid(id)) return { ok: false, error: 'Esa enseñanza ya no existe' };
   try {
     const { tenantId, userId } = await guard();
     const before = await getLessonById(tenantId, id);
@@ -303,6 +306,7 @@ export async function toggleLessonAction(id: string): Promise<ActionResult> {
 }
 
 export async function deleteLessonAction(id: string): Promise<ActionResult> {
+  if (!isUuid(id)) return { ok: false, error: 'Esa enseñanza ya no existe' };
   try {
     const { tenantId, userId } = await guard();
     const before = await getLessonById(tenantId, id);

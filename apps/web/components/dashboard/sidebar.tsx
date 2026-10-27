@@ -381,7 +381,7 @@ const NavLink = React.memo(function NavLink({
         <Lock
           data-sidebar-hide={attrPlegado}
           aria-hidden
-          className="h-3 w-3 shrink-0 text-zinc-400"
+          className="h-3 w-3 shrink-0 text-zinc-500"
         />
       )}
       {/* Señal de que ESTA fila es la que se está cargando. Sin ella el menú se
@@ -548,7 +548,7 @@ function NavGroupRow({
           aria-hidden
           data-sidebar-hide
           className={cn(
-            'h-4 w-4 shrink-0 text-zinc-400 transition-transform duration-300',
+            'h-4 w-4 shrink-0 text-zinc-500 transition-transform duration-300',
             mode === 'inline' && open && 'rotate-90',
             mode === 'flyout' && open && 'translate-x-0.5 text-zinc-600',
           )}
@@ -567,7 +567,7 @@ function NavGroupRow({
             }}
             className="fixed z-50 w-[244px] animate-zoom-in rounded-[22px] border border-[#dfe4e2] bg-white/95 p-1.5 shadow-[0_28px_70px_-28px_rgba(20,33,29,0.55)] backdrop-blur-xl"
           >
-            <p className="px-3 pb-1 pt-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+            <p className="px-3 pb-1 pt-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
               {group.label}
             </p>
             <div className="space-y-0.5">{links}</div>

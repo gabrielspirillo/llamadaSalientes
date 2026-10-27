@@ -60,7 +60,7 @@ export const DialogContent = React.forwardRef<
             `overflow-hidden` del modal recortaba el pie con el botón de
             guardar. En los modales normales (bloque) no cambia nada. */}
         <div className="contents">{children}</div>
-        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full p-1.5 text-zinc-400 transition-all duration-300 hover:rotate-90 hover:bg-zinc-100 hover:text-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40">
+        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full p-1.5 text-zinc-500 transition-all duration-300 hover:rotate-90 hover:bg-zinc-100 hover:text-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40">
           <X className="h-4 w-4" />
           <span className="sr-only">Cerrar</span>
         </DialogPrimitive.Close>

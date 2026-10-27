@@ -96,7 +96,7 @@ export function AutoCallbackCard({ intakeUrl, intakeKey, ghlWebhookUrl, location
               <button
                 type="button"
                 onClick={() => copy(intakeKey, 'intake-key')}
-                className="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900"
+                className="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
                 title="Copiar"
               >
                 {copied === 'intake-key' ? (
@@ -200,7 +200,7 @@ function CopyableField({
         <button
           type="button"
           onClick={() => onCopy(value, copyKey)}
-          className="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900"
+          className="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
           title="Copiar"
         >
           {copied === copyKey ? (

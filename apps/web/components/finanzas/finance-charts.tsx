@@ -53,7 +53,7 @@ function eurosLabel(value: number): string {
 
 function ChartEmpty({ label }: { label: string }) {
   return (
-    <div className="flex h-56 flex-col items-center justify-center gap-2 text-sm text-zinc-400">
+    <div className="flex h-56 flex-col items-center justify-center gap-2 text-sm text-zinc-500">
       <span className="inline-flex h-10 w-10 animate-float items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#effaf5,#ddf3ea)]" />
       {label}
     </div>

@@ -281,7 +281,7 @@ export function TaskComposer({
           {/* ── Cuándo ────────────────────────────────────────────────────── */}
           <section className="rounded-2xl border border-zinc-200 bg-zinc-50/60 p-3">
             <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-zinc-800">
-              <CalendarClock className="h-4 w-4 text-zinc-400" />
+              <CalendarClock className="h-4 w-4 text-zinc-500" />
               Vencimiento
             </p>
             <div className="flex flex-wrap items-end gap-3">
@@ -322,7 +322,7 @@ export function TaskComposer({
           {/* ── Responsables ──────────────────────────────────────────────── */}
           <div>
             <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-zinc-800">
-              <User className="h-4 w-4 text-zinc-400" />
+              <User className="h-4 w-4 text-zinc-500" />
               Responsables
             </p>
             <div className="flex flex-wrap gap-2">
@@ -355,7 +355,7 @@ export function TaskComposer({
           {/* ── Checklist ─────────────────────────────────────────────────── */}
           <div>
             <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-zinc-800">
-              <ListChecks className="h-4 w-4 text-zinc-400" />
+              <ListChecks className="h-4 w-4 text-zinc-500" />
               Pasos ({checklist.length})
             </p>
             {checklist.length > 0 && (
@@ -381,7 +381,7 @@ export function TaskComposer({
                       type="button"
                       aria-label={`Quitar paso ${idx + 1}`}
                       onClick={() => setChecklist((prev) => prev.filter((r) => r._k !== row._k))}
-                      className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-red-600"
+                      className="rounded-lg p-1 text-zinc-500 hover:bg-zinc-100 hover:text-red-600"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -414,7 +414,7 @@ export function TaskComposer({
           {/* ── Etiquetas ─────────────────────────────────────────────────── */}
           <div>
             <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-zinc-800">
-              <Tag className="h-4 w-4 text-zinc-400" />
+              <Tag className="h-4 w-4 text-zinc-500" />
               Etiquetas
             </p>
             {labels.length > 0 && (
@@ -429,7 +429,7 @@ export function TaskComposer({
                       type="button"
                       aria-label={`Quitar etiqueta ${l}`}
                       onClick={() => setLabels((prev) => prev.filter((x) => x !== l))}
-                      className="text-zinc-400 hover:text-red-600"
+                      className="text-zinc-500 hover:text-red-600"
                     >
                       <X className="h-3 w-3" />
                     </button>

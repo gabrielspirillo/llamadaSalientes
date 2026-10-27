@@ -9,6 +9,8 @@ const isPublicRoute = createRouteMatcher([
   '/onboarding/clinica(.*)', // wizard público de alta de clínicas (valida su propia key firmada)
   '/sapinn(.*)', // landing privada por enlace para la consulta SPN-2026-VOZ-01 (Sapinn)
   '/api/health',
+  '/icon(.*)', // favicon generado (app/icon.tsx): también en el login
+  '/apple-icon(.*)',
   '/api/webhooks/(.*)', // clerk, retell, ghl, stripe — verifican firma propia
   '/api/retell/(.*)',
   '/api/ghl/webhook',
@@ -23,10 +25,13 @@ export default clerkMiddleware(async (auth, req) => {
   if (!isPublicRoute(req)) {
     // Una página sin sesión va al login; `protect()` le devolvía un 404.
     const { userId, redirectToSignIn } = await auth();
-    if (!userId && !req.nextUrl.pathname.startsWith('/api/')) {
+    if (!userId) {
+      // Una API sin sesión contesta 401 en JSON, no la página 404 de Clerk.
+      if (req.nextUrl.pathname.startsWith('/api/')) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
       return redirectToSignIn({ returnBackUrl: req.url });
     }
-    await auth.protect();
   }
 
   // El layout del panel necesita saber QUÉ ruta se está pidiendo para poder

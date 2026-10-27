@@ -58,7 +58,7 @@ export function SettingsForm({
             }}
             onBlur={save}
             placeholder="Ej.: 6.000"
-            className="max-w-xs placeholder:text-zinc-400/80"
+            className="max-w-xs placeholder:text-zinc-500/80"
           />
           <span
             className="inline-flex min-w-[90px] items-center gap-1 text-[12px]"

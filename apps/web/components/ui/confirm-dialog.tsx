@@ -128,7 +128,7 @@ export function ConfirmDialog({
                 if (error) setError(null);
               }}
               placeholder={reason.placeholder}
-              className="min-h-[88px] placeholder:text-zinc-400/80"
+              className="min-h-[88px] placeholder:text-zinc-500/80"
               maxLength={300}
               autoFocus
               aria-invalid={Boolean(error)}

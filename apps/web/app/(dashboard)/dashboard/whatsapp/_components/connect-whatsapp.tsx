@@ -147,7 +147,7 @@ function ConnectWhatsappDialog({
             <div className="flex min-h-[248px] flex-col items-center justify-center rounded-[18px] border border-(--color-border) bg-(--color-canvas) p-4 text-center">
               {loading && !qr ? (
                 <>
-                  <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
+                  <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
                   <p className="mt-2 text-sm text-zinc-500">Generando el código…</p>
                 </>
               ) : qr ? (
@@ -161,7 +161,7 @@ function ConnectWhatsappDialog({
                 />
               ) : pairingCode ? (
                 <div className="space-y-1">
-                  <Smartphone className="mx-auto h-6 w-6 text-zinc-400" />
+                  <Smartphone className="mx-auto h-6 w-6 text-zinc-500" />
                   <p className="text-sm text-zinc-500">Introduce este código en tu WhatsApp:</p>
                   <code className="text-xl font-bold tracking-[0.2em] text-zinc-900">
                     {pairingCode}
@@ -184,7 +184,7 @@ function ConnectWhatsappDialog({
             {error && qr && <p className="text-center text-[13px] text-rose-600">{error}</p>}
 
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[12px] text-zinc-400">
+              <p className="text-[12px] text-zinc-500">
                 El código caduca al minuto. Si caduca, genera otro.
               </p>
               <Button size="sm" variant="secondary" onClick={() => void load()} disabled={loading}>

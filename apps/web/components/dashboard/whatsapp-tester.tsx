@@ -208,7 +208,7 @@ export function WhatsappTester() {
 
         <div className="min-h-[300px] max-h-[52vh] space-y-4 overflow-y-auto border-t border-(--color-border-subtle) px-4 py-4 sm:min-h-[360px] sm:px-6 sm:py-5">
           {turns.length === 0 ? (
-            <div className="flex h-[300px] flex-col items-center justify-center text-center text-sm text-zinc-400">
+            <div className="flex h-[300px] flex-col items-center justify-center text-center text-sm text-zinc-500">
               <span className="mb-3 inline-flex h-12 w-12 animate-float items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#effaf5,#ddf3ea)] text-brand-500">
                 <MessageSquare className="h-5 w-5" />
               </span>
@@ -276,7 +276,7 @@ export function WhatsappTester() {
                           {turn.meta.tools.length === 1 ? 'consulta' : 'consultas'}
                         </button>
                       )}
-                      <span className="text-[11px] text-zinc-400">
+                      <span className="text-[11px] text-zinc-500">
                         {turn.meta.model} · {(turn.meta.latencyMs / 1000).toFixed(1)}s
                       </span>
                     </div>
@@ -290,7 +290,7 @@ export function WhatsappTester() {
                             <Badge tone={t.ok ? 'success' : 'danger'} size="sm">
                               {t.name}
                             </Badge>
-                            <span className="text-zinc-400">{t.latencyMs} ms</span>
+                            <span className="text-zinc-500">{t.latencyMs} ms</span>
                           </div>
                           <pre className="mt-1 overflow-x-auto rounded-xl bg-zinc-50 p-2 text-[11px] leading-relaxed text-zinc-600">
                             {JSON.stringify(t.args, null, 2)}

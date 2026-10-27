@@ -14,6 +14,7 @@ const dayHoursSchema = z
     open: z.string().regex(timeRegex, 'Hora inválida (HH:MM)'),
     close: z.string().regex(timeRegex, 'Hora inválida (HH:MM)'),
   })
+  .refine((d) => d === null || d.open < d.close, 'La apertura tiene que ser antes del cierre')
   .nullable();
 
 const workingHoursSchema = z.object({
@@ -30,8 +31,24 @@ const e164Regex = /^\+[1-9]\d{6,14}$/;
 
 const settingsSchema = z.object({
   address: z.string().max(300).optional().nullable(),
-  phones: z.array(z.string().max(40)).optional(),
-  timezone: z.string().min(2),
+  // Un teléfono de la clínica: cifras, espacios, +, guiones y paréntesis.
+  phones: z
+    .array(
+      z
+        .string()
+        .max(40)
+        .regex(/^[+\d\s().-]{6,40}$/, 'Teléfono no válido'),
+    )
+    .optional(),
+  // Una zona inválida rompe todas las horas del panel y de los agentes.
+  timezone: z.string().refine((tz) => {
+    try {
+      new Intl.DateTimeFormat('es-ES', { timeZone: tz });
+      return true;
+    } catch {
+      return false;
+    }
+  }, 'Zona horaria no válida'),
   defaultLanguage: z.enum(['es', 'en']),
   afterHoursMessage: z.string().max(1000).optional().nullable(),
   recordingConsentText: z.string().min(20, 'El mensaje de consentimiento es obligatorio'),

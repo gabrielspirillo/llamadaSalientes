@@ -157,7 +157,7 @@ export function ChannelRail({
                   type="button"
                   onClick={() => setQuery('')}
                   aria-label="Limpiar la búsqueda"
-                  className="pointer-events-auto rounded-full p-0.5 text-zinc-400 transition-colors hover:text-zinc-600"
+                  className="pointer-events-auto rounded-full p-0.5 text-zinc-500 transition-colors hover:text-zinc-600"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -220,7 +220,7 @@ export function ChannelRail({
                   onClick={onNewChannel}
                   aria-label="Crear un canal"
                   title="Crear un canal"
-                  className="press inline-flex h-6 w-6 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
+                  className="press inline-flex h-6 w-6 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
                 >
                   <Plus className="h-3.5 w-3.5" />
                 </button>
@@ -265,7 +265,7 @@ export function ChannelRail({
                 <button
                   type="button"
                   onClick={() => setShowPeople((v) => !v)}
-                  className="press inline-flex h-5 w-5 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
+                  className="press inline-flex h-5 w-5 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
                   aria-label={showPeople ? 'Ocultar equipo' : 'Escribir a alguien del equipo'}
                   title={showPeople ? 'Ocultar equipo' : 'Escribir a alguien del equipo'}
                 >
@@ -446,7 +446,7 @@ function RailChannel({
               <span
                 className={cn(
                   'mt-0.5 block truncate text-[13px] leading-tight',
-                  unread ? 'font-medium text-zinc-600' : 'text-zinc-400',
+                  unread ? 'font-medium text-zinc-600' : 'text-zinc-500',
                 )}
               >
                 {plainPreview(channel.lastMessagePreview, 44)}

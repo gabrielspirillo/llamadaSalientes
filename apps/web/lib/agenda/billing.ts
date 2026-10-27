@@ -92,8 +92,10 @@ export function parseAmountToCents(raw: string | number | null | undefined): num
   if (typeof raw === 'number') {
     return Number.isFinite(raw) && raw >= 0 ? Math.round(raw * 100) : null;
   }
-  const cleaned = raw.replace(/[^\d.,-]/g, '');
-  if (!cleaned || cleaned.startsWith('-')) return null;
+  // Sólo cifras, separadores y el símbolo de euro: "12abc34" no es 1.234 € ni
+  // "1e3" son 13 €.
+  const cleaned = raw.replace(/\s|€|eur(os?)?/gi, '');
+  if (!cleaned || !/^[\d.,]+$/.test(cleaned)) return null;
   const lastComma = cleaned.lastIndexOf(',');
   const lastDot = cleaned.lastIndexOf('.');
   const decimalAt = Math.max(lastComma, lastDot);
@@ -111,7 +113,8 @@ export function parseAmountToCents(raw: string | number | null | undefined): num
     }
   }
   const value = Number(normalized);
-  if (!Number.isFinite(value) || value < 0) return null;
+  // Tope de 10 millones: más es un error de tecleo, no un cobro.
+  if (!Number.isFinite(value) || value < 0 || value > 10_000_000) return null;
   return Math.round(value * 100);
 }
 

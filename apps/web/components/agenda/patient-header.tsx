@@ -65,7 +65,7 @@ export function PatientHeader({
             return (
               <span key={c.label} className="inline-flex items-center gap-1">
                 {i > 0 && (
-                  <span aria-hidden className="text-zinc-400">
+                  <span aria-hidden className="text-zinc-500">
                     ›
                   </span>
                 )}

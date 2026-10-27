@@ -115,7 +115,7 @@ export function InvoiceSettingsForm({
         value={form[key]}
         onChange={(e) => set(key, e.target.value)}
         placeholder={opts.placeholder}
-        className="placeholder:text-zinc-400/80"
+        className="placeholder:text-zinc-500/80"
       />
       {opts.hint && <p className="text-[12px] text-zinc-600">{opts.hint}</p>}
     </div>

@@ -82,7 +82,7 @@ export function ScheduleFields({
 
               <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                 {indexes.length === 0 && (
-                  <span className="text-[13px] text-zinc-400">No trabaja</span>
+                  <span className="text-[13px] text-zinc-500">No trabaja</span>
                 )}
                 {indexes.map(({ r, i }) => (
                   <div key={`${day}-${i}`} className="flex items-center gap-1.5">
@@ -95,7 +95,7 @@ export function ScheduleFields({
                         patchRow(i, { startMinute: hhmmToMinutes(e.target.value) ?? r.startMinute })
                       }
                     />
-                    <span className="text-zinc-400">–</span>
+                    <span className="text-zinc-500">–</span>
                     <Input
                       type="time"
                       aria-label={`Fin ${WEEKDAY_LABELS[day]}`}
@@ -106,7 +106,7 @@ export function ScheduleFields({
                       }
                     />
                     <IconButton label="Quitar franja" onClick={() => removeRow(i)}>
-                      <Trash2 className="h-4 w-4 text-zinc-400" />
+                      <Trash2 className="h-4 w-4 text-zinc-500" />
                     </IconButton>
                   </div>
                 ))}

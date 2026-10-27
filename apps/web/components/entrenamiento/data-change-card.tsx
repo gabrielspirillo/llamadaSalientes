@@ -103,13 +103,13 @@ export function DataChangeCard({
       <dl className="mt-3 space-y-2">
         {change.diff.map((row) => (
           <div key={row.label} className="text-[13px] leading-relaxed">
-            <dt className="text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-400">
+            <dt className="text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-500">
               {row.label}
             </dt>
             <dd className="flex flex-wrap items-baseline gap-2 text-zinc-700">
               {row.before && (
                 <>
-                  <span className="text-zinc-400 line-through">{row.before}</span>
+                  <span className="text-zinc-500 line-through">{row.before}</span>
                   <ArrowRight className="h-3.5 w-3.5 shrink-0 text-zinc-300" />
                 </>
               )}

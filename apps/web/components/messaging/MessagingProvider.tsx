@@ -755,7 +755,7 @@ function NotificationToasts({
             type="button"
             onClick={() => onDismiss(t.id)}
             aria-label="Descartar aviso"
-            className="shrink-0 rounded-full p-1.5 text-zinc-400 transition-all hover:rotate-90 hover:bg-white hover:text-zinc-700"
+            className="shrink-0 rounded-full p-1.5 text-zinc-500 transition-all hover:rotate-90 hover:bg-white hover:text-zinc-700"
           >
             <X className="h-3.5 w-3.5" />
           </button>

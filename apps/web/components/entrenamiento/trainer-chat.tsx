@@ -273,7 +273,7 @@ export function TrainerChat({
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
-        <p className="mt-2 text-[12px] text-zinc-400">
+        <p className="mt-2 text-[12px] text-zinc-500">
           Puede cambiar cómo responde y también los datos: precios, tratamientos y preguntas
           frecuentes. Nada se guarda hasta que apruebas la tarjeta.
         </p>

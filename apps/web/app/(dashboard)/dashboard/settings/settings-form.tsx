@@ -178,7 +178,7 @@ export function SettingsForm({
                       <button
                         type="button"
                         onClick={() => removePhone(p)}
-                        className="text-zinc-400 hover:text-zinc-700"
+                        className="text-zinc-500 hover:text-zinc-700"
                       >
                         ×
                       </button>

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import './zod-es';
 
 // Validación de variables de entorno. Crashea al boot si falta algo crítico.
 // Las claves van pasando de `optional()` a `min(1)` a medida que avanzan

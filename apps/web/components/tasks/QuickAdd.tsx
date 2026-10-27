@@ -122,7 +122,7 @@ export function QuickAdd({
         }}
         className="flex items-center gap-2"
       >
-        <Plus className="h-4 w-4 shrink-0 text-zinc-400" />
+        <Plus className="h-4 w-4 shrink-0 text-zinc-500" />
         <input
           ref={inputRef}
           // biome-ignore lint/a11y/noAutofocus: el usuario abrió el alta rápida a propósito
@@ -155,7 +155,7 @@ export function QuickAdd({
             type="button"
             onClick={onCancel}
             aria-label="Cancelar"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-100"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100"
           >
             <X className="h-4 w-4" />
           </button>

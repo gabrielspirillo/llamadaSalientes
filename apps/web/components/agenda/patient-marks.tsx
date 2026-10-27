@@ -206,7 +206,7 @@ export function PatientMarks({
             <span className="inline-flex items-center gap-1.5 font-semibold">
               <Flag
                 className={
-                  flagsTotal > 0 ? 'h-4 w-4 fill-rose-600 text-rose-600' : 'h-4 w-4 text-zinc-400'
+                  flagsTotal > 0 ? 'h-4 w-4 fill-rose-600 text-rose-600' : 'h-4 w-4 text-zinc-500'
                 }
                 aria-hidden
               />

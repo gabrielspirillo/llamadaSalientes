@@ -267,7 +267,7 @@ export function MessagesDock() {
                   </span>
                   <ChevronDown
                     className={cn(
-                      'h-3.5 w-3.5 shrink-0 text-zinc-400 transition-transform duration-300',
+                      'h-3.5 w-3.5 shrink-0 text-zinc-500 transition-transform duration-300',
                       pickerOpen && 'rotate-180',
                     )}
                   />
@@ -517,7 +517,7 @@ function DockSettings({
         avisos que no interrumpen.
       </p>
 
-      <p className="px-1 pt-3 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+      <p className="px-1 pt-3 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
         Cuando no estás delante
       </p>
 
@@ -580,7 +580,7 @@ function DockSettings({
               aria-label="Silencio desde"
               className="h-9 text-[13px]"
             />
-            <span className="text-[12px] text-zinc-400">a</span>
+            <span className="text-[12px] text-zinc-500">a</span>
             <Input
               type="time"
               value={settings.dndTo}

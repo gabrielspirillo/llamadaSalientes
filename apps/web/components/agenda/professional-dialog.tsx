@@ -451,7 +451,7 @@ function Stepper({
                   'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[12px] font-bold',
                   activo && 'bg-brand-600 text-white',
                   hecho && 'bg-emerald-100 text-emerald-700',
-                  !activo && !hecho && 'bg-zinc-100 text-zinc-400',
+                  !activo && !hecho && 'bg-zinc-100 text-zinc-500',
                 )}
               >
                 {hecho ? <Check className="h-3.5 w-3.5" /> : i + 1}

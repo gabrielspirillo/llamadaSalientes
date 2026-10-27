@@ -222,7 +222,7 @@ export function ContextPanel({
           type="button"
           onClick={onClose}
           aria-label="Cerrar la ficha del canal"
-          className="press absolute right-3 top-3 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-white hover:text-zinc-700"
+          className="press absolute right-3 top-3 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-white hover:text-zinc-700"
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -324,7 +324,7 @@ export function ContextPanel({
                 type="button"
                 onClick={() => setPinsOpen((v) => !v)}
                 aria-label={pinsOpen ? 'Colapsar los fijados' : 'Ver los fijados'}
-                className="press inline-flex h-5 w-5 items-center justify-center rounded-full text-zinc-400 hover:bg-white hover:text-zinc-700"
+                className="press inline-flex h-5 w-5 items-center justify-center rounded-full text-zinc-500 hover:bg-white hover:text-zinc-700"
               >
                 <ChevronDown
                   className={cn(

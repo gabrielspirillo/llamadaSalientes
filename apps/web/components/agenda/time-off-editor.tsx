@@ -99,7 +99,7 @@ export function TimeOffEditor({
           {blocks.map((b) => (
             <li key={b.id} className="flex items-center justify-between gap-3 py-2.5">
               <div className="flex min-w-0 items-center gap-2.5">
-                <CalendarOff className="h-4 w-4 shrink-0 text-zinc-400" />
+                <CalendarOff className="h-4 w-4 shrink-0 text-zinc-500" />
                 <div className="min-w-0">
                   <p className="truncate text-[14px] font-semibold text-zinc-800">{b.label}</p>
                   <p className="truncate text-[12px] text-zinc-500">
@@ -120,7 +120,7 @@ export function TimeOffEditor({
                     })
                   }
                 >
-                  <Trash2 className="h-4 w-4 text-zinc-400" />
+                  <Trash2 className="h-4 w-4 text-zinc-500" />
                 </IconButton>
               </div>
             </li>

@@ -1,3 +1,5 @@
+import { isUuid } from '@/lib/agenda/appointment-ref';
+import { contentMatchesMime } from '@/lib/file-sniff';
 import { type NextRequest, NextResponse } from 'next/server';
 
 import {
@@ -42,7 +44,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const tenantId = String(form.get('tenantId') ?? '').trim();
-  if (!tenantId) {
+  if (!isUuid(tenantId)) {
     return NextResponse.json({ error: 'Falta la clínica' }, { status: 400 });
   }
 
@@ -80,10 +82,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
+  // El MIME lo declara el cliente: se comprueban los bytes.
+  const body = Buffer.from(await file.arrayBuffer());
+  if (!contentMatchesMime(mime, body)) {
+    return NextResponse.json(
+      { error: `El archivo no es una imagen ${ALLOWED_LOGO_LABEL} válida.` },
+      { status: 415 },
+    );
+  }
+
   try {
     const { logoUrl } = await saveClinicLogo({
       tenantId: rows[0].id,
-      body: Buffer.from(await file.arrayBuffer()),
+      body: body,
       mime,
     });
     return NextResponse.json({ logoUrl }, { status: 201 });

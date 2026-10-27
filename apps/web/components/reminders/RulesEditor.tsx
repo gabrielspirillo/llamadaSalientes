@@ -200,7 +200,7 @@ export function RulesEditor(props: {
       {notice && <Callout tone="success">{notice}</Callout>}
 
       <section className="rounded-lg border border-(--color-border) bg-zinc-50 p-4">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
           <div className="min-w-0">
             <h2 className="text-sm font-semibold text-zinc-700">
               ¿Cómo funcionan los recordatorios?

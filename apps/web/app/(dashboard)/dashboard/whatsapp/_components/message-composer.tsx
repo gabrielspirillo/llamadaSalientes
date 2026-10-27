@@ -387,7 +387,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
             type="button"
             onClick={() => setEmojiOpen((v) => !v)}
             disabled={disabled || pending}
-            className="rounded-full p-2 text-zinc-400 transition-all duration-300 hover:scale-110 hover:bg-zinc-100 hover:text-brand-600 disabled:opacity-50"
+            className="rounded-full p-2 text-zinc-500 transition-all duration-300 hover:scale-110 hover:bg-zinc-100 hover:text-brand-600 disabled:opacity-50"
             title="Emoji"
           >
             <svg
@@ -445,7 +445,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
                   type="button"
                   onClick={startRecording}
                   disabled={disabled || pending}
-                  className="rounded-full p-2 text-zinc-400 transition-all duration-300 hover:scale-110 hover:bg-zinc-100 hover:text-brand-600 disabled:opacity-50"
+                  className="rounded-full p-2 text-zinc-500 transition-all duration-300 hover:scale-110 hover:bg-zinc-100 hover:text-brand-600 disabled:opacity-50"
                   title="Grabar audio"
                 >
                   <svg

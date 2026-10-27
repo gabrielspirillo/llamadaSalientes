@@ -115,7 +115,7 @@ function Atributos({
               {ghlContactId.slice(0, 12)}…
             </span>
           ) : (
-            <span className="text-zinc-400">Sin vincular</span>
+            <span className="text-zinc-500">Sin vincular</span>
           )}
         </div>
       </div>
@@ -197,7 +197,7 @@ function Historial({
                       <span>{c.lastMsgAt ? formatShort(c.lastMsgAt) : ''}</span>
                     </div>
                     <p className="mt-0.5 line-clamp-1 text-sm text-zinc-700">
-                      {c.lastMessagePreview ?? <em className="text-zinc-400">(sin mensajes)</em>}
+                      {c.lastMessagePreview ?? <em className="text-zinc-500">(sin mensajes)</em>}
                     </p>
                   </div>
                 </Link>
@@ -230,7 +230,7 @@ function Historial({
                       <span>{c.startedAt ? formatShort(c.startedAt) : ''}</span>
                     </div>
                     <p className="mt-0.5 line-clamp-1 text-sm text-zinc-700">
-                      {c.summary ?? <em className="text-zinc-400">(sin resumen)</em>}
+                      {c.summary ?? <em className="text-zinc-500">(sin resumen)</em>}
                     </p>
                   </div>
                 </Link>

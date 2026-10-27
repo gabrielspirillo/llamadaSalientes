@@ -191,7 +191,7 @@ export function OutboundQuickCall() {
                 <button
                   type="button"
                   onClick={() => removeVar(v.id)}
-                  className="text-zinc-400 hover:text-rose-600"
+                  className="text-zinc-500 hover:text-rose-600"
                   title="Quitar"
                 >
                   <Trash2 className="h-4 w-4" />

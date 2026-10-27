@@ -433,7 +433,7 @@ export function ChannelMembersDialog({
                     disabled={busy}
                     onClick={() => void call({ remove: [p.userId] })}
                     aria-label={`Quitar a ${p.name} del canal`}
-                    className="press inline-flex h-7 w-7 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:opacity-40"
+                    className="press inline-flex h-7 w-7 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:opacity-40"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>

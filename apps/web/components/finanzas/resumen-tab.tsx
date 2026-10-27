@@ -319,7 +319,9 @@ export function ResumenTab({
             hint={
               current.avgTicketCents === null
                 ? 'Ingreso medio por sesión'
-                : plural(current.sessions, 'sesión cobrada', 'sesiones cobradas')
+                : basis === 'cash'
+                  ? plural(current.sessions, 'sesión cobrada', 'sesiones cobradas')
+                  : plural(current.sessions, 'sesión facturada', 'sesiones facturadas')
             }
             icon={<Stethoscope className="h-4 w-4" />}
             tone="brand"

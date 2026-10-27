@@ -231,7 +231,7 @@ export function MessageThread({
           type="button"
           onClick={onBack}
           aria-label="Volver a los canales"
-          className="press relative inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 lg:hidden"
+          className="press relative inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700 lg:hidden"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
@@ -294,7 +294,7 @@ export function MessageThread({
               'press inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors',
               contextOpen
                 ? 'bg-brand-100 text-brand-700'
-                : 'text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700',
+                : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700',
             )}
           >
             {contextOpen ? (

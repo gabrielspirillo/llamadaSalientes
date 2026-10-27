@@ -268,7 +268,7 @@ export default async function WhatsappConversationsPage() {
                         }`}
                       >
                         {preview?.direction === 'OUTBOUND' && (
-                          <span className="text-zinc-400">Tú: </span>
+                          <span className="text-zinc-500">Tú: </span>
                         )}
                         {preview?.contentText ?? '—'}
                       </p>

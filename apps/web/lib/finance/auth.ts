@@ -1,6 +1,8 @@
 import 'server-only';
 
+import { type EnabledModules, isModuleEnabled } from '@/lib/modules';
 import { type TaskAuthContext, TaskForbiddenError, requireTaskRole } from '@/lib/tasks/auth';
+import { getCurrentTenant } from '@/lib/tenant';
 
 /**
  * Quién puede qué en Finanzas.
@@ -36,6 +38,12 @@ export async function getFinanceAccess(): Promise<FinanceAccess> {
       throw new FinanceForbiddenError('Tu rol no tiene acceso a Finanzas.');
     }
     throw err;
+  }
+  // El candado del sidebar no protege nada: sin el módulo, ni las acciones ni
+  // las rutas de Finanzas responden.
+  const { tenant } = await getCurrentTenant();
+  if (!isModuleEnabled(tenant.enabledModules as EnabledModules | null, 'finance')) {
+    throw new FinanceForbiddenError('Tu clínica no tiene contratado Finanzas.');
   }
   return { ...ctx, canManage: ctx.role === 'admin', canWrite: true };
 }

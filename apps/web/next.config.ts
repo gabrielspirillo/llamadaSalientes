@@ -35,6 +35,10 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '4mb',
     },
+    // El middleware copia el cuerpo y por defecto lo corta en 10 MB: un
+    // comprobante de 10 a 15 MB (el tope de la app) llegaba truncado y fallaba
+    // con "Se esperaba multipart/form-data".
+    middlewareClientMaxBodySize: '16mb',
     // Caché de segmentos del router en el cliente.
     //
     // El default de Next 15 es `dynamic: 0` (comprobado en

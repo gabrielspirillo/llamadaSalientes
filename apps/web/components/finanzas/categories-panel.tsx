@@ -138,7 +138,7 @@ export function CategoriesPanel({
             onChange={(e) => setName(e.target.value)}
             placeholder={isExpense ? 'Ej.: Ropa de trabajo' : 'Ej.: Talleres para familias'}
             maxLength={80}
-            className="h-10 placeholder:text-zinc-400/80"
+            className="h-10 placeholder:text-zinc-500/80"
           />
         </label>
         {isExpense && (

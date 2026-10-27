@@ -2,7 +2,12 @@ import 'server-only';
 import { and, asc, desc, eq, gte, inArray, lt, lte, ne, or, sql } from 'drizzle-orm';
 
 import { type SlotOptions, computeRangeSlots, shiftAppliesOn } from '@/lib/agenda/availability';
-import { patientIdFromKey, patientKeyFor, patientKeyForPerson } from '@/lib/agenda/patients';
+import {
+  patientIdFromKey,
+  patientKeyFor,
+  patientKeyForPerson,
+  phoneFromPatientKey,
+} from '@/lib/agenda/patients';
 import { BUSY_STATUSES, type ShiftRule, type SlotCandidate } from '@/lib/agenda/shared';
 import {
   GUARDIAN_ROLE_LABELS,
@@ -35,6 +40,7 @@ import {
   patientFullName,
   patientSearchFilter,
 } from '@/lib/patients/persons';
+import { findPatientByPhone } from '@/lib/patients/registry';
 import { phoneDigitsQuery } from '@/lib/patients/search-text';
 import { addDaysToKey, localDateKey } from '@/lib/tasks/tz';
 
@@ -1012,7 +1018,16 @@ export async function getPatientDossier(
     .orderBy(desc(agendaAppointments.startsAt))
     .limit(200);
 
-  if (appointmentRows.length === 0 && (!person || opts.viewerProfessionalId)) return null;
+  // Un contacto de la libreta sin citas (`tel:`) también tiene ficha: la lista
+  // de pacientes lo enlaza y llevaba a "No encontramos esto".
+  const contact =
+    appointmentRows.length === 0 && !person && !opts.viewerProfessionalId
+      ? await findPatientByPhone(tenantId, phoneFromPatientKey(patientKey))
+      : null;
+
+  if (appointmentRows.length === 0 && !contact && (!person || opts.viewerProfessionalId)) {
+    return null;
+  }
 
   const noteWhere = [
     eq(clinicalNotes.tenantId, tenantId),
@@ -1036,14 +1051,14 @@ export async function getPatientDossier(
     .limit(200);
 
   const head = appointmentRows[0]?.appointment ?? null;
-  if (!head && !person) return null;
+  if (!head && !person && !contact) return null;
 
   return {
     patientKey,
-    patientName: person?.fullName || head?.patientName || 'Sin nombre',
-    patientPhone: person?.contactPhone ?? head?.patientPhone ?? null,
-    patientEmail: person?.contactEmail ?? head?.patientEmail ?? null,
-    ghlContactId: head?.ghlContactId ?? null,
+    patientName: person?.fullName || head?.patientName || contact?.name || 'Sin nombre',
+    patientPhone: person?.contactPhone ?? head?.patientPhone ?? contact?.phoneE164 ?? null,
+    patientEmail: person?.contactEmail ?? head?.patientEmail ?? contact?.email ?? null,
+    ghlContactId: head?.ghlContactId ?? contact?.ghlContactId ?? null,
     patient: person,
     appointments: appointmentRows.map((r) => ({
       ...r.appointment,

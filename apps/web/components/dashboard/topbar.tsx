@@ -312,7 +312,7 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={onClose}
             aria-label="Cerrar"
-            className="relative rounded-full p-1.5 text-zinc-400 transition-all hover:rotate-90 hover:bg-zinc-100 hover:text-zinc-700"
+            className="relative rounded-full p-1.5 text-zinc-500 transition-all hover:rotate-90 hover:bg-zinc-100 hover:text-zinc-700"
           >
             <X className="h-4 w-4" />
           </button>
@@ -615,7 +615,7 @@ function NotificationsBell({
                           e.stopPropagation();
                           dismissOne(n.id);
                         }}
-                        className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 opacity-100 transition-all hover:rotate-90 hover:bg-zinc-100 hover:text-zinc-700 sm:opacity-0 sm:group-hover:opacity-100"
+                        className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-500 opacity-100 transition-all hover:rotate-90 hover:bg-zinc-100 hover:text-zinc-700 sm:opacity-0 sm:group-hover:opacity-100"
                         title="Descartar"
                       >
                         <X className="h-3 w-3" />

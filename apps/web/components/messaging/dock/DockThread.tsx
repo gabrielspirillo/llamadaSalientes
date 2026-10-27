@@ -302,7 +302,7 @@ export function DockThread({ channelId }: { channelId: string }) {
           }}
           placeholder="Escribe un mensaje…"
           aria-label="Mensaje"
-          className="h-10 min-w-0 flex-1 rounded-full border border-(--color-border) bg-white px-4 text-[14px] outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-300"
+          className="h-10 min-w-0 flex-1 rounded-full border border-(--color-border) bg-white px-4 text-[14px] outline-none transition-colors placeholder:text-zinc-500 focus:border-zinc-300"
         />
         <button
           type="button"
@@ -370,7 +370,7 @@ function DockEventCard({ message, hour }: { message: ImMessageDTO; hour: string 
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
           <p className="truncate text-[13.5px] font-bold tracking-tight text-zinc-900">{title}</p>
-          <time className="shrink-0 text-[11px] tabular-nums text-zinc-400">{hour}</time>
+          <time className="shrink-0 text-[11px] tabular-nums text-zinc-500">{hour}</time>
         </div>
         {summary && (
           <p className="mt-0.5 line-clamp-3 text-[13px] leading-snug text-zinc-600">{summary}</p>

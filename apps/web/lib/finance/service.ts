@@ -137,7 +137,13 @@ export function normalizeEntryInput(input: EntryInput): NormalizedEntry {
     throw new FinanceValidationError('Elige si es un gasto o un ingreso.');
   const concept = clean(input.concept, 200);
   if (!concept) throw new FinanceValidationError('Escribe el concepto.');
-  if (!Number.isInteger(input.amountCents) || input.amountCents < 0) {
+  // Un movimiento de 0 € no es un movimiento, y más de 10 millones es un error
+  // de tecleo (la base lo rechazaba con un error genérico).
+  if (
+    !Number.isInteger(input.amountCents) ||
+    input.amountCents <= 0 ||
+    input.amountCents > 1_000_000_000
+  ) {
     throw new FinanceValidationError('El importe no es válido.');
   }
   const taxCents = input.taxCents ?? 0;

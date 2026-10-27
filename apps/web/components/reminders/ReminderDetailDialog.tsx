@@ -165,7 +165,7 @@ export function ReminderDetailDialog({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
+              className="rounded-md p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
               aria-label="Cerrar"
             >
               ✕
