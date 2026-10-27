@@ -29,7 +29,18 @@ export async function updateClinicSettings(
     .set({ ...patch, updatedAt: new Date() })
     .where(eq(clinicSettings.tenantId, tenantId))
     .returning();
-  return row;
+  if (row) return row;
+  // Sin fila (clínica dada de alta a medias), el UPDATE no tocaba nada y el
+  // panel decía "guardado". Se crea con lo que llega.
+  const [inserted] = await db
+    .insert(clinicSettings)
+    .values({ ...patch, tenantId } as typeof clinicSettings.$inferInsert)
+    .onConflictDoUpdate({
+      target: clinicSettings.tenantId,
+      set: { ...patch, updatedAt: new Date() },
+    })
+    .returning();
+  return inserted;
 }
 
 export async function getTenant(tenantId: string) {

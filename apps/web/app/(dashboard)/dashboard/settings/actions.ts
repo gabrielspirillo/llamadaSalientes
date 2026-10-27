@@ -2,6 +2,7 @@
 
 import { recordAudit } from '@/lib/audit';
 import { getClinicSettings, updateClinicSettings } from '@/lib/data/clinic';
+import { requireTaskRole } from '@/lib/tasks/auth';
 import { getCurrentTenant } from '@/lib/tenant';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
@@ -50,6 +51,14 @@ const settingsSchema = z.object({
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
 export async function updateClinicSettingsAction(input: unknown): Promise<ActionResult> {
+  // El rol se comprueba aquí, no sólo escondiendo el botón: antes cualquiera
+  // con sesión en la clínica podía cambiar su horario o su número de desvío.
+  // Mismo listón que tocar estos datos desde el entrenador (operator).
+  try {
+    await requireTaskRole('operator');
+  } catch {
+    return { ok: false, error: 'No tienes permiso para cambiar los datos de la clínica.' };
+  }
   const { tenant } = await getCurrentTenant();
   const parsed = settingsSchema.safeParse(input);
   if (!parsed.success) {
@@ -58,6 +67,12 @@ export async function updateClinicSettingsAction(input: unknown): Promise<Action
 
   const before = await getClinicSettings(tenant.id);
   const after = await updateClinicSettings(tenant.id, parsed.data);
+  if (!after) {
+    return {
+      ok: false,
+      error: 'No se pudieron guardar los datos de la clínica. Recarga e inténtalo de nuevo.',
+    };
+  }
 
   await recordAudit({
     tenantId: tenant.id,

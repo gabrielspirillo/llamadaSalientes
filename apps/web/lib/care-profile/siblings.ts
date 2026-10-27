@@ -4,8 +4,12 @@
 // a los gemelos/mellizos: de un vistazo sabe que vienen juntos y que comparten
 // familia. Aquí se calcula:
 //
-// - Familia = pacientes que comparten contacto (`contact_id`) o el teléfono de
-//   algún tutor (por sus nueve últimos dígitos).
+// - Familia = pacientes que comparten contacto (`contact_id`), el teléfono de
+//   algún tutor (por sus nueve últimos dígitos) o LOS DOS APELLIDOS. Lo
+//   último hacía falta: unos mellizos con el móvil de la madre en uno y el del
+//   padre en otro no salían como familia (Respinens, 22/10).
+// - El tratamiento también manda: "GEMELOS / MELLIZOS" es G/M y "HERMANOS" es
+//   H aunque el cálculo no llegue (`familyTagFromTreatment`).
 // - G/M = hermano con la MISMA fecha de nacimiento. Se muestra siempre.
 // - H = hermano de alguien que YA vino a la clínica antes de esa cita: la
 //   familia ya nos conoce ("primera visita de hermano"). No tiene nada que ver
@@ -22,9 +26,34 @@ export interface FamilyPatient {
   /** Teléfonos de la ficha: el del contacto y los de los tutores. */
   phones: string[];
   birthDate: string | null;
+  /** Apellidos tal cual en la ficha: con los dos, identifican a la familia. */
+  lastName?: string | null;
   siblingMark: SiblingMark | null;
   /** Día (YYYY-MM-DD local) de su primera cita no anulada ni faltada; null si nunca vino. */
   firstVisitDate: string | null;
+}
+
+/** Los apellidos sin tildes ni mayúsculas, sólo si son dos o más palabras. */
+export function surnamesKey(lastName: string | null | undefined): string | null {
+  const words = (lastName ?? '')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-zñ\s-]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length > 1);
+  return words.length >= 2 ? words.join(' ') : null;
+}
+
+/** La etiqueta que dicta el tratamiento de la cita, si lo dice. */
+export function familyTagFromTreatment(name: string | null | undefined): FamilyTag | null {
+  const n = (name ?? '')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase();
+  if (/gemel|melliz/.test(n)) return 'GM';
+  if (/herman/.test(n)) return 'H';
+  return null;
 }
 
 function phoneTail(raw: string): string | null {
@@ -62,6 +91,8 @@ export function groupFamilies(patients: FamilyPatient[]): Map<string, string[]> 
       const tail = phoneTail(phone);
       if (tail) union(node, `t:${tail}`);
     }
+    const surnames = surnamesKey(p.lastName);
+    if (surnames) union(node, `s:${surnames}`);
   }
 
   const byRoot = new Map<string, string[]>();

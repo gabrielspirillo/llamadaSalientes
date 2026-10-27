@@ -19,7 +19,12 @@ import {
 } from '@/lib/agenda/view';
 import { describeAge } from '@/lib/care-profile/policy';
 import { getCareProfile } from '@/lib/care-profile/queries';
-import { type FamilyPatient, familyTagFor, groupFamilies } from '@/lib/care-profile/siblings';
+import {
+  type FamilyPatient,
+  familyTagFor,
+  familyTagFromTreatment,
+  groupFamilies,
+} from '@/lib/care-profile/siblings';
 import { EMPTY_RED_FLAGS, type RedFlagCounts } from '@/lib/care-profile/signals';
 import { db } from '@/lib/db/client';
 import { professionalShifts, treatments } from '@/lib/db/schema';
@@ -190,9 +195,19 @@ export default async function AgendaPage({
       // La edad con número sólo existe si el paciente tiene fecha de nacimiento;
       // la etiqueta de primera visita, sólo en las clínicas con perfil.
       patientAge: a.patientBirthDate ? describeAge(a.patientBirthDate, todayKey) : null,
-      badge: careProfile && a.isFirstVisit ? '1ª visita' : null,
-      firstVisit: Boolean(careProfile && a.isFirstVisit),
-      familyTag: careProfile ? familyTagOf(a.patientId, a.startsAt) : null,
+      // El tratamiento manda sobre el cálculo: "GEMELOS / MELLIZOS" es G/M y
+      // no primera visita aunque los niños sean nuevos (o la cita no esté
+      // atada a sus fichas, que es cuando el cálculo no llega).
+      badge:
+        careProfile && a.isFirstVisit && familyTagFromTreatment(a.treatmentName) !== 'GM'
+          ? '1ª visita'
+          : null,
+      firstVisit: Boolean(
+        careProfile && a.isFirstVisit && familyTagFromTreatment(a.treatmentName) !== 'GM',
+      ),
+      familyTag: careProfile
+        ? (familyTagFromTreatment(a.treatmentName) ?? familyTagOf(a.patientId, a.startsAt))
+        : null,
       payment: paymentsById.get(a.id) ?? null,
       treatmentPriceCents: a.treatmentPriceCents,
       advancePreference: a.advancePreference ?? null,

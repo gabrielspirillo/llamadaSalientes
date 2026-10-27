@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { type FamilyPatient, familyTagFor, groupFamilies } from '@/lib/care-profile/siblings';
+import {
+  type FamilyPatient,
+  familyTagFor,
+  familyTagFromTreatment,
+  groupFamilies,
+  surnamesKey,
+} from '@/lib/care-profile/siblings';
 
 function p(over: Partial<FamilyPatient> & { id: string }): FamilyPatient {
   return {
@@ -51,5 +57,34 @@ describe('hermanos y gemelos', () => {
     expect(familyTagFor({ ...solo, siblingMark: 'SIBLING' }, 'x', [])).toBe('H');
     expect(familyTagFor({ ...solo, siblingMark: 'TWIN' }, 'x', [])).toBe('GM');
     expect(familyTagFor({ ...lucas, siblingMark: 'NONE' }, 'x', sibs('lucas'))).toBeNull();
+  });
+
+  it('mellizos con el móvil de cada progenitor: los une el doble apellido', () => {
+    const dylan = p({
+      id: 'dylan',
+      phones: ['+34600000001'],
+      lastName: 'García Pérez',
+      birthDate: '2025-02-01',
+    });
+    const uriel = p({
+      id: 'uriel',
+      phones: ['+34600000002'],
+      lastName: 'Garcia Perez',
+      birthDate: '2025-02-01',
+    });
+    const otro = p({ id: 'otro', phones: ['+34600000003'], lastName: 'García' });
+    const fam = groupFamilies([dylan, uriel, otro]);
+    expect(fam.get('dylan')).toEqual(['uriel']);
+    // Con un solo apellido no se une a nadie: "García" a secas no es familia.
+    expect(fam.get('otro')).toEqual([]);
+    expect(familyTagFor(dylan, '2026-10-26', [uriel])).toBe('GM');
+    expect(surnamesKey('Ruiz')).toBeNull();
+  });
+
+  it('el tratamiento dicta la etiqueta', () => {
+    expect(familyTagFromTreatment('GEMELOS / MELLIZOS')).toBe('GM');
+    expect(familyTagFromTreatment('Primera visita hermanos')).toBe('H');
+    expect(familyTagFromTreatment('PRIMERA VISITA')).toBeNull();
+    expect(familyTagFromTreatment(null)).toBeNull();
   });
 });

@@ -896,7 +896,12 @@ diario para distinguir a cada paciente de un vistazo. Migración `0048`.
   H = un hermano YA VINO antes a la clínica (primera cita no anulada ni
   faltada anterior a ese día; NO es "cita el mismo día", lo aclaró la
   clínica). En una primera visita sale "1ª visita (H)". `patients.sibling_mark`
-  lo fuerza a mano (Marcas del paciente).
+  lo fuerza a mano (Marcas del paciente). La familia también se reconoce por
+  los DOS apellidos (`surnamesKey`), y el **tratamiento manda**
+  (`familyTagFromTreatment`): "GEMELOS / MELLIZOS" es G/M y nunca "1ª visita"
+  (la `0050` lo marca `FOLLOW_UP`), "…HERMANOS…" es H. Hacía falta porque las
+  citas de mellizos se daban a veces con nombre libre, sin ficha: sin
+  `patientId` el cálculo por familia no llega.
 - **Adelantar**: `agenda_appointments.advance_preference` (ACCEPTS | NO_MOVE)
   + `advance_note`, POR CITA. Se pregunta en Nueva cita, se cambia en la hoja de
   la cita, y Lista de espera muestra "Quieren adelantar su cita". Nada se envía
@@ -915,6 +920,12 @@ diario para distinguir a cada paciente de un vistazo. Migración `0048`.
   y el diálogo ofrece "Darla igualmente"; fuera de horario el servidor lanza
   `AgendaOutsideHoursError` (código `OUTSIDE_HOURS`) y el panel ofrece
   "Guardar igualmente fuera de horario". El botón de guardar dice qué falta.
+- **Datos de la clínica** (`/dashboard/settings`): el horario de atención se
+  guarda con el "Guardar cambios" del formulario, NO con el de
+  "Personalización del agente" que va debajo (la clínica pulsaba ése y el
+  horario no se guardaba). Con cambios pendientes sale una barra fija abajo y
+  el navegador avisa al salir. La acción exige rol `operator` en servidor y,
+  si falta la fila de `clinic_settings`, la crea en vez de decir "guardado".
 - **Nombre de la ficha manda**: `listAppointmentsInRange` pinta el nombre de
   `patients`, y `updatePatient` reescribe `patient_name` de sus citas y notas.
 - **Búsqueda sin tildes** en Agenda → Pacientes (`foldedWordsFilter`,
@@ -987,6 +998,17 @@ queda en el bucket interno. Migraciones `0032_consentimientos.sql` (tablas) y
   `tutor.<dígitos>@sin-correo.invalid` (los correos están apagados). El PDF
   firmado se baja por `/api/v2/document/{id}/download?version=signed`, con
   caída a la v1.
+- ⚠️ **El enlace de firma se COMPRUEBA antes de mandarlo**
+  (`resolveCreatedDocument`, `lib/consents/documenso.ts`, con tests). En
+  octubre de 2026 tres familias recibieron el consentimiento de OTRO niño: el
+  WhatsApp iba al tutor correcto, pero el enlace se resolvía leyendo el
+  documento por el `id` numérico del alta y cogiendo el primer firmante sin
+  mirar nada. Ahora sólo vale un documento con NUESTRO `externalId` y cuyo
+  firmante tenga el correo con el que se creó (primero por `envelopeId`, luego
+  por id); si no cuadra, no se envía nada. "Comprobar firma" rechaza un
+  documento con otro `externalId` y el PDF firmado se baja con el id que manda
+  el webhook. La tarjeta lleva `key={patientId}` para no arrastrar datos del
+  tutor entre fichas.
 - **El WhatsApp sale firmado como equipo** (`senderType: 'HUMAN'` en
   `sendAgentResponse`): en el inbox no parece escrito por el asistente. Si no
   hay conector o el envío falla, el documento ya existe y la fila guarda el

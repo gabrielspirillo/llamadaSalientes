@@ -11,7 +11,7 @@ import {
   distributeDocument,
   downloadSignedPdf,
   getDocument,
-  getSigningUrl,
+  resolveCreatedDocument,
   testConnection,
 } from '@/lib/consents/documenso';
 import { renderConsentPdf } from '@/lib/consents/pdf';
@@ -313,13 +313,14 @@ export async function sendConsent(input: {
   const consentId = randomUUID();
   const cfg: DocumensoConfig = { baseUrl: integration.baseUrl, apiToken: integration.apiToken };
 
-  let created: Awaited<ReturnType<typeof createDocument>>;
+  const recipientEmail = email ?? placeholderEmail(phone.e164);
+  let documentId: number;
   let signingUrl: string;
   try {
-    created = await createDocument(cfg, {
+    const created = await createDocument(cfg, {
       title: `${template.title} — ${person.fullName}`,
       externalId: consentId,
-      recipient: { name: guardian.name, email: email ?? placeholderEmail(phone.e164) },
+      recipient: { name: guardian.name, email: recipientEmail },
       fields: rendered.fields.map((f) => ({
         type: f.type,
         pageNumber: f.pageNumber,
@@ -332,8 +333,11 @@ export async function sendConsent(input: {
       pdf: rendered.bytes,
       filename: `consentimiento-${consentId}.pdf`,
     });
-    signingUrl = await getSigningUrl(cfg, created.documentId);
-    await distributeDocument(cfg, created.documentId);
+    ({ documentId, signingUrl } = await resolveCreatedDocument(cfg, created, {
+      externalId: consentId,
+      recipientEmail,
+    }));
+    await distributeDocument(cfg, documentId);
   } catch (err) {
     throw new ConsentError(
       err instanceof DocumensoError
@@ -350,7 +354,7 @@ export async function sendConsent(input: {
     templateId: template.id,
     templateKey: template.key,
     provider: 'DOCUMENSO',
-    providerDocumentId: created.documentId,
+    providerDocumentId: documentId,
     recipientName: guardian.name,
     recipientEmail: email,
     recipientPhone: phone.e164,
@@ -513,7 +517,9 @@ export async function completeConsent(input: {
     }
   }
 
-  const documentId = row.providerDocumentId ?? input.providerDocumentId;
+  // El id que manda el webhook es el del documento que se firmó de verdad;
+  // el guardado podía apuntar a otro (ver `resolveCreatedDocument`).
+  const documentId = input.providerDocumentId ?? row.providerDocumentId;
   try {
     const integration = await getEsignIntegration(input.tenantId);
     if (!integration) throw new Error('la clínica ya no tiene la firma digital configurada');
@@ -597,6 +603,21 @@ async function refreshConsentInner(input: {
     { baseUrl: integration.baseUrl, apiToken: integration.apiToken },
     row.providerDocumentId,
   );
+  // Un documento que no lleva nuestro id es de otro paciente: ni se da por
+  // firmado ni se baja su PDF. Hay que volver a mandarlo.
+  if (doc.externalId && doc.externalId !== row.id) {
+    await db
+      .update(patientConsents)
+      .set({
+        error:
+          'El enlace enviado no correspondía a este paciente. Vuelve a enviar el consentimiento.',
+        updatedAt: new Date(),
+      })
+      .where(eq(patientConsents.id, row.id));
+    throw new ConsentError(
+      'El enlace que se envió no correspondía a este paciente. Vuelve a enviar el consentimiento.',
+    );
+  }
   if (doc.status !== 'COMPLETED') return { status: doc.status, signed: false };
 
   const result = await completeConsent({

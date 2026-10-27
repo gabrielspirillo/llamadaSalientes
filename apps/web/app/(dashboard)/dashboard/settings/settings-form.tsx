@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input, Label, Textarea } from '@/components/ui/input';
 import { Loader2, Save } from 'lucide-react';
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { type ActionResult, updateClinicSettingsAction } from './actions';
 
 type DayKey = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
@@ -56,8 +56,24 @@ export function SettingsForm({
   const [phoneDraft, setPhoneDraft] = useState('');
   const [isPending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState<{ kind: 'ok' | 'error'; msg: string } | null>(null);
+  // Cambios sin guardar. El único "Guardar" estaba arriba del todo y, más
+  // abajo, la personalización del agente tiene el suyo: la clínica cambiaba
+  // el horario, pulsaba ESE botón ("Personalización guardada") y al volver el
+  // horario seguía igual. Con cambios pendientes sale una barra fija abajo y el
+  // navegador avisa antes de salir.
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
 
   function toggleDay(day: DayKey) {
+    setDirty(true);
     setHours((prev) => ({
       ...prev,
       [day]: prev[day] === null ? { open: '09:00', close: '19:00' } : null,
@@ -65,6 +81,7 @@ export function SettingsForm({
   }
 
   function setDayHours(day: DayKey, field: 'open' | 'close', value: string) {
+    setDirty(true);
     setHours((prev) => {
       const current = prev[day];
       if (!current) return prev;
@@ -75,12 +92,14 @@ export function SettingsForm({
   function addPhone() {
     const trimmed = phoneDraft.trim();
     if (trimmed && !phones.includes(trimmed)) {
+      setDirty(true);
       setPhones([...phones, trimmed]);
       setPhoneDraft('');
     }
   }
 
   function removePhone(p: string) {
+    setDirty(true);
     setPhones(phones.filter((x) => x !== p));
   }
 
@@ -98,6 +117,7 @@ export function SettingsForm({
     };
     startTransition(async () => {
       const r: ActionResult = await updateClinicSettingsAction(payload);
+      if (r.ok) setDirty(false);
       setFeedback(
         r.ok
           ? { kind: 'ok', msg: 'Cambios guardados correctamente' }
@@ -107,7 +127,7 @@ export function SettingsForm({
   }
 
   return (
-    <form action={handleSubmit}>
+    <form action={handleSubmit} onChange={() => setDirty(true)}>
       <div className="flex justify-end mb-6">
         <Button type="submit" size="sm" disabled={isPending}>
           {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -325,6 +345,22 @@ export function SettingsForm({
           </Card>
         </div>
       </div>
+
+      {dirty && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center px-4">
+          <div className="pointer-events-auto flex animate-fade-up flex-wrap items-center gap-3 rounded-full bg-zinc-900 py-2 pl-5 pr-2 text-[14px] text-white shadow-[0_18px_40px_-12px_rgba(0,0,0,0.45)]">
+            <span>Tienes cambios sin guardar en los datos de la clínica</span>
+            <Button type="submit" size="sm" disabled={isPending}>
+              {isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              Guardar cambios
+            </Button>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

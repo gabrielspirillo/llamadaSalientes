@@ -166,17 +166,74 @@ export async function createDocument(
   return { documentId: res.id, envelopeId: res.envelopeId };
 }
 
+interface RemoteRecipient {
+  role?: string;
+  email?: string;
+  token?: string;
+}
+
+interface RemoteDocument {
+  id?: number | string;
+  secondaryId?: string;
+  externalId?: string | null;
+  recipients?: RemoteRecipient[];
+}
+
+function unwrapDocument(raw: unknown): RemoteDocument | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const doc =
+    'recipients' in raw || 'externalId' in raw ? raw : (raw as { document?: unknown }).document;
+  return doc && typeof doc === 'object' ? (doc as RemoteDocument) : null;
+}
+
 /**
- * El enlace de firma del tutor: `<instancia>/sign/<token del firmante>`. Es
- * lo que va por WhatsApp. Se lee del documento porque el alta no lo devuelve.
+ * El documento que se acaba de crear, COMPROBADO: id y enlace de firma
+ * (`<instancia>/sign/<token del firmante>`), que es lo que va por WhatsApp.
+ *
+ * ⚠️ Antes se leía el documento por el `id` numérico que devuelve el alta y se
+ * cogía el primer firmante sin mirar nada más. En producción ese enlace llegó
+ * a abrir el consentimiento de OTRO niño (Respinens, octubre de 2026): el
+ * mensaje salía al tutor correcto pero con el documento de otra familia. Ahora
+ * sólo vale un documento que lleve NUESTRO `externalId` y cuyo firmante sea el
+ * correo con el que se creó; se busca primero por el sobre (`envelopeId`, un
+ * identificador único de texto) y después por el id numérico. Si ninguno
+ * cuadra no se devuelve enlace: es preferible no mandar nada a mandar los
+ * datos de otro paciente.
  */
-export async function getSigningUrl(cfg: DocumensoConfig, documentId: number): Promise<string> {
-  const doc = await call<{
-    recipients?: { id: number; role: string; token: string }[];
-  }>(cfg, `/api/v2/document/${documentId}`);
-  const signer = (doc.recipients ?? []).find((r) => r.role === 'SIGNER') ?? doc.recipients?.[0];
-  if (!signer?.token) throw new DocumensoError('Documenso creó el documento sin firmante.');
-  return `${base(cfg)}/sign/${signer.token}`;
+export async function resolveCreatedDocument(
+  cfg: DocumensoConfig,
+  created: CreatedDocument,
+  expected: { externalId: string; recipientEmail: string },
+): Promise<{ documentId: number; signingUrl: string }> {
+  const email = expected.recipientEmail.trim().toLowerCase();
+  const sources: { path: string; documentIdOf: (doc: RemoteDocument) => number }[] = [
+    {
+      path: `/api/v2/envelope/${encodeURIComponent(created.envelopeId)}`,
+      documentIdOf: (doc) => {
+        const m = /(\d+)$/.exec(doc.secondaryId ?? '');
+        return m ? Number(m[1]) : created.documentId;
+      },
+    },
+    {
+      path: `/api/v2/document/${created.documentId}`,
+      documentIdOf: (doc) => (typeof doc.id === 'number' ? doc.id : created.documentId),
+    },
+  ];
+  for (const source of sources) {
+    const doc = unwrapDocument(await call<unknown>(cfg, source.path).catch(() => null));
+    if (!doc || doc.externalId !== expected.externalId) continue;
+    const signer = (doc.recipients ?? []).find(
+      (r) => r.token && (r.email ?? '').trim().toLowerCase() === email,
+    );
+    if (!signer?.token) continue;
+    return {
+      documentId: source.documentIdOf(doc),
+      signingUrl: `${base(cfg)}/sign/${signer.token}`,
+    };
+  }
+  throw new DocumensoError(
+    'Documenso no devolvió el documento que se acaba de crear (no coincide el identificador ni el firmante). No se ha enviado nada: vuelve a intentarlo.',
+  );
 }
 
 /** Pasa el documento a "pendiente de firma" sin mandar correos. */
@@ -191,6 +248,8 @@ export interface DocumensoDocumentStatus {
   id: number;
   status: string;
   completedAt: string | null;
+  /** Nuestro id del consentimiento, si la instancia lo devuelve. */
+  externalId: string | null;
 }
 
 /**
@@ -228,6 +287,7 @@ function asDocumentStatus(raw: unknown): DocumensoDocumentStatus | null {
     id: typeof doc.id === 'number' ? doc.id : Number(doc.id),
     status: doc.status.toUpperCase(),
     completedAt: completedAt && !Number.isNaN(Date.parse(completedAt)) ? completedAt : null,
+    externalId: typeof doc.externalId === 'string' ? doc.externalId : null,
   };
 }
 

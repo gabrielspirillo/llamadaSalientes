@@ -908,6 +908,7 @@ export async function listFamilyPatients(
       contactPhone: whatsappContacts.phoneE164,
       guardians: patients.guardians,
       birthDate: patients.birthDate,
+      lastName: patients.lastName,
       siblingMark: patients.siblingMark,
       firstVisitDate: sql<
         string | null
@@ -922,6 +923,7 @@ export async function listFamilyPatients(
     contactId: r.contactId,
     phones: [r.contactPhone ?? '', ...guardianPhones(r.guardians)].filter(Boolean),
     birthDate: r.birthDate,
+    lastName: r.lastName,
     siblingMark: r.siblingMark ?? null,
     firstVisitDate: r.firstVisitDate ?? null,
   }));

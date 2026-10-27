@@ -895,6 +895,10 @@ export default async function PacienteDossierPage({
 
               {person && hasEsign && (
                 <ConsentCard
+                  // Nueva instancia por paciente: el diálogo de envío guarda
+                  // en estado los datos del tutor, y no pueden pasar de una
+                  // ficha a otra.
+                  key={person.id}
                   patientId={person.id}
                   patientName={person.fullName}
                   canWrite={ctx.canWriteAppointments}
