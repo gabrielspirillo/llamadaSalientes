@@ -125,3 +125,21 @@ export function familyTagFor(
   if (siblings.some((s) => s.firstVisitDate !== null && s.firstVisitDate < dateKey)) return 'H';
   return null;
 }
+
+/**
+ * Lo que pinta el chip del calendario: si es primera visita y qué etiqueta de
+ * familia lleva. El tratamiento manda sobre el cálculo ("GEMELOS / MELLIZOS"
+ * es G/M aunque la cita no esté atada a las fichas; "…HERMANOS…" es H), y
+ * G/M nunca sale como primera visita.
+ */
+export function appointmentTypeTag(input: {
+  isFirstVisit: boolean;
+  treatmentName: string | null | undefined;
+  /** El de `familyTagFor`, o null si la cita no tiene ficha. */
+  familyTag: FamilyTag | null;
+}): { firstVisit: boolean; familyTag: FamilyTag | null } {
+  const familyTag = familyTagFromTreatment(input.treatmentName) ?? input.familyTag;
+  // Un mellizo nunca es "1ª visita" a ojos de la clínica, venga la G/M del
+  // tratamiento o de la ficha (misma familia y misma fecha de nacimiento).
+  return { firstVisit: input.isFirstVisit && familyTag !== 'GM', familyTag };
+}
