@@ -1,3 +1,4 @@
+import { getAgendaContext } from '@/lib/agenda/auth';
 import { searchAll } from '@/lib/data/search';
 import { getCurrentTenant } from '@/lib/tenant';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -10,6 +11,9 @@ export async function GET(req: NextRequest) {
   try {
     const ctx = await getCurrentTenant();
     tenantId = ctx.tenant.id;
+    // Un profesional que sólo ve su agenda no lee pacientes, llamadas ni
+    // movimientos del resto de la clínica.
+    if ((await getAgendaContext()).agendaOnly) return NextResponse.json({ hits: [] });
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

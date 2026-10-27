@@ -59,17 +59,24 @@ export async function processCallJob(
 
   let recordingR2Key: string | null = null;
   if (recordingUrl) {
-    recordingR2Key = await step.run('download-and-upload-recording', async () => {
-      const { buffer, contentType } = await fetchAsBuffer(recordingUrl);
-      const ext = contentType.includes('mp3')
-        ? 'mp3'
-        : contentType.includes('wav')
-          ? 'wav'
-          : 'audio';
-      const key = buildRecordingKey(tenantId, retellCallId, ext);
-      await r2Upload({ key, body: buffer, contentType });
-      return key;
-    });
+    // Best-effort: sin copia propia la grabación se sigue sirviendo desde
+    // Retell. Que falle no puede dejar la llamada sin tarea ni aviso.
+    recordingR2Key = await step
+      .run('download-and-upload-recording', async () => {
+        const { buffer, contentType } = await fetchAsBuffer(recordingUrl);
+        const ext = contentType.includes('mp3')
+          ? 'mp3'
+          : contentType.includes('wav')
+            ? 'wav'
+            : 'audio';
+        const key = buildRecordingKey(tenantId, retellCallId, ext);
+        await r2Upload({ key, body: buffer, contentType });
+        return key;
+      })
+      .catch((err) => {
+        console.warn('[process-call] grabación no copiada', retellCallId, err);
+        return null;
+      });
   }
 
   // El resumen del transcript vive AQUÍ, no en el webhook.
@@ -87,20 +94,30 @@ export async function processCallJob(
   // sólo el resumen y no vuelve a subir la grabación.
   let summary: SummaryShape | null = null;
   if (transcript && process.env.OPENAI_API_KEY) {
-    summary = await step.run<SummaryShape>('summarize-transcript', async () =>
-      summarizeCall(transcript),
-    );
+    // Un resumen que falla (proveedor caído, respuesta que no es JSON) no
+    // tumba el resto: la tarea y el aviso de la llamada importan más.
+    summary = await step
+      .run<SummaryShape>('summarize-transcript', async () => summarizeCall(transcript))
+      .catch((err) => {
+        console.warn('[process-call] resumen fallido', retellCallId, err);
+        return null;
+      });
   } else if (transcript && process.env.GEMINI_API_KEY) {
-    summary = await step.run<SummaryShape>('summarize-transcript-gemini', async () => {
-      const { summarizeCallWithGemini } = await import('@/lib/gemini/client');
-      const ai = await summarizeCallWithGemini(transcript);
-      return {
-        intent: ai.intent,
-        sentiment: ai.sentiment,
-        summary: ai.summary,
-        followUp: ai.followUp,
-      };
-    });
+    summary = await step
+      .run<SummaryShape>('summarize-transcript-gemini', async () => {
+        const { summarizeCallWithGemini } = await import('@/lib/gemini/client');
+        const ai = await summarizeCallWithGemini(transcript);
+        return {
+          intent: ai.intent,
+          sentiment: ai.sentiment,
+          summary: ai.summary,
+          followUp: ai.followUp,
+        };
+      })
+      .catch((err) => {
+        console.warn('[process-call] resumen fallido', retellCallId, err);
+        return null;
+      });
   }
 
   await step.run('persist-results', async () => {
@@ -109,7 +126,7 @@ export async function processCallJob(
     await upsertCall({
       tenantId,
       retellCallId,
-      status: 'ended',
+      // El estado lo deja el webhook (`ended` o `error`): no se pisa aquí.
       transcriptEnc,
       summary: summary?.summary ?? analysisSummary ?? undefined,
       intent: summary?.intent ?? undefined,
@@ -207,7 +224,8 @@ async function publishCallEvent(tenantId: string, retellCallId: string): Promise
     .from(calls)
     .where(and(eq(calls.tenantId, tenantId), eq(calls.retellCallId, retellCallId)))
     .limit(1);
-  if (!call) return;
+  // Una saliente que cae en el buzón no es una llamada perdida del paciente.
+  if (!call || call.direction === 'outbound') return;
 
   const tooShort = (call.durationSeconds ?? 0) < 20;
   const missed = call.status === 'error' || tooShort;

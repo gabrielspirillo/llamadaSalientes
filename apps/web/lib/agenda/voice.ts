@@ -463,10 +463,7 @@ export async function agendaListProfessionals(tenantId: string): Promise<AgendaT
     const lines = catalog.map((p) => {
       const what =
         p.treatments.length > 0
-          ? p.treatments
-              .map((t) => t.name)
-              .slice(0, 6)
-              .join(', ')
+          ? p.treatments.map((t) => t.name).join(', ')
           : 'sin tratamientos asignados (no le atribuyas tratamientos que no tenga a su nombre)';
       const partes = [
         `- ${p.fullName}${p.specialty ? ` (${p.specialty})` : ''}`,

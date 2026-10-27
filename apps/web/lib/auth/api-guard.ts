@@ -24,3 +24,18 @@ export async function denyUnlessRole(min: TaskRole): Promise<NextResponse | null
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 }
+
+/**
+ * Gate de rol para Server Actions: devuelve el mensaje para el usuario, o
+ * `null` si pasa. Una acción es un POST público como cualquier otro: esconder
+ * el botón no la protege.
+ */
+export async function actionRoleError(min: TaskRole): Promise<string | null> {
+  try {
+    await requireTaskRole(min);
+    return null;
+  } catch (err) {
+    if (err instanceof TaskForbiddenError) return 'No tienes permiso para hacer esto.';
+    return 'Tu sesión ha caducado. Vuelve a entrar.';
+  }
+}

@@ -34,7 +34,7 @@ export type CallSummary = {
   followUp: string | null; // acción pendiente para recepción humana, si aplica
 };
 
-const SYSTEM_PROMPT = `Eres un analista de conversaciones telefónicas de una clínica dental.
+const SYSTEM_PROMPT = `Eres un analista de conversaciones telefónicas de una clínica de salud.
 Recibís el transcript completo de una llamada entre un paciente y el agente de voz.
 Devolvés EXCLUSIVAMENTE un JSON válido con este shape:
 {
@@ -86,7 +86,7 @@ export type LeadMemoryResult = {
   facts: Record<string, unknown>;
 };
 
-const LEAD_MEMORY_SYSTEM = `Eres el sistema de memoria de un CRM de una clínica dental.
+const LEAD_MEMORY_SYSTEM = `Eres el sistema de memoria de un CRM de una clínica de salud.
 Recibís el PERFIL PREVIO de un lead (si existe) y su ACTIVIDAD RECIENTE multicanal
 (mensajes de WhatsApp y/o resúmenes de llamadas entrantes/salientes). Tu trabajo es
 producir una memoria ACTUALIZADA del lead, en español neutro.

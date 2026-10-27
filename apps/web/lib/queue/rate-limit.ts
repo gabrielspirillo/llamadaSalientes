@@ -35,7 +35,13 @@ export async function consumeRateLimit(
 
 /** IP del cliente detrás de Traefik. */
 export function clientIp(req: { headers: { get(name: string): string | null } }): string {
+  // Traefik AÑADE la IP real al final de X-Forwarded-For; lo de la izquierda
+  // lo escribe el cliente. Con la primera, cada petición con una cabecera
+  // inventada estrenaba contador y el límite por IP no frenaba nada.
   const forwarded = req.headers.get('x-forwarded-for') ?? '';
-  const first = forwarded.split(',')[0]?.trim();
-  return first || req.headers.get('x-real-ip') || 'unknown';
+  const parts = forwarded
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return parts[parts.length - 1] || req.headers.get('x-real-ip') || 'unknown';
 }

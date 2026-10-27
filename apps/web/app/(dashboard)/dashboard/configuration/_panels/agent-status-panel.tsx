@@ -1,9 +1,9 @@
 import { getGhlIntegration } from '@/lib/data/ghl-integration';
 import { getTenantTelephony } from '@/lib/data/tenant-telephony';
 import { db } from '@/lib/db/client';
-import { whatsappConnections } from '@/lib/db/schema';
+import { professionals, whatsappConnections } from '@/lib/db/schema';
 import { getCurrentTenant } from '@/lib/tenant';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import {
   CheckCircle2,
   Clock,
@@ -21,7 +21,7 @@ async function loadStatus(tenantId: string): Promise<{
   telephony: Conn;
   crm: Conn;
 }> {
-  const [ghl, tel, wa] = await Promise.all([
+  const [ghl, tel, wa, agenda] = await Promise.all([
     getGhlIntegration(tenantId).catch(() => null),
     getTenantTelephony(tenantId).catch(() => null),
     db
@@ -29,13 +29,20 @@ async function loadStatus(tenantId: string): Promise<{
       .from(whatsappConnections)
       .where(eq(whatsappConnections.tenantId, tenantId))
       .catch(() => [] as { status: string | null }[]),
+    // La agenda propia también cuenta: una clínica sin CRM funciona entera.
+    db
+      .select({ id: professionals.id })
+      .from(professionals)
+      .where(and(eq(professionals.tenantId, tenantId), eq(professionals.agendaEnabled, true)))
+      .limit(1)
+      .catch(() => [] as { id: string }[]),
   ]);
 
   const whatsapp = Array.isArray(wa)
     ? wa.some((r) => String(r.status ?? '').toUpperCase() === 'CONNECTED')
     : false;
   const telephony = Boolean(tel && (tel.inboundNumberE164 || tel.provider));
-  const crm = Boolean(ghl);
+  const crm = Boolean(ghl) || agenda.length > 0;
 
   return {
     whatsapp: { connected: whatsapp },

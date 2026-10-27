@@ -8,7 +8,13 @@ import { Input, Select } from '@/components/ui/input';
 import { Reveal } from '@/components/ui/motion';
 import { Avatar } from '@/components/ui/stat';
 import { HeadRow, TD, TH, THead, TR, Table, TableWrap } from '@/components/ui/table';
-import { countCallsMissingMetadata, formatDuration, listCalls } from '@/lib/data/calls-list';
+import {
+  callPatientPhone,
+  countCallsMissingMetadata,
+  formatDuration,
+  listCalls,
+} from '@/lib/data/calls-list';
+import { getTenantTimezone } from '@/lib/tasks/materialize';
 import { getCurrentTenant } from '@/lib/tenant';
 import { ArrowRight, Filter, Phone, PhoneCall, Search } from 'lucide-react';
 import Link from 'next/link';
@@ -58,6 +64,8 @@ export default async function CallsPage({
 }) {
   const sp = await searchParams;
   const { tenant } = await getCurrentTenant();
+  // Las horas en la de la clínica: el servidor corre en UTC.
+  const tz = await getTenantTimezone(tenant.id);
   const [realCalls, missingMetadata] = await Promise.all([
     listCalls(tenant.id, {
       limit: 100,
@@ -151,7 +159,7 @@ export default async function CallsPage({
                 style={{ ['--stagger-step' as string]: '35ms' }}
               >
                 {realCalls.map((c, i) => {
-                  const phone = c.fromNumber ?? c.toNumber ?? null;
+                  const phone = callPatientPhone(c);
                   const customData = (c.customData ?? {}) as { patient_name?: string };
                   const patientName = customData.patient_name ?? null;
                   const display = patientName ?? phone ?? 'Sin identificar';
@@ -175,6 +183,7 @@ export default async function CallsPage({
                             <span className="shrink-0 text-[12px] tabular-nums text-zinc-500">
                               {c.startedAt
                                 ? new Date(c.startedAt).toLocaleString('es-ES', {
+                                    timeZone: tz,
                                     day: '2-digit',
                                     month: '2-digit',
                                     hour: '2-digit',
@@ -219,7 +228,7 @@ export default async function CallsPage({
                     </THead>
                     <tbody>
                       {realCalls.map((c) => {
-                        const phone = c.fromNumber ?? c.toNumber ?? null;
+                        const phone = callPatientPhone(c);
                         const customData = (c.customData ?? {}) as { patient_name?: string };
                         const patientName = customData.patient_name ?? null;
                         const display =
@@ -253,6 +262,7 @@ export default async function CallsPage({
                                 const when = c.startedAt ?? c.createdAt;
                                 return when
                                   ? new Date(when).toLocaleString('es-ES', {
+                                      timeZone: tz,
                                       day: '2-digit',
                                       month: '2-digit',
                                       year: '2-digit',

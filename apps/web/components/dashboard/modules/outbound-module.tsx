@@ -71,7 +71,7 @@ export async function OutboundModule({ tenantId }: { tenantId: string }) {
         </Reveal>
         <Reveal delay={70}>
           <StatTile
-            label="Contact rate"
+            label="Tasa de contacto"
             numeric={kpis.contactRate * 100}
             suffix="%"
             hint="Llamadas con contacto humano"

@@ -1,5 +1,6 @@
 'use server';
 
+import { actionRoleError } from '@/lib/auth/api-guard';
 import { z } from 'zod';
 
 import { getCurrentTenant } from '@/lib/tenant';
@@ -35,6 +36,8 @@ export type PlaygroundActionResult =
   | { success: false; error: string };
 
 export async function runAgentPlayground(input: unknown): Promise<PlaygroundActionResult> {
+  const denied = await actionRoleError('operator');
+  if (denied) return { success: false, error: denied };
   const parsed = schema.safeParse(input);
   if (!parsed.success) return { success: false, error: 'Datos inválidos' };
   const { tenant } = await getCurrentTenant();

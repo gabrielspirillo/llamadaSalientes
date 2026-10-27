@@ -1,6 +1,7 @@
 'use server';
 
 import { recordAudit } from '@/lib/audit';
+import { actionRoleError } from '@/lib/auth/api-guard';
 import { deleteGhlIntegration, getGhlIntegration, upsertGhlPit } from '@/lib/data/ghl-integration';
 import { ghlFetch } from '@/lib/ghl/client';
 import { getCurrentTenant } from '@/lib/tenant';
@@ -9,6 +10,8 @@ import { revalidatePath } from 'next/cache';
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
 export async function disconnectGhlAction(): Promise<ActionResult> {
+  const denied = await actionRoleError('admin');
+  if (denied) return { ok: false, error: denied };
   const { tenant } = await getCurrentTenant();
 
   const before = await getGhlIntegration(tenant.id);
@@ -36,6 +39,8 @@ export async function connectGhlPitAction(input: {
   pit: string;
   locationId: string;
 }): Promise<ActionResult> {
+  const denied = await actionRoleError('admin');
+  if (denied) return { ok: false, error: denied };
   const { tenant } = await getCurrentTenant();
   const pit = input.pit.trim();
   const locationId = input.locationId.trim();

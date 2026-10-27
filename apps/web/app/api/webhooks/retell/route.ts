@@ -2,7 +2,7 @@ import { encrypt } from '@/lib/crypto';
 import { logCallEvent, upsertCall } from '@/lib/data/calls';
 import { resolveTenantId } from '@/lib/data/phone-tenant';
 import { db } from '@/lib/db/client';
-import { outboundTargets, webhookLogs } from '@/lib/db/schema';
+import { calls, outboundTargets, webhookLogs } from '@/lib/db/schema';
 import { sendQueueEvent } from '@/lib/queue/client';
 import { verifyRetellSignature } from '@/lib/retell/verify';
 import { redactWebhookPayload } from '@/lib/webhooks/redact';
@@ -21,6 +21,7 @@ type RetellCallPayload = {
     call_id: string;
     agent_id?: string;
     call_status?: string;
+    direction?: string;
     from_number?: string;
     to_number?: string;
     start_timestamp?: number; // ms
@@ -54,7 +55,15 @@ function identityPatch(call: RetellCallPayload['call']) {
         ? Math.round(call.duration_ms / 1000)
         : undefined;
 
+  const direction =
+    call.direction === 'outbound' || call.metadata?.direction === 'outbound'
+      ? 'outbound'
+      : call.direction === 'inbound'
+        ? 'inbound'
+        : undefined;
+
   return {
+    direction,
     fromNumber: call.from_number || undefined,
     toNumber: call.to_number || undefined,
     startedAt: start,
@@ -178,6 +187,15 @@ export async function POST(req: NextRequest) {
       const analysis = call.call_analysis;
       const identity = identityPatch(call);
       const transcriptEnc = call.transcript ? encrypt(call.transcript) : undefined;
+      // Un `error` que dejó call_ended no se pisa con `ended`: la llamada
+      // fallida salía "Completada" y no generaba tarea ni aviso.
+      const [prev] = await db
+        .select({ status: calls.status })
+        .from(calls)
+        .where(and(eq(calls.tenantId, tenantId), eq(calls.retellCallId, call.call_id)))
+        .limit(1);
+      const finalStatus =
+        prev?.status === 'error' || call.call_status === 'error' ? 'error' : 'ended';
 
       // Aquí NO se llama a ningún LLM.
       //
@@ -199,7 +217,7 @@ export async function POST(req: NextRequest) {
         // call_analyzed también trae el objeto call completo: aprovechamos para
         // rellenar número/tiempos si el evento call_ended se perdió.
         ...identity,
-        status: 'ended',
+        status: finalStatus,
         transcriptEnc,
         summary: summaryEs,
         sentiment: sentimentEs,

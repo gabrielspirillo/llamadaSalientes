@@ -1,7 +1,10 @@
+import { and, eq, inArray } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 import { requireAgendaWriter } from '@/lib/agenda/auth';
 import { describeAge } from '@/lib/care-profile/policy';
+import { db } from '@/lib/db/client';
+import { agendaAppointments } from '@/lib/db/schema';
 import { listPatientPersons, listPatientsForPhone } from '@/lib/patients/persons';
 import { localDateKey } from '@/lib/tasks/tz';
 
@@ -28,11 +31,30 @@ export async function GET(req: Request) {
   const q = (url.searchParams.get('q') ?? '').trim().slice(0, 80);
   const phone = (url.searchParams.get('phone') ?? '').trim().slice(0, 30);
 
-  const found = phone
+  let found = phone
     ? await listPatientsForPhone(ctx.tenantId, phone)
     : q.length >= 2
       ? await listPatientPersons(ctx.tenantId, { search: q, limit: 20 })
       : [];
+
+  // Un profesional que sólo ve su agenda sólo encuentra a sus pacientes.
+  if (ctx.scope === 'OWN' && found.length > 0) {
+    const ids = found.map((p) => p.id);
+    const mine = ctx.professional
+      ? await db
+          .selectDistinct({ id: agendaAppointments.patientId })
+          .from(agendaAppointments)
+          .where(
+            and(
+              eq(agendaAppointments.tenantId, ctx.tenantId),
+              eq(agendaAppointments.professionalId, ctx.professional.id),
+              inArray(agendaAppointments.patientId, ids),
+            ),
+          )
+      : [];
+    const allowed = new Set(mine.map((r) => r.id));
+    found = found.filter((p) => allowed.has(p.id));
+  }
 
   const todayKey = localDateKey(new Date(), 'UTC');
   return NextResponse.json({

@@ -1,5 +1,5 @@
 import 'server-only';
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 
 // Storage S3-compatible para grabaciones de Retell. Soporta:
 //   - Cloudflare R2 (default si NO se setea R2_ENDPOINT): endpoint derivado
@@ -67,6 +67,36 @@ export async function r2Upload(input: UploadInput): Promise<{ key: string; bucke
     }),
   );
   return { key: input.key, bucket };
+}
+
+/**
+ * La copia propia de una grabación, como respuesta HTTP (la sirve la app: el
+ * endpoint de MinIO no existe fuera de Docker). null si no está.
+ */
+export async function r2FileResponse(key: string, range: string | null): Promise<Response | null> {
+  const bucket = process.env.R2_BUCKET;
+  if (!bucket) return null;
+  try {
+    const out = await getClient().send(
+      new GetObjectCommand({ Bucket: bucket, Key: key, Range: range ?? undefined }),
+      { abortSignal: AbortSignal.timeout(FETCH_TIMEOUT_MS) },
+    );
+    if (!out.Body) return null;
+    const headers = new Headers({
+      'Content-Type': out.ContentType ?? 'audio/wav',
+      'Cache-Control': 'private, max-age=3600',
+      'Accept-Ranges': 'bytes',
+    });
+    if (out.ContentLength) headers.set('Content-Length', String(out.ContentLength));
+    if (out.ContentRange) headers.set('Content-Range', out.ContentRange);
+    return new Response(out.Body.transformToWebStream(), {
+      status: out.ContentRange ? 206 : 200,
+      headers,
+    });
+  } catch (err) {
+    console.warn('[r2] grabación no disponible en el bucket', key, (err as Error).name);
+    return null;
+  }
 }
 
 /**

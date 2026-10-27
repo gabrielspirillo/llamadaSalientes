@@ -109,7 +109,11 @@ export function SapinnDemo() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (status === 'loading') return;
-    const digits = number.replace(/[^\d]/g, '');
+    // Si escribe el número con el prefijo ("34 600…" o "0034 600…") no se
+    // duplica: salía "+3434600…".
+    const cc = prefix.replace('+', '');
+    let digits = number.replace(/[^\d]/g, '').replace(/^00/, '');
+    if (digits.startsWith(cc) && digits.length - cc.length >= 9) digits = digits.slice(cc.length);
     if (digits.length < 6) {
       setStatus('error');
       setMessage('Escribe el número sin el prefijo del país, sólo los dígitos.');

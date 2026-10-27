@@ -1,6 +1,7 @@
 'use server';
 
 import { randomUUID } from 'node:crypto';
+import { actionRoleError } from '@/lib/auth/api-guard';
 import { and, asc, desc, eq, ilike } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
@@ -73,6 +74,8 @@ const noteSchema = z.object({
 });
 
 export async function addInternalNote(input: unknown): Promise<ActionResult<{ id: string }>> {
+  const denied = await actionRoleError('operator');
+  if (denied) return { success: false, error: denied };
   const parsed = noteSchema.safeParse(input);
   if (!parsed.success) return fail('Datos inválidos', parsed.error.flatten().fieldErrors);
   const { tenant } = await getCurrentTenant();
@@ -115,6 +118,8 @@ const aiSchema = z.object({
 });
 
 export async function setAiEnabled(input: unknown): Promise<ActionResult<null>> {
+  const denied = await actionRoleError('operator');
+  if (denied) return { success: false, error: denied };
   const parsed = aiSchema.safeParse(input);
   if (!parsed.success) return fail('Datos inválidos');
   const { tenant } = await getCurrentTenant();
@@ -170,6 +175,8 @@ const assignSchema = z.object({
 });
 
 export async function assignConversation(input: unknown): Promise<ActionResult<null>> {
+  const denied = await actionRoleError('operator');
+  if (denied) return { success: false, error: denied };
   const parsed = assignSchema.safeParse(input);
   if (!parsed.success) return fail('Datos inválidos');
   const { tenant } = await getCurrentTenant();
@@ -222,6 +229,8 @@ const tagCreateSchema = z.object({
 });
 
 export async function createTag(input: unknown): Promise<ActionResult<{ id: string }>> {
+  const denied = await actionRoleError('operator');
+  if (denied) return { success: false, error: denied };
   const parsed = tagCreateSchema.safeParse(input);
   if (!parsed.success) return fail('Datos inválidos', parsed.error.flatten().fieldErrors);
   const { tenant } = await getCurrentTenant();
@@ -248,6 +257,8 @@ const tagAssignSchema = z.object({
 });
 
 export async function addTagToConversation(input: unknown): Promise<ActionResult<null>> {
+  const denied = await actionRoleError('operator');
+  if (denied) return { success: false, error: denied };
   const parsed = tagAssignSchema.safeParse(input);
   if (!parsed.success) return fail('Datos inválidos');
   const { tenant } = await getCurrentTenant();
@@ -273,6 +284,8 @@ export async function addTagToConversation(input: unknown): Promise<ActionResult
 }
 
 export async function removeTagFromConversation(input: unknown): Promise<ActionResult<null>> {
+  const denied = await actionRoleError('operator');
+  if (denied) return { success: false, error: denied };
   const parsed = tagAssignSchema.safeParse(input);
   if (!parsed.success) return fail('Datos inválidos');
   const { tenant } = await getCurrentTenant();
@@ -303,6 +316,8 @@ const quickReplySchema = z.object({
 });
 
 export async function createQuickReply(input: unknown): Promise<ActionResult<{ id: string }>> {
+  const denied = await actionRoleError('operator');
+  if (denied) return { success: false, error: denied };
   const parsed = quickReplySchema.safeParse(input);
   if (!parsed.success) return fail('Datos inválidos', parsed.error.flatten().fieldErrors);
   const { tenant } = await getCurrentTenant();
@@ -326,6 +341,8 @@ export async function createQuickReply(input: unknown): Promise<ActionResult<{ i
 const updateQuickReplySchema = quickReplySchema.extend({ id: z.string().uuid() });
 
 export async function updateQuickReply(input: unknown): Promise<ActionResult<null>> {
+  const denied = await actionRoleError('operator');
+  if (denied) return { success: false, error: denied };
   const parsed = updateQuickReplySchema.safeParse(input);
   if (!parsed.success) return fail('Datos inválidos', parsed.error.flatten().fieldErrors);
   const { tenant } = await getCurrentTenant();
@@ -345,6 +362,8 @@ export async function updateQuickReply(input: unknown): Promise<ActionResult<nul
 }
 
 export async function deleteQuickReply(input: unknown): Promise<ActionResult<null>> {
+  const denied = await actionRoleError('operator');
+  if (denied) return { success: false, error: denied };
   const parsed = z.object({ id: z.string().uuid() }).safeParse(input);
   if (!parsed.success) return fail('Datos inválidos');
   const { tenant } = await getCurrentTenant();
@@ -450,6 +469,8 @@ function detectKind(mime: string): MediaKind | null {
 export async function sendMediaMessage(
   formData: FormData,
 ): Promise<ActionResult<{ messageId: string }>> {
+  const denied = await actionRoleError('operator');
+  if (denied) return { success: false, error: denied };
   const conversationId = String(formData.get('conversationId') ?? '');
   const caption = String(formData.get('caption') ?? '').slice(0, 1024) || undefined;
   const file = formData.get('file');

@@ -137,9 +137,13 @@ function noAgendaBackend(): ToolResult {
   };
 }
 
-/** El teléfono del paciente: el que diga el agente y, si no, el que sabe el canal. */
+/**
+ * El teléfono del paciente: el del canal manda sobre el que dicte el modelo.
+ * Si no, desde cualquier número bastaba con dictar el de otra familia para
+ * ver a sus hijos, y reservar o anular sus citas.
+ */
 function resolvePatientPhone(raw: string | null | undefined, ctx: ToolContext): string | null {
-  return normalizePatientPhone(raw) ?? normalizePatientPhone(ctx.patientPhone) ?? null;
+  return normalizePatientPhone(ctx.patientPhone) ?? normalizePatientPhone(raw) ?? null;
 }
 
 function formatSlots(slots: GhlSlot[]): string {

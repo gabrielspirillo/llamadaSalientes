@@ -1,6 +1,7 @@
 'use server';
 
 import { recordAudit } from '@/lib/audit';
+import { actionRoleError } from '@/lib/auth/api-guard';
 import {
   createTreatment,
   deleteTreatment,
@@ -62,6 +63,8 @@ function errorMessage(err: unknown): string {
 }
 
 export async function createTreatmentAction(formData: FormData): Promise<ActionResult> {
+  const denied = await actionRoleError('operator');
+  if (denied) return { ok: false, error: denied };
   try {
     const { tenant } = await getCurrentTenant();
     const parsed = treatmentSchema.safeParse(Object.fromEntries(formData));
@@ -126,6 +129,8 @@ export async function createTreatmentAction(formData: FormData): Promise<ActionR
 }
 
 export async function updateTreatmentAction(id: string, formData: FormData): Promise<ActionResult> {
+  const denied = await actionRoleError('operator');
+  if (denied) return { ok: false, error: denied };
   try {
     const { tenant } = await getCurrentTenant();
     const parsed = treatmentSchema.partial().safeParse(Object.fromEntries(formData));
@@ -171,6 +176,8 @@ export async function updateTreatmentAction(id: string, formData: FormData): Pro
 }
 
 export async function deleteTreatmentAction(id: string): Promise<ActionResult> {
+  const denied = await actionRoleError('operator');
+  if (denied) return { ok: false, error: denied };
   const { tenant } = await getCurrentTenant();
   const before = await getTreatmentById(tenant.id, id);
   if (!before) return { ok: false, error: 'No se ha encontrado el tratamiento' };

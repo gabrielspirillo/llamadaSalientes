@@ -16,6 +16,11 @@
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Un uuid bien formado: lo que se valida antes de llevar un id de la URL a la base. */
+export function isUuid(id: string | null | undefined): boolean {
+  return typeof id === 'string' && UUID_RE.test(id.trim());
+}
+
 /** La cita es de la agenda de la plataforma. */
 export function isInternalAppointmentId(id: string | null | undefined): boolean {
   return typeof id === 'string' && UUID_RE.test(id.trim());

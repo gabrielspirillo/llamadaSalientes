@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
   const tenantId = env.FUTURA_DEMO_TENANT_ID;
   if (!tenantId) {
     return NextResponse.json(
-      { error: 'Demo no disponible. Configurá FUTURA_DEMO_TENANT_ID.' },
+      { error: 'La prueba no está disponible ahora mismo. Escríbenos y te la enseñamos.' },
       { status: 503, headers },
     );
   }

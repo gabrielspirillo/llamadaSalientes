@@ -6,6 +6,7 @@ import { db } from '@/lib/db/client';
 import { outboundTargets, phoneNumbers, tenants } from '@/lib/db/schema';
 import { getLeadMemorySummaries } from '@/lib/memory/lead-memory';
 import { getRetellClient } from '@/lib/retell/client';
+import { buildClinicContextVars } from '@/lib/retell/clinic-context';
 import { and, eq } from 'drizzle-orm';
 
 export type DispatchResult =
@@ -60,17 +61,22 @@ export async function dispatchCampaign(
       .limit(1);
     fromNumber = row?.e164 ?? null;
   }
+  // Zadarma vía SIP trunk de Retell: el origen es el DID de la clínica, igual
+  // que en `triggerCallback` (no hay fila en phone_numbers).
+  const telephony = await getTenantTelephony(tenantId);
+  if (!fromNumber && telephony?.provider === 'zadarma') {
+    fromNumber = telephony.inboundNumberE164 ?? null;
+  }
   if (!fromNumber) {
     return {
       ok: false,
       reason: 'no_phone',
-      error: 'No hay número Twilio activo para este tenant.',
+      error: 'La clínica no tiene ningún número desde el que llamar.',
     };
   }
 
   // Caller ID override (BYOT). Idéntica lógica que triggerCallback singular:
   // si el tenant verificó su número público, lo usamos como override_from_number.
-  const telephony = await getTenantTelephony(tenantId);
   const callerIdOverride =
     telephony?.callerIdE164 && telephony.callerIdVerifiedAt ? telephony.callerIdE164 : null;
 
@@ -113,12 +119,18 @@ export async function dispatchCampaign(
     tenantId,
     targets.map((t) => t.toNumber),
   ).catch(() => new Map<string, string>());
+  // El mismo contexto de clínica (profesionales, horario, protocolo) que lleva
+  // una llamada suelta: sin él el agente de campaña no sabe dónde llama.
+  const clinicVars = await buildClinicContextVars(tenantId).catch(
+    () => ({}) as Record<string, string>,
+  );
 
   const tasks = targets.map((t) => {
     const targetVars = (t.dynamicVars ?? {}) as Record<string, string>;
     return {
       to_number: t.toNumber,
       retell_llm_dynamic_variables: {
+        ...clinicVars,
         clinic_name: clinicName,
         current_date: today,
         direction: 'outbound',

@@ -1,5 +1,6 @@
 import { denyUnlessRole } from '@/lib/auth/api-guard';
 import { resolveRetellAgentId } from '@/lib/data/agent-config';
+import { type EnabledModules, isModuleEnabled } from '@/lib/modules';
 import { getRetellClient } from '@/lib/retell/client';
 import { buildClinicContextVars } from '@/lib/retell/clinic-context';
 import { describeRetellError } from '@/lib/retell/errors';
@@ -32,9 +33,11 @@ export async function POST(req: NextRequest) {
   if (denied) return denied;
 
   let tenantId: string;
+  let modules: EnabledModules | null;
   try {
     const ctx = await getCurrentTenant();
     tenantId = ctx.tenant.id;
+    modules = ctx.tenant.enabledModules as EnabledModules | null;
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -46,6 +49,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Parámetros inválidos' }, { status: 400 });
   }
   const { role } = parsed.data;
+  // Probar un canal que la clínica no tiene contratado gasta minutos igual.
+  if (!isModuleEnabled(modules, role)) {
+    return NextResponse.json(
+      { error: 'Tu clínica no tiene contratado este canal de llamadas.' },
+      { status: 403 },
+    );
+  }
   const patientName = parsed.data.patientName || 'paciente';
 
   const agentId = await resolveRetellAgentId(tenantId, role);

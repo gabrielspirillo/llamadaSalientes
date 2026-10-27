@@ -1,3 +1,4 @@
+import { campaignStatusBadge } from '@/components/dashboard/campaign-status-badge';
 import { OutboundQuickCall } from '@/components/dashboard/outbound-quick-call';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -8,31 +9,17 @@ import { Reveal } from '@/components/ui/motion';
 import { ProgressBar } from '@/components/ui/stat';
 import { HeadRow, TD, TH, THead, TR, Table, TableWrap } from '@/components/ui/table';
 import { USE_CASE_LABEL, type UseCase, listCampaigns } from '@/lib/data/outbound-campaigns';
+import { getTenantTimezone } from '@/lib/tasks/materialize';
 import { getCurrentTenant } from '@/lib/tenant';
 import { ArrowRight, PhoneOutgoing, Plus } from 'lucide-react';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
-function statusBadge(status: string) {
-  switch (status) {
-    case 'draft':
-      return <Badge>Borrador</Badge>;
-    case 'running':
-      return <Badge tone="info">En curso</Badge>;
-    case 'completed':
-      return <Badge tone="success">Completada</Badge>;
-    case 'failed':
-      return <Badge tone="danger">Error</Badge>;
-    case 'paused':
-      return <Badge tone="warn">Pausada</Badge>;
-    default:
-      return <Badge>{status}</Badge>;
-  }
-}
-
 export default async function OutboundPage() {
   const { tenant } = await getCurrentTenant();
+  // Las horas en la de la clínica: el servidor corre en UTC.
+  const tz = await getTenantTimezone(tenant.id);
   const campaigns = await listCampaigns(tenant.id);
 
   return (
@@ -86,14 +73,14 @@ export default async function OutboundPage() {
                       <div className="flex items-center justify-between gap-2">
                         <p className="truncate text-[15px] font-bold text-zinc-900">{c.name}</p>
                         <span className="text-[12px] text-zinc-500 shrink-0">
-                          {new Date(c.createdAt).toLocaleDateString('es-ES')}
+                          {new Date(c.createdAt).toLocaleDateString('es-ES', { timeZone: tz })}
                         </span>
                       </div>
                       <p className="text-xs text-zinc-500 truncate mt-0.5">
                         {USE_CASE_LABEL[c.useCase as UseCase] ?? c.useCase}
                       </p>
                       <div className="mt-2 flex items-center gap-2 flex-wrap">
-                        {statusBadge(c.status)}
+                        {campaignStatusBadge(c.status)}
                         <span className="text-xs text-zinc-500 tabular-nums">
                           {c.completedTargets}/{c.totalTargets}
                         </span>
@@ -129,7 +116,7 @@ export default async function OutboundPage() {
                           <TD className="hidden text-zinc-600 lg:table-cell">
                             {USE_CASE_LABEL[c.useCase as UseCase] ?? c.useCase}
                           </TD>
-                          <TD>{statusBadge(c.status)}</TD>
+                          <TD>{campaignStatusBadge(c.status)}</TD>
                           <TD>
                             <div className="flex items-center gap-2.5">
                               <ProgressBar value={pct} tone="blossom" className="min-w-[80px]" />
@@ -139,7 +126,7 @@ export default async function OutboundPage() {
                             </div>
                           </TD>
                           <TD className="hidden text-right text-[13px] text-zinc-500 lg:table-cell">
-                            {new Date(c.createdAt).toLocaleDateString('es-ES')}
+                            {new Date(c.createdAt).toLocaleDateString('es-ES', { timeZone: tz })}
                           </TD>
                           <TD className="text-right">
                             <Link

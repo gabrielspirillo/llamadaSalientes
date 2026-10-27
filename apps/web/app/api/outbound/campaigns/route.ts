@@ -1,3 +1,4 @@
+import { normalizePatientPhone } from '@/lib/agenda/patients';
 import { denyUnlessRole } from '@/lib/auth/api-guard';
 import { USE_CASES, createCampaignWithTargets, listCampaigns } from '@/lib/data/outbound-campaigns';
 import { db } from '@/lib/db/client';
@@ -13,7 +14,8 @@ export const dynamic = 'force-dynamic';
 const targetSchema = z.object({
   toNumber: z.string().min(7),
   patientName: z.string().optional().nullable(),
-  email: z.string().email().optional().nullable(),
+  // Un correo mal escrito en una fila del CSV no puede tumbar la campaña entera.
+  email: z.string().email().optional().nullable().catch(null),
   ghlContactId: z.string().optional().nullable(),
   dynamicVars: z.record(z.string()).optional(),
 });
@@ -40,6 +42,8 @@ const bodySchema = z.object({
 export async function GET() {
   let tenantId: string;
   try {
+    const denied = await denyUnlessRole('operator');
+    if (denied) return denied;
     const { tenant } = await getCurrentTenant();
     tenantId = tenant.id;
   } catch {
@@ -63,10 +67,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const parsed = bodySchema.safeParse(await req.json());
+  const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
+    return NextResponse.json(
+      { error: 'Revisa los datos de la campaña.', details: parsed.error.flatten() },
+      { status: 422 },
+    );
   }
+
+  // Teléfonos normalizados (un móvil sin prefijo es español), sin inválidos
+  // ni repetidos: llamar dos veces al mismo paciente es lo peor que puede hacer.
+  const seen = new Set<string>();
+  const targets: typeof parsed.data.targets = [];
+  for (const t of parsed.data.targets) {
+    const toNumber = normalizePatientPhone(t.toNumber);
+    if (!toNumber || seen.has(toNumber)) continue;
+    seen.add(toNumber);
+    targets.push({ ...t, toNumber });
+  }
+  if (targets.length === 0) {
+    return NextResponse.json({ error: 'Ningún teléfono de la lista es válido.' }, { status: 422 });
+  }
+  const skipped = parsed.data.targets.length - targets.length;
 
   // Resolver user.id local (UUID) desde el clerkUserId
   const [user] = await db
@@ -89,8 +111,8 @@ export async function POST(req: NextRequest) {
     retryDelayMinutes: parsed.data.retryDelayMinutes ?? 60,
     sharedDynamicVars: parsed.data.sharedDynamicVars ?? {},
     notes: parsed.data.notes ?? null,
-    targets: parsed.data.targets,
+    targets,
   });
 
-  return NextResponse.json(result, { status: 201 });
+  return NextResponse.json({ ...result, skipped }, { status: 201 });
 }

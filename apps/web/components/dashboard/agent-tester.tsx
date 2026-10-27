@@ -120,8 +120,8 @@ export function AgentTester({ direccion = 'inbound' }: { direccion?: TesterDirec
 
       client.on('error', (err: unknown) => {
         console.error('[retell] error:', err);
-        const msg = err instanceof Error ? err.message : String(err);
-        setError(msg);
+        // El SDK emite textos en inglés ("Error starting call").
+        setError('No se pudo conectar la llamada. Revisa el micrófono y vuelve a intentarlo.');
         setState('error');
         try {
           (clientRef.current as { stopCall?: () => void } | null)?.stopCall?.();

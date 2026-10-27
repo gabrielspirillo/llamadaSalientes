@@ -1,3 +1,4 @@
+import { isUuid } from '@/lib/agenda/appointment-ref';
 import { NextResponse } from 'next/server';
 
 import { AgendaForbiddenError, getAgendaContext } from '@/lib/agenda/auth';
@@ -26,7 +27,7 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const professionalId = url.searchParams.get('professionalId');
-  if (!professionalId) {
+  if (!professionalId || !isUuid(professionalId)) {
     return NextResponse.json({ error: 'Falta professionalId' }, { status: 400 });
   }
 
@@ -49,7 +50,8 @@ export async function GET(req: Request) {
 
     // Al mover una cita: no se cuenta a sí misma, y si es primera visita se
     // aplican sus reglas igual que al darla de alta.
-    const exclude = url.searchParams.get('exclude');
+    const excludeRaw = url.searchParams.get('exclude');
+    const exclude = excludeRaw && isUuid(excludeRaw) ? excludeRaw : null;
     const result = await getAvailability(ctx.tenantId, {
       professionalId,
       fromDateKey: from,

@@ -1,5 +1,6 @@
 'use server';
 
+import { actionRoleError } from '@/lib/auth/api-guard';
 import { and, desc, eq, ilike, inArray, ne, or, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
@@ -62,6 +63,8 @@ const updateSchema = z.object({
 export async function updateContactDetails(
   input: unknown,
 ): Promise<ActionResult<{ contactId: string }>> {
+  const denied = await actionRoleError('operator');
+  if (denied) return { success: false, error: denied };
   const parsed = updateSchema.safeParse(input);
   if (!parsed.success) {
     return fail('Datos inválidos', parsed.error.flatten().fieldErrors);
@@ -168,6 +171,8 @@ const addNoteSchema = z.object({
 });
 
 export async function addContactNote(input: unknown): Promise<ActionResult<{ id: string }>> {
+  const denied = await actionRoleError('operator');
+  if (denied) return { success: false, error: denied };
   const parsed = addNoteSchema.safeParse(input);
   if (!parsed.success) return fail('Datos inválidos', parsed.error.flatten().fieldErrors);
   const { tenant } = await getCurrentTenant();
@@ -193,6 +198,8 @@ export async function addContactNote(input: unknown): Promise<ActionResult<{ id:
 const deleteNoteSchema = z.object({ id: z.string().uuid(), contactId: z.string().uuid() });
 
 export async function deleteContactNote(input: unknown): Promise<ActionResult<null>> {
+  const denied = await actionRoleError('operator');
+  if (denied) return { success: false, error: denied };
   const parsed = deleteNoteSchema.safeParse(input);
   if (!parsed.success) return fail('Datos inválidos');
   const { tenant } = await getCurrentTenant();
@@ -263,6 +270,8 @@ const mergeSchema = z.object({
  * pisamos lo que el operador puso en el "principal").
  */
 export async function mergeContacts(input: unknown): Promise<ActionResult<{ targetId: string }>> {
+  const denied = await actionRoleError('operator');
+  if (denied) return { success: false, error: denied };
   const parsed = mergeSchema.safeParse(input);
   if (!parsed.success) return fail('Datos inválidos');
   if (parsed.data.sourceId === parsed.data.targetId) {

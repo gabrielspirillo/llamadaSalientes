@@ -1,6 +1,7 @@
 'use server';
 
 import { recordAudit } from '@/lib/audit';
+import { actionRoleError } from '@/lib/auth/api-guard';
 import { createFaq, deleteFaq, getFaqById, updateFaq } from '@/lib/data/faqs';
 import { getCurrentTenant } from '@/lib/tenant';
 import { revalidatePath } from 'next/cache';
@@ -16,6 +17,8 @@ const faqSchema = z.object({
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
 export async function createFaqAction(formData: FormData): Promise<ActionResult> {
+  const denied = await actionRoleError('operator');
+  if (denied) return { ok: false, error: denied };
   const { tenant } = await getCurrentTenant();
   const parsed = faqSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
@@ -43,6 +46,8 @@ export async function createFaqAction(formData: FormData): Promise<ActionResult>
 }
 
 export async function updateFaqAction(id: string, formData: FormData): Promise<ActionResult> {
+  const denied = await actionRoleError('operator');
+  if (denied) return { ok: false, error: denied };
   const { tenant } = await getCurrentTenant();
   const parsed = faqSchema.partial().safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
@@ -68,6 +73,8 @@ export async function updateFaqAction(id: string, formData: FormData): Promise<A
 }
 
 export async function deleteFaqAction(id: string): Promise<ActionResult> {
+  const denied = await actionRoleError('operator');
+  if (denied) return { ok: false, error: denied };
   const { tenant } = await getCurrentTenant();
   const before = await getFaqById(tenant.id, id);
   if (!before) return { ok: false, error: 'No se ha encontrado la pregunta' };

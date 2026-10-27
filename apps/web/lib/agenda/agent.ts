@@ -1,6 +1,6 @@
 import 'server-only';
 import { richToPlain } from '@/lib/rich-text';
-import { and, asc, desc, eq, gte, inArray, ne, or } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, lt, ne, or } from 'drizzle-orm';
 
 import type { AgendaContext } from '@/lib/agenda/auth';
 import { firstVisitFromTreatment } from '@/lib/agenda/availability';
@@ -562,6 +562,8 @@ export async function getAgentPatientContext(
           eq(agendaAppointments.tenantId, tenantId),
           eq(agendaAppointments.patientKey, patientKey),
           inArray(agendaAppointments.status, BUSY_STATUSES),
+          // "Última visita" es pasada: sin esto salía la próxima cita.
+          lt(agendaAppointments.startsAt, new Date()),
         ),
       )
       .orderBy(desc(agendaAppointments.startsAt))

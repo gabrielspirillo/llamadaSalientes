@@ -3,6 +3,7 @@ import 'server-only';
 import { getAgentPatientContext, matchByName, normalizeName } from '@/lib/agenda/agent';
 import { normalizePatientPhone } from '@/lib/agenda/patients';
 import { getClinicTimezone } from '@/lib/agenda/queries';
+import { BUSY_STATUSES } from '@/lib/agenda/shared';
 import {
   type CareProfile,
   PRIORITY_LABELS,
@@ -13,6 +14,8 @@ import {
   isPatientAgeAllowed,
   priorityLevel,
 } from '@/lib/care-profile/policy';
+import { db } from '@/lib/db/client';
+import { agendaAppointments } from '@/lib/db/schema';
 import {
   DuplicatePatientError,
   type PatientPerson,
@@ -24,6 +27,7 @@ import {
 import { findPatientByPhone } from '@/lib/patients/registry';
 import { speakClockTime } from '@/lib/retell/time-speech';
 import { localDateKey } from '@/lib/tasks/tz';
+import { and, eq, inArray } from 'drizzle-orm';
 
 /**
  * Lo que los asistentes (voz y WhatsApp) hacen distinto en una clínica con
@@ -140,6 +144,23 @@ async function finishRegistration(
   profile: CareProfile,
   todayKey: string,
 ): Promise<ToolResult> {
+  // Primera visita = el niño no tiene ninguna cita que ocupe hueco, aunque ya
+  // tuviera ficha (registrado en otra llamada y sin venir nunca).
+  const [prior] = existing
+    ? await db
+        .select({ id: agendaAppointments.id })
+        .from(agendaAppointments)
+        .where(
+          and(
+            eq(agendaAppointments.tenantId, tenantId),
+            eq(agendaAppointments.patientId, person.id),
+            inArray(agendaAppointments.status, BUSY_STATUSES),
+          ),
+        )
+        .limit(1)
+    : [];
+  const firstVisit = !prior;
+
   const alert = args.medicalAlert?.trim();
   if (alert) {
     await setPatientReview({ tenantId, userId: null }, person.id, {
@@ -153,7 +174,7 @@ async function finishRegistration(
 
   const fasting = profile.bookingPolicy.fastingHours;
   return {
-    result: `${existing ? 'Ya estaba registrado' : 'Paciente dado de alta'}: ${describeChild(person, todayKey)}. patient_id=${person.id}. Para reservar, llamá a check_availability con first_visit=${existing ? 'false' : 'true'} y después a book_appointment con patient_id=${person.id} y el start_time y professional_id exactos del hueco elegido.${
+    result: `${existing ? 'Ya estaba registrado' : 'Paciente dado de alta'}: ${describeChild(person, todayKey)}. patient_id=${person.id}. Para reservar, llamá a check_availability con first_visit=${firstVisit ? 'true' : 'false'} y después a book_appointment con patient_id=${person.id} y el start_time y professional_id exactos del hueco elegido.${
       fasting ? ` Recuérdale al tutor el ayuno de ${fasting} horas antes de la sesión.` : ''
     }`,
   };

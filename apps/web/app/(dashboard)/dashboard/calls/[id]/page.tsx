@@ -4,7 +4,13 @@ import { Card, CardTopbar } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/feedback';
 import { Reveal } from '@/components/ui/motion';
 import { Avatar } from '@/components/ui/stat';
-import { decryptTranscript, formatDuration, getCall } from '@/lib/data/calls-list';
+import {
+  callPatientPhone,
+  decryptTranscript,
+  formatDuration,
+  getCall,
+} from '@/lib/data/calls-list';
+import { getTenantTimezone } from '@/lib/tasks/materialize';
 import { getCurrentTenant } from '@/lib/tenant';
 import {
   ArrowLeft,
@@ -55,6 +61,8 @@ export default async function CallDetailPage({
 }) {
   const { id } = await params;
   const { tenant } = await getCurrentTenant();
+  // Las horas en la de la clínica: el servidor corre en UTC.
+  const tz = await getTenantTimezone(tenant.id);
   const call = await getCall(tenant.id, id);
   if (!call) notFound();
 
@@ -68,11 +76,15 @@ export default async function CallDetailPage({
   // fallback para llamadas viejas a las que les falta el timestamp.
   const occurredAt = call.startedAt ?? call.createdAt;
   const startedDate = occurredAt
-    ? new Date(occurredAt).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })
+    ? new Date(occurredAt).toLocaleString('es-ES', {
+        timeZone: tz,
+        dateStyle: 'short',
+        timeStyle: 'short',
+      })
     : '—';
 
   const customData = (call.customData ?? {}) as { patient_name?: string };
-  const title = customData.patient_name ?? call.fromNumber ?? call.toNumber ?? 'Llamada anónima';
+  const title = customData.patient_name ?? callPatientPhone(call) ?? 'Llamada anónima';
 
   return (
     <>
@@ -97,7 +109,7 @@ export default async function CallDetailPage({
             </div>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[14px] text-zinc-500 sm:gap-x-5">
               <span className="flex items-center gap-1.5">
-                <User className="h-3.5 w-3.5" /> {call.fromNumber ?? '—'}
+                <User className="h-3.5 w-3.5" /> {callPatientPhone(call) ?? '—'}
               </span>
               <span className="flex items-center gap-1.5">
                 <Phone className="h-3.5 w-3.5" /> → {call.toNumber ?? '—'}
@@ -250,11 +262,19 @@ export default async function CallDetailPage({
                   <FieldRow label="GHL Contact" value={call.ghlContactId ?? '—'} mono />
                   <FieldRow
                     label="Inicio"
-                    value={call.startedAt ? new Date(call.startedAt).toLocaleString('es-ES') : '—'}
+                    value={
+                      call.startedAt
+                        ? new Date(call.startedAt).toLocaleString('es-ES', { timeZone: tz })
+                        : '—'
+                    }
                   />
                   <FieldRow
                     label="Fin"
-                    value={call.endedAt ? new Date(call.endedAt).toLocaleString('es-ES') : '—'}
+                    value={
+                      call.endedAt
+                        ? new Date(call.endedAt).toLocaleString('es-ES', { timeZone: tz })
+                        : '—'
+                    }
                   />
                 </div>
               </div>

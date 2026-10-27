@@ -1,4 +1,6 @@
+import { isUuid } from '@/lib/agenda/appointment-ref';
 import { getCall } from '@/lib/data/calls-list';
+import { r2FileResponse } from '@/lib/r2/client';
 import { getRetellClient } from '@/lib/retell/client';
 import { getCurrentTenant } from '@/lib/tenant';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -32,7 +34,7 @@ async function authorize(callId: string) {
   if (!call) {
     return { error: NextResponse.json({ error: 'Call not found' }, { status: 404 }) };
   }
-  if (!process.env.RETELL_API_KEY) {
+  if (!call.recordingR2Key && !process.env.RETELL_API_KEY) {
     return { error: NextResponse.json({ error: 'Retell no configurado' }, { status: 503 }) };
   }
   return { call };
@@ -46,9 +48,11 @@ async function getRecordingUrl(retellCallId: string): Promise<string | null> {
 
 export async function HEAD(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!isUuid(id)) return new NextResponse(null, { status: 404 });
   const auth = await authorize(id);
   if ('error' in auth) return auth.error;
 
+  if (auth.call.recordingR2Key) return new NextResponse(null, { status: 200 });
   try {
     const url = await getRecordingUrl(auth.call.retellCallId);
     if (!url) return new NextResponse(null, { status: 425 });
@@ -61,8 +65,15 @@ export async function HEAD(_req: NextRequest, { params }: { params: Promise<{ id
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!isUuid(id)) return new NextResponse(null, { status: 404 });
   const auth = await authorize(id);
   if ('error' in auth) return auth.error;
+
+  // Primero la copia propia: la de Retell caduca y cuesta un viaje más.
+  if (auth.call.recordingR2Key) {
+    const own = await r2FileResponse(auth.call.recordingR2Key, req.headers.get('range'));
+    if (own) return own;
+  }
 
   let recordingUrl: string | null = null;
   try {

@@ -1,6 +1,7 @@
 'use server';
 
 import { Buffer } from 'node:buffer';
+import { actionRoleError } from '@/lib/auth/api-guard';
 
 import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
@@ -34,6 +35,8 @@ const agentSettingsSchema = z.object({
 });
 
 export async function saveWhatsappAgentSettings(input: unknown): Promise<ActionResult<null>> {
+  const denied = await actionRoleError('admin');
+  if (denied) return { success: false, error: denied };
   const parsed = agentSettingsSchema.safeParse(input);
   if (!parsed.success) return fail('Datos inválidos', parsed.error.flatten().fieldErrors);
   const { tenant } = await getCurrentTenant();
@@ -67,6 +70,8 @@ const cloudSchema = z.object({
 });
 
 export async function connectCloud(input: unknown): Promise<ActionResult<{ status: string }>> {
+  const denied = await actionRoleError('admin');
+  if (denied) return { success: false, error: denied };
   const parsed = cloudSchema.safeParse(input);
   if (!parsed.success) return fail('Datos inválidos', parsed.error.flatten().fieldErrors);
   const { phoneNumberId, wabaId, accessToken, appSecret } = parsed.data;
@@ -148,6 +153,8 @@ const twilioSchema = z.object({
 });
 
 export async function connectTwilio(input: unknown): Promise<ActionResult<{ status: string }>> {
+  const denied = await actionRoleError('admin');
+  if (denied) return { success: false, error: denied };
   const parsed = twilioSchema.safeParse(input);
   if (!parsed.success) return fail('Datos inválidos', parsed.error.flatten().fieldErrors);
   const { accountSid, authToken, fromNumber } = parsed.data;
@@ -329,6 +336,8 @@ async function setEvolutionWebhook(
 export async function connectEvolution(): Promise<
   ActionResult<{ qrBase64: string | null; pairingCode: string | null; instanceName: string }>
 > {
+  const denied = await actionRoleError('admin');
+  if (denied) return { success: false, error: denied };
   const cfg = evolutionBase();
   if ('error' in cfg) return fail(cfg.error);
 
@@ -511,6 +520,8 @@ async function refreshEvolutionQrInternal(params: {
 export async function refreshEvolutionQr(): Promise<
   ActionResult<{ qrBase64: string | null; pairingCode: string | null; state: string }>
 > {
+  const denied = await actionRoleError('admin');
+  if (denied) return { success: false, error: denied };
   const cfg = evolutionBase();
   if ('error' in cfg) return fail(cfg.error);
   const { tenant } = await getCurrentTenant();
@@ -621,6 +632,8 @@ const chatwootSchema = z.object({
  * llamar a `disconnectChatwoot()`.
  */
 export async function setChatwoot(input: unknown): Promise<ActionResult<null>> {
+  const denied = await actionRoleError('admin');
+  if (denied) return { success: false, error: denied };
   const parsed = chatwootSchema.safeParse(input);
   if (!parsed.success) return fail('Datos inválidos', parsed.error.flatten().fieldErrors);
   const cfg = evolutionBase();
@@ -689,6 +702,8 @@ export async function setChatwoot(input: unknown): Promise<ActionResult<null>> {
 }
 
 export async function disconnectChatwoot(): Promise<ActionResult<null>> {
+  const denied = await actionRoleError('admin');
+  if (denied) return { success: false, error: denied };
   const cfg = evolutionBase();
   if ('error' in cfg) return fail(cfg.error);
   const { tenant } = await getCurrentTenant();
@@ -770,6 +785,8 @@ export async function getConnectionStatus(): Promise<ActionResult<ConnectionSnap
 const disconnectSchema = z.object({ mode: z.enum(['CLOUD', 'EVOLUTION', 'TWILIO']) });
 
 export async function disconnect(input: unknown): Promise<ActionResult<null>> {
+  const denied = await actionRoleError('admin');
+  if (denied) return { success: false, error: denied };
   const parsed = disconnectSchema.safeParse(input);
   if (!parsed.success) return fail('Datos inválidos', parsed.error.flatten().fieldErrors);
   const { tenant } = await getCurrentTenant();

@@ -1,6 +1,9 @@
+import { createHmac, timingSafeEqual } from 'node:crypto';
+import { decrypt } from '@/lib/crypto';
 import { getAgentConfig } from '@/lib/data/agent-config';
 import { getClinicSettings } from '@/lib/data/clinic';
 import { findTenantByInboundNumber } from '@/lib/data/tenant-telephony';
+import { env } from '@/lib/env';
 import { type NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -20,11 +23,10 @@ export const dynamic = 'force-dynamic';
  *      dejar la llamada colgando.
  *
  * Sobre la verificación de firma:
- *   - Las URLs configuradas se generan via /api/telephony/inbound/configure
- *     con NEXT_PUBLIC_APP_URL. Si querés validar firma, agregá lógica
- *     análoga a /api/webhooks/whatsapp/twilio (usa el auth_token del tenant).
- *     De momento no validamos firma acá: el TwiML retornado es sólo
- *     instrucciones — no consulta DB con datos sensibles del caller.
+ *   - `X-Twilio-Signature` con el auth token de la clínica, como el webhook de
+ *     WhatsApp. Sin firma válida se contesta lo mismo que a un número que no
+ *     es nuestro: el TwiML lleva el SIP del agente o el número de desvío, y
+ *     distinguir "asignado" de "no asignado" deja enumerar los DIDs.
  *
  * Sobre Retell:
  *   - Retell expone "phone agents" con un SIP URI por agente
@@ -41,7 +43,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   console.log('[twilio-inbound-voice]', { to, from, callSid });
 
-  const tenant = await findTenantByInboundNumber(to);
+  const found = await findTenantByInboundNumber(to);
+  const tenant = found && signatureOk(req, params, found.twilioAuthTokenEnc) ? found : null;
   if (!tenant) {
     console.warn('[twilio-inbound-voice] tenant no encontrado para To=%s', to);
     return twiml(`
@@ -125,5 +128,25 @@ function twiml(xml: string): NextResponse {
 function escapeXml(s: string): string {
   return s.replace(/[<>&'"]/g, (c) =>
     c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '&' ? '&amp;' : c === "'" ? '&apos;' : '&quot;',
+  );
+}
+
+function signatureOk(
+  req: NextRequest,
+  params: Record<string, string>,
+  authTokenEnc: string | null,
+): boolean {
+  const header = req.headers.get('x-twilio-signature') ?? '';
+  if (!authTokenEnc || !header) return false;
+  const proto = req.headers.get('x-forwarded-proto') ?? 'https';
+  const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host');
+  const url = host
+    ? `${proto}://${host}/api/twilio/inbound-voice`
+    : `${env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '')}/api/twilio/inbound-voice`;
+  let signed = url;
+  for (const k of Object.keys(params).sort()) signed += k + params[k];
+  const computed = createHmac('sha1', decrypt(authTokenEnc)).update(signed).digest('base64');
+  return (
+    computed.length === header.length && timingSafeEqual(Buffer.from(computed), Buffer.from(header))
   );
 }

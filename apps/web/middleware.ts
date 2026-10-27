@@ -16,10 +16,16 @@ const isPublicRoute = createRouteMatcher([
   '/api/twilio/(.*)', // SMS passthrough u otros callbacks de Twilio — Twilio firma con auth_token
   '/api/zadarma/(.*)', // NOTIFY_* webhooks de Zadarma — el handler valida firma md5
   '/api/public/(.*)', // Endpoints invocados desde la landing pública (CORS + rate-limit propios)
+  '/api/leads/intake', // alta de leads desde la landing: valida su propia intake-key por clínica
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
   if (!isPublicRoute(req)) {
+    // Una página sin sesión va al login; `protect()` le devolvía un 404.
+    const { userId, redirectToSignIn } = await auth();
+    if (!userId && !req.nextUrl.pathname.startsWith('/api/')) {
+      return redirectToSignIn({ returnBackUrl: req.url });
+    }
     await auth.protect();
   }
 

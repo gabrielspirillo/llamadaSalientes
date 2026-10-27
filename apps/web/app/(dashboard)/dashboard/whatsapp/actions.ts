@@ -1,6 +1,7 @@
 'use server';
 
 import { randomUUID } from 'node:crypto';
+import { actionRoleError } from '@/lib/auth/api-guard';
 import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
@@ -54,6 +55,8 @@ const sendSchema = z.object({
 export async function sendManualMessage(
   input: unknown,
 ): Promise<ActionResult<{ messageId: string }>> {
+  const denied = await actionRoleError('operator');
+  if (denied) return { success: false, error: denied };
   const parsed = sendSchema.safeParse(input);
   if (!parsed.success) {
     return fail('Datos inválidos', parsed.error.flatten().fieldErrors);
@@ -214,6 +217,8 @@ const takeoverSchema = z.object({
 });
 
 export async function takeoverConversation(input: unknown): Promise<ActionResult<null>> {
+  const denied = await actionRoleError('operator');
+  if (denied) return { success: false, error: denied };
   const parsed = takeoverSchema.safeParse(input);
   if (!parsed.success) return fail('Datos inválidos', parsed.error.flatten().fieldErrors);
   const { tenant } = await getCurrentTenant();
@@ -244,6 +249,8 @@ export async function takeoverConversation(input: unknown): Promise<ActionResult
 const conversationIdSchema = z.object({ conversationId: z.string().uuid() });
 
 export async function closeConversation(input: unknown): Promise<ActionResult<null>> {
+  const denied = await actionRoleError('operator');
+  if (denied) return { success: false, error: denied };
   const parsed = conversationIdSchema.safeParse(input);
   if (!parsed.success) return fail('Datos inválidos');
   const { tenant } = await getCurrentTenant();
@@ -267,6 +274,8 @@ export async function closeConversation(input: unknown): Promise<ActionResult<nu
  * conserva. Es destructivo e irreversible, así que exige rol operador o admin.
  */
 export async function deleteConversation(input: unknown): Promise<ActionResult<null>> {
+  const denied = await actionRoleError('admin');
+  if (denied) return { success: false, error: denied };
   const parsed = conversationIdSchema.safeParse(input);
   if (!parsed.success) return fail('Datos inválidos');
   const { tenant } = await getCurrentTenant();
@@ -292,6 +301,8 @@ export async function deleteConversation(input: unknown): Promise<ActionResult<n
 }
 
 export async function toggleUrgent(input: unknown): Promise<ActionResult<null>> {
+  const denied = await actionRoleError('operator');
+  if (denied) return { success: false, error: denied };
   const parsed = conversationIdSchema.safeParse(input);
   if (!parsed.success) return fail('Datos inválidos');
   const { tenant } = await getCurrentTenant();

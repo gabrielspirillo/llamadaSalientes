@@ -1,6 +1,7 @@
 import {
   describeAllowedCountries,
   isDestinationAllowed,
+  isPremiumRate,
   parseAllowedCountryCodes,
 } from '@/lib/calls/destination-allowlist';
 import { triggerCallback } from '@/lib/calls/trigger-callback';
@@ -91,7 +92,7 @@ export async function POST(req: NextRequest) {
   // Lista blanca de países ANTES de gastar nada. Rechazar aquí no cuesta y es
   // lo que corta el fraude a numeración de tarificación especial.
   const allowedCodes = parseAllowedCountryCodes(env.FUTURA_DEMO_ALLOWED_COUNTRY_CODES);
-  if (!isDestinationAllowed(phone, allowedCodes)) {
+  if (!isDestinationAllowed(phone, allowedCodes) || isPremiumRate(phone)) {
     console.warn('[sapinn-call] destino fuera de la lista blanca', {
       ip,
       prefix: phone.slice(0, 5),
@@ -119,14 +120,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const cutoff = new Date(Date.now() - RATE_LIMIT_SECONDS * 1000);
-  const [recent] = await db
-    .select({ id: calls.id })
-    .from(calls)
-    .where(
-      and(eq(calls.tenantId, tenantId), eq(calls.toNumber, phone), gte(calls.createdAt, cutoff)),
-    )
-    .limit(1);
+  // Una llamada por número y ventana. Se reserva en Redis ANTES de llamar:
+  // mirar la tabla de llamadas no servía, porque la fila no existe hasta que
+  // Retell avisa de que la llamada empezó.
+  const perNumber = await consumeRateLimit(`sapinn-call:num:${phone}`, 1, RATE_LIMIT_SECONDS);
+  const recent = !perNumber.allowed;
   if (recent) {
     return NextResponse.json(
       {

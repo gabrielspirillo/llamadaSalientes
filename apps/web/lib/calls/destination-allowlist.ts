@@ -100,6 +100,14 @@ export function isDestinationAllowed(
   return matchAllowedCountryCode(e164, codes) !== null;
 }
 
+/**
+ * Tarificación especial española (80x, 90x): aunque el país esté permitido,
+ * una llamada ahí la cobra quien la recibe. Es el blanco del fraude IRSF.
+ */
+export function isPremiumRate(e164: string): boolean {
+  return /^\+34(80|90)\d/.test(e164);
+}
+
 /** "España, Argentina, Uruguay y Perú" — para el mensaje de rechazo. */
 export function describeAllowedCountries(
   codes: readonly string[] = DEFAULT_DEMO_ALLOWED_COUNTRY_CODES,

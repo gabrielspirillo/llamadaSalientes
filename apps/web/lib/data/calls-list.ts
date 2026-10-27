@@ -12,12 +12,22 @@ export type CallRow = typeof calls.$inferSelect;
  */
 export type CallListRow = Omit<CallRow, 'transcriptEnc' | 'recordingR2Key'>;
 
+/** El número del paciente: en una saliente es el destino, no el de la clínica. */
+export function callPatientPhone(c: {
+  direction: string | null;
+  fromNumber: string | null;
+  toNumber: string | null;
+}): string | null {
+  return c.direction === 'outbound' ? (c.toNumber ?? null) : (c.fromNumber ?? c.toNumber ?? null);
+}
+
 const CALL_LIST_COLUMNS = {
   id: calls.id,
   tenantId: calls.tenantId,
   retellCallId: calls.retellCallId,
   fromNumber: calls.fromNumber,
   toNumber: calls.toNumber,
+  direction: calls.direction,
   ghlContactId: calls.ghlContactId,
   startedAt: calls.startedAt,
   endedAt: calls.endedAt,

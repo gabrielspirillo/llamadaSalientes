@@ -84,7 +84,7 @@ export function OutboundCampaignForm() {
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ? JSON.stringify(body.error) : `HTTP ${res.status}`);
+        throw new Error(typeof body.error === 'string' ? body.error : `Error ${res.status}`);
       }
       const data = (await res.json()) as { campaignId: string };
       router.push(`/dashboard/outbound/${data.campaignId}`);

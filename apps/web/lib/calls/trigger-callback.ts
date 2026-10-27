@@ -1,3 +1,4 @@
+import { normalizePatientPhone } from '@/lib/agenda/patients';
 import 'server-only';
 import { resolveRetellAgentId } from '@/lib/data/agent-config';
 import { getGhlIntegration } from '@/lib/data/ghl-integration';
@@ -525,13 +526,7 @@ async function triggerCallbackZadarmaViaRetell(
  * intenta agregar uno (asumiendo que ya está en formato internacional).
  */
 function normalizePhone(raw: string): string | null {
-  if (!raw) return null;
-  const cleaned = raw.replace(/[\s()-]/g, '').trim();
-  if (!cleaned) return null;
-  if (cleaned.startsWith('+')) {
-    return /^\+\d{7,15}$/.test(cleaned) ? cleaned : null;
-  }
-  // Solo dígitos → asumimos que falta el "+"
-  if (/^\d{7,15}$/.test(cleaned)) return `+${cleaned}`;
-  return null;
+  // Un móvil español sin prefijo ("600 111 002") no es "+600111002", que es
+  // otro país: el mismo normalizador que la ficha del paciente.
+  return normalizePatientPhone(raw);
 }

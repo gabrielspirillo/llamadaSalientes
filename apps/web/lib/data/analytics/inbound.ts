@@ -1,6 +1,8 @@
 import 'server-only';
 import { db } from '@/lib/db/client';
 import { calls } from '@/lib/db/schema';
+import { getTenantTimezone } from '@/lib/tasks/materialize';
+import { addDaysToKey, localDateKey, localParts, parseDateKey, zonedToUtc } from '@/lib/tasks/tz';
 import { and, eq, sql } from 'drizzle-orm';
 
 /** Ver nota en calls-list.ts: started_at puede faltar, created_at es el fallback. */
@@ -8,19 +10,23 @@ const occurredAtSql = sql<Date>`COALESCE(${calls.startedAt}, ${calls.createdAt})
 
 export type AnalyticsRange = 'today' | '7d' | '30d';
 
-function rangeStart(range: AnalyticsRange): Date {
-  const d = new Date();
-  if (range === 'today') {
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - (range === '7d' ? 7 : 30));
-  return d;
+/** Medianoche local de la clínica de hoy (o de hace 7/30 días). Con la del
+ *  servidor (UTC) "hoy" empezaba a las 01:00/02:00 de Madrid. */
+function rangeStartKey(range: AnalyticsRange, tz: string): string {
+  const today = localDateKey(new Date(), tz);
+  return range === 'today' ? today : addDaysToKey(today, range === '7d' ? -7 : -30);
+}
+
+function keyToUtc(key: string, tz: string): Date {
+  const p = parseDateKey(key);
+  if (!p) return new Date();
+  return zonedToUtc(p.year, p.month, p.day, 0, 0, tz);
 }
 
 export async function getInboundAnalytics(tenantId: string, range: AnalyticsRange) {
-  const start = rangeStart(range);
+  const tz = await getTenantTimezone(tenantId);
+  const startKey = rangeStartKey(range, tz);
+  const start = keyToUtc(startKey, tz);
 
   const rows = await db
     .select({
@@ -34,6 +40,8 @@ export async function getInboundAnalytics(tenantId: string, range: AnalyticsRang
     .where(
       and(
         eq(calls.tenantId, tenantId),
+        // "Entrantes": las salientes van en su propia pestaña.
+        sql`${calls.direction} IS DISTINCT FROM 'outbound'`,
         sql`${occurredAtSql} >= ${start.toISOString()}::timestamptz`,
       ),
     );
@@ -52,7 +60,7 @@ export async function getInboundAnalytics(tenantId: string, range: AnalyticsRang
   const byHour = Array.from({ length: 24 }, (_, h) => ({ hour: h, calls: 0 }));
   for (const r of rows) {
     if (r.startedAt) {
-      const bucket = byHour[new Date(r.startedAt).getHours()];
+      const bucket = byHour[localParts(new Date(r.startedAt), tz).hour % 24];
       if (bucket) bucket.calls += 1;
     }
   }
@@ -68,24 +76,16 @@ export async function getInboundAnalytics(tenantId: string, range: AnalyticsRang
     .sort((a, b) => b.count - a.count);
 
   // Por día (1 bucket por día, desde `start` hasta hoy)
-  const dayMs = 24 * 60 * 60 * 1000;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const todayKey = localDateKey(new Date(), tz);
   const days: { date: string; calls: number; agendar: number; cancelar: number; otro: number }[] =
     [];
-  for (let d = new Date(start); d.getTime() <= today.getTime(); d = new Date(d.getTime() + dayMs)) {
-    days.push({
-      date: d.toISOString().slice(0, 10),
-      calls: 0,
-      agendar: 0,
-      cancelar: 0,
-      otro: 0,
-    });
+  for (let k = startKey; k <= todayKey; k = addDaysToKey(k, 1)) {
+    days.push({ date: k, calls: 0, agendar: 0, cancelar: 0, otro: 0 });
   }
   const dayIndex = new Map(days.map((d, i) => [d.date, i]));
   for (const r of rows) {
     if (!r.startedAt) continue;
-    const key = new Date(r.startedAt).toISOString().slice(0, 10);
+    const key = localDateKey(new Date(r.startedAt), tz);
     const idx = dayIndex.get(key);
     if (idx === undefined) continue;
     const day = days[idx];

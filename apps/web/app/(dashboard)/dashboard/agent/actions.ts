@@ -2,6 +2,7 @@
 
 import { recordAudit } from '@/lib/audit';
 import { upsertAgentConfig } from '@/lib/data/agent-config';
+import { requireTaskRole } from '@/lib/tasks/auth';
 import { getCurrentTenant } from '@/lib/tenant';
 import { revalidatePath } from 'next/cache';
 
@@ -11,6 +12,8 @@ function emptyToNull(s: FormDataEntryValue | null): string | null {
 }
 
 export async function saveAgentConfigAction(formData: FormData) {
+  // Cambia el número de desvío de las llamadas: sólo admin.
+  await requireTaskRole('admin');
   const { tenant } = await getCurrentTenant();
 
   const updated = await upsertAgentConfig({

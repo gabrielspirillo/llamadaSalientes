@@ -17,7 +17,7 @@ const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODE
  */
 const FETCH_TIMEOUT_MS = 15_000;
 
-const SUMMARY_SYSTEM = `Eres un analista de conversaciones telefónicas de una clínica dental.
+const SUMMARY_SYSTEM = `Eres un analista de conversaciones telefónicas de una clínica de salud.
 Recibís el transcript completo de una llamada entre un paciente y el agente.
 Devolvés EXCLUSIVAMENTE un JSON válido sin markdown:
 {

@@ -155,7 +155,8 @@ export async function onCallProcessed(args: {
     // origina la llamada es de la clínica, la llamada la hicimos nosotros.
     // Sin esto, cada llamada saliente que caía en el buzón (menos de 20 s)
     // generaba un "Devolver llamada" urgente — ruido puro en el tablero.
-    const isOutbound = Boolean(call.fromNumber && clinic.has(call.fromNumber));
+    const isOutbound =
+      call.direction === 'outbound' || Boolean(call.fromNumber && clinic.has(call.fromNumber));
 
     const patient = await resolvePatient(args.tenantId, {
       ghlContactId: call.ghlContactId,

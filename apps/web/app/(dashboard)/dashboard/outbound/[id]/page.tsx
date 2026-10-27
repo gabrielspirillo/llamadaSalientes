@@ -1,3 +1,4 @@
+import { campaignStatusBadge } from '@/components/dashboard/campaign-status-badge';
 import { OutboundDispatchButton } from '@/components/dashboard/outbound-dispatch-button';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +9,7 @@ import {
   getCampaign,
   getCampaignTargets,
 } from '@/lib/data/outbound-campaigns';
+import { getTenantTimezone } from '@/lib/tasks/materialize';
 import { getCurrentTenant } from '@/lib/tenant';
 import { Megaphone } from 'lucide-react';
 import { notFound } from 'next/navigation';
@@ -44,6 +46,8 @@ export default async function OutboundCampaignDetail({
 }) {
   const { id } = await params;
   const { tenant } = await getCurrentTenant();
+  // Las horas en la de la clínica: el servidor corre en UTC.
+  const tz = await getTenantTimezone(tenant.id);
   const campaign = await getCampaign(tenant.id, id);
   if (!campaign) notFound();
 
@@ -67,12 +71,16 @@ export default async function OutboundCampaignDetail({
         title={campaign.name}
         description={`${USE_CASE_LABEL[campaign.useCase as UseCase] ?? campaign.useCase} · ${summary.total} destinatarios`}
         actions={
-          campaign.status === 'draft' ? (
-            <OutboundDispatchButton campaignId={campaign.id} disabled={pendingCount === 0} />
+          // Una campaña que falló al lanzarse (sin lote en Retell) se puede
+          // relanzar: antes se quedaba en "failed" para siempre.
+          campaign.status === 'draft' ||
+          (campaign.status === 'failed' && !campaign.retellBatchCallId) ? (
+            <div className="flex items-center gap-2">
+              {campaign.status === 'failed' && campaignStatusBadge('failed')}
+              <OutboundDispatchButton campaignId={campaign.id} disabled={pendingCount === 0} />
+            </div>
           ) : (
-            <Badge tone={campaign.status === 'running' ? 'info' : 'success'}>
-              {campaign.status}
-            </Badge>
+            campaignStatusBadge(campaign.status)
           )
         }
       />
@@ -114,7 +122,9 @@ export default async function OutboundCampaignDetail({
                     {t.lastDisconnectionReason ?? t.lastError ?? '—'}
                   </td>
                   <td className="px-4 sm:px-5 py-3 text-right text-xs text-zinc-500 hidden md:table-cell">
-                    {t.lastAttemptAt ? new Date(t.lastAttemptAt).toLocaleString('es-ES') : '—'}
+                    {t.lastAttemptAt
+                      ? new Date(t.lastAttemptAt).toLocaleString('es-ES', { timeZone: tz })
+                      : '—'}
                   </td>
                 </tr>
               ))}

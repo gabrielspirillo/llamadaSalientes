@@ -293,6 +293,8 @@ export const calls = pgTable(
     retellCallId: text('retell_call_id').notNull().unique(),
     fromNumber: text('from_number'),
     toNumber: text('to_number'),
+    // inbound | outbound (migración 0051). NULL = sin dato: se trata como entrante.
+    direction: text('direction'),
     ghlContactId: text('ghl_contact_id'),
     startedAt: timestamp('started_at', { withTimezone: true }),
     endedAt: timestamp('ended_at', { withTimezone: true }),

@@ -1,6 +1,7 @@
 import {
   describeAllowedCountries,
   isDestinationAllowed,
+  isPremiumRate,
   parseAllowedCountryCodes,
 } from '@/lib/calls/destination-allowlist';
 import { triggerCallback } from '@/lib/calls/trigger-callback';
@@ -76,7 +77,7 @@ export async function POST(req: NextRequest) {
   const tenantId = env.FUTURA_DEMO_TENANT_ID;
   if (!tenantId) {
     return NextResponse.json(
-      { error: 'Demo no disponible. Configurá FUTURA_DEMO_TENANT_ID en Vercel.' },
+      { error: 'La prueba no está disponible ahora mismo. Escríbenos y te la enseñamos.' },
       { status: 503, headers },
     );
   }
@@ -112,7 +113,7 @@ export async function POST(req: NextRequest) {
   // Rechazar aquí no cuesta y es lo que corta el fraude a números de
   // tarificación especial, que el rate-limit por IP no frena.
   const allowedCodes = parseAllowedCountryCodes(env.FUTURA_DEMO_ALLOWED_COUNTRY_CODES);
-  if (!isDestinationAllowed(phone, allowedCodes)) {
+  if (!isDestinationAllowed(phone, allowedCodes) || isPremiumRate(phone)) {
     console.warn('[demo-call] destino fuera de la lista blanca de países', {
       ip,
       prefix: phone.slice(0, 5),
@@ -150,14 +151,11 @@ export async function POST(req: NextRequest) {
 
   // Rate-limit por número: ¿hubo otra llamada demo al mismo teléfono en los
   // últimos RATE_LIMIT_SECONDS segundos?
-  const cutoff = new Date(Date.now() - RATE_LIMIT_SECONDS * 1000);
-  const [recent] = await db
-    .select({ id: calls.id })
-    .from(calls)
-    .where(
-      and(eq(calls.tenantId, tenantId), eq(calls.toNumber, phone), gte(calls.createdAt, cutoff)),
-    )
-    .limit(1);
+  // Una llamada por número y ventana. Se reserva en Redis ANTES de llamar:
+  // mirar la tabla de llamadas no servía, porque la fila no existe hasta que
+  // Retell avisa de que la llamada empezó.
+  const perNumber = await consumeRateLimit(`demo-call:num:${phone}`, 1, RATE_LIMIT_SECONDS);
+  const recent = !perNumber.allowed;
   if (recent) {
     const mins = Math.max(1, Math.round(RATE_LIMIT_SECONDS / 60));
     return NextResponse.json(

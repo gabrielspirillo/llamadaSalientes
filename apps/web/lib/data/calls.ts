@@ -8,6 +8,7 @@ export type UpsertCallInput = {
   retellCallId: string;
   fromNumber?: string | null;
   toNumber?: string | null;
+  direction?: string | null;
   startedAt?: Date | null;
   endedAt?: Date | null;
   durationSeconds?: number | null;
@@ -43,6 +44,7 @@ export async function upsertCall(input: UpsertCallInput) {
 
   assign('fromNumber', input.fromNumber);
   assign('toNumber', input.toNumber);
+  assign('direction', input.direction);
   assign('startedAt', input.startedAt);
   assign('endedAt', input.endedAt);
   assign('durationSeconds', input.durationSeconds);

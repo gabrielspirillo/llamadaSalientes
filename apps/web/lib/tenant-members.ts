@@ -108,7 +108,12 @@ export async function listTenantMembersSynced(
       .values(membershipRows)
       .onConflictDoUpdate({
         target: [tenantMemberships.tenantId, tenantMemberships.userId],
-        set: { role: sql`EXCLUDED.role` },
+        // Clerk sólo distingue admin/member: un `viewer` puesto en la app no
+        // se pisa con `member` (eso lo ascendía a operador al abrir cualquier
+        // página que lista miembros). Pasar a admin desde Clerk sí manda.
+        set: {
+          role: sql`CASE WHEN ${tenantMemberships.role} = 'viewer' AND EXCLUDED.role NOT LIKE '%admin%' THEN 'viewer' ELSE EXCLUDED.role END`,
+        },
       });
   }
 

@@ -1,4 +1,12 @@
+import { normalizePatientPhone } from '@/lib/agenda/patients';
+import { denyUnlessRole } from '@/lib/auth/api-guard';
+import {
+  describeAllowedCountries,
+  isDestinationAllowed,
+  parseAllowedCountryCodes,
+} from '@/lib/calls/destination-allowlist';
 import { triggerCallback } from '@/lib/calls/trigger-callback';
+import { type EnabledModules, isModuleEnabled } from '@/lib/modules';
 import { getCurrentTenant } from '@/lib/tenant';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -23,15 +31,38 @@ const bodySchema = z.object({
 export async function POST(req: NextRequest) {
   let tenantId: string;
   try {
+    // Cada llamada gasta minutos: un viewer o un profesional que sólo ve su
+    // agenda no la lanzan.
+    const denied = await denyUnlessRole('operator');
+    if (denied) return denied;
     const { tenant } = await getCurrentTenant();
+    if (!isModuleEnabled(tenant.enabledModules as EnabledModules | null, 'outbound')) {
+      return NextResponse.json(
+        { error: 'Tu clínica no tiene contratadas las llamadas salientes.' },
+        { status: 403 },
+      );
+    }
     tenantId = tenant.id;
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const parsed = bodySchema.safeParse(await req.json());
+  const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
+    return NextResponse.json({ error: 'Revisa el número y los datos.' }, { status: 422 });
+  }
+
+  // Lista blanca de países (fraude IRSF): la misma que la demo, ampliable con
+  // OUTBOUND_ALLOWED_COUNTRY_CODES.
+  const codes = parseAllowedCountryCodes(
+    process.env.OUTBOUND_ALLOWED_COUNTRY_CODES ?? process.env.FUTURA_DEMO_ALLOWED_COUNTRY_CODES,
+  );
+  const e164 = normalizePatientPhone(parsed.data.toNumber);
+  if (e164 && !isDestinationAllowed(e164, codes)) {
+    return NextResponse.json(
+      { error: `Sólo se puede llamar a ${describeAllowedCountries(codes)}.` },
+      { status: 422 },
+    );
   }
 
   const result = await triggerCallback({

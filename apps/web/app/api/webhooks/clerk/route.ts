@@ -218,7 +218,10 @@ async function handleMembershipUpsert(evt: ClerkMembershipEvent) {
     .values({ tenantId: tenant.id, userId: user.id, role })
     .onConflictDoUpdate({
       target: [tenantMemberships.tenantId, tenantMemberships.userId],
-      set: { role: sql`EXCLUDED.role` },
+      // Igual que `listTenantMembersSynced`: un viewer local no sube a operador.
+      set: {
+        role: sql`CASE WHEN ${tenantMemberships.role} = 'viewer' AND EXCLUDED.role NOT LIKE '%admin%' THEN 'viewer' ELSE EXCLUDED.role END`,
+      },
     });
 }
 
