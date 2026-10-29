@@ -10,9 +10,11 @@ import {
   phoneHasHistory,
   systemAgendaContext,
 } from '@/lib/agenda/agent';
+import { isUuid } from '@/lib/agenda/appointment-ref';
 import { firstVisitFromTreatment } from '@/lib/agenda/availability';
 import { pickAppointmentsToCancel } from '@/lib/agenda/cancel-match';
 import { withinClinicHours } from '@/lib/agenda/clinic-hours';
+import { decideFirstVisit, patientHasHistory } from '@/lib/agenda/first-visit';
 import { normalizePatientPhone } from '@/lib/agenda/patients';
 import {
   getAppointment,
@@ -54,6 +56,8 @@ export interface AgendaAvailabilityArgs {
    * clínicas con reglas de reserva.
    */
   first_visit?: boolean;
+  /** Ficha del paciente: decide si ya tiene historia. */
+  patient_id?: string;
 }
 
 export interface AgendaAvailabilityContext {
@@ -149,15 +153,24 @@ export async function agendaCheckAvailability(
   if (!(await usesInternalAgenda(tenantId))) return null;
 
   try {
-    // Primera visita: lo que diga el agente y, si no lo dice, lo que sepa la
-    // agenda del teléfono. Un fallo al mirarlo no puede dejar sin huecos: se
-    // asume paciente conocido y las reglas se vuelven a comprobar al reservar.
-    const firstVisit =
-      typeof args.first_visit === 'boolean'
-        ? args.first_visit
-        : ctx.patientPhone
-          ? !(await phoneHasHistory(tenantId, ctx.patientPhone).catch(() => true))
-          : false;
+    // Primera visita: quien ya tiene historia (cita o nota clínica) nunca lo
+    // es. Con patient_id se mira esa ficha; si no, lo que diga el agente; y si
+    // no dice nada, el historial del teléfono. Un fallo al mirarlo no deja sin
+    // huecos: se asume conocido y al reservar se vuelve a comprobar.
+    let returning = false;
+    let firstVisit = false;
+    if (args.patient_id && isUuid(args.patient_id)) {
+      returning = await patientHasHistory(tenantId, { patientId: args.patient_id }).catch(
+        () => true,
+      );
+      firstVisit = !returning;
+    } else if (typeof args.first_visit === 'boolean') {
+      firstVisit = args.first_visit;
+      returning = !args.first_visit;
+    } else if (ctx.patientPhone) {
+      returning = await phoneHasHistory(tenantId, ctx.patientPhone).catch(() => true);
+      firstVisit = !returning;
+    }
 
     const search = await findAgentSlots(tenantId, {
       treatmentName: args.treatment_name ?? null,
@@ -168,6 +181,7 @@ export async function agendaCheckAvailability(
       days: 14,
       limitPerProfessional: 400,
       firstVisit,
+      returning,
     });
 
     if (search.reason === 'NO_AGENDA') return null;
@@ -243,8 +257,11 @@ export async function agendaCheckAvailability(
       .filter(Boolean)
       .join(' ');
 
+    const relaxNote = search.relaxedConsecutive
+      ? 'Aviso: no queda ningún hueco que no vaya pegado a otra primera visita, así que se ofrecen estos (está permitido sólo porque no hay otra opción). '
+      : '';
     return {
-      result: `${noneOnRequested}OFRECE PRIMERO estas tres opciones${tratamiento}: ${spoken.join('; ')}. Si ninguna le sirve, NO digas que no hay hueco: ofrécele todas las horas libres de ese día; y si tampoco, las del día siguiente con huecos. ${fullDays}${varios} Sólo existen los huecos de esta lista: no inventes horas ni ofrezcas otras (ya respetan el horario de la clínica). Para otra fecha, vuelve a llamar a check_availability con preferred_date. Para reservar, el paciente tiene que ELEGIR un hueco concreto (día, hora Y profesional): un "sí" o "dale" ambiguo NO es una elección. Luego pasá a book_appointment el start_time y el professional_id EXACTOS de ESE hueco, copiados tal cual de los corchetes (start_time es la hora de la clínica, NO la conviertas ni le añadas zona). Al paciente decile sólo el día, la hora y el nombre del profesional.`,
+      result: `${noneOnRequested}${relaxNote}OFRECE PRIMERO estas tres opciones${tratamiento}: ${spoken.join('; ')}. Si ninguna le sirve, NO digas que no hay hueco: ofrécele todas las horas libres de ese día; y si tampoco, las del día siguiente con huecos. ${fullDays}${varios} Sólo existen los huecos de esta lista: no inventes horas ni ofrezcas otras (ya respetan el horario de la clínica). Para otra fecha, vuelve a llamar a check_availability con preferred_date. Para reservar, el paciente tiene que ELEGIR un hueco concreto (día, hora Y profesional): un "sí" o "dale" ambiguo NO es una elección. Luego pasá a book_appointment el start_time y el professional_id EXACTOS de ESE hueco, copiados tal cual de los corchetes (start_time es la hora de la clínica, NO la conviertas ni le añadas zona). Al paciente decile sólo el día, la hora y el nombre del profesional.`,
     };
   } catch (err) {
     console.error('[agenda-voice] check_availability', err);
@@ -267,30 +284,21 @@ async function bookingIsFirstVisit(
   tenantId: string,
   input: { treatmentId: string | null; patientId: string | null; phone: string | null },
 ): Promise<boolean> {
+  let byTreatment: boolean | null = null;
   if (input.treatmentId) {
     const [row] = await db
       .select({ visitKind: treatments.visitKind })
       .from(treatments)
       .where(and(eq(treatments.tenantId, tenantId), eq(treatments.id, input.treatmentId)))
       .limit(1);
-    const byTreatment = firstVisitFromTreatment(row?.visitKind);
-    if (byTreatment !== null) return byTreatment;
+    byTreatment = firstVisitFromTreatment(row?.visitKind);
   }
-  if (input.patientId) {
-    const [prior] = await db
-      .select({ id: agendaAppointments.id })
-      .from(agendaAppointments)
-      .where(
-        and(
-          eq(agendaAppointments.tenantId, tenantId),
-          eq(agendaAppointments.patientId, input.patientId),
-          inArray(agendaAppointments.status, BUSY_STATUSES),
-        ),
-      )
-      .limit(1);
-    return !prior;
-  }
-  return input.phone ? !(await phoneHasHistory(tenantId, input.phone).catch(() => true)) : false;
+  const hasHistory = input.patientId
+    ? await patientHasHistory(tenantId, { patientId: input.patientId })
+    : input.phone
+      ? await phoneHasHistory(tenantId, input.phone).catch(() => true)
+      : true;
+  return decideFirstVisit(hasHistory, byTreatment);
 }
 
 export async function agendaBookAppointment(
@@ -383,14 +391,15 @@ export async function agendaBookAppointment(
       .from(clinicSettings)
       .where(eq(clinicSettings.tenantId, tenantId))
       .limit(1);
-    const freeOn = async (dayKey: string) => {
+    const freeBetween = async (fromKey: string, toKey: string, relax: boolean) => {
       const availability = await getAvailability(tenantId, {
         professionalId: professional.id,
-        fromDateKey: addDaysToKey(dayKey, -1),
-        toDateKey: addDaysToKey(dayKey, 1),
+        fromDateKey: fromKey,
+        toDateKey: toKey,
         durationMinutes: duration,
         limit: 400,
         firstVisit,
+        relaxConsecutiveFirstVisits: relax,
       });
       return availability.slots
         .map((sl) => ({ start: sl.start, end: sl.end }))
@@ -403,19 +412,35 @@ export async function agendaBookAppointment(
           'No entiendo esa hora. Pasa en start_time el hueco exacto que devolvió check_availability (por ejemplo "2026-11-03 16:00").',
       };
     }
-    const free = await freeOn(probe.dayKey);
-    const chosen = matchRequestedSlot(
+    const dayKey = probe.dayKey;
+    const free = await freeBetween(addDaysToKey(dayKey, -1), addDaysToKey(dayKey, 1), false);
+    let chosen = matchRequestedSlot(
       args.start_time,
       timezone,
       free.map((f) => f.start),
     ).start;
+    // Pegada a otra primera visita: sólo si de ahí en adelante no queda ningún
+    // otro hueco en dos semanas (es lo que hace check_availability al ofrecer).
+    let relaxConsecutive = false;
+    if (!chosen && firstVisit) {
+      const ahead = await freeBetween(dayKey, addDaysToKey(dayKey, 14), false);
+      if (ahead.length === 0) {
+        const relaxed = await freeBetween(addDaysToKey(dayKey, -1), addDaysToKey(dayKey, 1), true);
+        chosen = matchRequestedSlot(
+          args.start_time,
+          timezone,
+          relaxed.map((f) => f.start),
+        ).start;
+        relaxConsecutive = chosen !== null;
+      }
+    }
     if (!chosen) {
-      const sameDay = free.filter((f) => localDateKey(f.start, timezone) === probe.dayKey);
+      const sameDay = free.filter((f) => localDateKey(f.start, timezone) === dayKey);
       const lista = sameDay.map((f) => speakClockTime(f.start, timezone)).join(', ');
       return {
         result: sameDay.length
-          ? `Esa hora no está libre con ${professional.fullName}. Ese día (${probe.dayKey}) sí quedan: ${lista}. Ofrécele una de esas (start_time "${probe.dayKey} HH:MM") y no le digas otra.`
-          : `Ese día (${probe.dayKey}) ${professional.fullName} no tiene ningún hueco libre. Llama a check_availability con preferred_date del día siguiente y ofrécele lo que devuelva.`,
+          ? `Esa hora no está libre con ${professional.fullName}. Ese día (${dayKey}) sí quedan: ${lista}. Ofrécele una de esas (start_time "${dayKey} HH:MM") y no le digas otra.`
+          : `Ese día (${dayKey}) ${professional.fullName} no tiene ningún hueco libre. Llama a check_availability con preferred_date del día siguiente y ofrécele lo que devuelva.`,
       };
     }
 
@@ -430,6 +455,7 @@ export async function agendaBookAppointment(
       ghlContactId: args.contact_id ?? '',
       startsAt: chosen.toISOString(),
       durationMinutes: treatment?.durationMinutes,
+      relaxConsecutiveFirstVisits: relaxConsecutive,
       notes: args.notes ?? '',
       source: args.source ?? 'VOICE_AGENT',
       dedupeKey: args.dedupe_key,

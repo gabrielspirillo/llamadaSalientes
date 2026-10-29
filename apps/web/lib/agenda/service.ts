@@ -9,6 +9,7 @@ import {
   firstVisitFromTreatment,
   isInsideWorkingHours,
 } from '@/lib/agenda/availability';
+import { decideFirstVisit, patientHasHistory } from '@/lib/agenda/first-visit';
 import { normalizePatientPhone, patientIdFromKey, patientKeyFor } from '@/lib/agenda/patients';
 import {
   getClinicTimezone,
@@ -223,6 +224,8 @@ export const appointmentInputSchema = z.object({
    * panel, a sabiendas). Los agentes nunca lo mandan.
    */
   overridePolicy: z.boolean().optional(),
+  /** Deja pasar dos primeras visitas seguidas (no hay otro hueco más adelante). */
+  relaxConsecutiveFirstVisits: z.boolean().optional(),
   /** ¿Quiere adelantar esta cita si se libera un hueco? Se pregunta al reservar. */
   advancePreference: z.enum(['ACCEPTS', 'NO_MOVE']).nullable().optional(),
   advanceNote: z.string().trim().max(200).optional().or(z.literal('')),
@@ -863,24 +866,19 @@ export async function createAppointment(
     // historial (el paciente no tenía ninguna cita que ocupara hueco). Es lo
     // que leen las reglas de reserva de las clínicas con perfil. Sin
     // identidad no hay forma de saberlo y se deja en falso.
-    let isFirstVisit = input.isFirstVisit ?? treatmentFirstVisit ?? false;
-    if (
-      input.isFirstVisit === undefined &&
-      treatmentFirstVisit === null &&
-      patientKey !== 'anon:sin-datos'
-    ) {
-      const previous = await tx
-        .select({ id: agendaAppointments.id })
-        .from(agendaAppointments)
-        .where(
-          and(
-            eq(agendaAppointments.tenantId, ctx.tenantId),
-            eq(agendaAppointments.patientKey, patientKey),
-            inArray(agendaAppointments.status, BUSY_STATUSES),
-          ),
-        )
-        .limit(1);
-      isFirstVisit = previous.length === 0;
+    // Primera visita: lo explícito manda. Si no, quien ya tiene historia (una
+    // cita que contó o una nota clínica) NUNCA es primera, aunque el
+    // tratamiento se llame "Primera visita"; sin historia decide el
+    // tratamiento (los mellizos van como seguimiento) y si no dice, primera.
+    // Sin identidad no hay forma de saberlo y se deja en falso.
+    let isFirstVisit = input.isFirstVisit ?? false;
+    if (input.isFirstVisit === undefined && patientKey !== 'anon:sin-datos') {
+      isFirstVisit = decideFirstVisit(
+        await patientHasHistory(ctx.tenantId, { patientId: person?.id, patientKey }, tx),
+        treatmentFirstVisit,
+      );
+    } else if (input.isFirstVisit === undefined) {
+      isFirstVisit = treatmentFirstVisit ?? false;
     }
 
     // Las reglas de primeras visitas se imponen aquí, no sólo al ofrecer
@@ -892,7 +890,9 @@ export async function createAppointment(
         startsAt,
         endsAt,
         busy.map((b) => ({ start: b.startsAt, end: b.endsAt, firstVisit: b.isFirstVisit })),
-        rules,
+        // Sin más huecos por delante, la de "seguidas" cede (lo decide quien
+        // ofrece: el agente sólo lo pide cuando ya no queda otra opción).
+        input.relaxConsecutiveFirstVisits ? { ...rules, maxConsecutive: null } : rules,
         timezone,
       );
       if (conflict) throw new AgendaPolicyError(conflict);
@@ -1103,7 +1103,42 @@ export async function updateAppointment(
       // Cambiar a un tratamiento que dice qué visita es recalcula la marca:
       // corregir "primera" por "recurrente" tiene que liberar la regla.
       const fromTreatment = firstVisitFromTreatment(rows[0]?.visitKind);
-      if (fromTreatment !== null) values.isFirstVisit = fromTreatment;
+      if (fromTreatment === false) values.isFirstVisit = false;
+      if (fromTreatment === true) {
+        // "Primera visita" sólo para quien no tiene otra historia que esta cita.
+        const [self] = await db
+          .select({
+            patientId: agendaAppointments.patientId,
+            patientKey: agendaAppointments.patientKey,
+            startsAt: agendaAppointments.startsAt,
+          })
+          .from(agendaAppointments)
+          .where(
+            and(
+              eq(agendaAppointments.tenantId, ctx.tenantId),
+              eq(agendaAppointments.id, appointmentId),
+            ),
+          )
+          .limit(1);
+        const [earlier] = self
+          ? await db
+              .select({ id: agendaAppointments.id })
+              .from(agendaAppointments)
+              .where(
+                and(
+                  eq(agendaAppointments.tenantId, ctx.tenantId),
+                  ne(agendaAppointments.id, appointmentId),
+                  inArray(agendaAppointments.status, BUSY_STATUSES),
+                  lt(agendaAppointments.startsAt, self.startsAt),
+                  self.patientId
+                    ? eq(agendaAppointments.patientId, self.patientId)
+                    : eq(agendaAppointments.patientKey, self.patientKey),
+                ),
+              )
+              .limit(1)
+          : [];
+        values.isFirstVisit = !earlier;
+      }
     }
     values.treatmentId = patch.treatmentId;
   }

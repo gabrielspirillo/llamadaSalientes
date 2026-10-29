@@ -75,6 +75,11 @@ const CAMPOS_NUEVOS: Record<string, Record<string, { type: string; description?:
       description:
         'Opcional. true si es un paciente nuevo (primera visita). Algunas clínicas reservan las primeras visitas en horarios concretos.',
     },
+    patient_id: {
+      type: 'string',
+      description:
+        'Opcional: patient_id del paciente (de get_patient_info). Con historia nunca es primera visita.',
+    },
   },
   book_appointment: {
     professional_id: {

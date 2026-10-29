@@ -219,6 +219,11 @@ export interface AgentSlotSearch {
   now?: Date;
   /** El hueco es para un paciente nuevo: aplican las reglas de primeras visitas. */
   firstVisit?: boolean;
+  /**
+   * Ya se sabe que el paciente tiene historia: no es primera visita aunque el
+   * tratamiento elegido se llame así.
+   */
+  returning?: boolean;
 }
 
 export interface AgentSlotOption {
@@ -232,6 +237,10 @@ export interface AgentSlotOption {
 }
 
 export interface AgentSlotSearchResult {
+  /** Se buscó como primera visita (con sus reglas). */
+  firstVisit?: boolean;
+  /** No había ningún hueco sin pegar a otra primera visita: se ofrecen igual. */
+  relaxedConsecutive?: boolean;
   timezone: string;
   options: AgentSlotOption[];
   matchedTreatment: { id: string; name: string } | null;
@@ -308,7 +317,7 @@ export async function findAgentSlots(
       .from(treatments)
       .where(and(eq(treatments.tenantId, tenantId), eq(treatments.id, matchedTreatment.id)))
       .limit(1);
-    firstVisit = firstVisitFromTreatment(row?.visitKind) ?? firstVisit;
+    firstVisit = params.returning ? false : (firstVisitFromTreatment(row?.visitKind) ?? firstVisit);
   }
 
   const matchedProfessional = params.professionalName
@@ -372,32 +381,34 @@ export async function findAgentSlots(
     : bookable.map((p) => ({ id: p.id, fullName: p.fullName }));
 
   const perProfessional = params.limitPerProfessional ?? 4;
-  const results = await Promise.all(
-    bookable.map(async (p) => {
-      const duration =
-        p.treatments.find((t) => t.id === matchedTreatment?.id)?.durationMinutes ??
-        matchedTreatment?.durationMinutes ??
-        30;
-      const availability: AvailabilityResult = await getAvailability(tenantId, {
-        professionalId: p.id,
-        fromDateKey: fromKey,
-        toDateKey: toKey,
-        durationMinutes: duration,
-        limit: perProfessional,
-        now,
-        firstVisit,
-      });
-      return availability.slots.map<AgentSlotOption>((s) => ({
-        professionalId: p.id,
-        professionalName: p.fullName,
-        treatmentId: matchedTreatment?.id ?? null,
-        treatmentName: matchedTreatment?.name ?? null,
-        durationMinutes: duration,
-        start: s.start,
-        end: s.end,
-      }));
-    }),
-  );
+  const search = (relax: boolean) =>
+    Promise.all(
+      bookable.map(async (p) => {
+        const duration =
+          p.treatments.find((t) => t.id === matchedTreatment?.id)?.durationMinutes ??
+          matchedTreatment?.durationMinutes ??
+          30;
+        const availability: AvailabilityResult = await getAvailability(tenantId, {
+          professionalId: p.id,
+          fromDateKey: fromKey,
+          toDateKey: toKey,
+          durationMinutes: duration,
+          limit: perProfessional,
+          now,
+          firstVisit,
+          relaxConsecutiveFirstVisits: relax,
+        });
+        return availability.slots.map<AgentSlotOption>((s) => ({
+          professionalId: p.id,
+          professionalName: p.fullName,
+          treatmentId: matchedTreatment?.id ?? null,
+          treatmentName: matchedTreatment?.name ?? null,
+          durationMinutes: duration,
+          start: s.start,
+          end: s.end,
+        }));
+      }),
+    );
 
   // El horario de atención de la clínica (Datos de la clínica) manda sobre la
   // jornada de cada profesional: fuera de él no se ofrece nada.
@@ -406,10 +417,19 @@ export async function findAgentSlots(
     .from(clinicSettings)
     .where(eq(clinicSettings.tenantId, tenantId))
     .limit(1);
-  const options = results
-    .flat()
-    .filter((o) => withinClinicHours(o.start, o.end, timezone, settings?.workingHours))
-    .sort((a, b) => a.start.getTime() - b.start.getTime());
+  const inHours = (list: AgentSlotOption[][]) =>
+    list
+      .flat()
+      .filter((o) => withinClinicHours(o.start, o.end, timezone, settings?.workingHours))
+      .sort((a, b) => a.start.getTime() - b.start.getTime());
+  let options = inHours(await search(false));
+  // Una primera visita no va pegada a otra primera visita, salvo que más
+  // adelante no quede ningún otro hueco: entonces sí.
+  let relaxedConsecutive = false;
+  if (firstVisit && options.length === 0) {
+    options = inHours(await search(true));
+    relaxedConsecutive = options.length > 0;
+  }
 
   return {
     timezone,
@@ -422,6 +442,8 @@ export async function findAgentSlots(
       : null,
     offeredBy,
     reason: options.length > 0 ? 'OK' : 'NO_SLOTS',
+    firstVisit,
+    relaxedConsecutive,
   };
 }
 

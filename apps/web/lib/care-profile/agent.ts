@@ -1,3 +1,4 @@
+import { patientHasHistory } from '@/lib/agenda/first-visit';
 import 'server-only';
 
 import { getAgentPatientContext, matchByName, normalizeName } from '@/lib/agenda/agent';
@@ -245,13 +246,33 @@ export async function describePatientsForPhone(
       }
       if (agenda?.pendingFollowUp) parts.push(`pendiente: ${agenda.pendingFollowUp}`);
 
+      // Hermanos del mismo teléfono: misma fecha de nacimiento = mellizos/gemelos.
+      const others = children.filter((o) => o.id !== p.id);
+      const twins = others.filter((o) => p.birthDate && o.birthDate === p.birthDate);
+      if (p.siblingMark === 'TWIN' || twins.length > 0) {
+        parts.push(
+          `MELLIZO/GEMELO${twins.length ? ` de ${twins.map((t) => t.firstName).join(', ')}` : ''}`,
+        );
+      } else if (p.siblingMark === 'SIBLING' || others.length > 0) {
+        parts.push(
+          `HERMANO/A${others.length ? ` de ${others.map((t) => t.firstName).join(', ')}` : ''}`,
+        );
+      }
+
+      const returning = await patientHasHistory(tenantId, { patientId: p.id }).catch(() => false);
+      parts.push(
+        returning
+          ? 'YA VINO ANTES: NO es primera visita (usa el tratamiento de seguimiento)'
+          : 'sin visitas aún: su primera cita es PRIMERA VISITA',
+      );
+
       return parts.join(' · ');
     }),
   );
 
   const tutor = contact?.name?.trim() || contact?.firstName?.trim() || null;
   return {
-    result: `Este teléfono es de ${tutor ?? 'un tutor'}. Niños registrados:\n${lines.join('\n')}\nPregunta para cuál de ellos es la cita si hay más de uno. Para reservar, book_appointment con su patient_id. Un hermano nuevo se da de alta con register_patient.`,
+    result: `Este teléfono es de ${tutor ?? 'un tutor'}. Niños registrados:\n${lines.join('\n')}\nPregunta para cuál de ellos es la cita si hay más de uno. Para buscar huecos pasa su patient_id a check_availability y para reservar, a book_appointment. Un hermano nuevo se da de alta con register_patient.`,
   };
 }
 

@@ -43,6 +43,7 @@ export type CheckAvailabilityArgs = {
   professional_name?: string;
   /** Agenda interna: el paciente es nuevo (aplican las reglas de primeras visitas). */
   first_visit?: boolean;
+  patient_id?: string;
 };
 
 export type BookAppointmentArgs = {
@@ -184,6 +185,7 @@ export async function checkAvailability(
       preferred_date: args.preferred_date,
       professional_name: args.professional_name,
       first_visit: typeof args.first_visit === 'boolean' ? args.first_visit : undefined,
+      patient_id: typeof args.patient_id === 'string' ? args.patient_id : undefined,
     },
     { patientPhone: normalizePatientPhone(ctx.patientPhone) },
   );

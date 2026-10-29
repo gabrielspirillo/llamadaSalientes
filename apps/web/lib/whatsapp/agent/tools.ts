@@ -43,6 +43,8 @@ const checkAvailabilityArgs = z.object({
   professional_name: z.string().optional(),
   // Agenda interna: paciente nuevo (reglas de primeras visitas, si la clínica las tiene).
   first_visit: z.boolean().optional(),
+  // Ficha del paciente: con ella se sabe si ya vino (no es primera visita).
+  patient_id: z.string().optional(),
 });
 
 const bookAppointmentArgs = z.object({
@@ -214,6 +216,11 @@ function allToolDefinitions(): AgentToolDefinition[] {
             type: 'boolean',
             description:
               'Opcional. true si es un paciente nuevo (primera visita). Algunas clínicas reservan las primeras visitas en horarios concretos; si no lo pasas, se deduce del historial del teléfono.',
+          },
+          patient_id: {
+            type: 'string',
+            description:
+              'Opcional pero recomendado: el patient_id del paciente (de get_patient_info o del contexto). Con él se sabe si ya vino antes: un paciente con historia NUNCA es primera visita.',
           },
         },
         required: ['treatment_name', 'preferred_date'],

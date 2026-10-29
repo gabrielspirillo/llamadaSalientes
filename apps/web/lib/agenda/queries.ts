@@ -446,6 +446,8 @@ export interface AvailabilityParams {
    * primeras; en el resto no cambia nada.
    */
   firstVisit?: boolean;
+  /** Ignora el tope de primeras visitas seguidas (las franjas vetadas siguen). */
+  relaxConsecutiveFirstVisits?: boolean;
   /**
    * Cita que se está moviendo: no ocupa su propio hueco. Sin esto, al mover
    * una cita su hora y las de al lado salían como ocupadas por ella misma.
@@ -550,7 +552,12 @@ export async function getAvailability(
     minNoticeHours: params.staff ? 0 : professional.minNoticeHours,
     maxAdvanceDays: params.staff ? 400 : professional.maxAdvanceDays,
     now: params.now ?? new Date(),
-    firstVisit: careProfile ? firstVisitRules(careProfile.bookingPolicy) : null,
+    firstVisit: (() => {
+      const rules = careProfile ? firstVisitRules(careProfile.bookingPolicy) : null;
+      return rules && params.relaxConsecutiveFirstVisits
+        ? { ...rules, maxConsecutive: null }
+        : rules;
+    })(),
   };
 
   const shiftRules = shiftRows.map(toShiftRule);
