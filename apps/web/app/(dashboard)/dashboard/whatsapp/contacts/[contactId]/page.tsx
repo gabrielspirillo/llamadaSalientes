@@ -168,9 +168,9 @@ export default async function ContactDetailPage({ params }: Props) {
 
   return (
     // Outer: ocupa toda la altura visible. NO scrollea.
-    <div className="-mx-4 flex flex-col lg:flex-row lg:h-[calc(100vh-7.5rem)] gap-4 lg:overflow-hidden sm:mx-0">
+    <div className="-mx-4 flex flex-col lg:flex-row lg:h-[calc(100dvh-8.75rem)] gap-4 lg:overflow-hidden sm:mx-0">
       {/* COLUMNA IZQUIERDA: contenedor flex-col con header fijo + form scrollable. */}
-      <div className="flex min-w-0 flex-1 flex-col bg-zinc-50 h-[calc(100vh-7.5rem)] lg:h-auto">
+      <div className="flex min-w-0 flex-1 flex-col bg-zinc-50 h-[calc(100dvh-8.75rem)] min-h-0 lg:h-auto">
         {/* Header fijo: breadcrumb + acción. No scrollea. */}
         <div className="shrink-0 px-6 pt-4">
           <div className="flex items-center justify-between">

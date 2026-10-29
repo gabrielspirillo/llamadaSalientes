@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/input';
 import { Equalizer } from '@/components/ui/stat';
 import type { DataChangeProposal } from '@/lib/agent-training/data-changes';
 import type { LessonProposal } from '@/lib/agent-training/model';
+import { scrollContainerToBottom } from '@/lib/scroll';
 import { GraduationCap, Loader2, RotateCcw, Send, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
@@ -58,7 +59,7 @@ export function TrainerChat({
   // vez escrito y así el efecto no se dispara de más.
   useEffect(() => {
     if (turns.length === 0) return;
-    finalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    scrollContainerToBottom(finalRef.current, true);
   }, [turns.length]);
 
   async function enviar(texto: string) {

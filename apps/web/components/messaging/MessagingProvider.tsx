@@ -719,7 +719,7 @@ function NotificationToasts({
   return (
     // Sin `role="status"`: cada toast lleva botones y el contenedor solo anuncia.
     <div
-      className="pointer-events-none fixed bottom-24 right-4 z-[70] flex w-[320px] max-w-[calc(100vw-2rem)] flex-col gap-2 sm:right-6"
+      className="pointer-events-none fixed bottom-6 right-4 z-[70] flex w-[320px] max-w-[calc(100vw-2rem)] flex-col gap-2 sm:right-6"
       aria-live="polite"
     >
       {toasts.map((t) => (

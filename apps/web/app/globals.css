@@ -334,9 +334,18 @@
   text-rendering: optimizeLegibility;
 }
 
+html {
+  /* El hueco de la barra de scroll siempre reservado: el contenido no salta
+     de lado al pasar de una página corta a una larga. */
+  scrollbar-gutter: stable;
+}
+
 html,
 body {
   background: var(--color-canvas);
+  /* Sin "rebote" al llegar arriba o abajo: el panel se desplazaba entero y
+     dejaba ver una franja vacía por encima del topbar o bajo el contenido. */
+  overscroll-behavior-y: none;
   color: var(--color-fg);
   font-family: var(--font-sans);
   font-feature-settings: "cv11", "ss01", "ss03";

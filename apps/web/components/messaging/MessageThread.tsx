@@ -23,6 +23,7 @@ import type {
   ImPerson,
   ImPresence,
 } from '@/lib/messaging/types';
+import { scrollContainerToBottom } from '@/lib/scroll';
 import {
   ArrowDown,
   ChevronLeft,
@@ -119,7 +120,7 @@ export function MessageThread({
   const dragDepth = useRef(0);
 
   const scrollToBottom = useCallback((smooth = false) => {
-    bottomRef.current?.scrollIntoView({ block: 'end', behavior: smooth ? 'smooth' : 'auto' });
+    scrollContainerToBottom(bottomRef.current, smooth);
     stickToBottomRef.current = true;
     setShowJump(false);
   }, []);

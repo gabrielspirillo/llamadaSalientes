@@ -175,9 +175,9 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
   }
 
   return (
-    <div className="-mx-4 flex flex-col overflow-hidden rounded-none border-(--color-border) bg-white sm:mx-0 sm:rounded-[22px] sm:border sm:shadow-[var(--shadow-soft)] lg:h-[calc(100vh-9rem)] lg:flex-row">
+    <div className="-mx-4 flex flex-col overflow-hidden rounded-none border-(--color-border) bg-white sm:mx-0 sm:rounded-[22px] sm:border sm:shadow-[var(--shadow-soft)] lg:h-[calc(100dvh-8.75rem)] lg:flex-row">
       {/* Centro: cabecera + thread + composer */}
-      <div className="flex h-[calc(100vh-9rem)] min-w-0 flex-1 flex-col lg:h-auto">
+      <div className="flex h-[calc(100dvh-8.75rem)] min-h-0 min-w-0 flex-1 flex-col lg:h-auto">
         <div className="flex items-center justify-between gap-3 border-b border-(--color-border-subtle) bg-white/80 px-4 py-3 backdrop-blur-xl">
           <div className="flex min-w-0 items-center gap-3">
             <Link

@@ -61,7 +61,10 @@ export function MessagesStream({ conversationId, initialMessages, senderUserEmai
 
   useLayoutEffect(() => {
     if (stickToBottomRef.current) {
-      bottomAnchorRef.current?.scrollIntoView({ block: 'end' });
+      // Se baja el contenedor, no `scrollIntoView`: ése desplaza también la
+      // página entera y el chat aparecía con la cabecera fuera de la vista.
+      const el = scrollContainerRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
     }
   }, [messages, isAgentTyping]);
 
@@ -125,7 +128,7 @@ export function MessagesStream({ conversationId, initialMessages, senderUserEmai
     <div
       ref={scrollContainerRef}
       onScroll={onScroll}
-      className="flex-1 overflow-y-auto bg-[linear-gradient(180deg,#fafdfb_0%,#f6f5fb_100%)] p-4"
+      className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[linear-gradient(180deg,#fafdfb_0%,#f6f5fb_100%)] p-4"
     >
       {!connected && (
         <output className="sticky top-0 z-10 mx-auto mb-3 block w-fit rounded-full bg-amber-50 px-3 py-1 text-[12px] font-semibold text-amber-800 shadow-sm">

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Callout } from '@/components/ui/feedback';
 import { Input, Label } from '@/components/ui/input';
+import { scrollContainerToBottom } from '@/lib/scroll';
 import { AlertTriangle, Bot, MessageSquare, RotateCcw, Send, User, Wrench } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -75,7 +76,7 @@ export function WhatsappTester() {
   // el contenido no cambia una vez escrito y así el efecto no se dispara de más.
   useEffect(() => {
     if (turns.length === 0) return;
-    finalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    scrollContainerToBottom(finalRef.current, true);
   }, [turns.length]);
 
   function reiniciar() {

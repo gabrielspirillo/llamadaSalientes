@@ -213,7 +213,7 @@ export function ContactSidebar({
   const assignedMember = members.find((m) => m.userId === assignedUserId);
 
   return (
-    <aside className="flex w-full flex-col gap-4 overflow-y-auto border-t border-(--color-border-subtle) bg-[linear-gradient(180deg,#fafdfb,#f6f5fb)] p-4 lg:w-80 lg:shrink-0 lg:border-l lg:border-t-0">
+    <aside className="flex w-full flex-col gap-4 overflow-y-auto overscroll-contain border-t border-(--color-border-subtle) bg-[linear-gradient(180deg,#fafdfb,#f6f5fb)] p-4 lg:w-80 lg:shrink-0 lg:border-l lg:border-t-0">
       {error && (
         <div className="animate-fade-down rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-[13px] text-rose-700">
           {error}

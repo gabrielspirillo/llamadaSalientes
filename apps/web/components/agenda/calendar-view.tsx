@@ -445,7 +445,7 @@ export function CalendarView(props: CalendarViewProps) {
             description="Enciende su agenda desde la ficha del profesional."
           />
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overflow-y-hidden">
             <div className="min-w-[640px]">
               {/* Cabecera de columnas */}
               <div
