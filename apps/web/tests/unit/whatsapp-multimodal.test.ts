@@ -162,7 +162,9 @@ describe('processInboundMessages', () => {
 
     expect(connector.downloadMedia).toHaveBeenCalledWith('media-123');
     expect(mocks.transcribeAudio).toHaveBeenCalledTimes(1);
-    expect(out.combinedText).toBe('[t+0s] (nota de voz del paciente, transcrita) Hola necesito turno');
+    expect(out.combinedText).toBe(
+      '[t+0s] (nota de voz del paciente, transcrita) Hola necesito turno',
+    );
     // Persiste transcripción + mediaUrl (de la subida fake) en DB.
     expect(mocks.updateSet).toHaveBeenCalledWith(
       expect.objectContaining({
