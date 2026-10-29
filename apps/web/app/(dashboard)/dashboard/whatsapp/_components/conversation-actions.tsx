@@ -3,6 +3,9 @@
 import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 
+import { Button, IconButton } from '@/components/ui/button';
+import { CheckCircle2, Flag, Hand, Trash2 } from 'lucide-react';
+
 import {
   closeConversation,
   deleteConversation,
@@ -40,51 +43,56 @@ export function ConversationActions({ conversationId, status, urgentFlag }: Prop
       router.refresh();
     });
 
+  // Una sola acción destacada (atender). Urgente y eliminar son iconos: con
+  // cuatro botones de colores la cabecera saltaba a dos líneas y cortaba el
+  // nombre del paciente.
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <button
-        type="button"
+    <div className="flex shrink-0 items-center gap-1.5">
+      <IconButton
+        label={urgentFlag ? 'Quitar urgente' : 'Marcar urgente'}
         onClick={run(() => toggleUrgent({ conversationId }))}
         disabled={pending}
-        className={`rounded-full border px-3.5 py-1.5 text-[13px] font-semibold transition-all duration-300 hover:-translate-y-0.5 active:scale-95 ${
-          urgentFlag
-            ? 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100'
-            : 'border-(--color-border) bg-white text-zinc-700 hover:border-brand-200 hover:text-brand-700'
-        } disabled:opacity-50`}
+        className={
+          urgentFlag ? 'bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700' : ''
+        }
       >
-        {urgentFlag ? 'Quitar urgente' : 'Marcar urgente'}
-      </button>
+        <Flag className="h-4 w-4" fill={urgentFlag ? 'currentColor' : 'none'} />
+      </IconButton>
 
       {status !== 'HANDOFF' && status !== 'CLOSED' && (
-        <button
-          type="button"
+        <Button
+          size="sm"
+          variant="soft"
           onClick={run(() => takeoverConversation({ conversationId, hours: 2 }))}
           disabled={pending}
-          className="rounded-full bg-[linear-gradient(120deg,#d97706,#fbbf24)] px-3.5 py-1.5 text-[13px] font-semibold text-white shadow-[0_6px_18px_-8px_rgba(245,158,11,0.8)] transition-all duration-300 hover:-translate-y-0.5 active:scale-95 disabled:opacity-50"
+          title="Pausa al asistente 2 horas y contestas tú"
         >
-          Atender yo (2 h)
-        </button>
+          <Hand className="h-4 w-4" />
+          <span className="hidden sm:inline">Atender yo</span>
+        </Button>
       )}
 
       {status !== 'CLOSED' && (
-        <button
-          type="button"
+        <Button
+          size="sm"
+          variant="secondary"
           onClick={run(() => closeConversation({ conversationId }))}
           disabled={pending}
-          className="rounded-full border border-rose-200 bg-white px-3.5 py-1.5 text-[13px] font-semibold text-rose-700 transition-all duration-300 hover:-translate-y-0.5 hover:bg-rose-50 active:scale-95 disabled:opacity-50"
+          title="Cerrar la conversación"
         >
-          Cerrar
-        </button>
+          <CheckCircle2 className="h-4 w-4" />
+          <span className="hidden sm:inline">Cerrar</span>
+        </Button>
       )}
 
-      <button
-        type="button"
+      <IconButton
+        label="Eliminar conversación"
         onClick={onDelete}
         disabled={pending}
-        className="rounded-full border border-rose-300 bg-rose-600 px-3.5 py-1.5 text-[13px] font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-rose-700 active:scale-95 disabled:opacity-50"
+        className="hover:bg-rose-50 hover:text-rose-600"
       >
-        Eliminar
-      </button>
+        <Trash2 className="h-4 w-4" />
+      </IconButton>
     </div>
   );
 }

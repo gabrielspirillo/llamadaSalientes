@@ -1,5 +1,5 @@
 import { and, asc, eq, inArray } from 'drizzle-orm';
-import { ArrowLeft, Zap } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
@@ -22,11 +22,16 @@ import { getLeadMemory } from '@/lib/memory/lead-memory';
 import { getCurrentTenant } from '@/lib/tenant';
 import { listTenantMembersSynced } from '@/lib/tenant-members';
 
+import { getCareProfile } from '@/lib/care-profile/queries';
+import { tenantHasEsign } from '@/lib/consents/service';
 import { contactDisplayNames } from '@/lib/patients/display-names';
+import { formatPhoneDisplay } from '@/lib/patients/names';
+import { getTenantTimezone } from '@/lib/tasks/materialize';
 import { ContactSidebar } from '../_components/contact-sidebar';
 import { ConversationActions } from '../_components/conversation-actions';
 import { MessageComposer } from '../_components/message-composer';
 import { MessagesStream } from '../_components/messages-stream';
+import { PatientBrief } from '../_components/patient-brief';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,6 +80,23 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
     row.contact.id,
   );
   const displayName = display?.name ?? row.contact.name ?? row.contact.phoneE164;
+  // La ficha clínica: la del paciente si hay una sola; con varios hijos, la
+  // tarjeta de la derecha enlaza cada una. Sin ficha, la del contacto (tel:).
+  const patientIds = display?.patientIds ?? [];
+  const fichaHref =
+    patientIds.length === 1
+      ? `/dashboard/agenda/pacientes/${encodeURIComponent(`pat:${patientIds[0]}`)}`
+      : patientIds.length === 0
+        ? `/dashboard/agenda/pacientes/${encodeURIComponent(`tel:${row.contact.phoneE164}`)}`
+        : null;
+  const [careProfile, timezone, hasEsign] =
+    patientIds.length > 0
+      ? await Promise.all([
+          getCareProfile(tenant.id).catch(() => null),
+          getTenantTimezone(tenant.id).catch(() => 'Europe/Madrid'),
+          tenantHasEsign(tenant.id).catch(() => false),
+        ])
+      : [null, 'Europe/Madrid', false];
 
   // Memoria del lead (cross-canal) para mostrar en el sidebar. Best-effort.
   const leadMemPromise = getLeadMemory(tenant.id, row.contact.phoneE164).catch(() => null);
@@ -169,26 +191,24 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="truncate text-[17px] font-bold tracking-tight text-zinc-900">
-                  {displayName}
+                  {fichaHref ? (
+                    <Link href={fichaHref} prefetch={false} className="hover:text-brand-700">
+                      {displayName}
+                    </Link>
+                  ) : (
+                    displayName
+                  )}
                 </h1>
-                {display?.whatsappName && (
-                  <span className="hidden shrink-0 text-[13px] text-zinc-500 sm:inline">
-                    escribe {display.whatsappName}
-                  </span>
-                )}
                 {row.conv.urgentFlag && (
                   <Badge tone="danger" size="sm" className="shrink-0 animate-pulse-soft">
                     URGENTE
                   </Badge>
                 )}
               </div>
-              <Link
-                href="/dashboard/whatsapp/quick-replies"
-                className="mt-0.5 inline-flex items-center gap-1 text-[13px] text-zinc-500 transition-colors hover:text-brand-600"
-              >
-                <Zap className="h-3 w-3" />
-                Respuestas rápidas
-              </Link>
+              <p className="mt-0.5 truncate text-[13px] text-zinc-500">
+                {display?.whatsappName ? `Escribe ${display.whatsappName} · ` : ''}
+                {formatPhoneDisplay(row.contact.phoneE164)}
+              </p>
             </div>
           </div>
           <ConversationActions
@@ -225,6 +245,16 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
 
       <ContactSidebar
         conversationId={row.conv.id}
+        fichaHref={fichaHref}
+        brief={
+          <PatientBrief
+            tenantId={tenant.id}
+            patientIds={patientIds}
+            profile={careProfile}
+            timezone={timezone}
+            hasEsign={hasEsign}
+          />
+        }
         contact={{
           id: row.contact.id,
           name: displayName,

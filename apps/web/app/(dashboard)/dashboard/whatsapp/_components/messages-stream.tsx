@@ -167,7 +167,16 @@ function MessageBubble({
       ? 'ml-auto rounded-2xl rounded-br-md bg-[linear-gradient(135deg,#10b981,#34d399)] text-white shadow-[0_8px_20px_-12px_rgba(16,185,129,0.9)]'
       : 'mr-auto rounded-2xl rounded-bl-md bg-white border border-(--color-border) shadow-[var(--shadow-soft)]';
   const authorEmail = m.senderUserId ? (senderUserEmails[m.senderUserId] ?? null) : null;
-  const timestamp = useMemo(() => new Date(m.createdAt).toLocaleString('es-ES'), [m.createdAt]);
+  const timestamp = useMemo(
+    () =>
+      new Date(m.createdAt).toLocaleString('es-ES', {
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+    [m.createdAt],
+  );
 
   return (
     <li

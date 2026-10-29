@@ -1,6 +1,10 @@
 'use client';
 
+import { Avatar } from '@/components/ui/stat';
+import { formatPhoneDisplay } from '@/lib/patients/names';
+import { FileHeart, UserRound } from 'lucide-react';
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { useState, useTransition } from 'react';
 
 import {
@@ -30,8 +34,31 @@ interface Appointment {
   treatment: string | null;
 }
 
+const SHORT_DATE: Intl.DateTimeFormatOptions = {
+  day: 'numeric',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+};
+
+const APPT_STATUS_LABEL: Record<string, string> = {
+  confirmed: 'Confirmada',
+  booked: 'Agendada',
+  scheduled: 'Agendada',
+  new: 'Agendada',
+  completed: 'Atendida',
+  showed: 'Atendida',
+  cancelled: 'Cancelada',
+  no_show: 'No vino',
+  noshow: 'No vino',
+};
+
 interface Props {
   conversationId: string;
+  /** Ficha clínica del paciente (o del contacto, si no tiene ficha propia). */
+  fichaHref?: string | null;
+  /** Lo importante del paciente, pintado en el servidor. */
+  brief?: ReactNode;
   contact: {
     id: string;
     name: string | null;
@@ -77,11 +104,10 @@ function leadFactEntries(facts: Record<string, unknown>): Array<[string, string]
 const statusLabel = (s: Props['conversation']['status']) =>
   s === 'CLOSED' ? 'Cerrada' : s === 'HANDOFF' ? 'La atiende una persona' : 'Abierta';
 
-const channelLabel = (c: Props['conversation']['channel']) =>
-  c === 'WHATSAPP_CLOUD' ? 'Cloud API' : c === 'WHATSAPP_TWILIO' ? 'Twilio' : 'Evolution';
-
 export function ContactSidebar({
   conversationId,
+  fichaHref,
+  brief,
   contact,
   conversation,
   appointments,
@@ -197,30 +223,39 @@ export function ContactSidebar({
       {/* Contacto */}
       <div className="rounded-[22px] border border-(--color-border) bg-white shadow-[var(--shadow-soft)] p-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[linear-gradient(135deg,#a7f3d0,#6ee7b7)] text-[16px] font-bold text-emerald-800 ring-2 ring-white">
-            {(contact.name ?? contact.phoneE164).slice(0, 2).toUpperCase()}
-          </div>
+          <Avatar name={contact.name ?? contact.phoneE164} size={48} />
           <div className="min-w-0">
             <p className="truncate text-[16px] font-bold text-zinc-900">
               {contact.name ?? 'Sin nombre'}
             </p>
-            <p className="text-xs text-zinc-500">
-              {contact.phoneE164}
-              {contact.whatsappName ? ` · en WhatsApp: ${contact.whatsappName}` : ''}
+            <p className="text-[13px] tabular-nums text-zinc-500">
+              {formatPhoneDisplay(contact.phoneE164)}
             </p>
+            {contact.whatsappName && (
+              <p className="truncate text-[12px] text-zinc-500">
+                Escribe: <span className="font-medium text-zinc-700">{contact.whatsappName}</span>
+              </p>
+            )}
           </div>
         </div>
-        <Link
-          href={`/dashboard/whatsapp/contacts/${contact.id}`}
-          className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-(--color-border) bg-white px-3 py-2 text-[13px] font-semibold text-zinc-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:text-brand-700"
-        >
-          Ver detalles del contacto
-        </Link>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          {fichaHref && (
+            <Link
+              href={fichaHref}
+              prefetch={false}
+              className="inline-flex items-center justify-center gap-1.5 rounded-full bg-brand-600 px-3 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-brand-700"
+            >
+              <FileHeart className="h-4 w-4" /> Ficha
+            </Link>
+          )}
+          <Link
+            href={`/dashboard/whatsapp/contacts/${contact.id}`}
+            className={`inline-flex items-center justify-center gap-1.5 rounded-full border border-(--color-border) bg-white px-3 py-2 text-[13px] font-semibold text-zinc-700 transition-colors hover:border-brand-200 hover:text-brand-700 ${fichaHref ? '' : 'col-span-2'}`}
+          >
+            <UserRound className="h-4 w-4" /> Contacto
+          </Link>
+        </div>
         <dl className="mt-4 space-y-2 text-xs">
-          <div className="flex justify-between">
-            <dt className="text-zinc-500">Canal</dt>
-            <dd className="font-medium text-zinc-700">{channelLabel(conversation.channel)}</dd>
-          </div>
           <div className="flex justify-between">
             <dt className="text-zinc-500">Estado</dt>
             <dd className="font-medium text-zinc-700">{statusLabel(conversation.status)}</dd>
@@ -237,7 +272,7 @@ export function ContactSidebar({
             <div className="flex justify-between">
               <dt className="text-zinc-500">Último mensaje</dt>
               <dd suppressHydrationWarning className="font-medium text-zinc-700">
-                {new Date(conversation.lastMsgAt).toLocaleString('es-ES')}
+                {new Date(conversation.lastMsgAt).toLocaleString('es-ES', SHORT_DATE)}
               </dd>
             </div>
           )}
@@ -251,6 +286,9 @@ export function ContactSidebar({
           )}
         </dl>
       </div>
+
+      {/* Lo importante del paciente, si tiene ficha */}
+      {brief}
 
       {/* Memoria del lead (cross-canal: WhatsApp + llamadas in/out) */}
       {leadMemory?.profileSummary ? (
@@ -280,47 +318,47 @@ export function ContactSidebar({
         </div>
       ) : null}
 
-      {/* Citas */}
-      <div className="rounded-[22px] border border-(--color-border) bg-white shadow-[var(--shadow-soft)] p-4">
-        <p className="text-[15px] font-bold tracking-tight text-zinc-900">Citas</p>
-        {appointments.length === 0 ? (
-          <p className="mt-2 text-xs text-zinc-500">
-            {contact.ghlContactId
-              ? 'Sin citas registradas.'
-              : 'Todavía no está vinculado con el CRM.'}
-          </p>
-        ) : (
-          <ul className="mt-2 space-y-2">
-            {appointments.slice(0, 5).map((a) => (
-              <li key={a.id} className="rounded-lg bg-zinc-50 px-2 py-1.5 text-xs">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="truncate font-medium text-zinc-800">
-                    {a.treatment ?? 'Cita'}
-                  </span>
-                  {a.status && (
-                    <span
-                      className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase ${apptStatusClass(a.status)}`}
-                    >
-                      {a.status}
+      {/* Citas: con ficha de paciente ya las resume la tarjeta de arriba. */}
+      {!brief && (
+        <div className="rounded-[22px] border border-(--color-border) bg-white shadow-[var(--shadow-soft)] p-4">
+          <p className="text-[15px] font-bold tracking-tight text-zinc-900">Citas</p>
+          {appointments.length === 0 ? (
+            <p className="mt-2 text-xs text-zinc-500">Sin citas registradas.</p>
+          ) : (
+            <ul className="mt-2 space-y-2">
+              {appointments.slice(0, 5).map((a) => (
+                <li key={a.id} className="rounded-lg bg-zinc-50 px-2 py-1.5 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate font-medium text-zinc-800">
+                      {a.treatment ?? 'Cita'}
                     </span>
-                  )}
-                </div>
-                <p suppressHydrationWarning className="mt-0.5 text-[11px] text-zinc-500">
-                  {a.startTime ? new Date(a.startTime).toLocaleString('es-ES') : 'Sin fecha'}
-                </p>
-              </li>
-            ))}
-            {appointments.length > 5 && (
-              <Link
-                href={`/dashboard/whatsapp/contacts/${contact.id}`}
-                className="inline-block text-[12px] text-emerald-600 hover:text-emerald-700"
-              >
-                Ver todas ({appointments.length})
-              </Link>
-            )}
-          </ul>
-        )}
-      </div>
+                    {a.status && (
+                      <span
+                        className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${apptStatusClass(a.status)}`}
+                      >
+                        {APPT_STATUS_LABEL[a.status.toLowerCase()] ?? a.status}
+                      </span>
+                    )}
+                  </div>
+                  <p suppressHydrationWarning className="mt-0.5 text-[11px] text-zinc-500">
+                    {a.startTime
+                      ? new Date(a.startTime).toLocaleString('es-ES', SHORT_DATE)
+                      : 'Sin fecha'}
+                  </p>
+                </li>
+              ))}
+              {appointments.length > 5 && (
+                <Link
+                  href={`/dashboard/whatsapp/contacts/${contact.id}`}
+                  className="inline-block text-[12px] text-emerald-600 hover:text-emerald-700"
+                >
+                  Ver todas ({appointments.length})
+                </Link>
+              )}
+            </ul>
+          )}
+        </div>
+      )}
 
       {/* Agente IA */}
       <div className="rounded-[22px] border border-(--color-border) bg-white shadow-[var(--shadow-soft)] p-4">

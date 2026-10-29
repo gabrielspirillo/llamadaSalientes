@@ -11,6 +11,8 @@ export interface ContactDisplayName {
   name: string;
   /** Nombre con el que escribe en WhatsApp, si es otro (p. ej. la madre). */
   whatsappName: string | null;
+  /** Fichas de paciente (`patients.id`) que cuelgan de ese teléfono. */
+  patientIds: string[];
 }
 
 /**
@@ -45,6 +47,7 @@ export async function contactDisplayNames(
   const phones = contacts.map((c) => c.phone);
   const people = await db
     .select({
+      id: patients.id,
       contactId: patients.contactId,
       firstName: patients.firstName,
       lastName: patients.lastName,
@@ -63,19 +66,23 @@ export async function contactDisplayNames(
     );
 
   const byContact = new Map<string, string[]>();
-  const add = (contactId: string, name: string) => {
+  const idsByContact = new Map<string, string[]>();
+  const add = (contactId: string, name: string, patientId: string) => {
     const list = byContact.get(contactId) ?? [];
     if (!list.includes(name)) list.push(name);
     byContact.set(contactId, list);
+    const pids = idsByContact.get(contactId) ?? [];
+    if (!pids.includes(patientId)) pids.push(patientId);
+    idsByContact.set(contactId, pids);
   };
   const idByPhone = new Map(contacts.map((c) => [c.phone, c.id]));
   for (const p of people) {
     const name = patientFullName(p);
     if (!name) continue;
-    if (p.contactId && ids.includes(p.contactId)) add(p.contactId, name);
+    if (p.contactId && ids.includes(p.contactId)) add(p.contactId, name, p.id);
     for (const g of (p.guardians ?? []) as { phone?: string }[]) {
       const id = g.phone ? idByPhone.get(g.phone) : undefined;
-      if (id) add(id, name);
+      if (id) add(id, name, p.id);
     }
   }
 
@@ -91,7 +98,11 @@ export async function contactDisplayNames(
         ? (kids[0] as string)
         : `${kids.slice(0, -1).join(', ')} y ${kids[kids.length - 1]}`
       : saved || waName || c.phone;
-    out.set(c.id, { name, whatsappName: waName && waName !== name ? waName : null });
+    out.set(c.id, {
+      name,
+      whatsappName: waName && waName !== name ? waName : null,
+      patientIds: idsByContact.get(c.id) ?? [],
+    });
   }
   return out;
 }
