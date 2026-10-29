@@ -94,7 +94,7 @@ export function parseDayOfTextReply(text: string | null | undefined): DayOfActio
   const t = (text ?? '')
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\p{M}/gu, '')
     .replace(/[^a-z0-9 ]/g, '')
     .trim();
   if (!t || t.length > 20) return null;
