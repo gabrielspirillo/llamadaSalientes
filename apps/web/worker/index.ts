@@ -27,6 +27,7 @@ import { processTaskDailySweepJob } from '@/worker/jobs/task-daily-sweep';
 import { processTaskRoutinesTickJob } from '@/worker/jobs/task-routines-tick';
 import { processWaitlistOfferExpireJob } from '@/worker/jobs/waitlist-offer-expire';
 import { processWaitlistOfferSendJob } from '@/worker/jobs/waitlist-offer-send';
+import { processWhatsappEchoJob } from '@/worker/jobs/whatsapp-echo';
 import { processWhatsappJob } from '@/worker/jobs/whatsapp-process';
 
 function num(name: string, def: number): number {
@@ -78,6 +79,18 @@ function buildWaWorker(): Worker<QueueJobs['wa-process']> {
     });
   });
 
+  return worker;
+}
+
+function buildWaEchoWorker(): Worker<QueueJobs['wa-echo']> {
+  const worker = new Worker<QueueJobs['wa-echo']>(
+    'wa-echo',
+    async (job: Job<QueueJobs['wa-echo']>) => processWhatsappEchoJob(job.data),
+    { connection: getRedis(), concurrency: num('WORKER_CONCURRENCY_WA', 2) },
+  );
+  worker.on('failed', (job, err) => {
+    console.error('[worker:wa-echo] failed', { jobId: job?.id, err: err?.message });
+  });
   return worker;
 }
 
@@ -440,6 +453,7 @@ async function main(): Promise<void> {
 
   workers = [
     buildWaWorker(),
+    buildWaEchoWorker(),
     buildCallWorker(),
     buildReminderSendWorker(),
     buildReminderFallbackCheckWorker(),

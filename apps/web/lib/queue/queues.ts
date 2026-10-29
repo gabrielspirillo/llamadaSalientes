@@ -11,6 +11,24 @@ export type QueueJobs = {
     messageId: string;
     contactPhoneE164: string;
   };
+  // Un mensaje mandado desde el teléfono de la clínica (no desde la app):
+  // se refleja en el chat. Retardado para no duplicar lo que mandó la app.
+  'wa-echo': {
+    message: {
+      tenantId: string;
+      providerMessageId: string;
+      fromPhoneE164: string;
+      channel: 'WHATSAPP_CLOUD' | 'WHATSAPP_EVOLUTION' | 'WHATSAPP_TWILIO';
+      type: import('@/lib/whatsapp/types').InboundMessageType;
+      text: string | null;
+      mediaId: string | null;
+      mediaMimeType: string | null;
+      contactName: string | null;
+      /** ISO: el job viaja como JSON. */
+      timestamp: string;
+      raw: unknown;
+    };
+  };
   'process-call': {
     tenantId: string;
     retellCallId: string;
@@ -65,6 +83,7 @@ export type QueueName = keyof QueueJobs;
 
 export const QUEUE_NAMES = [
   'wa-process',
+  'wa-echo',
   'process-call',
   'reminder-send',
   'reminder-fallback-check',

@@ -11,6 +11,7 @@ import {
   systemAgendaContext,
 } from '@/lib/agenda/agent';
 import { pickAppointmentsToCancel } from '@/lib/agenda/cancel-match';
+import { withinClinicHours } from '@/lib/agenda/clinic-hours';
 import { normalizePatientPhone } from '@/lib/agenda/patients';
 import { getAppointment, getClinicTimezone, tenantHasAgenda } from '@/lib/agenda/queries';
 import { AgendaValidationError, cancelAppointment, createAppointment } from '@/lib/agenda/service';
@@ -18,7 +19,7 @@ import { resolvePatientForBooking } from '@/lib/care-profile/agent';
 import { getCareProfileSafe } from '@/lib/care-profile/queries';
 import type { CancelledBy } from '@/lib/care-profile/signals';
 import { db } from '@/lib/db/client';
-import { agendaAppointments, professionals } from '@/lib/db/schema';
+import { agendaAppointments, clinicSettings, professionals } from '@/lib/db/schema';
 import { clockArticle, speakClockTime } from '@/lib/retell/time-speech';
 import { localDateKey } from '@/lib/tasks/tz';
 import { and, asc, eq, gte, inArray } from 'drizzle-orm';
@@ -139,8 +140,10 @@ export async function agendaCheckAvailability(
       treatmentName: args.treatment_name ?? null,
       professionalName: args.professional_name ?? null,
       preferredDate: args.preferred_date ?? null,
-      days: 7,
-      limitPerProfessional: 3,
+      // Dos semanas enteras: hace falta el día completo para poder ofrecer
+      // todos sus huecos, no sólo los tres primeros de la semana.
+      days: 14,
+      limitPerProfessional: 400,
       firstVisit,
     });
 
@@ -163,30 +166,71 @@ export async function agendaCheckAvailability(
       };
     }
 
-    // Se ofrecen pocas: por teléfono/chat, más de tres opciones no se retienen.
-    // Diversificamos por profesional para no ofrecer sólo la agenda del primero
-    // cuando hay varios especialistas que hacen el tratamiento.
+    // Primero tres (por chat o teléfono no se retienen más). Si ninguna le
+    // sirve, TODOS los huecos de ese día; si tampoco, los del siguiente día
+    // con huecos. Todo ya filtrado por la jornada de cada profesional y por el
+    // horario de atención de la clínica.
+    const dayKey = (o: AgentSlotOption) => localDateKey(o.start, search.timezone);
+    const days = [...new Set(search.options.map(dayKey))];
+    const [firstDay, secondDay] = days;
     const picked = diversifyByProfessional(search.options, 3);
     const spoken = picked.map((o) => speakOption(o, search.timezone));
     const tratamiento = search.matchedTreatment ? ` para ${search.matchedTreatment.name}` : '';
+    const dayLabel = (key: string) => {
+      const sample = search.options.find((o) => dayKey(o) === key);
+      return sample
+        ? sample.start.toLocaleDateString('es-ES', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            timeZone: search.timezone,
+          })
+        : key;
+    };
+    const listDay = (key: string) =>
+      search.options
+        .filter((o) => dayKey(o) === key)
+        .map(
+          (o) =>
+            `${speakClockTime(o.start, search.timezone)} con ${o.professionalName} [start_time=${o.start.toISOString()} professional_id=${o.professionalId}]`,
+        )
+        .join('; ');
 
-    // Aviso de que hay varios especialistas: el agente tiene que ofrecer elegir,
-    // no dar por hecho el primero. Sólo si el paciente no pidió uno concreto.
+    const requested = args.preferred_date?.trim();
+    const noneOnRequested =
+      requested && /^\d{4}-\d{2}-\d{2}$/.test(requested) && firstDay !== requested
+        ? `El día que pidió (${requested}) no hay huecos libres (o la clínica no atiende ese día): díselo y ofrécele lo siguiente. `
+        : '';
+
     const varios =
       !search.matchedProfessional && search.offeredBy.length > 1
         ? ` Varios profesionales atienden este tratamiento: ${search.offeredBy
             .map((p) => p.fullName)
             .join(
               ', ',
-            )}. Si el paciente no dijo con quién, preguntale si tiene preferencia antes de reservar; si le da igual, ofrecele el hueco más próximo.`
+            )}. Si el paciente no dijo con quién, preguntale si tiene preferencia; si le da igual, ofrecele el hueco más próximo.`
         : '';
 
+    const fullDays = [
+      firstDay ? `Todos los huecos libres del ${dayLabel(firstDay)}: ${listDay(firstDay)}.` : '',
+      secondDay
+        ? `Si ese día no le va, todos los del siguiente día con huecos, ${dayLabel(secondDay)}: ${listDay(secondDay)}.`
+        : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+
     return {
-      result: `Huecos libres${tratamiento}: ${spoken.join('; ')}.${varios} Para reservar, el paciente tiene que ELEGIR un hueco concreto (día, hora Y profesional). Un "sí" o "dale" ambiguo NO es una elección: preguntale cuál de los horarios prefiere. Luego pasá a book_appointment el start_time y el professional_id EXACTOS de ESE hueco, tal cual aparecen entre corchetes. Al paciente decile sólo el día, la hora y el nombre del profesional.`,
+      result: `${noneOnRequested}OFRECE PRIMERO estas tres opciones${tratamiento}: ${spoken.join('; ')}. Si ninguna le sirve, NO digas que no hay hueco: ofrécele todas las horas libres de ese día; y si tampoco, las del día siguiente con huecos. ${fullDays}${varios} Sólo existen los huecos de esta lista: no inventes horas ni ofrezcas otras (ya respetan el horario de la clínica). Para otra fecha, vuelve a llamar a check_availability con preferred_date. Para reservar, el paciente tiene que ELEGIR un hueco concreto (día, hora Y profesional): un "sí" o "dale" ambiguo NO es una elección. Luego pasá a book_appointment el start_time y el professional_id EXACTOS de ESE hueco, tal cual aparecen entre corchetes. Al paciente decile sólo el día, la hora y el nombre del profesional.`,
     };
   } catch (err) {
     console.error('[agenda-voice] check_availability', err);
-    return null;
+    // No `null`: eso caía al CRM y el agente decía "la clínica no tiene la
+    // agenda configurada", que es falso. Un fallo puntual se reintenta.
+    return {
+      result:
+        'No pude consultar la agenda en este momento. Vuelve a llamar a check_availability una vez; si vuelve a fallar, dile al paciente que recepción le confirma la hora y usa request_handoff.',
+    };
   }
 }
 
@@ -264,12 +308,32 @@ export async function agendaBookAppointment(
       };
     }
 
+    // El mismo límite que al ofrecer: una hora fuera del horario de atención
+    // de la clínica no se reserva aunque el modelo la invente.
+    const startAt = new Date(args.start_time);
+    if (!Number.isNaN(startAt.getTime())) {
+      const [settings] = await db
+        .select({ workingHours: clinicSettings.workingHours })
+        .from(clinicSettings)
+        .where(eq(clinicSettings.tenantId, tenantId))
+        .limit(1);
+      const endAt = new Date(startAt.getTime() + (treatment?.durationMinutes ?? 30) * 60_000);
+      const timezone = await getClinicTimezone(tenantId);
+      if (!withinClinicHours(startAt, endAt, timezone, settings?.workingHours)) {
+        return {
+          result:
+            'Esa hora está fuera del horario de atención de la clínica. Llama a check_availability y ofrece sólo los huecos que devuelve.',
+        };
+      }
+    }
+
     const { appointment, deduped } = await createAppointment(systemAgendaContext(tenantId), {
       professionalId: professional.id,
       treatmentId: treatment?.id ?? null,
       patientId,
       patientName,
-      patientPhone: args.phone ?? '',
+      // Normalizado aquí: un teléfono mal dictado no puede tumbar la reserva.
+      patientPhone: normalizePatientPhone(args.phone) ?? '',
       patientEmail: args.email ?? '',
       ghlContactId: args.contact_id ?? '',
       startsAt: args.start_time,

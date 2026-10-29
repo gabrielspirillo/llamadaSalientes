@@ -153,3 +153,52 @@ export async function persistInboundMessage(msg: NormalizedInboundMessage) {
 
   return { contact, conversation, message: inserted ?? null };
 }
+
+/**
+ * Un mensaje que la clínica mandó desde el propio teléfono (WhatsApp en el
+ * móvil, no la app). Evolution lo avisa con `fromMe`; se guarda como enviado
+ * por el equipo para que el chat de la app tenga la conversación completa.
+ * No suma no leídos y no despierta al agente. Idempotente por externalId.
+ */
+export async function persistOutboundEcho(msg: NormalizedInboundMessage) {
+  const contact = await upsertWhatsappContact({
+    tenantId: msg.tenantId,
+    phoneE164: msg.fromPhoneE164,
+    // El pushName de un mensaje propio es el de la clínica, no el del paciente.
+    name: null,
+  });
+  const conversation = await getOrCreateOpenConversation({
+    tenantId: msg.tenantId,
+    contactId: contact.id,
+    channel: msg.channel,
+  });
+
+  const [inserted] = await db
+    .insert(whatsappMessages)
+    .values({
+      tenantId: msg.tenantId,
+      conversationId: conversation.id,
+      externalId: msg.providerMessageId,
+      direction: 'OUTBOUND',
+      type: msg.type,
+      senderType: 'HUMAN',
+      contentText: msg.text,
+      mediaUrl: null,
+      mediaType: msg.mediaMimeType,
+      deliveryStatus: 'SENT',
+      rawJson: msg.raw as never,
+    })
+    .onConflictDoNothing({
+      target: [whatsappMessages.conversationId, whatsappMessages.externalId],
+    })
+    .returning();
+
+  if (inserted) {
+    await db
+      .update(whatsappConversations)
+      .set({ lastMsgAt: msg.timestamp, updatedAt: new Date() })
+      .where(eq(whatsappConversations.id, conversation.id));
+    await publishMessageEvent(inserted);
+  }
+  return { contact, conversation, message: inserted ?? null };
+}

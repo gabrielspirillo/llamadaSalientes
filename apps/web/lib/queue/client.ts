@@ -32,6 +32,7 @@ export async function sendQueueEvent(
   name: 'wa-process',
   data: QueueJobs['wa-process'],
 ): Promise<void>;
+export async function sendQueueEvent(name: 'wa-echo', data: QueueJobs['wa-echo']): Promise<void>;
 export async function sendQueueEvent(
   name: 'process-call',
   data: QueueJobs['process-call'],
@@ -111,6 +112,19 @@ export async function sendQueueEvent<K extends QueueName>(
       delay: 5_000,
       attempts: 3,
       backoff: { type: 'exponential', delay: 2_000 },
+    });
+    return;
+  }
+
+  if (name === 'wa-echo') {
+    const d = data as QueueJobs['wa-echo'];
+    const queue = getQueue('wa-echo');
+    await queue.add('wa-echo', d, {
+      ...DEFAULT_OPTS,
+      jobId: `echo-${d.message.tenantId}-${d.message.providerMessageId}`,
+      delay: 8_000,
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 3_000 },
     });
     return;
   }

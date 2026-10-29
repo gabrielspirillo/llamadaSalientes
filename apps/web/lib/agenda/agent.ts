@@ -4,6 +4,7 @@ import { and, asc, desc, eq, gte, inArray, lt, ne, or } from 'drizzle-orm';
 
 import type { AgendaContext } from '@/lib/agenda/auth';
 import { firstVisitFromTreatment } from '@/lib/agenda/availability';
+import { withinClinicHours } from '@/lib/agenda/clinic-hours';
 import { describeAbsences, describeWeeklySchedule } from '@/lib/agenda/describe';
 import { normalizePatientPhone, patientKeyFor } from '@/lib/agenda/patients';
 import { type AvailabilityResult, getAvailability, getClinicTimezone } from '@/lib/agenda/queries';
@@ -12,6 +13,7 @@ import { BUSY_STATUSES } from '@/lib/agenda/shared';
 import { db } from '@/lib/db/client';
 import {
   agendaAppointments,
+  clinicSettings,
   clinicalNotes,
   professionalShifts,
   professionalTimeOff,
@@ -397,7 +399,17 @@ export async function findAgentSlots(
     }),
   );
 
-  const options = results.flat().sort((a, b) => a.start.getTime() - b.start.getTime());
+  // El horario de atención de la clínica (Datos de la clínica) manda sobre la
+  // jornada de cada profesional: fuera de él no se ofrece nada.
+  const [settings] = await db
+    .select({ workingHours: clinicSettings.workingHours })
+    .from(clinicSettings)
+    .where(eq(clinicSettings.tenantId, tenantId))
+    .limit(1);
+  const options = results
+    .flat()
+    .filter((o) => withinClinicHours(o.start, o.end, timezone, settings?.workingHours))
+    .sort((a, b) => a.start.getTime() - b.start.getTime());
 
   return {
     timezone,

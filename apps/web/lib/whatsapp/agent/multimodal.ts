@@ -140,7 +140,15 @@ async function processOne(msg: DbMessage, input: ProcessMessagesInput): Promise<
   let buffer: Buffer;
   let mimeType: string;
   try {
-    const media = await input.connector.downloadMedia(mediaId);
+    // Evolution localiza el mensaje mejor con su chat y si es propio (los que
+    // la clínica manda desde el teléfono también se descargan por aquí).
+    const rawKey = ((msg.rawJson ?? {}) as { key?: { remoteJid?: string; fromMe?: boolean } }).key;
+    const media = rawKey?.remoteJid
+      ? await input.connector.downloadMedia(mediaId, {
+          remoteJid: rawKey.remoteJid,
+          fromMe: rawKey.fromMe,
+        })
+      : await input.connector.downloadMedia(mediaId);
     buffer = media.buffer;
     mimeType = media.mimeType || msg.mediaType || defaultMimeForKind(kind);
   } catch (err) {

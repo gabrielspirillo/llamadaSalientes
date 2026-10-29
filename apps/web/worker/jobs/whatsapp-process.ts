@@ -546,7 +546,7 @@ async function loadHistory(conversationId: string, beforeOrEqual: Date): Promise
     .reverse();
 }
 
-async function resolveConnector(tenantId: string): Promise<WhatsAppConnector | null> {
+export async function resolveConnector(tenantId: string): Promise<WhatsAppConnector | null> {
   const rows = await db
     .select()
     .from(whatsappConnections)

@@ -162,12 +162,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           });
           break;
         }
-        // Filtramos outbound (fromMe=true) para no procesar nuestros propios envíos.
-        if (parsed.data.data.key.fromMe) break;
         if (isEvolutionGroupMessage(parsed.data)) break;
         if (isEvolutionUnresolvedLid(parsed.data)) {
           console.warn('[wa-evolution-webhook] @lid sin teléfono real; se ignora', {
             instance: conn.evolutionInstance,
+          });
+          break;
+        }
+        // Enviado desde el teléfono de la clínica (o eco de lo que mandó la
+        // app): se refleja en el chat como del equipo, sin pasar por el agente.
+        // El job decide si ya estaba guardado.
+        if (parsed.data.data.key.fromMe) {
+          const echo = normalizeEvolutionMessage(parsed.data, conn.tenantId);
+          await sendQueueEvent('wa-echo', {
+            message: { ...echo, timestamp: echo.timestamp.toISOString() },
           });
           break;
         }
