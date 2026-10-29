@@ -74,6 +74,8 @@ export interface CalendarViewProps {
   } | null;
   /** Estados que usa la clínica (perfil de atención). Null = todos. */
   visibleStatuses?: string[] | null;
+  /** La clínica tiene recordatorio del día (se puede mandar desde la cita). */
+  dayOfReminder?: boolean;
   /** Leyenda de etiquetas (1ª visita, G/M, H, adelantar, pago). Sólo con perfil. */
   showFamilyTags?: boolean;
 }
@@ -213,6 +215,7 @@ export function CalendarView(props: CalendarViewProps) {
     timezone,
     newAppointmentFor = null,
     visibleStatuses = null,
+    dayOfReminder = false,
     showFamilyTags = false,
   } = props;
   const legendStatuses = ALL_STATUSES.filter(
@@ -741,6 +744,7 @@ export function CalendarView(props: CalendarViewProps) {
           treatments={treatments}
           todayKey={todayKey}
           visibleStatuses={visibleStatuses}
+          dayOfReminder={dayOfReminder}
           onClose={() => setOpenItem(null)}
         />
       )}

@@ -5,6 +5,7 @@ import {
   markAppointmentUnpaidAction,
   registerPaymentAction,
   rescheduleAppointmentAction,
+  sendDayOfReminderNowAction,
   setAdvancePreferenceAction,
   updateAppointmentAction,
 } from '@/app/(dashboard)/dashboard/agenda/actions';
@@ -66,6 +67,7 @@ export function AppointmentSheet({
   treatments,
   todayKey,
   visibleStatuses = null,
+  dayOfReminder = false,
   onClose,
 }: {
   item: CalendarItem;
@@ -75,6 +77,8 @@ export function AppointmentSheet({
   todayKey: string;
   /** Estados que usa la clínica. Null = todos. */
   visibleStatuses?: string[] | null;
+  /** La clínica tiene recordatorio del día: botón para mandarlo ahora. */
+  dayOfReminder?: boolean;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -144,6 +148,7 @@ export function AppointmentSheet({
     centsToInput(item.payment?.amountCents ?? item.treatmentPriceCents),
   );
   const [advanceNote, setAdvanceNote] = React.useState(item.advanceNote ?? '');
+  const [reminderSent, setReminderSent] = React.useState(false);
 
   /** Como `run`, pero la hoja sigue abierta: pago y adelanto se ajustan sin salir. */
   function runStay(fn: () => Promise<{ ok: true } | { ok: false; error: string }>) {
@@ -356,6 +361,30 @@ export function AppointmentSheet({
                   </button>
                 )}
               </div>
+            </div>
+          )}
+
+          {canWrite && dayOfReminder && ['SCHEDULED', 'CONFIRMED'].includes(item.status) && (
+            <div className="flex items-center justify-between gap-3 rounded-[14px] border border-(--color-border) p-3">
+              <p className="text-[13px] text-zinc-600">
+                {reminderSent
+                  ? 'Recordatorio enviado por WhatsApp.'
+                  : 'Recordatorio del día con Confirmar / Modificar / Cancelar.'}
+              </p>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={pending}
+                onClick={() =>
+                  runStay(async () => {
+                    const r = await sendDayOfReminderNowAction(item.id);
+                    if (r.ok) setReminderSent(true);
+                    return r;
+                  })
+                }
+              >
+                Enviar ahora
+              </Button>
             </div>
           )}
 

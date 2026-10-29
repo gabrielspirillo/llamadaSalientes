@@ -402,3 +402,42 @@ export async function handleDayOfButton(args: {
   }
   return true;
 }
+
+/**
+ * Manda AHORA el recordatorio del día de una cita, con sus botones, sin
+ * tocar la secuencia: el de las 08:00 sale igual el día de la cita. Es para
+ * probarlo o reenviarlo a mano desde la hoja de la cita.
+ */
+export async function sendDayOfReminderNow(
+  tenantId: string,
+  appointmentId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const [profile] = await db
+    .select({ scripts: tenantCareProfile.messageScripts })
+    .from(tenantCareProfile)
+    .where(eq(tenantCareProfile.tenantId, tenantId))
+    .limit(1);
+  const dayOf = parseMessageScripts(profile?.scripts)?.dayOf;
+  if (!dayOf)
+    return { ok: false, error: 'Esta clínica no tiene configurado el recordatorio del día.' };
+  const [appt] = await db
+    .select()
+    .from(agendaAppointments)
+    .where(and(eq(agendaAppointments.tenantId, tenantId), eq(agendaAppointments.id, appointmentId)))
+    .limit(1);
+  if (!appt) return { ok: false, error: 'No encuentro la cita.' };
+  if (!appt.patientPhone) return { ok: false, error: 'La cita no tiene teléfono.' };
+  const [settings] = await db
+    .select({ timezone: clinicSettings.timezone })
+    .from(clinicSettings)
+    .where(eq(clinicSettings.tenantId, tenantId))
+    .limit(1);
+  const tz = settings?.timezone || 'Europe/Madrid';
+  const sent = await sendClinicWhatsapp(
+    tenantId,
+    appt.patientPhone,
+    [fillScript(dayOf.reminder, vars(appt, tz, await firstNameOf(appt)))],
+    dayOfButtons(appt.id),
+  );
+  return sent ? { ok: true } : { ok: false, error: 'WhatsApp no está conectado.' };
+}

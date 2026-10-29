@@ -517,6 +517,17 @@ export async function setAdvancePreferenceAction(
 }
 
 /** "No pagado" desde la cita: el cobro vuelve a pendiente. */
+/** Manda ahora el recordatorio del día de la cita (prueba o reenvío). */
+export async function sendDayOfReminderNowAction(appointmentId: string): Promise<ActionResult> {
+  try {
+    const ctx = await requireAgendaWriter();
+    const { sendDayOfReminderNow } = await import('@/lib/care-profile/day-of-run');
+    return await sendDayOfReminderNow(ctx.tenantId, appointmentId);
+  } catch (err) {
+    return fail(err);
+  }
+}
+
 export async function markAppointmentUnpaidAction(appointmentId: string): Promise<ActionResult> {
   try {
     const ctx = await requireAgendaWriter();

@@ -300,6 +300,7 @@ export default async function AgendaPage({
           lockedToProfessional={lockedToProfessional}
           newAppointmentFor={newAppointmentFor}
           visibleStatuses={careProfile?.bookingPolicy.visibleStatuses ?? null}
+          dayOfReminder={Boolean(careProfile?.messageScripts?.dayOf)}
           showFamilyTags={Boolean(careProfile)}
         />
       </div>
