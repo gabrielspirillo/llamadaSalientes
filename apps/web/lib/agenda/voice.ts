@@ -44,7 +44,17 @@ import { and, asc, eq, gte, inArray } from 'drizzle-orm';
  * el comportamiento de los agentes sin migrar nada, y un fallo de base no deja
  * al agente sin poder dar cita.
  */
-export type AgendaToolResult = { result: string } | null;
+/** Cita recién creada: el canal decide qué mensajes de la clínica la siguen. */
+export interface BookedAppointmentInfo {
+  appointmentId: string;
+  startsAt: Date;
+  patientId: string | null;
+  patientFirstName: string | null;
+  isFirstVisit: boolean;
+  timezone: string;
+}
+
+export type AgendaToolResult = { result: string; booked?: BookedAppointmentInfo } | null;
 
 export interface AgendaAvailabilityArgs {
   treatment_name?: string;
@@ -342,6 +352,7 @@ export async function agendaBookAppointment(
     // Sin ficha no se reserva; de ella salen la edad y el aviso médico.
     let patientId: string | null = null;
     let patientName = args.patient_name?.trim() ?? '';
+    let patientFirstName: string | null = null;
     const careProfile = await getCareProfileSafe(tenantId);
     if (careProfile) {
       const resolved = await resolvePatientForBooking(
@@ -352,6 +363,7 @@ export async function agendaBookAppointment(
       if (!resolved.ok) return { result: resolved.result };
       patientId = resolved.person.id;
       patientName = resolved.person.fullName;
+      patientFirstName = resolved.person.firstName;
     }
 
     if (!patientName) {
@@ -476,6 +488,16 @@ export async function agendaBookAppointment(
       result: deduped
         ? `Esa cita ya estaba agendada (${cuando} con ${professional.fullName}). No se duplicó.`
         : `Cita agendada: ${cuando} con ${professional.fullName}. Confírmale al paciente EXACTAMENTE ese día y esa hora (no otra) y el profesional.`,
+      booked: deduped
+        ? undefined
+        : {
+            appointmentId: appointment.id,
+            startsAt: appointment.startsAt,
+            patientId,
+            patientFirstName: patientFirstName ?? (patientName.split(/\s+/)[0] || null),
+            isFirstVisit: appointment.isFirstVisit ?? firstVisit,
+            timezone,
+          },
     };
   } catch (err) {
     if (err instanceof AgendaValidationError) {

@@ -396,6 +396,24 @@ async function runWhatsappJob(
         });
         return sent.messageId;
       });
+      // Guiones de la clínica tras reservar: cada uno en su propio mensaje y
+      // en su propio paso, para que un reintento no repita los ya enviados.
+      const extras = agentOutput.additionalTexts ?? [];
+      for (let i = 0; i < extras.length; i++) {
+        const text = extras[i];
+        if (!text) continue;
+        await step.run(`send-outbound-extra-${i}`, async () => {
+          const sent = await sendAgentResponse({
+            tenantId,
+            conversationId,
+            toPhoneE164: contactPhoneE164,
+            text,
+            buttons: null,
+            connector,
+          });
+          return sent.messageId;
+        });
+      }
     } else {
       console.warn('[wa-process] NO se envía outbound (sin connector o sin texto)', {
         conversationId,

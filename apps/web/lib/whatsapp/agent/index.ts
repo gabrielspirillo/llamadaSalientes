@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { samePhone } from '@/lib/agenda/patients';
+import { buildScriptsSection } from '@/lib/care-profile/messages';
 import { type CareProfile, buildCareProtocolSection } from '@/lib/care-profile/policy';
 import { GUARDIAN_ROLE_LABELS } from '@/lib/care-profile/policy';
 import { getCareProfile } from '@/lib/care-profile/queries';
@@ -155,7 +156,14 @@ export async function runWhatsappAgent(
     agentName: agentSettings?.agentName ?? null,
     contactPhoneE164: input.contactPhoneE164,
     mode,
-    careProtocol: careProfile ? buildCareProtocolSection(careProfile) : null,
+    careProtocol: careProfile
+      ? [
+          buildCareProtocolSection(careProfile),
+          careProfile.messageScripts ? buildScriptsSection(careProfile.messageScripts) : '',
+        ]
+          .filter(Boolean)
+          .join('\n\n')
+      : null,
     knownContact,
   });
 
@@ -179,6 +187,8 @@ export async function runWhatsappAgent(
   let handoff = false;
   let urgent = false;
   let derivation: AgentDerivation | null = null;
+  // Mensajes de la clínica tras reservar (texto exacto, no del modelo).
+  const clinicMessages: string[] = [];
   const guardrailFlags: string[] = [];
 
   // Guardrail de ENTRADA: inyección de prompts / jailbreak (OWASP LLM01). Si
@@ -261,6 +271,11 @@ export async function runWhatsappAgent(
       } else if (trace.ok && tc.name === 'request_handoff') {
         handoff = true;
         terminalHit = true;
+      } else if (trace.ok && tc.name === 'book_appointment') {
+        const msgs = trace.data?.confirmationMessages;
+        if (Array.isArray(msgs)) {
+          for (const m of msgs) if (typeof m === 'string' && m.trim()) clinicMessages.push(m);
+        }
       } else if (trace.ok && tc.name === 'derive_to_professional') {
         // Modo DERIVE: el asistente cerró su parte. El aviso al profesional lo
         // manda el worker; aquí sólo dejamos el parte listo y la despedida.
@@ -324,6 +339,17 @@ export async function runWhatsappAgent(
   // vista. Va después de los guardrails para cubrir también sus plantillas.
   if (finalText) finalText = toWhatsappFormatting(finalText);
 
+  // Reserva con guiones de la clínica: primero sus mensajes, tal cual, y
+  // después lo que el modelo tenga que añadir (si sólo dijo "OK", nada).
+  let additionalTexts: string[] = [];
+  if (clinicMessages.length && !handoff && !derivation) {
+    const extra = finalText?.trim() ?? '';
+    const trivial = /^ok\.?$/i.test(extra) || extra === '';
+    const [first, ...rest] = clinicMessages;
+    finalText = first ?? finalText;
+    additionalTexts = trivial ? rest : [...rest, extra];
+  }
+
   const intent = deriveIntent({ urgent, handoff: handoff || !!derivation, toolsCalled });
   const intentConfidence = deriveConfidence({
     urgent,
@@ -341,6 +367,7 @@ export async function runWhatsappAgent(
     intentReasoning: guardrailFlags.length ? `guardrail: ${guardrailFlags.join('; ')}` : null,
     responseText: finalText,
     responseButtons: null,
+    additionalTexts,
     handoff,
     urgent,
     derivation,

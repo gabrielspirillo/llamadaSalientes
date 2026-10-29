@@ -2172,6 +2172,8 @@ export const tenantCareProfile = pgTable('tenant_care_profile', {
   bookingPolicy: jsonb('booking_policy').notNull().default({}),
   anamnesisTemplate: jsonb('anamnesis_template').notNull().default([]),
   firstVisitProtocol: text('first_visit_protocol'),
+  /** Guiones de WhatsApp de la clínica (`lib/care-profile/messages.ts`). */
+  messageScripts: jsonb('message_scripts'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 

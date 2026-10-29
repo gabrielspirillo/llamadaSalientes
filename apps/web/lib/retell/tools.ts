@@ -1,6 +1,7 @@
 import 'server-only';
 import { normalizePatientPhone } from '@/lib/agenda/patients';
 import {
+  type BookedAppointmentInfo,
   agendaBookAppointment,
   agendaCancelAppointment,
   agendaCancelByPatient,
@@ -32,7 +33,7 @@ import { clockArticle, speakClockTime } from '@/lib/retell/time-speech';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type ToolResult = { result: string };
+export type ToolResult = { result: string; booked?: BookedAppointmentInfo };
 
 // Args tipados por tool
 export type CheckAvailabilityArgs = {

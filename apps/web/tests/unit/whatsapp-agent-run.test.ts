@@ -375,4 +375,72 @@ describe('runWhatsappAgent', () => {
     });
     expect(callArgs.messages[3]).toEqual({ role: 'user', content: 'quiero limpieza' });
   });
+
+  it('reserva con guiones de la clínica → sus mensajes primero y el "OK" del modelo no sale', async () => {
+    const llm = (text: string | null, toolCalls: unknown[]) => ({
+      text,
+      toolCalls,
+      tokensIn: 10,
+      tokensOut: 2,
+      model: 'gemini-flash-latest',
+      latencyMs: 10,
+      fallbackUsed: false,
+    });
+    mocks.callLLM
+      .mockResolvedValueOnce(
+        llm(null, [
+          { id: 'c1', name: 'book_appointment', args: { start_time: '2026-11-02 12:30' } },
+        ]),
+      )
+      .mockResolvedValueOnce(llm('OK', []));
+    mocks.executeAgentTool.mockResolvedValueOnce({
+      name: 'book_appointment',
+      args: {},
+      ok: true,
+      result: 'Cita agendada.',
+      latencyMs: 5,
+      data: { confirmationMessages: ['Ya tienes la cita', 'Ayuno', 'Dirección'] },
+    });
+
+    const out = await runWhatsappAgent(baseInput(), {
+      loadCareProfile: async () => null,
+      loadKnownContact: async () => null,
+    });
+    expect(out.responseText).toBe('Ya tienes la cita');
+    expect(out.additionalTexts).toEqual(['Ayuno', 'Dirección']);
+  });
+
+  it('si el modelo añade algo tras la reserva, va al final', async () => {
+    const llm = (text: string | null, toolCalls: unknown[]) => ({
+      text,
+      toolCalls,
+      tokensIn: 10,
+      tokensOut: 2,
+      model: 'gemini-flash-latest',
+      latencyMs: 10,
+      fallbackUsed: false,
+    });
+    mocks.callLLM
+      .mockResolvedValueOnce(
+        llm(null, [
+          { id: 'c1', name: 'book_appointment', args: { start_time: '2026-11-02 12:30' } },
+        ]),
+      )
+      .mockResolvedValueOnce(llm('¿Agendamos también a su hermana?', []));
+    mocks.executeAgentTool.mockResolvedValueOnce({
+      name: 'book_appointment',
+      args: {},
+      ok: true,
+      result: 'Cita agendada.',
+      latencyMs: 5,
+      data: { confirmationMessages: ['Ya tienes la cita', 'Recuerda'] },
+    });
+
+    const out = await runWhatsappAgent(baseInput(), {
+      loadCareProfile: async () => null,
+      loadKnownContact: async () => null,
+    });
+    expect(out.responseText).toBe('Ya tienes la cita');
+    expect(out.additionalTexts).toEqual(['Recuerda', '¿Agendamos también a su hermana?']);
+  });
 });

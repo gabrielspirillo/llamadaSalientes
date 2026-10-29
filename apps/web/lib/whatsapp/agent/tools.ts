@@ -1,7 +1,12 @@
 import 'server-only';
 import { z } from 'zod';
 
+import { patientHasHistory } from '@/lib/agenda/first-visit';
+import type { BookedAppointmentInfo } from '@/lib/agenda/voice';
+import { bookingMessages } from '@/lib/care-profile/messages';
+import { getCareProfileSafe } from '@/lib/care-profile/queries';
 import type { WhatsappAgentMode } from '@/lib/data/whatsapp-agent-settings';
+import { listPatientsForPhone } from '@/lib/patients/persons';
 import { type KnownToolName, dispatchTool } from '@/lib/retell/tools';
 
 import { resolveDerivationTarget } from './derivation';
@@ -581,12 +586,19 @@ export async function executeAgentTool(input: ExecuteToolInput): Promise<ToolCal
           ? `wa:${input.conversationId}:${args.start_time}`
           : undefined,
     });
+    const confirmation =
+      name === 'book_appointment' && result.booked
+        ? await clinicBookingMessages(input.tenantId, result.booked, input.contactPhoneE164)
+        : [];
     return {
       name,
       args,
       ok: true,
-      result: result.result,
+      result: confirmation.length
+        ? `${result.result.replace(/ Confírmale[^.]*\./, '')} La confirmación de la clínica (fecha, hora, ayuno, cambios y dirección) se la envía el sistema ahora con sus palabras: NO la escribas ni repitas la fecha. Si no tienes nada más que añadir, responde sólo "OK".`
+        : result.result,
       latencyMs: Date.now() - started,
+      ...(confirmation.length ? { data: { confirmationMessages: confirmation } } : {}),
     };
   } catch (err) {
     const message = (err as Error).message ?? 'unknown_error';
@@ -681,4 +693,41 @@ function formatZodError(err: z.ZodError): string {
     .map((e) => `${e.path.join('.') || '(root)'}: ${e.message}`)
     .join('; ')
     .slice(0, 220);
+}
+
+/**
+ * Mensajes de la clínica tras una reserva (guion A o B), o [] si no tiene
+ * guiones. Guion A sólo si el niño empieza de cero: primera visita y ningún
+ * hermano del mismo teléfono vino antes. Nunca lanza.
+ */
+async function clinicBookingMessages(
+  tenantId: string,
+  booked: BookedAppointmentInfo,
+  phone: string | null | undefined,
+): Promise<string[]> {
+  try {
+    const profile = await getCareProfileSafe(tenantId);
+    if (!profile?.messageScripts) return [];
+    let siblingCameBefore = false;
+    if (booked.isFirstVisit && phone) {
+      const kids = await listPatientsForPhone(tenantId, phone).catch(() => []);
+      for (const k of kids) {
+        if (k.id === booked.patientId) continue;
+        if (await patientHasHistory(tenantId, { patientId: k.id }).catch(() => false)) {
+          siblingCameBefore = true;
+          break;
+        }
+      }
+    }
+    return bookingMessages(profile.messageScripts, {
+      patientFirstName: booked.patientFirstName,
+      startsAt: booked.startsAt,
+      timezone: booked.timezone,
+      isFirstVisit: booked.isFirstVisit,
+      siblingCameBefore,
+    });
+  } catch (err) {
+    console.warn('[wa-tools] guiones de reserva', (err as Error).message);
+    return [];
+  }
 }

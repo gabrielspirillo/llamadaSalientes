@@ -1,6 +1,7 @@
 import 'server-only';
 import { eq } from 'drizzle-orm';
 
+import { parseMessageScripts } from '@/lib/care-profile/messages';
 import {
   CARE_PROFILE_KINDS,
   type CareProfile,
@@ -36,6 +37,7 @@ export async function getCareProfile(tenantId: string): Promise<CareProfile | nu
     bookingPolicy: parseBookingPolicy(row.bookingPolicy),
     anamnesisTemplate: parseAnamnesisTemplate(row.anamnesisTemplate),
     firstVisitProtocol: row.firstVisitProtocol?.trim() || null,
+    messageScripts: parseMessageScripts(row.messageScripts),
   };
 }
 

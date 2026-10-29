@@ -91,7 +91,8 @@ export async function POST(req: NextRequest) {
     const out = await runWhatsappAgent(input);
     return NextResponse.json({
       conversationId,
-      responseText: out.responseText,
+      // Los guiones de la clínica salen como mensajes aparte; aquí se ven juntos.
+      responseText: [out.responseText, ...(out.additionalTexts ?? [])].filter(Boolean).join('\n\n'),
       responseButtons: out.responseButtons,
       intent: out.intent,
       intentConfidence: out.intentConfidence,

@@ -203,6 +203,11 @@ export interface AgentOutput {
    * pruebas del panel pueda correr el agente entero sin molestar a nadie.
    */
   derivation: AgentDerivation | null;
+  /**
+   * Mensajes que salen DESPUÉS de responseText, cada uno por separado (los
+   * guiones de la clínica tras reservar). Vacío casi siempre.
+   */
+  additionalTexts?: string[];
   // Telemetría del LLM call principal (post-fallback).
   model: string;
   tokensIn: number;

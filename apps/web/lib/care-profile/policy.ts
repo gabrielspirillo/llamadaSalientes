@@ -11,6 +11,7 @@
 // Este módulo es puro a propósito: sin base, sin `server-only`. Lo usan el
 // servidor, los componentes del panel y los tests.
 
+import type { CareMessageScripts } from '@/lib/care-profile/messages';
 import { z } from 'zod';
 
 import { parseDateKey } from '@/lib/tasks/tz';
@@ -344,6 +345,8 @@ export interface CareProfile {
   anamnesisTemplate: AnamnesisItem[];
   /** Lo que los asistentes preguntan y dicen en una primera visita. */
   firstVisitProtocol: string | null;
+  /** Guiones de WhatsApp de la clínica; null si no tiene. */
+  messageScripts?: CareMessageScripts | null;
 }
 
 // ─── Edad ────────────────────────────────────────────────────────────────────
