@@ -270,6 +270,11 @@ export async function sendQueueEvent<K extends QueueName>(
     return;
   }
 
+  if (name === 'day-of-tick') {
+    await getQueue('day-of-tick').add('day-of-tick', {}, { ...DEFAULT_OPTS });
+    return;
+  }
+
   // Type-level guard: la exhaustividad la garantizan los overloads.
   const _exhaustive: never = name;
   throw new Error(`Queue desconocida: ${String(_exhaustive)}`);
@@ -396,6 +401,10 @@ export async function scheduleTaskCrons(): Promise<void> {
     '*/15 * * * *',
     'task-routines-tick-cron',
   );
+
+  // Cada 5 minutos: los pasos de la confirmación del día van a hora fija
+  // (08:00, 09:00, 12:30…), así que el retraso máximo es de 5 minutos.
+  await upsertRepeatable('day-of-tick', 'day-of-tick', '*/5 * * * *', 'day-of-tick-cron');
 
   // Una vez al día a las 06:10 UTC: antes de que abra la primera clínica.
   await upsertRepeatable(

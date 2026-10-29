@@ -18,6 +18,21 @@ const scripts = z
     cancelled: z.string().optional(),
     sick: z.string().optional(),
     dayConfirmed: z.string().optional(),
+    /** Confirmación obligatoria el día de la cita (`lib/care-profile/day-of.ts`). */
+    dayOf: z
+      .object({
+        reminderAt: z.string(),
+        nudgeAt: z.string().optional(),
+        callAt: z.array(z.string()).default([]),
+        cancelAt: z.string().optional(),
+        reminder: z.string(),
+        nudge: z.string().optional(),
+        confirmed: z.string(),
+        firstVisitInfo: z.string().optional(),
+        cancelled: z.string().optional(),
+        autoCancelled: z.string().optional(),
+      })
+      .optional(),
   })
   .partial();
 
@@ -27,16 +42,19 @@ export function parseMessageScripts(raw: unknown): CareMessageScripts | null {
   const parsed = scripts.safeParse(raw ?? {});
   if (!parsed.success) return null;
   const data = parsed.data;
-  return Object.values(data).some((v) => (Array.isArray(v) ? v.length > 0 : !!v?.trim()))
+  return Object.values(data).some((v) =>
+    Array.isArray(v) ? v.length > 0 : typeof v === 'string' ? !!v.trim() : !!v,
+  )
     ? data
     : null;
 }
 
 export function fillScript(
   text: string,
-  vars: { paciente?: string | null; fecha?: string; hora?: string },
+  vars: { paciente?: string | null; fecha?: string; hora?: string; cuando?: string },
 ): string {
   return text
+    .replaceAll('{{cuando}}', vars.cuando ?? 'luego')
     .replaceAll('{{paciente}}', vars.paciente?.trim() || 'tu peque')
     .replaceAll('{{fecha}}', vars.fecha ?? '')
     .replaceAll('{{hora}}', vars.hora ?? '');
@@ -98,6 +116,16 @@ export function buildScriptsSection(s: CareMessageScripts): string {
     lines.push(
       '',
       'Al reservar con book_appointment, la confirmación (fecha, hora, ayuno, cambios con 6 horas, dirección) la envía el sistema con el texto de la clínica. NO la escribas tú ni repitas la fecha: si no tienes nada más que añadir, responde sólo "OK".',
+    );
+  }
+  if (s.dayOf) {
+    lines.push(
+      '',
+      `El día de cada cita la clínica manda a las ${s.dayOf.reminderAt} un recordatorio con botones Confirmar / Modificar / Cancelar, y confirmar es OBLIGATORIO${s.dayOf.cancelAt ? `: sin respuesta, a las ${s.dayOf.cancelAt} la cita se anula` : ''}. Si en vez de pulsar el botón contestan por escrito:`,
+      '- Que sí vienen ("sí", "confirmo", "allí estaremos") → confirm_appointment con el appointment_id de la cita de hoy. La respuesta la envía el sistema: no la escribas.',
+      '- Que quieren cambiarla → busca hueco con check_availability, reserva con book_appointment y cancela la vieja con cancel_appointment.',
+      '- Que no pueden venir → cancel_appointment y contesta con la respuesta de cancelación de abajo.',
+      'Si tienen varias citas (hermanos, mellizos), cada una se confirma por separado: confirma sólo las que digan.',
     );
   }
   const short: [string, string | undefined][] = [

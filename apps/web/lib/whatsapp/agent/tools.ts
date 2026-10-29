@@ -63,6 +63,10 @@ const bookAppointmentArgs = z.object({
   email: z.string().optional(),
 });
 
+const confirmAppointmentArgs = z.object({
+  appointment_id: z.string().uuid(),
+});
+
 const cancelAppointmentArgs = z.object({
   appointment_id: z.string().optional(),
   patient_name: z.string().max(160).optional(),
@@ -116,6 +120,7 @@ const SCHEMAS = {
   check_availability: checkAvailabilityArgs,
   book_appointment: bookAppointmentArgs,
   cancel_appointment: cancelAppointmentArgs,
+  confirm_appointment: confirmAppointmentArgs,
   get_patient_info: getPatientInfoArgs,
   register_patient: registerPatientArgs,
   list_treatments: listTreatmentsArgs,
@@ -150,6 +155,7 @@ const TOOLS_FUERA_EN_DERIVE: ReadonlySet<AgentToolName> = new Set([
   'check_availability',
   'book_appointment',
   'cancel_appointment',
+  'confirm_appointment',
   'list_professionals',
 ]);
 
@@ -280,6 +286,22 @@ function allToolDefinitions(): AgentToolDefinition[] {
           email: { type: 'string', description: 'Opcional. Email del paciente.' },
         },
         required: ['start_time', 'treatment_name'],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: 'confirm_appointment',
+      description:
+        'Confirma la asistencia a una cita cuando el paciente contesta que sí viene (al recordatorio del día o cuando sea). Pasa el appointment_id de la cita (sale en get_patient_info o en el contexto). La respuesta de la clínica la envía el sistema.',
+      parameters: {
+        type: 'object',
+        properties: {
+          appointment_id: {
+            type: 'string',
+            description: 'Id de la cita que confirma (UUID).',
+          },
+        },
+        required: ['appointment_id'],
         additionalProperties: false,
       },
     },
@@ -564,6 +586,28 @@ export async function executeAgentTool(input: ExecuteToolInput): Promise<ToolCal
           ? 'URGENT marcado. Ahora haz 2-3 preguntas breves sobre el síntoma; luego ofrece 2-3 horarios cercanos con check_availability y, cuando el paciente elija uno, reserva con book_appointment.'
           : 'HANDOFF marcado',
       latencyMs: Date.now() - started,
+    };
+  }
+
+  if (name === 'confirm_appointment') {
+    const { answerDayOf } = await import('@/lib/care-profile/day-of-run');
+    const answer = await answerDayOf({
+      tenantId: input.tenantId,
+      appointmentId: String(args.appointment_id),
+      phone: input.contactPhoneE164 ?? null,
+      action: 'confirm',
+    }).catch(() => null);
+    return {
+      name,
+      args,
+      ok: !!answer,
+      result: !answer
+        ? 'No encuentro esa cita pendiente entre las de este teléfono. Revisa el appointment_id con get_patient_info.'
+        : answer.messages.length
+          ? 'Cita confirmada. La respuesta de la clínica se la envía el sistema: NO la escribas. Si no tienes nada más que añadir, responde sólo "OK".'
+          : 'Cita confirmada. Díselo en una frase.',
+      latencyMs: Date.now() - started,
+      ...(answer?.messages.length ? { data: { confirmationMessages: answer.messages } } : {}),
     };
   }
 

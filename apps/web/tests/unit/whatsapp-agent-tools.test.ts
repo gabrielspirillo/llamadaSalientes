@@ -25,6 +25,7 @@ describe('getAgentToolDefinitions', () => {
       [
         'book_appointment',
         'cancel_appointment',
+        'confirm_appointment',
         'check_availability',
         'flag_urgent',
         'get_patient_info',

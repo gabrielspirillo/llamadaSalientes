@@ -271,7 +271,10 @@ export async function runWhatsappAgent(
       } else if (trace.ok && tc.name === 'request_handoff') {
         handoff = true;
         terminalHit = true;
-      } else if (trace.ok && tc.name === 'book_appointment') {
+      } else if (
+        trace.ok &&
+        (tc.name === 'book_appointment' || tc.name === 'confirm_appointment')
+      ) {
         const msgs = trace.data?.confirmationMessages;
         if (Array.isArray(msgs)) {
           for (const m of msgs) if (typeof m === 'string' && m.trim()) clinicMessages.push(m);

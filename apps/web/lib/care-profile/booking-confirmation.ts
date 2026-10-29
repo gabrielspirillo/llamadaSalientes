@@ -2,12 +2,10 @@ import 'server-only';
 
 import { patientHasHistory } from '@/lib/agenda/first-visit';
 import { getClinicTimezone } from '@/lib/agenda/queries';
+import { sendClinicWhatsapp } from '@/lib/care-profile/clinic-whatsapp';
 import { bookingMessages } from '@/lib/care-profile/messages';
 import { getCareProfileSafe } from '@/lib/care-profile/queries';
 import { getPatientPerson, listPatientsForPhone } from '@/lib/patients/persons';
-import { getConnectorForTenant } from '@/lib/whatsapp/factory';
-import { sendAgentResponse } from '@/lib/whatsapp/outbound/send-response';
-import { getOrCreateOpenConversation, upsertWhatsappContact } from '@/lib/whatsapp/persist';
 
 export interface BookingForConfirmation {
   startsAt: Date;
@@ -54,11 +52,6 @@ export async function clinicBookingMessages(
   }
 }
 
-const CHANNEL = {
-  whatsapp_cloud: 'WHATSAPP_CLOUD',
-  whatsapp_twilio: 'WHATSAPP_TWILIO',
-} as const;
-
 /**
  * Cita dada desde el panel: la familia recibe por WhatsApp la misma
  * confirmación que si la hubiera reservado el asistente. Sin guiones, sin
@@ -91,31 +84,7 @@ export async function sendBookingConfirmation(appointment: {
       appointment.patientPhone,
     );
     if (messages.length === 0) return;
-    const connector = await getConnectorForTenant(tenantId);
-    if (!connector) return;
-
-    const contact = await upsertWhatsappContact({
-      tenantId,
-      phoneE164: appointment.patientPhone,
-      name: null,
-    });
-    const conversation = await getOrCreateOpenConversation({
-      tenantId,
-      contactId: contact.id,
-      channel:
-        CHANNEL[connector.channel as keyof typeof CHANNEL] ?? ('WHATSAPP_EVOLUTION' as const),
-    });
-    for (const text of messages) {
-      await sendAgentResponse({
-        tenantId,
-        conversationId: conversation.id,
-        toPhoneE164: appointment.patientPhone,
-        text,
-        buttons: null,
-        connector,
-        senderType: 'HUMAN',
-      });
-    }
+    await sendClinicWhatsapp(tenantId, appointment.patientPhone, messages);
   } catch (err) {
     console.warn('[booking-confirmation] envío', (err as Error).message);
   }

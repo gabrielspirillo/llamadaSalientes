@@ -77,6 +77,9 @@ export type QueueJobs = {
   // Mensajes: borrado duro de lo que superó la retención del tenant. Es la
   // pata operativa de la postura RGPD del módulo.
   'im-retention-sweep': Record<string, never>;
+  // Confirmación obligatoria el día de la cita (perfil de atención): tick
+  // cada 5 min que manda el recordatorio, insiste, avisa para llamar y anula.
+  'day-of-tick': Record<string, never>;
 };
 
 export type QueueName = keyof QueueJobs;
@@ -94,4 +97,5 @@ export const QUEUE_NAMES = [
   'im-digest',
   'im-mention-escalate',
   'im-retention-sweep',
+  'day-of-tick',
 ] as const satisfies readonly QueueName[];

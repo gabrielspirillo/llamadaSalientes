@@ -310,6 +310,26 @@ function buildTaskDailySweepWorker(): Worker<QueueJobs['task-daily-sweep']> {
   return worker;
 }
 
+function buildDayOfTickWorker(): Worker<QueueJobs['day-of-tick']> {
+  const worker = new Worker<QueueJobs['day-of-tick']>(
+    'day-of-tick',
+    async () => {
+      const { runDayOfTick } = await import('@/lib/care-profile/day-of-run');
+      return runDayOfTick();
+    },
+    {
+      connection: getRedis(),
+      concurrency: 1,
+    },
+  );
+
+  worker.on('failed', (job, err) => {
+    console.error('[worker:day-of-tick] failed', { jobId: job?.id, err: err?.message });
+  });
+
+  return worker;
+}
+
 function buildImDigestWorker(): Worker<QueueJobs['im-digest']> {
   const worker = new Worker<QueueJobs['im-digest']>(
     'im-digest',
@@ -461,6 +481,7 @@ async function main(): Promise<void> {
     buildWaitlistOfferExpireWorker(),
     buildTaskRoutinesTickWorker(),
     buildTaskDailySweepWorker(),
+    buildDayOfTickWorker(),
     buildImDigestWorker(),
     buildImMentionEscalateWorker(),
     buildImRetentionSweepWorker(),

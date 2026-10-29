@@ -2655,3 +2655,29 @@ export const invoices = pgTable(
     patientIdx: index('invoices_patient_idx').on(t.tenantId, t.patientKey, t.issuedOn),
   }),
 );
+
+// ─── Confirmación el día de la cita (perfil de atención) ─────────────────────
+// Un paso por fila: qué se mandó ya de la secuencia 08:00 → 12:30 y cómo
+// acabó. Ver `lib/care-profile/day-of.ts` y migración 0055.
+export const appointmentDayOf = pgTable(
+  'appointment_day_of',
+  {
+    appointmentId: uuid('appointment_id')
+      .primaryKey()
+      .references(() => agendaAppointments.id, { onDelete: 'cascade' }),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    reminderSentAt: timestamp('reminder_sent_at', { withTimezone: true }),
+    nudgeSentAt: timestamp('nudge_sent_at', { withTimezone: true }),
+    callsDone: integer('calls_done').notNull().default(0),
+    /** CONFIRMED | CANCELLED | AUTO_CANCELLED | MODIFY. Null = esperando. */
+    outcome: text('outcome'),
+    outcomeAt: timestamp('outcome_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantIdx: index('appointment_day_of_tenant_idx').on(t.tenantId),
+  }),
+);
