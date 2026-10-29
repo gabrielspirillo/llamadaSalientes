@@ -458,8 +458,12 @@ export async function findAgentSlots(
 export function diversifyByProfessional(
   options: AgentSlotOption[],
   limit: number,
+  /** Respetar el orden recibido (agenda compacta: primero los pegados). */
+  keepOrder = false,
 ): AgentSlotOption[] {
-  const byTime = [...options].sort((a, b) => a.start.getTime() - b.start.getTime());
+  const byTime = keepOrder
+    ? [...options]
+    : [...options].sort((a, b) => a.start.getTime() - b.start.getTime());
   if (byTime.length <= limit) return byTime;
 
   const picked = byTime.slice(0, limit);

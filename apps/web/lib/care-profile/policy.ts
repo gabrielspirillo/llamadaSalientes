@@ -316,6 +316,12 @@ export const bookingPolicySchema = z.object({
   /** Hermanos que vienen juntos se agendan en huecos seguidos. */
   siblingsConsecutive: z.boolean().default(false),
   /**
+   * Agenda compacta para los asistentes: con citas ese día, sólo huecos a
+   * como mucho N minutos de la primera o la última (y primero los pegados).
+   * Null = se ofrece todo el día.
+   */
+  clusterAroundMinutes: z.number().int().min(15).max(600).nullable().default(null),
+  /**
    * Estados de cita que la clínica usa. Null = todos. Una clínica que trabaja
    * sola en recepción no marca "En sala", "En gabinete" ni "Atendida": se
    * ocultan del panel, no se borran del modelo.

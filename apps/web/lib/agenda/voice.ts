@@ -14,6 +14,7 @@ import { isUuid } from '@/lib/agenda/appointment-ref';
 import { firstVisitFromTreatment } from '@/lib/agenda/availability';
 import { pickAppointmentsToCancel } from '@/lib/agenda/cancel-match';
 import { withinClinicHours } from '@/lib/agenda/clinic-hours';
+import { compactSlots } from '@/lib/agenda/compact';
 import { decideFirstVisit, patientHasHistory } from '@/lib/agenda/first-visit';
 import { normalizePatientPhone } from '@/lib/agenda/patients';
 import {
@@ -32,7 +33,7 @@ import { db } from '@/lib/db/client';
 import { agendaAppointments, clinicSettings, professionals, treatments } from '@/lib/db/schema';
 import { clockArticle, speakClockTime } from '@/lib/retell/time-speech';
 import { addDaysToKey, localDateKey } from '@/lib/tasks/tz';
-import { and, asc, eq, gte, inArray } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, lt } from 'drizzle-orm';
 
 /**
  * La agenda interna vista por los agentes virtuales (voz y WhatsApp).
@@ -155,6 +156,43 @@ export async function agendaTreatmentProfessionals(
   }
 }
 
+/**
+ * Agenda compacta (`booking_policy.clusterAroundMinutes`): quita los huecos
+ * que dejarían horas sueltas entre medias y pone primero los pegados a una
+ * cita. Sin la regla, devuelve los huecos tal cual.
+ */
+async function compactForAgents<T extends { start: Date; end: Date; professionalId: string }>(
+  tenantId: string,
+  slots: T[],
+  timezone: string,
+): Promise<T[]> {
+  if (slots.length === 0) return slots;
+  const window = (await getCareProfileSafe(tenantId))?.bookingPolicy.clusterAroundMinutes;
+  if (!window) return slots;
+  const times = slots.map((s) => s.start.getTime());
+  const from = new Date(Math.min(...times) - 86_400_000);
+  const to = new Date(Math.max(...times) + 86_400_000);
+  const busy = await db
+    .select({
+      start: agendaAppointments.startsAt,
+      end: agendaAppointments.endsAt,
+      professionalId: agendaAppointments.professionalId,
+    })
+    .from(agendaAppointments)
+    .where(
+      and(
+        eq(agendaAppointments.tenantId, tenantId),
+        inArray(agendaAppointments.professionalId, [
+          ...new Set(slots.map((s) => s.professionalId)),
+        ]),
+        inArray(agendaAppointments.status, BUSY_STATUSES),
+        gte(agendaAppointments.startsAt, from),
+        lt(agendaAppointments.startsAt, to),
+      ),
+    );
+  return compactSlots(slots, busy, timezone, window);
+}
+
 export async function agendaCheckAvailability(
   tenantId: string,
   args: AgendaAvailabilityArgs,
@@ -196,6 +234,10 @@ export async function agendaCheckAvailability(
 
     if (search.reason === 'NO_AGENDA') return null;
 
+    const compacted = await compactForAgents(tenantId, search.options, search.timezone);
+    const compactOrder = compacted !== search.options;
+    search.options = compacted;
+
     // El tratamiento existe pero ningún profesional lo realiza: no se ofrece con
     // cualquiera. El agente tiene que decir que no lo hacen y pasar a recepción.
     if (search.reason === 'NO_PROFESSIONAL_FOR_TREATMENT' && search.matchedTreatment) {
@@ -220,7 +262,7 @@ export async function agendaCheckAvailability(
     const dayKey = (o: AgentSlotOption) => localDateKey(o.start, search.timezone);
     const days = [...new Set(search.options.map(dayKey))];
     const [firstDay, secondDay] = days;
-    const picked = diversifyByProfessional(search.options, 3);
+    const picked = diversifyByProfessional(search.options, 3, compactOrder);
     const spoken = picked.map((o) => speakOption(o, search.timezone));
     const tratamiento = search.matchedTreatment ? ` para ${search.matchedTreatment.name}` : '';
     const dayLabel = (key: string) => {
@@ -237,6 +279,7 @@ export async function agendaCheckAvailability(
     const listDay = (key: string) =>
       search.options
         .filter((o) => dayKey(o) === key)
+        .sort((a, b) => a.start.getTime() - b.start.getTime())
         .map(
           (o) =>
             `${speakClockTime(o.start, search.timezone)} con ${o.professionalName} [start_time=${localSlotKey(o.start, search.timezone)} professional_id=${o.professionalId}]`,
@@ -271,7 +314,7 @@ export async function agendaCheckAvailability(
       ? 'Aviso: no queda ningún hueco que no vaya pegado a otra primera visita, así que se ofrecen estos (está permitido sólo porque no hay otra opción). '
       : '';
     return {
-      result: `${noneOnRequested}${relaxNote}OFRECE PRIMERO estas tres opciones${tratamiento}: ${spoken.join('; ')}. Si ninguna le sirve, NO digas que no hay hueco: ofrécele todas las horas libres de ese día; y si tampoco, las del día siguiente con huecos. ${fullDays}${varios} Sólo existen los huecos de esta lista: no inventes horas ni ofrezcas otras (ya respetan el horario de la clínica). Para otra fecha, vuelve a llamar a check_availability con preferred_date. Para reservar, el paciente tiene que ELEGIR un hueco concreto (día, hora Y profesional): un "sí" o "dale" ambiguo NO es una elección. Luego pasá a book_appointment el start_time y el professional_id EXACTOS de ESE hueco, copiados tal cual de los corchetes (start_time es la hora de la clínica, NO la conviertas ni le añadas zona). Al paciente decile sólo el día, la hora y el nombre del profesional.`,
+      result: `${noneOnRequested}${relaxNote}Ofrécele SÓLO estas tres opciones${tratamiento}, ni una más: ${spoken.join('; ')}. NUNCA le mandes la lista entera de horas de golpe. Sólo si te dice que ninguna de las tres le sirve, ofrécele las demás horas de ese día; y si tampoco, las del día siguiente (están aquí abajo, para entonces). ${fullDays}${varios} Sólo existen los huecos de esta lista: no inventes horas ni ofrezcas otras (ya respetan el horario de la clínica). Para otra fecha, vuelve a llamar a check_availability con preferred_date. Para reservar, el paciente tiene que ELEGIR un hueco concreto (día, hora Y profesional): un "sí" o "dale" ambiguo NO es una elección. Luego pasá a book_appointment el start_time y el professional_id EXACTOS de ESE hueco, copiados tal cual de los corchetes (start_time es la hora de la clínica, NO la conviertas ni le añadas zona). Al paciente decile sólo el día, la hora y el nombre del profesional.`,
     };
   } catch (err) {
     console.error('[agenda-voice] check_availability', err);
@@ -413,9 +456,12 @@ export async function agendaBookAppointment(
         firstVisit,
         relaxConsecutiveFirstVisits: relax,
       });
-      return availability.slots
-        .map((sl) => ({ start: sl.start, end: sl.end }))
+      const open = availability.slots
+        .map((sl) => ({ start: sl.start, end: sl.end, professionalId: professional.id }))
         .filter((sl) => withinClinicHours(sl.start, sl.end, timezone, settings?.workingHours));
+      // Lo mismo que se ofreció: una hora que deja huecos sueltos tampoco se
+      // reserva aunque el paciente la pida.
+      return relax ? open : compactForAgents(tenantId, open, timezone);
     };
     const probe = matchRequestedSlot(args.start_time, timezone, []);
     if (!probe.dayKey) {
