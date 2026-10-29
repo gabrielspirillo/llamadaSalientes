@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { samePhone } from '@/lib/agenda/patients';
-import { buildScriptsSection } from '@/lib/care-profile/messages';
+import { buildRoleSection, buildScriptsSection } from '@/lib/care-profile/messages';
 import { type CareProfile, buildCareProtocolSection } from '@/lib/care-profile/policy';
 import { GUARDIAN_ROLE_LABELS } from '@/lib/care-profile/policy';
 import { getCareProfile } from '@/lib/care-profile/queries';
@@ -152,6 +152,7 @@ export async function runWhatsappAgent(
     lessons: grounding.lessons ?? [],
     now: formatNowInClinicZone(grounding.clinic.timezone, deps.now()),
     upcomingDays: upcomingDaysTable(grounding.clinic.timezone, deps.now()),
+    finalRules: careProfile?.messageScripts ? buildRoleSection(careProfile.messageScripts) : '',
     remindersResume: input.remindersResume ?? null,
     leadMemory,
     persona: agentSettings?.persona ?? null,
@@ -301,7 +302,8 @@ export async function runWhatsappAgent(
             treatmentName: derivation.treatmentName,
             via: derivation.via as 'treatment' | 'unico-profesional' | 'respaldo' | 'sin-destino',
           })
-        : HANDOFF_RESPONSE_TEXT;
+        : // La clínica dice con quién le pone en contacto ("con Raquel").
+          careProfile?.messageScripts?.handoff?.trim() || HANDOFF_RESPONSE_TEXT;
       break;
     }
   }

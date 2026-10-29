@@ -46,6 +46,8 @@ const checkAvailabilityArgs = z.object({
   first_visit: z.boolean().optional(),
   // Ficha del paciente: con ella se sabe si ya vino (no es primera visita).
   patient_id: z.string().optional(),
+  // Más horas si no le sirvió ninguna de las 4 ofrecidas.
+  page: z.number().int().min(1).max(10).optional(),
 });
 
 const bookAppointmentArgs = z.object({
@@ -223,6 +225,11 @@ function allToolDefinitions(): AgentToolDefinition[] {
             type: 'boolean',
             description:
               'Opcional. true si es un paciente nuevo (primera visita). Algunas clínicas reservan las primeras visitas en horarios concretos; si no lo pasas, se deduce del historial del teléfono.',
+          },
+          page: {
+            type: 'integer',
+            description:
+              'Sólo si el paciente dice que NINGUNA de las 4 horas ofrecidas le sirve: 2 devuelve las 4 siguientes, 3 las otras 4…',
           },
           patient_id: {
             type: 'string',

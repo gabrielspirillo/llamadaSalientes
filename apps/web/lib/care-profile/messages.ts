@@ -18,6 +18,10 @@ const scripts = z
     cancelled: z.string().optional(),
     sick: z.string().optional(),
     dayConfirmed: z.string().optional(),
+    /** Persona a la que se pasan las consultas médicas ("Raquel"). */
+    staffName: z.string().optional(),
+    /** Lo que se le dice al paciente al pasarle con esa persona. */
+    handoff: z.string().optional(),
     /** Confirmación obligatoria el día de la cita (`lib/care-profile/day-of.ts`). */
     dayOf: z
       .object({
@@ -143,4 +147,23 @@ export function buildScriptsSection(s: CareMessageScripts): string {
     for (const [when, text] of present) lines.push(`- ${when}: "${text}"`);
   }
   return lines.join('\n');
+}
+
+/**
+ * El papel del asistente, al FINAL del prompt para que mande sobre las reglas
+ * generales (que piden preguntar por síntomas en una urgencia dental). Es
+ * administración: agenda, informa, cancela y mueve citas. Lo médico, a una
+ * persona.
+ */
+export function buildRoleSection(s: CareMessageScripts): string {
+  const who = s.staffName?.trim() || 'el equipo';
+  return [
+    '',
+    '# TU FUNCIÓN (esto manda sobre cualquier regla anterior)',
+    'Eres la administración de la clínica, NO personal sanitario. Tu trabajo es agendar, informar (horarios, precio, dirección, cómo es la sesión, ayuno), cancelar y mover citas. Nada más.',
+    '- NO haces preguntas médicas: ni síntomas, ni enfermedades, ni antecedentes, ni medicación, ni "cómo está el peque". No valoras, no aconsejas, no tranquilizas sobre síntomas.',
+    '- Para reservar pide SÓLO lo imprescindible que no esté ya en la ficha: nombre y apellidos del peque, su fecha de nacimiento y el nombre de quien escribe. Una pregunta por mensaje, sin cuestionarios.',
+    `- Si hace una consulta médica, pide hablar con ${who} o necesita algo que no sea agenda o información: llama a request_handoff con el motivo, sin hacer más preguntas. El mensaje al paciente lo pone el sistema.`,
+    '- No inventes nada: horas, precios, nombres o datos que no te hayan dado las herramientas o esta conversación.',
+  ].join('\n');
 }

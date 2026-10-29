@@ -45,6 +45,8 @@ export type CheckAvailabilityArgs = {
   /** Agenda interna: el paciente es nuevo (aplican las reglas de primeras visitas). */
   first_visit?: boolean;
   patient_id?: string;
+  /** Más horas: 2 = las 4 siguientes a las ya ofrecidas. */
+  page?: number;
 };
 
 export type BookAppointmentArgs = {
@@ -187,6 +189,7 @@ export async function checkAvailability(
       professional_name: args.professional_name,
       first_visit: typeof args.first_visit === 'boolean' ? args.first_visit : undefined,
       patient_id: typeof args.patient_id === 'string' ? args.patient_id : undefined,
+      page: typeof args.page === 'number' ? args.page : undefined,
     },
     { patientPhone: normalizePatientPhone(ctx.patientPhone) },
   );
@@ -304,9 +307,16 @@ export async function bookAppointment(
     email: args.email,
     contact_id: crmContactId,
     source: ctx.channel === 'WHATSAPP' ? 'WHATSAPP_AGENT' : 'VOICE_AGENT',
-    dedupe_key:
-      ctx.dedupeKey ??
-      (ctx.retellCallId ? `call:${ctx.retellCallId}:${args.start_time}` : undefined),
+    // La clave lleva al paciente: con la misma hora y la misma conversación,
+    // la reserva del hermano devolvía la del primero como "ya estaba
+    // agendada" y el asistente daba por citados a los dos a la misma hora.
+    dedupe_key: (() => {
+      const base =
+        ctx.dedupeKey ??
+        (ctx.retellCallId ? `call:${ctx.retellCallId}:${args.start_time}` : undefined);
+      const who = (args.patient_id?.trim() || patientName).toLowerCase().replace(/\s+/g, ' ');
+      return base ? `${base}:${who}` : undefined;
+    })(),
   });
   if (internal) {
     // La cita ya está hecha: que el paciente quede además en la libreta es

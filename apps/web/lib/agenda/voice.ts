@@ -69,6 +69,8 @@ export interface AgendaAvailabilityArgs {
   first_visit?: boolean;
   /** Ficha del paciente: decide si ya tiene historia. */
   patient_id?: string;
+  /** 1 = las primeras 4 opciones; 2 = las 4 siguientes… */
+  page?: number;
 }
 
 export interface AgendaAvailabilityContext {
@@ -261,31 +263,24 @@ export async function agendaCheckAvailability(
     // horario de atención de la clínica.
     const dayKey = (o: AgentSlotOption) => localDateKey(o.start, search.timezone);
     const days = [...new Set(search.options.map(dayKey))];
-    const [firstDay, secondDay] = days;
-    const picked = diversifyByProfessional(search.options, 3, compactOrder);
+    const [firstDay] = days;
+    // Como mucho 4 horas por mensaje. Si ninguna le sirve, el agente pide las
+    // 4 siguientes (page) en vez de recibir el día entero y soltarlo de golpe.
+    const ordered = compactOrder
+      ? search.options
+      : [...search.options].sort((a, b) => a.start.getTime() - b.start.getTime());
+    const first = diversifyByProfessional(ordered, 4, compactOrder);
+    const page = Math.max(1, Math.min(10, Math.trunc(args.page ?? 1)));
+    const rest = ordered.filter((o) => !first.includes(o));
+    const picked = page === 1 ? first : rest.slice((page - 2) * 4, (page - 1) * 4);
+    if (picked.length === 0) {
+      return {
+        result:
+          'No quedan más horas libres en esos días. Pregúntale si le sirve otra semana y vuelve a llamar a check_availability con esa preferred_date (page 1).',
+      };
+    }
     const spoken = picked.map((o) => speakOption(o, search.timezone));
     const tratamiento = search.matchedTreatment ? ` para ${search.matchedTreatment.name}` : '';
-    const dayLabel = (key: string) => {
-      const sample = search.options.find((o) => dayKey(o) === key);
-      return sample
-        ? sample.start.toLocaleDateString('es-ES', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-            timeZone: search.timezone,
-          })
-        : key;
-    };
-    const listDay = (key: string) =>
-      search.options
-        .filter((o) => dayKey(o) === key)
-        .sort((a, b) => a.start.getTime() - b.start.getTime())
-        .map(
-          (o) =>
-            `${speakClockTime(o.start, search.timezone)} con ${o.professionalName} [start_time=${localSlotKey(o.start, search.timezone)} professional_id=${o.professionalId}]`,
-        )
-        .join('; ');
-
     const requested = args.preferred_date?.trim();
     // El día que se consultó, en palabras: si el modelo calculó mal "el
     // viernes", lo ve aquí y no le dice al paciente otro día como si fuera ése.
@@ -315,20 +310,11 @@ export async function agendaCheckAvailability(
             )}. Si el paciente no dijo con quién, preguntale si tiene preferencia; si le da igual, ofrecele el hueco más próximo.`
         : '';
 
-    const fullDays = [
-      firstDay ? `Todos los huecos libres del ${dayLabel(firstDay)}: ${listDay(firstDay)}.` : '',
-      secondDay
-        ? `Si ese día no le va, todos los del siguiente día con huecos, ${dayLabel(secondDay)}: ${listDay(secondDay)}.`
-        : '',
-    ]
-      .filter(Boolean)
-      .join(' ');
-
     const relaxNote = search.relaxedConsecutive
       ? 'Aviso: no queda ningún hueco que no vaya pegado a otra primera visita, así que se ofrecen estos (está permitido sólo porque no hay otra opción). '
       : '';
     return {
-      result: `${consulted}${noneOnRequested}${relaxNote}Ofrécele SÓLO estas tres opciones${tratamiento}, ni una más: ${spoken.join('; ')}. NUNCA le mandes la lista entera de horas de golpe. Sólo si te dice que ninguna de las tres le sirve, ofrécele las demás horas de ese día; y si tampoco, las del día siguiente (están aquí abajo, para entonces). ${fullDays}${varios} Sólo existen los huecos de esta lista: no inventes horas ni ofrezcas otras (ya respetan el horario de la clínica). Para otra fecha, vuelve a llamar a check_availability con preferred_date. Para reservar, el paciente tiene que ELEGIR un hueco concreto (día, hora Y profesional): un "sí" o "dale" ambiguo NO es una elección. Luego pasá a book_appointment el start_time y el professional_id EXACTOS de ESE hueco, copiados tal cual de los corchetes (start_time es la hora de la clínica, NO la conviertas ni le añadas zona). Al paciente decile sólo el día, la hora y el nombre del profesional.`,
+      result: `${consulted}${noneOnRequested}${relaxNote}Horas libres${tratamiento} (como mucho estas ${picked.length}, ni una más): ${spoken.join('; ')}. Si ninguna le sirve, llama a check_availability con la misma preferred_date y page ${page + 1} para las siguientes. NUNCA ofrezcas una hora que no esté en la última respuesta de check_availability: las demás pueden estar ocupadas.${varios} Sólo existen los huecos de esta lista: no inventes horas ni ofrezcas otras (ya respetan el horario de la clínica). Para otra fecha, vuelve a llamar a check_availability con preferred_date. Para reservar, el paciente tiene que ELEGIR un hueco concreto (día, hora Y profesional): un "sí" o "dale" ambiguo NO es una elección. Luego pasá a book_appointment el start_time y el professional_id EXACTOS de ESE hueco, copiados tal cual de los corchetes (start_time es la hora de la clínica, NO la conviertas ni le añadas zona). Al paciente decile sólo el día, la hora y el nombre del profesional.`,
     };
   } catch (err) {
     console.error('[agenda-voice] check_availability', err);
@@ -547,7 +533,7 @@ export async function agendaBookAppointment(
     return {
       result: deduped
         ? `Esa cita ya estaba agendada (${cuando} con ${professional.fullName}). No se duplicó.`
-        : `Cita agendada: ${cuando} con ${professional.fullName}. Confírmale al paciente EXACTAMENTE ese día y esa hora (no otra) y el profesional.`,
+        : `Cita agendada: ${cuando} con ${professional.fullName}. Confírmale al paciente EXACTAMENTE ese día y esa hora (no otra) y el profesional. Esa hora ya está ocupada: si vas a dar otra cita (un hermano), vuelve a llamar a check_availability antes de ofrecer horas.`,
       booked: deduped
         ? undefined
         : {

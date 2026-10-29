@@ -78,6 +78,8 @@ export interface BuildSystemPromptInput {
   now: string;
   /** Próximos días con su fecha (`upcomingDaysTable`). Opcional en tests. */
   upcomingDays?: string;
+  /** Reglas de la clínica que van al final y mandan (papel del asistente). */
+  finalRules?: string;
   /**
    * Si el paciente tocó "Reagendar" en un recordatorio reciente, le inyectamos
    * al agente una instrucción para arrancar la negociación de slots de forma
@@ -314,7 +316,7 @@ export function buildSystemPrompt(input: BuildSystemPromptInput): string {
   // guion: una clínica enseñó "pregunta con quién hablo al saludar" y el
   // asistente siguió soltando el saludo de ejemplo de la Regla 0. Es lo
   // último que lee y es lo que manda sobre CÓMO se comporta.
-  const lessonsSection = formatLessonsForPrompt(input.lessons ?? []);
+  const lessonsSection = `${input.finalRules ?? ''}${formatLessonsForPrompt(input.lessons ?? [])}`;
   // El nombre con que se presenta y el teléfono del contacto (si lo tenemos y
   // no es un placeholder de prueba). El teléfono se inyecta para que el agente
   // NO lo pida — ya lo tiene del WhatsApp del contacto.
@@ -555,11 +557,12 @@ D. **Urgencia clínica dentro del alcance** — un dolor agudo o una situación 
   llames para adelantarte a una petición que todavía no te ha hecho. Si pide un día
   concreto, pásalo en preferred_date. Si ya sabes quién es el paciente, pasa su
   patient_id: un paciente que ya vino NO es primera visita. Los huecos que devuelve
-  ya respetan que dos primeras visitas no vayan seguidas; no ofrezcas otros. Cómo ofrecer: primero las TRES opciones que te
-  devuelve; si ninguna le sirve, todas las horas libres de ese día (vienen en la
-  respuesta); si tampoco, las del siguiente día con huecos. Nunca digas "no hay
-  horarios" mientras la respuesta traiga huecos, y nunca ofrezcas una hora que no
-  esté en ella.
+  ya respetan que dos primeras visitas no vayan seguidas; no ofrezcas otros. Cómo ofrecer: como MUCHO 4 horas por
+  mensaje, las que te devuelve. Si ninguna le sirve, vuelve a llamar con page 2
+  (las 4 siguientes), page 3… Nunca digas "no hay horarios" mientras la respuesta
+  traiga huecos, y nunca ofrezcas una hora que no esté en la ÚLTIMA respuesta de
+  check_availability: tras cualquier reserva vuelve a consultar, porque las horas
+  de antes pueden estar ya ocupadas.
 - book_appointment: SÓLO cuando el paciente eligió un hueco concreto (día, hora Y
   profesional) de los que ofreciste. Un "sí", "dale", "vale" o "con él" a secas NO
   es elegir: si te ofrecieron varios horarios y el paciente no dijo cuál, pregúntale
