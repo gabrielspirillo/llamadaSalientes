@@ -258,6 +258,14 @@ async function onCreated(
     startTime: appointment.startsAt,
     endTime: appointment.endsAt,
   }).catch((err) => console.warn('[agenda-sync] alta en lista de espera', err));
+
+  // Cita dada a mano desde el panel: la familia recibe la misma confirmación
+  // por WhatsApp que si la hubiera reservado el asistente (que ya la manda él).
+  // Sin esperar: el envío no puede frenar el guardado de la cita.
+  if (appointment.source === 'PANEL') {
+    const { sendBookingConfirmation } = await import('@/lib/care-profile/booking-confirmation');
+    void sendBookingConfirmation(appointment);
+  }
 }
 
 /**
