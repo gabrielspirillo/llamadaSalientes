@@ -22,6 +22,7 @@ import { getLeadMemory } from '@/lib/memory/lead-memory';
 import { getCurrentTenant } from '@/lib/tenant';
 import { listTenantMembersSynced } from '@/lib/tenant-members';
 
+import { contactDisplayNames } from '@/lib/patients/display-names';
 import { ContactSidebar } from '../_components/contact-sidebar';
 import { ConversationActions } from '../_components/conversation-actions';
 import { MessageComposer } from '../_components/message-composer';
@@ -67,6 +68,13 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
           .set({ unreadCount: 0 })
           .where(eq(whatsappConversations.id, row.conv.id))
       : Promise.resolve();
+
+  // Nombre de la plataforma (la ficha del paciente), no el de su perfil de
+  // WhatsApp: escribe "Vanesa" y la paciente es su hija.
+  const display = (await contactDisplayNames(tenant.id, [row.contact.id]).catch(() => null))?.get(
+    row.contact.id,
+  );
+  const displayName = display?.name ?? row.contact.name ?? row.contact.phoneE164;
 
   // Memoria del lead (cross-canal) para mostrar en el sidebar. Best-effort.
   const leadMemPromise = getLeadMemory(tenant.id, row.contact.phoneE164).catch(() => null);
@@ -157,12 +165,17 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
             >
               <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
             </Link>
-            <Avatar name={row.contact.name ?? row.contact.phoneE164} size={40} />
+            <Avatar name={displayName} size={40} />
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="truncate text-[17px] font-bold tracking-tight text-zinc-900">
-                  {row.contact.name ?? row.contact.phoneE164}
+                  {displayName}
                 </h1>
+                {display?.whatsappName && (
+                  <span className="hidden shrink-0 text-[13px] text-zinc-500 sm:inline">
+                    escribe {display.whatsappName}
+                  </span>
+                )}
                 {row.conv.urgentFlag && (
                   <Badge tone="danger" size="sm" className="shrink-0 animate-pulse-soft">
                     URGENTE
@@ -197,6 +210,7 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
             internalNote: m.internalNote,
             contentText: m.contentText,
             mediaUrl: m.mediaUrl,
+            transcription: m.transcription,
             mediaType: m.mediaType,
             deliveryStatus: m.deliveryStatus,
             createdAt: m.createdAt.toISOString(),
@@ -213,7 +227,8 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
         conversationId={row.conv.id}
         contact={{
           id: row.contact.id,
-          name: row.contact.name,
+          name: displayName,
+          whatsappName: display?.whatsappName ?? null,
           phoneE164: row.contact.phoneE164,
           ghlContactId: row.contact.ghlContactId,
           avatarUrl: row.contact.avatarUrl,

@@ -1,3 +1,4 @@
+import { contactDisplayNames } from '@/lib/patients/display-names';
 import { foldedWordsFilter } from '@/lib/patients/persons';
 import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
 import { MessageCircle, Settings2 } from 'lucide-react';
@@ -100,6 +101,7 @@ export default async function WhatsappConversationsPage({
       aiEnabled: whatsappConversations.aiEnabled,
       humanTakeoverUntil: whatsappConversations.humanTakeoverUntil,
       unreadCount: whatsappConversations.unreadCount,
+      contactId: whatsappContacts.id,
       contactName: whatsappContacts.name,
       contactPhone: whatsappContacts.phoneE164,
     })
@@ -113,6 +115,10 @@ export default async function WhatsappConversationsPage({
         q
           ? or(
               foldedWordsFilter(sql`coalesce(${whatsappContacts.name}, '')`, q),
+              // También por el nombre del paciente que cuelga del contacto.
+              sql`exists (select 1 from patients p
+                    where p.tenant_id = ${tenant.id} and p.contact_id = ${whatsappContacts.id}
+                    and ${foldedWordsFilter(sql`p.first_name || ' ' || coalesce(p.last_name, '')`, q) ?? sql`false`})`,
               ilike(whatsappContacts.phoneE164, `%${q.replace(/[^\d+]/g, '') || q}%`),
             )
           : undefined,
@@ -137,6 +143,11 @@ export default async function WhatsappConversationsPage({
   // `DISTINCT ON`, que tiene que ordenar el historial completo de esas 100
   // conversaciones y empeora a medida que la clínica acumula mensajes.
   const conversationIds = rows.map((r) => r.id);
+  // Nombre de la ficha, no el del perfil de WhatsApp.
+  const displayNames = await contactDisplayNames(
+    tenant.id,
+    rows.map((r) => r.contactId),
+  ).catch(() => new Map<string, { name: string }>());
   const previewMap = new Map<
     string,
     { contentText: string | null; direction: string; createdAt: Date } | null
@@ -257,7 +268,7 @@ export default async function WhatsappConversationsPage({
             {rows.map((r, i) => {
               const badge = statusBadge(r);
               const preview = previewMap.get(r.id);
-              const name = r.contactName ?? r.contactPhone;
+              const name = displayNames.get(r.contactId)?.name ?? r.contactName ?? r.contactPhone;
               const unread = r.unreadCount > 0;
               return (
                 <li key={r.id} style={{ ['--i' as string]: Math.min(i, 14) }}>

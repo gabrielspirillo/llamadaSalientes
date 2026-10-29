@@ -102,6 +102,8 @@ export interface MediaSummary {
   /** Modelo usado para procesar este media (whisper-1, gemini-2.5-pro, 'cache'). */
   model?: string;
   latencyMs?: number;
+  /** No se pudo descargar o analizar: `summary` es el aviso, no el contenido. */
+  failed?: boolean;
 }
 
 export interface MultimodalOutput {

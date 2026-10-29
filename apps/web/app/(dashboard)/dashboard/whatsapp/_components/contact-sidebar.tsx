@@ -35,6 +35,8 @@ interface Props {
   contact: {
     id: string;
     name: string | null;
+    /** Nombre de su perfil de WhatsApp cuando no es el de la ficha. */
+    whatsappName?: string | null;
     phoneE164: string;
     ghlContactId: string | null;
     avatarUrl: string | null;
@@ -202,7 +204,10 @@ export function ContactSidebar({
             <p className="truncate text-[16px] font-bold text-zinc-900">
               {contact.name ?? 'Sin nombre'}
             </p>
-            <p className="text-xs text-zinc-500">{contact.phoneE164}</p>
+            <p className="text-xs text-zinc-500">
+              {contact.phoneE164}
+              {contact.whatsappName ? ` · en WhatsApp: ${contact.whatsappName}` : ''}
+            </p>
           </div>
         </div>
         <Link

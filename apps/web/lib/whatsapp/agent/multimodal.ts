@@ -71,7 +71,17 @@ export async function processInboundMessages(
     const summary = await processOne(msg, input);
     summaries.push(summary);
     const marker = `[t+${offsetSec}s]`;
-    const tag = summary.kind === 'text' ? '' : `(${summary.kind}) `;
+    // El modelo tiene que saber que es lo que DIJO el paciente en una nota de
+    // voz, no una descripción: con "(audio)" a secas contestaba el saludo de
+    // presentación como si no hubiera dicho nada.
+    const tag =
+      summary.kind === 'text'
+        ? ''
+        : summary.kind === 'audio'
+          ? summary.failed
+            ? '(nota de voz que no se pudo escuchar) '
+            : '(nota de voz del paciente, transcrita) '
+          : `(${summary.kind}) `;
     lines.push(`${marker} ${tag}${summary.summary}`.trim());
   }
 
@@ -119,12 +129,12 @@ async function processOne(msg: DbMessage, input: ProcessMessagesInput): Promise<
 
   // Audio / Image / Document: necesitamos descargar.
   if (!input.connector) {
-    return { messageId: msg.id, kind, summary: MEDIA_PLACEHOLDER[kind] };
+    return { messageId: msg.id, kind, failed: true, summary: MEDIA_PLACEHOLDER[kind] };
   }
 
   const mediaId = extractMediaId(msg);
   if (!mediaId) {
-    return { messageId: msg.id, kind, summary: MEDIA_PLACEHOLDER[kind] };
+    return { messageId: msg.id, kind, failed: true, summary: MEDIA_PLACEHOLDER[kind] };
   }
 
   let buffer: Buffer;
@@ -139,7 +149,7 @@ async function processOne(msg: DbMessage, input: ProcessMessagesInput): Promise<
       mediaId,
       err: (err as Error).message,
     });
-    return { messageId: msg.id, kind, summary: MEDIA_PLACEHOLDER[kind] };
+    return { messageId: msg.id, kind, failed: true, summary: MEDIA_PLACEHOLDER[kind] };
   }
 
   // Persistimos el adjunto en el bucket S3 (MinIO) si no estaba ya. Esto
@@ -163,11 +173,13 @@ async function processOne(msg: DbMessage, input: ProcessMessagesInput): Promise<
 
   // LLM call: Whisper para audio, Gemini Vision para imagen/PDF.
   let summaryText = MEDIA_PLACEHOLDER[kind];
+  let failed = false;
   let modelUsed = 'noop';
   let latencyMs = 0;
   try {
     if (kind === 'audio') {
       const r = await transcribeAudio(buffer, mimeType, { language: 'es' });
+      if (!r.text) failed = true;
       summaryText = r.text || MEDIA_PLACEHOLDER.audio;
       modelUsed = r.model;
       latencyMs = r.latencyMs;
@@ -183,6 +195,7 @@ async function processOne(msg: DbMessage, input: ProcessMessagesInput): Promise<
       latencyMs = r.latencyMs;
     }
   } catch (err) {
+    failed = true;
     console.warn('[wa-multimodal] LLM call falló', {
       messageId: msg.id,
       kind,
@@ -191,15 +204,18 @@ async function processOne(msg: DbMessage, input: ProcessMessagesInput): Promise<
     // Caemos al placeholder pero igual persistimos mediaUrl si lo conseguimos.
   }
 
+  // Un fallo NO se guarda como transcripción: quedaba cacheado y el siguiente
+  // intento leía "(no se pudo transcribir)" para siempre.
   await persistAnalysis(msg.id, {
-    transcription: summaryText,
+    transcription: failed ? null : summaryText,
     mediaUrl,
-    analysis: { kind, model: modelUsed, latencyMs, mediaUrl },
+    analysis: { kind, model: modelUsed, latencyMs, mediaUrl, failed },
   });
 
   return {
     messageId: msg.id,
     kind,
+    failed,
     summary: summaryText,
     mediaUrl: mediaUrl ?? undefined,
     model: modelUsed,
@@ -303,7 +319,7 @@ function extForMime(mime: string, kind: MediaKind): string {
 async function persistAnalysis(
   messageId: string,
   patch: {
-    transcription: string;
+    transcription: string | null;
     mediaUrl: string | null;
     analysis: Record<string, unknown>;
   },

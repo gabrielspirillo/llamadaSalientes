@@ -569,10 +569,14 @@ export default async function PacienteDossierPage({
               )}
               {phone && (
                 <Button asChild variant="secondary" size="sm">
-                  <a href={`https://wa.me/${phoneDigits(phone)}`} target="_blank" rel="noreferrer">
+                  {/* El chat de la app, no wa.me: así queda en el inbox con su historial. */}
+                  <Link
+                    href={`/dashboard/whatsapp/abrir?tel=${encodeURIComponent(phone)}`}
+                    prefetch={false}
+                  >
                     <MessageCircle className="h-4 w-4" />
                     <span className="hidden sm:inline">WhatsApp</span>
-                  </a>
+                  </Link>
                 </Button>
               )}
               {ctx.canWriteAppointments && (

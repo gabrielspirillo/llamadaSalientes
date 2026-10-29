@@ -537,7 +537,9 @@ async function loadHistory(conversationId: string, beforeOrEqual: Date): Promise
     .filter((r) => r.createdAt < beforeOrEqual)
     .map<HistoryTurn>((r) => ({
       role: r.direction === 'OUTBOUND' ? 'assistant' : 'user',
-      content: (r.contentText ?? r.transcription ?? '').trim(),
+      // `||`: un audio llega con contentText vacío ('') y la transcripción
+      // no entraba nunca en el historial.
+      content: (r.contentText || r.transcription || '').trim(),
     }))
     .filter((t) => t.content.length > 0)
     .slice(0, MAX_HISTORY_TURNS)

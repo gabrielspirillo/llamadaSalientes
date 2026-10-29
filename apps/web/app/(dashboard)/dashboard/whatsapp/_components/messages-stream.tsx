@@ -24,6 +24,8 @@ interface InitialMessage {
   internalNote: boolean;
   contentText: string | null;
   mediaUrl: string | null;
+  /** Lo que dijo en una nota de voz (Whisper). Sólo viene en la carga inicial. */
+  transcription?: string | null;
   mediaType: string | null;
   deliveryStatus: string | null;
   // Serializado a ISO string desde el page.tsx server component (Date no
@@ -186,6 +188,9 @@ function MessageBubble({
       {m.mediaUrl && m.type === 'AUDIO' && (
         // biome-ignore lint/a11y/useMediaCaption: nota de voz enviada por el paciente; no existe pista de subtítulos que ofrecer
         <audio src={m.mediaUrl} controls className="mb-1 w-full" />
+      )}
+      {m.type === 'AUDIO' && m.transcription && (
+        <p className="mb-1 text-[13px] italic text-zinc-600">«{m.transcription}»</p>
       )}
       {m.mediaUrl && m.type === 'VIDEO' && (
         // biome-ignore lint/a11y/useMediaCaption: vídeo enviado por el paciente; no existe pista de subtítulos que ofrecer
