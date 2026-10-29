@@ -10,18 +10,26 @@ import {
   phoneHasHistory,
   systemAgendaContext,
 } from '@/lib/agenda/agent';
+import { firstVisitFromTreatment } from '@/lib/agenda/availability';
 import { pickAppointmentsToCancel } from '@/lib/agenda/cancel-match';
 import { withinClinicHours } from '@/lib/agenda/clinic-hours';
 import { normalizePatientPhone } from '@/lib/agenda/patients';
-import { getAppointment, getClinicTimezone, tenantHasAgenda } from '@/lib/agenda/queries';
+import {
+  getAppointment,
+  getAvailability,
+  getClinicTimezone,
+  tenantHasAgenda,
+} from '@/lib/agenda/queries';
 import { AgendaValidationError, cancelAppointment, createAppointment } from '@/lib/agenda/service';
+import { BUSY_STATUSES } from '@/lib/agenda/shared';
+import { matchRequestedSlot } from '@/lib/agenda/slot-match';
 import { resolvePatientForBooking } from '@/lib/care-profile/agent';
 import { getCareProfileSafe } from '@/lib/care-profile/queries';
 import type { CancelledBy } from '@/lib/care-profile/signals';
 import { db } from '@/lib/db/client';
-import { agendaAppointments, clinicSettings, professionals } from '@/lib/db/schema';
+import { agendaAppointments, clinicSettings, professionals, treatments } from '@/lib/db/schema';
 import { clockArticle, speakClockTime } from '@/lib/retell/time-speech';
-import { localDateKey } from '@/lib/tasks/tz';
+import { addDaysToKey, localDateKey } from '@/lib/tasks/tz';
 import { and, asc, eq, gte, inArray } from 'drizzle-orm';
 
 /**
@@ -81,6 +89,21 @@ async function usesInternalAgenda(tenantId: string): Promise<boolean> {
 }
 
 /** "el martes a las diez y media con la Dra. Ruiz" + el marcador que hay que repetir. */
+/**
+ * El start_time que se le da al agente: la hora de la clínica tal cual
+ * ("2026-11-03 16:00"), sin zona. Un ISO en UTC lo reescribía mal y la cita
+ * salía corrida; al reservar, `matchRequestedSlot` lo interpreta igual.
+ */
+function localSlotKey(date: Date, timezone: string): string {
+  const time = date.toLocaleTimeString('es-ES', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone: timezone,
+  });
+  return `${localDateKey(date, timezone)} ${time}`;
+}
+
 function speakOption(option: AgentSlotOption, timezone: string): string {
   const weekday = option.start.toLocaleDateString('es-ES', { weekday: 'long', timeZone: timezone });
   const day = option.start.toLocaleDateString('es-ES', {
@@ -89,7 +112,7 @@ function speakOption(option: AgentSlotOption, timezone: string): string {
     timeZone: timezone,
   });
   const time = speakClockTime(option.start, timezone);
-  return `${weekday} ${day} ${clockArticle(time)} ${time} con ${option.professionalName} [start_time=${option.start.toISOString()} professional_id=${option.professionalId}]`;
+  return `${weekday} ${day} ${clockArticle(time)} ${time} con ${option.professionalName} [start_time=${localSlotKey(option.start, timezone)} professional_id=${option.professionalId}]`;
 }
 
 /**
@@ -192,7 +215,7 @@ export async function agendaCheckAvailability(
         .filter((o) => dayKey(o) === key)
         .map(
           (o) =>
-            `${speakClockTime(o.start, search.timezone)} con ${o.professionalName} [start_time=${o.start.toISOString()} professional_id=${o.professionalId}]`,
+            `${speakClockTime(o.start, search.timezone)} con ${o.professionalName} [start_time=${localSlotKey(o.start, search.timezone)} professional_id=${o.professionalId}]`,
         )
         .join('; ');
 
@@ -221,7 +244,7 @@ export async function agendaCheckAvailability(
       .join(' ');
 
     return {
-      result: `${noneOnRequested}OFRECE PRIMERO estas tres opciones${tratamiento}: ${spoken.join('; ')}. Si ninguna le sirve, NO digas que no hay hueco: ofrécele todas las horas libres de ese día; y si tampoco, las del día siguiente con huecos. ${fullDays}${varios} Sólo existen los huecos de esta lista: no inventes horas ni ofrezcas otras (ya respetan el horario de la clínica). Para otra fecha, vuelve a llamar a check_availability con preferred_date. Para reservar, el paciente tiene que ELEGIR un hueco concreto (día, hora Y profesional): un "sí" o "dale" ambiguo NO es una elección. Luego pasá a book_appointment el start_time y el professional_id EXACTOS de ESE hueco, tal cual aparecen entre corchetes. Al paciente decile sólo el día, la hora y el nombre del profesional.`,
+      result: `${noneOnRequested}OFRECE PRIMERO estas tres opciones${tratamiento}: ${spoken.join('; ')}. Si ninguna le sirve, NO digas que no hay hueco: ofrécele todas las horas libres de ese día; y si tampoco, las del día siguiente con huecos. ${fullDays}${varios} Sólo existen los huecos de esta lista: no inventes horas ni ofrezcas otras (ya respetan el horario de la clínica). Para otra fecha, vuelve a llamar a check_availability con preferred_date. Para reservar, el paciente tiene que ELEGIR un hueco concreto (día, hora Y profesional): un "sí" o "dale" ambiguo NO es una elección. Luego pasá a book_appointment el start_time y el professional_id EXACTOS de ESE hueco, copiados tal cual de los corchetes (start_time es la hora de la clínica, NO la conviertas ni le añadas zona). Al paciente decile sólo el día, la hora y el nombre del profesional.`,
     };
   } catch (err) {
     console.error('[agenda-voice] check_availability', err);
@@ -232,6 +255,42 @@ export async function agendaCheckAvailability(
         'No pude consultar la agenda en este momento. Vuelve a llamar a check_availability una vez; si vuelve a fallar, dile al paciente que recepción le confirma la hora y usa request_handoff.',
     };
   }
+}
+
+/**
+ * ¿La cita que se va a reservar es primera visita? Lo mismo que decide
+ * check_availability, para que se valide contra los mismos huecos que se
+ * ofrecieron: el tratamiento manda; si no dice, el historial del paciente (o
+ * del teléfono).
+ */
+async function bookingIsFirstVisit(
+  tenantId: string,
+  input: { treatmentId: string | null; patientId: string | null; phone: string | null },
+): Promise<boolean> {
+  if (input.treatmentId) {
+    const [row] = await db
+      .select({ visitKind: treatments.visitKind })
+      .from(treatments)
+      .where(and(eq(treatments.tenantId, tenantId), eq(treatments.id, input.treatmentId)))
+      .limit(1);
+    const byTreatment = firstVisitFromTreatment(row?.visitKind);
+    if (byTreatment !== null) return byTreatment;
+  }
+  if (input.patientId) {
+    const [prior] = await db
+      .select({ id: agendaAppointments.id })
+      .from(agendaAppointments)
+      .where(
+        and(
+          eq(agendaAppointments.tenantId, tenantId),
+          eq(agendaAppointments.patientId, input.patientId),
+          inArray(agendaAppointments.status, BUSY_STATUSES),
+        ),
+      )
+      .limit(1);
+    return !prior;
+  }
+  return input.phone ? !(await phoneHasHistory(tenantId, input.phone).catch(() => true)) : false;
 }
 
 export async function agendaBookAppointment(
@@ -308,23 +367,56 @@ export async function agendaBookAppointment(
       };
     }
 
-    // El mismo límite que al ofrecer: una hora fuera del horario de atención
-    // de la clínica no se reserva aunque el modelo la invente.
-    const startAt = new Date(args.start_time);
-    if (!Number.isNaN(startAt.getTime())) {
-      const [settings] = await db
-        .select({ workingHours: clinicSettings.workingHours })
-        .from(clinicSettings)
-        .where(eq(clinicSettings.tenantId, tenantId))
-        .limit(1);
-      const endAt = new Date(startAt.getTime() + (treatment?.durationMinutes ?? 30) * 60_000);
-      const timezone = await getClinicTimezone(tenantId);
-      if (!withinClinicHours(startAt, endAt, timezone, settings?.workingHours)) {
-        return {
-          result:
-            'Esa hora está fuera del horario de atención de la clínica. Llama a check_availability y ofrece sólo los huecos que devuelve.',
-        };
-      }
+    // La hora se comprueba contra los huecos libres REALES de ese día, con las
+    // mismas reglas que al ofrecerlos. El modelo reescribe el start_time (pone
+    // la hora local con Z y la cita salía una hora corrida, o decía "ocupado"
+    // de un hueco libre): aquí se elige la lectura que coincide con un hueco.
+    const timezone = await getClinicTimezone(tenantId);
+    const duration = treatment?.durationMinutes ?? 30;
+    const firstVisit = await bookingIsFirstVisit(tenantId, {
+      treatmentId: treatment?.id ?? null,
+      patientId,
+      phone: args.phone ?? null,
+    });
+    const [settings] = await db
+      .select({ workingHours: clinicSettings.workingHours })
+      .from(clinicSettings)
+      .where(eq(clinicSettings.tenantId, tenantId))
+      .limit(1);
+    const freeOn = async (dayKey: string) => {
+      const availability = await getAvailability(tenantId, {
+        professionalId: professional.id,
+        fromDateKey: addDaysToKey(dayKey, -1),
+        toDateKey: addDaysToKey(dayKey, 1),
+        durationMinutes: duration,
+        limit: 400,
+        firstVisit,
+      });
+      return availability.slots
+        .map((sl) => ({ start: sl.start, end: sl.end }))
+        .filter((sl) => withinClinicHours(sl.start, sl.end, timezone, settings?.workingHours));
+    };
+    const probe = matchRequestedSlot(args.start_time, timezone, []);
+    if (!probe.dayKey) {
+      return {
+        result:
+          'No entiendo esa hora. Pasa en start_time el hueco exacto que devolvió check_availability (por ejemplo "2026-11-03 16:00").',
+      };
+    }
+    const free = await freeOn(probe.dayKey);
+    const chosen = matchRequestedSlot(
+      args.start_time,
+      timezone,
+      free.map((f) => f.start),
+    ).start;
+    if (!chosen) {
+      const sameDay = free.filter((f) => localDateKey(f.start, timezone) === probe.dayKey);
+      const lista = sameDay.map((f) => speakClockTime(f.start, timezone)).join(', ');
+      return {
+        result: sameDay.length
+          ? `Esa hora no está libre con ${professional.fullName}. Ese día (${probe.dayKey}) sí quedan: ${lista}. Ofrécele una de esas (start_time "${probe.dayKey} HH:MM") y no le digas otra.`
+          : `Ese día (${probe.dayKey}) ${professional.fullName} no tiene ningún hueco libre. Llama a check_availability con preferred_date del día siguiente y ofrécele lo que devuelva.`,
+      };
     }
 
     const { appointment, deduped } = await createAppointment(systemAgendaContext(tenantId), {
@@ -336,20 +428,28 @@ export async function agendaBookAppointment(
       patientPhone: normalizePatientPhone(args.phone) ?? '',
       patientEmail: args.email ?? '',
       ghlContactId: args.contact_id ?? '',
-      startsAt: args.start_time,
+      startsAt: chosen.toISOString(),
       durationMinutes: treatment?.durationMinutes,
       notes: args.notes ?? '',
       source: args.source ?? 'VOICE_AGENT',
       dedupeKey: args.dedupe_key,
     });
 
-    const timezone = await getClinicTimezone(tenantId);
-    const cuando = `${localDateKey(appointment.startsAt, timezone)} ${speakClockTime(appointment.startsAt, timezone)}`;
+    const cuando = `${appointment.startsAt.toLocaleDateString('es-ES', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      timeZone: timezone,
+    })} a las ${appointment.startsAt.toLocaleTimeString('es-ES', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: timezone,
+    })}`;
 
     return {
       result: deduped
         ? `Esa cita ya estaba agendada (${cuando} con ${professional.fullName}). No se duplicó.`
-        : `Cita agendada: ${cuando} con ${professional.fullName}. Confirmale al paciente el día, la hora y el profesional.`,
+        : `Cita agendada: ${cuando} con ${professional.fullName}. Confírmale al paciente EXACTAMENTE ese día y esa hora (no otra) y el profesional.`,
     };
   } catch (err) {
     if (err instanceof AgendaValidationError) {
