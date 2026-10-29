@@ -308,7 +308,7 @@ function allToolDefinitions(): AgentToolDefinition[] {
     {
       name: 'cancel_appointment',
       description:
-        'Cancela una cita del paciente que escribe. NUNCA le pidas un ID: basta con el nombre del paciente de la cita (y el día si tiene varias); la cita se busca entre las de su teléfono. Si get_patient_info te dio el appointment_id, pásalo.',
+        'Cancela una cita del paciente que escribe. Si quiere CAMBIARLA, no la canceles todavía: primero reserva la nueva con book_appointment y cancela la vieja después. NUNCA le pidas un ID: basta con el nombre del paciente de la cita (y el día si tiene varias); la cita se busca entre las de su teléfono. Si get_patient_info te dio el appointment_id, pásalo.',
       parameters: {
         type: 'object',
         properties: {

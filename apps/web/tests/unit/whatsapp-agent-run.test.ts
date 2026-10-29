@@ -23,6 +23,7 @@ vi.mock('@/lib/whatsapp/agent/prompt', () => ({
   URGENT_RESPONSE_TEXT: mocks.URGENT_RESPONSE_TEXT,
   buildSystemPrompt: () => 'SYSTEM_PROMPT_STUB',
   formatNowInClinicZone: () => 'lunes 8 de junio de 2026, 11:00 (Europe/Madrid)',
+  upcomingDaysTable: () => '',
   loadGroundingForTenant: mocks.loadGrounding,
 }));
 

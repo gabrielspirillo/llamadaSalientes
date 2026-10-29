@@ -19,6 +19,7 @@ import {
   buildSystemPrompt,
   formatNowInClinicZone,
   loadGroundingForTenant,
+  upcomingDaysTable,
 } from './prompt';
 
 import { toWhatsappFormatting } from '@/lib/whatsapp/format';
@@ -150,6 +151,7 @@ export async function runWhatsappAgent(
     // de evals no lo traen, y ahí el prompt es el de siempre.
     lessons: grounding.lessons ?? [],
     now: formatNowInClinicZone(grounding.clinic.timezone, deps.now()),
+    upcomingDays: upcomingDaysTable(grounding.clinic.timezone, deps.now()),
     remindersResume: input.remindersResume ?? null,
     leadMemory,
     persona: agentSettings?.persona ?? null,

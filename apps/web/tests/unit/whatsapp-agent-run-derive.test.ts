@@ -21,6 +21,7 @@ vi.mock('@/lib/whatsapp/agent/prompt', () => ({
   HANDOFF_RESPONSE_TEXT: 'Te paso con recepción. En breve te contactan para ayudarte.',
   buildSystemPrompt: () => 'SYSTEM_PROMPT_STUB',
   formatNowInClinicZone: () => 'lunes 22 de septiembre de 2026, 11:00 (Europe/Madrid)',
+  upcomingDaysTable: () => '',
   loadGroundingForTenant: mocks.loadGrounding,
 }));
 vi.mock('@/lib/whatsapp/agent/llm', () => ({ callLLM: mocks.callLLM }));

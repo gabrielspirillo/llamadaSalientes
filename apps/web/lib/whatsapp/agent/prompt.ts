@@ -76,6 +76,8 @@ export interface BuildSystemPromptInput {
    * que convertir mentalmente — y que se equivoca a hacerlo.
    */
   now: string;
+  /** Próximos días con su fecha (`upcomingDaysTable`). Opcional en tests. */
+  upcomingDays?: string;
   /**
    * Si el paciente tocó "Reagendar" en un recordatorio reciente, le inyectamos
    * al agente una instrucción para arrancar la negociación de slots de forma
@@ -163,6 +165,34 @@ export function formatNowInClinicZone(timezone: string, instant: Date = new Date
   const hour = get('hour');
   const minute = get('minute');
   return `${weekday} ${day} de ${month} de ${year}, ${hour}:${minute} (${timezone})`;
+}
+
+/**
+ * Los próximos días con su fecha ya resuelta ("viernes 6 de noviembre =
+ * 2026-11-06"). El modelo calculaba mal "el viernes" desde "ahora es…" y
+ * buscaba otro día: con la tabla delante sólo tiene que copiarla.
+ */
+export function upcomingDaysTable(timezone: string, instant: Date = new Date(), days = 14): string {
+  const fmt = new Intl.DateTimeFormat('es-ES', {
+    timeZone: timezone,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+  const key = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const lines: string[] = [];
+  for (let i = 0; i < days; i++) {
+    // Mediodía + i días: lejos de la medianoche, el cambio de hora no lo mueve.
+    const d = new Date(instant.getTime() + i * 86_400_000);
+    const label = i === 0 ? 'hoy' : i === 1 ? 'mañana' : null;
+    lines.push(`${fmt.format(d)}${label ? ` (${label})` : ''} = ${key.format(d)}`);
+  }
+  return lines.join('; ');
 }
 
 /**
@@ -272,6 +302,7 @@ export function buildSystemPrompt(input: BuildSystemPromptInput): string {
     faqs,
     professionals,
     now,
+    upcomingDays = '',
     remindersResume,
     leadMemory,
     persona,
@@ -514,6 +545,8 @@ D. **Urgencia clínica dentro del alcance** — un dolor agudo o una situación 
    jueves. Nunca busques desde hoy cuando el paciente pidió otra semana, ni ofrezcas un
    día de ESTA semana como si fuera de la que viene. Si no estás seguro de la fecha,
    pregúntale — NO supongas.
+   Calendario de los próximos días (cópialo, no lo calcules): ${upcomingDays}.
+   "El viernes" es el PRIMER viernes de esta lista; pasa su fecha tal cual.
 8. Confidencialidad: no repitas el teléfono completo del paciente ni datos médicos
    sensibles dentro del mensaje. Usa nombres cuando los tengas.
 
@@ -536,6 +569,10 @@ D. **Urgencia clínica dentro del alcance** — un dolor agudo o una situación 
   check_availability y pasando su nombre.
 - cancel_appointment: el paciente quiere cancelar una cita. Con su nombre (o el del
   niño) basta: NUNCA le pidas un ID. Si tiene varias, pregúntale cuál por el día.
+  CAMBIAR una cita ("quiero cambiarla", "ese día no puedo") NO es cancelar: la cita
+  vieja se queda hasta que la nueva esté reservada. Orden: check_availability →
+  el paciente elige → book_appointment → y SÓLO entonces cancel_appointment de la
+  vieja. Si no encuentra otro hueco que le sirva, su cita sigue como estaba.
 - get_patient_info: saber si el paciente ya es de la casa, y qué tiene pendiente.
 - register_patient: el paciente es nuevo y YA ha elegido horario; se le da de alta
   para poder reservar. No antes.

@@ -287,6 +287,20 @@ export async function agendaCheckAvailability(
         .join('; ');
 
     const requested = args.preferred_date?.trim();
+    // El día que se consultó, en palabras: si el modelo calculó mal "el
+    // viernes", lo ve aquí y no le dice al paciente otro día como si fuera ése.
+    const consulted =
+      requested && /^\d{4}-\d{2}-\d{2}$/.test(requested)
+        ? `Has consultado desde el ${new Date(`${requested}T12:00:00Z`).toLocaleDateString(
+            'es-ES',
+            {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+              timeZone: 'UTC',
+            },
+          )} (${requested}): si no es el día que pidió el paciente, vuelve a llamar con la fecha correcta antes de contestar. `
+        : '';
     const noneOnRequested =
       requested && /^\d{4}-\d{2}-\d{2}$/.test(requested) && firstDay !== requested
         ? `El día que pidió (${requested}) no hay huecos libres (o la clínica no atiende ese día): díselo y ofrécele lo siguiente. `
@@ -314,7 +328,7 @@ export async function agendaCheckAvailability(
       ? 'Aviso: no queda ningún hueco que no vaya pegado a otra primera visita, así que se ofrecen estos (está permitido sólo porque no hay otra opción). '
       : '';
     return {
-      result: `${noneOnRequested}${relaxNote}Ofrécele SÓLO estas tres opciones${tratamiento}, ni una más: ${spoken.join('; ')}. NUNCA le mandes la lista entera de horas de golpe. Sólo si te dice que ninguna de las tres le sirve, ofrécele las demás horas de ese día; y si tampoco, las del día siguiente (están aquí abajo, para entonces). ${fullDays}${varios} Sólo existen los huecos de esta lista: no inventes horas ni ofrezcas otras (ya respetan el horario de la clínica). Para otra fecha, vuelve a llamar a check_availability con preferred_date. Para reservar, el paciente tiene que ELEGIR un hueco concreto (día, hora Y profesional): un "sí" o "dale" ambiguo NO es una elección. Luego pasá a book_appointment el start_time y el professional_id EXACTOS de ESE hueco, copiados tal cual de los corchetes (start_time es la hora de la clínica, NO la conviertas ni le añadas zona). Al paciente decile sólo el día, la hora y el nombre del profesional.`,
+      result: `${consulted}${noneOnRequested}${relaxNote}Ofrécele SÓLO estas tres opciones${tratamiento}, ni una más: ${spoken.join('; ')}. NUNCA le mandes la lista entera de horas de golpe. Sólo si te dice que ninguna de las tres le sirve, ofrécele las demás horas de ese día; y si tampoco, las del día siguiente (están aquí abajo, para entonces). ${fullDays}${varios} Sólo existen los huecos de esta lista: no inventes horas ni ofrezcas otras (ya respetan el horario de la clínica). Para otra fecha, vuelve a llamar a check_availability con preferred_date. Para reservar, el paciente tiene que ELEGIR un hueco concreto (día, hora Y profesional): un "sí" o "dale" ambiguo NO es una elección. Luego pasá a book_appointment el start_time y el professional_id EXACTOS de ESE hueco, copiados tal cual de los corchetes (start_time es la hora de la clínica, NO la conviertas ni le añadas zona). Al paciente decile sólo el día, la hora y el nombre del profesional.`,
     };
   } catch (err) {
     console.error('[agenda-voice] check_availability', err);
