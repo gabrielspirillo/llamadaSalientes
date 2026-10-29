@@ -125,6 +125,11 @@ export interface BuildSystemPromptInput {
    */
   careProtocol?: string | null;
   /**
+   * Lo que la plataforma ya sabe de quien escribe (ficha, hijos, citas). Null
+   * si el teléfono no está en la libreta: entonces es un contacto nuevo.
+   */
+  knownContact?: string | null;
+  /**
    * Lo que la clínica le enseñó desde "Entrenar al asistente". Aditivo como
    * `persona`, pero concreto: manda sobre el criterio general del modelo y
    * cede ante los datos oficiales y las reglas duras. Vacío o ausente en una
@@ -322,7 +327,22 @@ NO lo repitas literal, NO inventes datos fuera de esto ni de los DATOS OFICIALES
   // Perfil de atención (pediatría). Va antes de las reglas duras y las
   // complementa: dice quién es el paciente y qué datos hacen falta para darle
   // de alta, y el servidor exige lo mismo por su cuenta.
-  const careSection = input.careProtocol?.trim() ? `\n\n${input.careProtocol.trim()}` : '';
+  const knownSection = input.knownContact?.trim()
+    ? `
+
+# YA CONOCES A QUIEN TE ESCRIBE (está en la ficha de la clínica)
+${input.knownContact.trim()}
+Reglas con un contacto conocido:
+- NO le pidas datos que ya están aquí: ni nombre, ni teléfono, ni fecha de
+  nacimiento, ni tutores, ni correo. Pide SÓLO lo que falte para lo que quiere.
+- En el primer mensaje no uses la frase de presentación genérica: salúdale por su
+  nombre (el del tutor o titular si escribe por un niño) y ve a lo que pide.
+- Si hay un solo paciente en este teléfono, da por hecho que habla de él. Si hay
+  varios, pregunta por cuál nombrándolos ("¿es para Lucas o para Ana?").
+- Al reservar usa el patient_id que aparece aquí; no vuelvas a registrar a nadie.`
+    : '';
+  const careSection =
+    (input.careProtocol?.trim() ? `\n\n${input.careProtocol.trim()}` : '') + knownSection;
   const resumeSection = remindersResume
     ? `
 

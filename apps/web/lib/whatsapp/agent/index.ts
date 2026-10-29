@@ -1,12 +1,17 @@
 import 'server-only';
 
+import { samePhone } from '@/lib/agenda/patients';
 import { type CareProfile, buildCareProtocolSection } from '@/lib/care-profile/policy';
+import { GUARDIAN_ROLE_LABELS } from '@/lib/care-profile/policy';
 import { getCareProfile } from '@/lib/care-profile/queries';
 import {
   type WhatsappAgentRuntimeSettings,
   getWhatsappAgentSettings,
 } from '@/lib/data/whatsapp-agent-settings';
 import { getLeadMemory } from '@/lib/memory/lead-memory';
+import { listPatientsForPhone } from '@/lib/patients/persons';
+import { findPatientByPhone } from '@/lib/patients/registry';
+import { getPatientInfo } from '@/lib/retell/tools';
 import { type LlmCallResult, type LlmMessage, callLLM } from './llm';
 import {
   HANDOFF_RESPONSE_TEXT,
@@ -56,6 +61,11 @@ export interface AgentRunDeps {
    * prompt no cambia. Best-effort: si falla, el asistente atiende como siempre.
    */
   loadCareProfile: (tenantId: string) => Promise<CareProfile | null>;
+  /**
+   * Lo que la plataforma ya sabe del teléfono que escribe (ficha, hijos,
+   * próxima cita). Null si es un contacto nuevo.
+   */
+  loadKnownContact: (tenantId: string, phoneE164: string) => Promise<string | null>;
 }
 
 const defaultAgentDeps: AgentRunDeps = {
@@ -69,6 +79,26 @@ const defaultAgentDeps: AgentRunDeps = {
   },
   loadAgentSettings: getWhatsappAgentSettings,
   loadCareProfile: getCareProfile,
+  loadKnownContact: async (tenantId, phoneE164) => {
+    // Mismo texto que devuelve get_patient_info, pero ANTES de contestar: si
+    // el agente lo tiene que pedir, ya ha saludado como a un desconocido y
+    // pregunta datos que la clínica tiene.
+    const [record, kids] = await Promise.all([
+      findPatientByPhone(tenantId, phoneE164).catch(() => null),
+      listPatientsForPhone(tenantId, phoneE164).catch(() => []),
+    ]);
+    if (!record && kids.length === 0) return null;
+    const info = await getPatientInfo(tenantId, { phone: phoneE164 }, { patientPhone: phoneE164 });
+    // Quién escribe: el tutor cuyo teléfono es este (por su nombre en la
+    // ficha), o el titular de la libreta. Es a quien hay que saludar.
+    const guardian = kids
+      .flatMap((k) => k.guardians)
+      .find((g) => g.phone && samePhone(g.phone, phoneE164) && g.name?.trim());
+    const writer = guardian
+      ? `${guardian.name.trim()}${guardian.role ? ` (${GUARDIAN_ROLE_LABELS[guardian.role]?.toLowerCase() ?? guardian.role})` : ''}`
+      : (record?.name ?? kids[0]?.contactName ?? null);
+    return `${writer ? `Quien escribe: ${writer}.\n` : ''}${info.result}`;
+  },
 };
 
 /**
@@ -104,6 +134,9 @@ export async function runWhatsappAgent(
     deps.loadAgentSettings(input.tenantId).catch(() => null),
     deps.loadCareProfile(input.tenantId).catch(() => null),
   ]);
+  const knownContact = await deps
+    .loadKnownContact(input.tenantId, input.contactPhoneE164)
+    .catch(() => null);
   // Sin fila de ajustes, el asistente es el de siempre: una clínica que nunca
   // pasó por el panel de Futura no puede quedarse sin agendar.
   const mode = agentSettings?.mode ?? 'BOOKING';
@@ -123,6 +156,7 @@ export async function runWhatsappAgent(
     contactPhoneE164: input.contactPhoneE164,
     mode,
     careProtocol: careProfile ? buildCareProtocolSection(careProfile) : null,
+    knownContact,
   });
 
   const tools = getAgentToolDefinitions(mode);
