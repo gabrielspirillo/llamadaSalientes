@@ -21,7 +21,11 @@ import OpenAI from 'openai';
  */
 
 const GEMINI_DEFAULT_MODEL = process.env.GEMINI_AGENT_MODEL ?? 'gemini-flash-latest';
-const OPENAI_FALLBACK_MODEL = process.env.OPENAI_AGENT_FALLBACK_MODEL ?? 'gpt-4o-mini';
+// Sin GEMINI_API_KEY en producción, este es EL modelo del asistente, no un
+// respaldo. gpt-4o-mini (2024) se saltaba instrucciones largas: hacía rondas
+// de preguntas médicas pese a las reglas. gpt-5.4-mini acepta los mismos
+// parámetros (temperature + tools) y contesta en ~1,5 s.
+const OPENAI_FALLBACK_MODEL = process.env.OPENAI_AGENT_FALLBACK_MODEL || 'gpt-5.4-mini';
 const REQUEST_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS ?? 20_000);
 
 // ─────────────────────────────────────────────────────────────────────────────
