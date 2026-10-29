@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { phoneHasHistory } from '@/lib/agenda/agent';
 import { samePhone } from '@/lib/agenda/patients';
 import { buildRoleSection, buildScriptsSection } from '@/lib/care-profile/messages';
 import { type CareProfile, buildCareProtocolSection } from '@/lib/care-profile/policy';
@@ -89,7 +90,19 @@ const defaultAgentDeps: AgentRunDeps = {
       findPatientByPhone(tenantId, phoneE164).catch(() => null),
       listPatientsForPhone(tenantId, phoneE164).catch(() => []),
     ]);
+    // Todo número que escribe queda en la libreta ANTES de que conteste el
+    // asistente (con el nombre de su perfil de WhatsApp, o sin nombre). Eso no
+    // es "conocerle": sólo cuenta con un niño en ficha, un nombre guardado por
+    // la clínica o una cita. Si no, un paciente nuevo recibía trato de
+    // conocido y se saltaba el saludo y las preguntas de primera visita.
     if (!record && kids.length === 0) return null;
+    const savedName = Boolean(record?.firstName?.trim() || record?.lastName?.trim());
+    const hasHistory =
+      kids.length > 0 ||
+      savedName ||
+      Boolean(record?.ghlContactId) ||
+      (await phoneHasHistory(tenantId, phoneE164).catch(() => false));
+    if (!hasHistory) return null;
     const info = await getPatientInfo(tenantId, { phone: phoneE164 }, { patientPhone: phoneE164 });
     // Quién escribe: el tutor cuyo teléfono es este (por su nombre en la
     // ficha), o el titular de la libreta. Es a quien hay que saludar.
@@ -153,6 +166,7 @@ export async function runWhatsappAgent(
     now: formatNowInClinicZone(grounding.clinic.timezone, deps.now()),
     upcomingDays: upcomingDaysTable(grounding.clinic.timezone, deps.now()),
     finalRules: careProfile?.messageScripts ? buildRoleSection(careProfile.messageScripts) : '',
+    adminOnly: Boolean(careProfile?.messageScripts?.handoff),
     remindersResume: input.remindersResume ?? null,
     leadMemory,
     persona: agentSettings?.persona ?? null,
@@ -170,7 +184,12 @@ export async function runWhatsappAgent(
     knownContact,
   });
 
-  const tools = getAgentToolDefinitions(mode);
+  // Asistente administrativo: sin flag_urgent (su descripción le manda
+  // preguntar por el síntoma); lo médico va a request_handoff.
+  const adminOnly = Boolean(careProfile?.messageScripts?.handoff);
+  const tools = getAgentToolDefinitions(mode).filter(
+    (t) => !(adminOnly && t.name === 'flag_urgent'),
+  );
 
   const messages: LlmMessage[] = [
     { role: 'system', content: system },
@@ -344,6 +363,15 @@ export async function runWhatsappAgent(
   // Último paso sobre el texto: WhatsApp no entiende Markdown, así que la
   // negrita del modelo (`**así**`) llegaba al paciente con los asteriscos a la
   // vista. Va después de los guardrails para cubrir también sus plantillas.
+  // Tope de servidor para el asistente administrativo: una pregunta sobre
+  // síntomas no sale aunque el modelo la escriba. Se pasa a la persona del
+  // equipo con el mensaje de la clínica.
+  if (adminOnly && finalText && !handoff && !derivation && looksLikeMedicalQuestion(finalText)) {
+    guardrailFlags.push('admin_only:medical_question');
+    handoff = true;
+    finalText = careProfile?.messageScripts?.handoff?.trim() || HANDOFF_RESPONSE_TEXT;
+  }
+
   if (finalText) finalText = toWhatsappFormatting(finalText);
 
   // Reserva con guiones de la clínica: primero sus mensajes, tal cual, y
@@ -470,3 +498,18 @@ function deriveConfidence(input: {
   // el dashboard pueda filtrar runs de baja calidad si hace falta.
   return 0.5;
 }
+
+/**
+ * ¿El asistente está preguntando por síntomas? Una pregunta (signo "?") que
+ * habla de fiebre, tos, respiración, dolor, medicación… En el modo
+ * administrativo eso no se envía nunca.
+ */
+export function looksLikeMedicalQuestion(text: string): boolean {
+  // Sólo las frases que son pregunta: el saludo de la clínica pregunta "¿es la
+  // primera vez?" y DESPUÉS avisa de la fiebre, y eso sí tiene que salir.
+  const questions = text.match(/[^?\n]*\?/g) ?? [];
+  return questions.some((q) => MEDICAL.test(q));
+}
+
+const MEDICAL =
+  /\b(fiebre|tos\b|toser|s[ií]ntoma|respir|ahog|pitid|mocos?\b|flema|v[oó]mit|diarrea|dolor|duele|temperatura|grados|medicaci[oó]n|medicamento|antibi[oó]tico|paracetamol|ibuprofeno|inhalador|saturaci[oó]n|molesti)/i;

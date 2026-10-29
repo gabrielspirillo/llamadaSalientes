@@ -236,6 +236,22 @@ export async function agendaCheckAvailability(
 
     if (search.reason === 'NO_AGENDA') return null;
 
+    // Un tratamiento que no existe no se "aproxima" con huecos genéricos (y
+    // duración por defecto): se le dan los que hay para que use uno.
+    if (args.treatment_name?.trim() && !search.matchedTreatment) {
+      const catalog = await db
+        .select({ name: treatments.name })
+        .from(treatments)
+        .where(and(eq(treatments.tenantId, tenantId), eq(treatments.active, true)))
+        .orderBy(asc(treatments.name))
+        .limit(20);
+      if (catalog.length > 0) {
+        return {
+          result: `No hay ningún tratamiento llamado "${args.treatment_name}". Los de la clínica son: ${catalog.map((c) => c.name).join(', ')}. Vuelve a llamar a check_availability con el que corresponda (copiado tal cual); si no sabes cuál, pregúntaselo al paciente.`,
+        };
+      }
+    }
+
     const compacted = await compactForAgents(tenantId, search.options, search.timezone);
     const compactOrder = compacted !== search.options;
     search.options = compacted;
@@ -272,7 +288,11 @@ export async function agendaCheckAvailability(
     const first = diversifyByProfessional(ordered, 4, compactOrder);
     const page = Math.max(1, Math.min(10, Math.trunc(args.page ?? 1)));
     const rest = ordered.filter((o) => !first.includes(o));
-    const picked = page === 1 ? first : rest.slice((page - 2) * 4, (page - 1) * 4);
+    // Elegidas por cercanía a las citas del día, pero se enseñan en orden de
+    // hora: "17:30, 19:00, 16:00" confunde a quien lee.
+    const picked = (page === 1 ? first : rest.slice((page - 2) * 4, (page - 1) * 4)).sort(
+      (a, b) => a.start.getTime() - b.start.getTime(),
+    );
     if (picked.length === 0) {
       return {
         result:
@@ -463,6 +483,27 @@ export async function agendaBookAppointment(
       // reserva aunque el paciente la pida.
       return relax ? open : compactForAgents(tenantId, open, timezone);
     };
+    // Reintento de la misma reserva (dos mensajes seguidos, otra vuelta del
+    // modelo): la cita ya existe y su hora ya no sale libre. Sin esto se le
+    // contestaba "esa hora no está libre" y el asistente le decía al paciente
+    // que no había sitio cuando su cita estaba hecha.
+    if (args.dedupe_key) {
+      const [already] = await db
+        .select({ startsAt: agendaAppointments.startsAt, status: agendaAppointments.status })
+        .from(agendaAppointments)
+        .where(
+          and(
+            eq(agendaAppointments.tenantId, tenantId),
+            eq(agendaAppointments.dedupeKey, args.dedupe_key),
+          ),
+        )
+        .limit(1);
+      if (already && already.status !== 'CANCELLED') {
+        return {
+          result: `Esa cita ya estaba agendada (${speakDayAndTime(already.startsAt, timezone)} con ${professional.fullName}). No se duplicó: confírmasela tal cual.`,
+        };
+      }
+    }
     const probe = matchRequestedSlot(args.start_time, timezone, []);
     if (!probe.dayKey) {
       return {
@@ -493,7 +534,12 @@ export async function agendaBookAppointment(
       }
     }
     if (!chosen) {
-      const sameDay = free.filter((f) => localDateKey(f.start, timezone) === dayKey);
+      // Las más cercanas a las citas del día (como al ofrecer), como mucho 4 y
+      // en orden de hora.
+      const sameDay = free
+        .filter((f) => localDateKey(f.start, timezone) === dayKey)
+        .slice(0, 4)
+        .sort((x, y) => x.start.getTime() - y.start.getTime());
       const lista = sameDay.map((f) => speakClockTime(f.start, timezone)).join(', ');
       return {
         result: sameDay.length
@@ -741,4 +787,21 @@ export async function agendaListProfessionals(tenantId: string): Promise<AgendaT
     console.error('[agenda-voice] list_professionals', err);
     return null;
   }
+}
+
+/** "lunes, 2 de noviembre a las 15:30" en la zona de la clínica. */
+function speakDayAndTime(at: Date, timezone: string): string {
+  const day = at.toLocaleDateString('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    timeZone: timezone,
+  });
+  const time = at.toLocaleTimeString('es-ES', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone: timezone,
+  });
+  return `${day} a las ${time}`;
 }

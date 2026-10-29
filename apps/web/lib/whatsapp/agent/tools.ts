@@ -564,7 +564,17 @@ export async function executeAgentTool(input: ExecuteToolInput): Promise<ToolCal
   }
 
   const schema = SCHEMAS[name];
-  const parsed = schema.safeParse(input.rawArgs ?? {});
+  // El teléfono es el del propio WhatsApp: si el modelo no lo pasa, se pone
+  // aquí en vez de devolverle un error de argumentos que le hace desviarse.
+  const raw = { ...((input.rawArgs as Record<string, unknown> | undefined) ?? {}) };
+  if (
+    (name === 'get_patient_info' || name === 'register_patient') &&
+    !(typeof raw.phone === 'string' && raw.phone.trim()) &&
+    input.contactPhoneE164
+  ) {
+    raw.phone = input.contactPhoneE164;
+  }
+  const parsed = schema.safeParse(raw);
   if (!parsed.success) {
     const message = formatZodError(parsed.error);
     return {

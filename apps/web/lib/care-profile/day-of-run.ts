@@ -404,7 +404,11 @@ export async function handleDayOfButton(args: {
   });
   if (!answer) return false;
   if (answer.messages.length) {
-    await sendClinicWhatsapp(args.tenantId, args.contactPhoneE164, answer.messages);
+    // La cita ya quedó confirmada o anulada: si falla la contestación, el
+    // mensaje NO debe ir además al asistente (lo procesaría otra vez).
+    await sendClinicWhatsapp(args.tenantId, args.contactPhoneE164, answer.messages).catch((err) =>
+      console.warn('[day-of] no se pudo contestar al paciente', (err as Error).message),
+    );
   }
   return true;
 }

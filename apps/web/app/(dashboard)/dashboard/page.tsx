@@ -1,4 +1,3 @@
-import { AttentionPanel } from '@/components/dashboard/attention-panel';
 import { DemoBanner } from '@/components/dashboard/demo-banner';
 import { GlobalAnalyticsBar } from '@/components/dashboard/global-analytics-bar';
 import { PageHeader } from '@/components/dashboard/page-header';
@@ -10,7 +9,6 @@ import { Card } from '@/components/ui/card';
 import { Reveal } from '@/components/ui/motion';
 import { Avatar } from '@/components/ui/stat';
 import { resolveTimezone } from '@/lib/agenda/queries';
-import { getAttention } from '@/lib/data/attention';
 import { formatDuration, getDashboardStats, getUpcomingAppointments } from '@/lib/data/calls-list';
 import { getDemoUpcoming } from '@/lib/demo-data';
 import { getCurrentTenant } from '@/lib/tenant';
@@ -41,8 +39,6 @@ export default async function DashboardOverview({
   const firstName = user?.firstName ?? user?.fullName?.split(' ')[0] ?? '';
   // Las dos sólo dependen del tenant: encadenarlas sumaba un round-trip a cada
   // carga del home, y este se repite con el refresco automático.
-  // Arranca ya y se espera al final: no suma un round-trip a la carga del home.
-  const attentionPromise = demo ? Promise.resolve(null) : getAttention(tenant.id).catch(() => null);
   const [upcoming, stats] = demo
     ? [
         getDemoUpcoming(),
@@ -55,8 +51,6 @@ export default async function DashboardOverview({
         },
       ]
     : await Promise.all([getUpcomingAppointments(tenant.id, 8), getDashboardStats(tenant.id)]);
-
-  const attention = await attentionPromise;
 
   const nextNames = upcoming
     .map((u) => u.patientName ?? u.phone ?? 'Paciente')
@@ -109,8 +103,6 @@ export default async function DashboardOverview({
       )}
 
       {demo && <DemoBanner />}
-
-      {attention && <AttentionPanel data={attention} timezone={timezone} />}
 
       <GlobalAnalyticsBar tenantId={tenant.id} demo={demo} />
 

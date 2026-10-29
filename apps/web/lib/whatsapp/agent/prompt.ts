@@ -81,6 +81,11 @@ export interface BuildSystemPromptInput {
   /** Reglas de la clínica que van al final y mandan (papel del asistente). */
   finalRules?: string;
   /**
+   * Asistente sólo administrativo (la clínica pasa lo médico a una persona):
+   * fuera el protocolo de urgencias, que pide preguntar por el síntoma.
+   */
+  adminOnly?: boolean;
+  /**
    * Si el paciente tocó "Reagendar" en un recordatorio reciente, le inyectamos
    * al agente una instrucción para arrancar la negociación de slots de forma
    * proactiva (con sus tools `check_availability` + `book_appointment` +
@@ -407,7 +412,7 @@ tienes que preguntarle si quiere reagendar — ya lo pidió. Tu trabajo:
     });
   }
 
-  return `Eres el asistente virtual de WhatsApp de la clínica "${clinic.name}".${personaSection}${phoneSection}${leadMemorySection}${careSection}${resumeSection}
+  const bookingPrompt = `Eres el asistente virtual de WhatsApp de la clínica "${clinic.name}".${personaSection}${phoneSection}${leadMemorySection}${careSection}${resumeSection}
 Atiendes TODO lo que llega a la clínica por WhatsApp: pacientes existentes, personas
 interesadas, y también proveedores, profesionales, mutuas, postulantes, prensa, etc.
 Hablas español de España.
@@ -628,6 +633,7 @@ Si has llamado a "request_handoff", la app enviará la respuesta estándar — t
 mensaje final será ignorado en ese caso, así que NO repitas el texto. Tras
 "flag_urgent" SÍ debes escribir tu mensaje final (la confirmación de la cita de
 urgencia que agendaste): ese mensaje se envía tal cual.${lessonsSection}`;
+  return input.adminOnly ? stripClinicalTriage(bookingPrompt) : bookingPrompt;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -846,4 +852,35 @@ Cuando termines de usar herramientas (o decidas que no hace falta), responde al
 paciente con un mensaje breve en castellano, listo para enviar por WhatsApp.
 Si has llamado a "derive_to_professional" o a "request_handoff", el mensaje de cierre
 lo pone la app — tu texto final se ignora en ese caso, así que NO lo repitas.${lessonsSection}`;
+}
+
+/**
+ * Quita del prompt de reservas todo lo que manda preguntar por síntomas (el
+ * carril de urgencias, la regla 2 y la descripción de flag_urgent) y lo
+ * cambia por la regla administrativa: lo médico se pasa a una persona, sin
+ * preguntar nada. Con esas instrucciones dentro, el modelo hacía tres rondas
+ * de preguntas de fiebre y tos aunque al final del prompt se le dijera que no.
+ */
+export function stripClinicalTriage(prompt: string): string {
+  const ADMIN =
+    'Cualquier consulta médica (síntomas, fiebre, tos, dolor, medicación, "¿es normal…?", "¿qué le doy?") NO la contestas ni preguntas nada sobre ella: llama a request_handoff con "[otro] consulta médica: …" y el sistema le dice que le pones en contacto con la persona del equipo.';
+  let out = prompt;
+  const d = out.indexOf('D. **Urgencia clínica dentro del alcance**');
+  const end = out.indexOf('\n\n# Reglas duras', d);
+  if (d >= 0 && end > d)
+    out = `${out.slice(0, d)}D. **Consulta médica** — ${ADMIN}${out.slice(end)}`;
+  out = out.replace(
+    /2\. NUNCA des diagnósticos clínicos ni recomendaciones médicas\. Si describe dolor,[\s\S]*?ni reserves sin que el paciente haya elegido el horario\./,
+    `2. NUNCA des diagnósticos clínicos ni recomendaciones médicas, ni hagas preguntas sobre síntomas. ${ADMIN}`,
+  );
+  out = out.replace(
+    /Sólo hay DOS excepciones en las que tomas tú la iniciativa: la urgencia\s+bucodental del carril D y el reagendamiento desde un recordatorio\./,
+    'Sólo hay UNA excepción en la que tomas tú la iniciativa: el reagendamiento desde un recordatorio.',
+  );
+  out = out.replace(
+    /Tras\s+"flag_urgent" SÍ debes escribir tu mensaje final \(la confirmación de la cita de\s+urgencia que agendaste\): ese mensaje se envía tal cual\./,
+    '',
+  );
+  out = out.replace(/- flag_urgent: marca urgencia clínica[\s\S]*?(?=\n- |\n\n)/, '');
+  return out;
 }
