@@ -27,6 +27,7 @@ import type {
   ImRailDTO,
 } from '@/lib/messaging/types';
 import { AtSign, MessageSquare, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 /* ============================================================================
    Contexto del módulo Mensajes.
@@ -182,6 +183,7 @@ export function useTypingIn(): (channelId: string) => TypingPeer[] {
 }
 
 export function MessagingProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const [rail, setRail] = useState<ImRailDTO | null>(null);
   const [mentions, setMentions] = useState<ImMentionDTO[]>([]);
   const [ready, setReady] = useState(false);
@@ -688,7 +690,9 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
         toasts={notifications.toasts}
         onDismiss={notifications.dismissToast}
         onOpen={(channelId) => {
-          if (channelId) openChannel(channelId);
+          if (!channelId) return;
+          openChannel(channelId);
+          router.push(`/dashboard/messages?channel=${encodeURIComponent(channelId)}`);
         }}
       />
     </MessagingContext.Provider>

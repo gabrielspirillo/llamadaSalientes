@@ -121,17 +121,25 @@ export function MessagesWorkspace({
   currentUserId,
   canWrite,
   isAdmin = false,
+  initialChannelId = null,
 }: {
   initialRail: ImRailDTO;
   currentUserId: string | null;
   canWrite: boolean;
   /** Un canal público lo ve toda la clínica: solo lo abre un administrador. */
   isAdmin?: boolean;
+  /** Canal a abrir al entrar (`?channel=`), p. ej. desde un aviso. */
+  initialChannelId?: string | null;
 }) {
   const [rail, setRail] = useState<ImRailDTO>(initialRail);
   const [threads, setThreads] = useState<Record<string, ThreadState>>({});
   const [activeId, setActiveId] = useState<string | null>(
-    () => initialRail.channels.find((c) => !c.archived)?.id ?? null,
+    () =>
+      (initialChannelId && initialRail.channels.some((c) => c.id === initialChannelId)
+        ? initialChannelId
+        : null) ??
+      initialRail.channels.find((c) => !c.archived)?.id ??
+      null,
   );
   const [typing, setTyping] = useState<Record<string, Record<string, TypingEntry>>>({});
   const [mobilePane, setMobilePane] = useState<'rail' | 'thread' | 'context'>('thread');
@@ -346,6 +354,14 @@ export function MessagesWorkspace({
     void loadThread(activeId);
     void loadPins(activeId);
   }, [activeId, loadThread, loadPins]);
+
+  // Un aviso pulsado estando ya en Mensajes cambia `?channel=` sin remontar.
+  const lastInitialRef = useRef(initialChannelId);
+  useEffect(() => {
+    if (!initialChannelId || initialChannelId === lastInitialRef.current) return;
+    lastInitialRef.current = initialChannelId;
+    if (rail.channels.some((c) => c.id === initialChannelId)) openChannel(initialChannelId);
+  }, [initialChannelId, rail.channels, openChannel]);
 
   // ── Escritura ─────────────────────────────────────────────────────────────
 

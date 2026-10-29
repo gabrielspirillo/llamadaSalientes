@@ -19,7 +19,12 @@ export const dynamic = 'force-dynamic';
  * Si falla —por ejemplo porque la migración todavía no corrió— la página se
  * dibuja igual con el rail vacío en vez de reventar.
  */
-export default async function MessagesPage() {
+export default async function MessagesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ channel?: string }>;
+}) {
+  const { channel } = await searchParams;
   const { tenant } = await getCurrentTenant();
 
   // El seed sincroniza miembros contra la API de Clerk y recorre los canales
@@ -83,6 +88,7 @@ export default async function MessagesPage() {
         currentUserId={currentUserId}
         canWrite={role !== 'viewer'}
         isAdmin={role === 'admin'}
+        initialChannelId={channel ?? null}
       />
     </>
   );
