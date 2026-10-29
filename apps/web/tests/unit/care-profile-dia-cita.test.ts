@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { type DayOfState, clockMinutes, nextDayOfStep, whenToday } from '@/lib/care-profile/day-of';
+import {
+  type DayOfState,
+  clockMinutes,
+  nextDayOfStep,
+  parseDayOfTextReply,
+  whenToday,
+} from '@/lib/care-profile/day-of';
 
 const times = {
   reminderAt: '08:00',
@@ -65,5 +71,14 @@ describe('confirmación el día de la cita', () => {
   it('esta tarde / esta mañana', () => {
     expect(whenToday(at(17, 30))).toBe('esta tarde');
     expect(whenToday(at(10, 0))).toBe('esta mañana');
+  });
+
+  it('lee la respuesta escrita al recordatorio', () => {
+    expect(parseDayOfTextReply('1')).toBe('confirm');
+    expect(parseDayOfTextReply('Confirmo ✅')).toBe('confirm');
+    expect(parseDayOfTextReply('2️⃣')).toBe('modify');
+    expect(parseDayOfTextReply('Cancelar')).toBe('cancel');
+    expect(parseDayOfTextReply('1 de diciembre')).toBeNull();
+    expect(parseDayOfTextReply('hola, una pregunta')).toBeNull();
   });
 });

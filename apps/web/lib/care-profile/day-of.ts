@@ -86,3 +86,20 @@ export function nextDayOfStep(args: {
 export function whenToday(startMinute: number): string {
   return startMinute >= 14 * 60 ? 'esta tarde' : 'esta mañana';
 }
+
+export type DayOfAction = 'confirm' | 'modify' | 'cancel';
+
+/** "1", "confirmar", "Confirmo ✅"… → acción. Sólo respuestas cortas. */
+export function parseDayOfTextReply(text: string | null | undefined): DayOfAction | null {
+  const t = (text ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9 ]/g, '')
+    .trim();
+  if (!t || t.length > 20) return null;
+  if (/^(1|confirmar|confirmo|confirmada|confirmado)$/.test(t)) return 'confirm';
+  if (/^(2|modificar|modifico|cambiar)$/.test(t)) return 'modify';
+  if (/^(3|cancelar|cancelo|anular)$/.test(t)) return 'cancel';
+  return null;
+}

@@ -23,6 +23,15 @@ export async function sendClinicWhatsapp(
 ): Promise<boolean> {
   const connector = await getConnectorForTenant(tenantId);
   if (!connector || texts.length === 0) return false;
+  // Evolution (WhatsApp no oficial) acepta los botones pero WhatsApp no los
+  // entrega: el mensaje no llega. Ahí van como opciones numeradas en el texto
+  // y la respuesta ("1", "confirmar"…) la interpreta `handleDayOfTextReply`.
+  if (buttons?.length && connector.channel === 'whatsapp_evolution') {
+    const last = texts.length - 1;
+    const options = numberedOptions(buttons);
+    texts = texts.map((t, i) => (i === last ? `${t}\n\n${options}` : t));
+    buttons = undefined;
+  }
   const contact = await upsertWhatsappContact({ tenantId, phoneE164, name: null });
   const conversation = await getOrCreateOpenConversation({
     tenantId,
@@ -41,4 +50,14 @@ export async function sendClinicWhatsapp(
     });
   }
   return true;
+}
+
+const NUMBERS = ['1️⃣', '2️⃣', '3️⃣'];
+export const OPTIONS_MARKER = 'Responde con el número';
+
+function numberedOptions(buttons: InteractiveButton[]): string {
+  return [
+    `${OPTIONS_MARKER}:`,
+    ...buttons.map((b, i) => `${NUMBERS[i] ?? `${i + 1}.`} ${b.title}`),
+  ].join('\n');
 }

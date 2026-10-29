@@ -1,11 +1,18 @@
 import 'server-only';
-import { and, eq, gte, isNull, lt, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm';
 
 import { systemAgendaContext } from '@/lib/agenda/agent';
 import { samePhone } from '@/lib/agenda/patients';
 import { updateAppointment } from '@/lib/agenda/service';
-import { sendClinicWhatsapp } from '@/lib/care-profile/clinic-whatsapp';
-import { type DayOfStep, clockMinutes, nextDayOfStep, whenToday } from '@/lib/care-profile/day-of';
+import { OPTIONS_MARKER, sendClinicWhatsapp } from '@/lib/care-profile/clinic-whatsapp';
+import {
+  type DayOfAction,
+  type DayOfStep,
+  clockMinutes,
+  nextDayOfStep,
+  parseDayOfTextReply,
+  whenToday,
+} from '@/lib/care-profile/day-of';
 import {
   type CareMessageScripts,
   fillScript,
@@ -18,6 +25,7 @@ import {
   clinicSettings,
   tenantCareProfile,
   whatsappConversations,
+  whatsappMessages,
 } from '@/lib/db/schema';
 import { getPatientPerson } from '@/lib/patients/persons';
 import { sendQueueEvent } from '@/lib/queue/client';
@@ -248,8 +256,6 @@ async function askTeamToCall(appt: Appointment, tz: string, index: number): Prom
 
 // ─── Respuestas del paciente ─────────────────────────────────────────────────
 
-export type DayOfAction = 'confirm' | 'modify' | 'cancel';
-
 async function loadForPatient(
   tenantId: string,
   appointmentId: string,
@@ -440,4 +446,59 @@ export async function sendDayOfReminderNow(
     dayOfButtons(appt.id),
   );
   return sent ? { ok: true } : { ok: false, error: 'WhatsApp no está conectado.' };
+}
+
+/**
+ * Respuesta escrita al recordatorio del día ("1", "confirmar"…). Sólo actúa
+ * si lo último que le mandamos fue ese recordatorio (hace menos de 18 h) y hay
+ * UNA sola cita pendiente en ese teléfono; con varias (hermanos) lo resuelve
+ * el asistente, que sabe preguntar por cuál.
+ */
+export async function handleDayOfTextReply(args: {
+  tenantId: string;
+  conversationId: string;
+  contactPhoneE164: string;
+  text: string | null | undefined;
+  inboundMessageId: string;
+}): Promise<boolean> {
+  const action = parseDayOfTextReply(args.text);
+  if (!action) return false;
+
+  const [lastOut] = await db
+    .select({ text: whatsappMessages.contentText, at: whatsappMessages.createdAt })
+    .from(whatsappMessages)
+    .where(
+      and(
+        eq(whatsappMessages.tenantId, args.tenantId),
+        eq(whatsappMessages.conversationId, args.conversationId),
+        eq(whatsappMessages.direction, 'OUTBOUND'),
+      ),
+    )
+    .orderBy(desc(whatsappMessages.createdAt))
+    .limit(1);
+  if (!lastOut?.text?.includes(OPTIONS_MARKER)) return false;
+  if (Date.now() - lastOut.at.getTime() > 18 * 3_600_000) return false;
+
+  const now = new Date();
+  const pending = await db
+    .select({ id: agendaAppointments.id, phone: agendaAppointments.patientPhone })
+    .from(agendaAppointments)
+    .where(
+      and(
+        eq(agendaAppointments.tenantId, args.tenantId),
+        inArray(agendaAppointments.status, ['SCHEDULED', 'CONFIRMED']),
+        gte(agendaAppointments.startsAt, now),
+        lt(agendaAppointments.startsAt, new Date(now.getTime() + 8 * 86_400_000)),
+      ),
+    );
+  const mine = pending.filter((a) => samePhone(a.phone, args.contactPhoneE164));
+  if (mine.length !== 1) return false;
+
+  return handleDayOfButton({
+    tenantId: args.tenantId,
+    conversationId: args.conversationId,
+    contactPhoneE164: args.contactPhoneE164,
+    rawButtonId: `dayof:${action}:${(mine[0] as { id: string }).id}`,
+    inboundMessageId: args.inboundMessageId,
+  });
 }

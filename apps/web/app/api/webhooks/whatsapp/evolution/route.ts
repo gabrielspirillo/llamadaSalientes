@@ -229,7 +229,26 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
                   console.warn('[wa-evolution-webhook] reminder reply handler failed', err);
                   return { consumed: false } as const;
                 });
-            if (!reminderResult.consumed) {
+            // Respuesta escrita al recordatorio del día ("1", "confirmar"…):
+            // por Evolution no llegan botones, así que contestan con texto.
+            const inbound = persisted.message;
+            const dayOfConsumed = reminderResult.consumed
+              ? true
+              : await import('@/lib/care-profile/day-of-run')
+                  .then((m) =>
+                    m.handleDayOfTextReply({
+                      tenantId: conn.tenantId,
+                      conversationId: persisted.conversation.id,
+                      contactPhoneE164: persisted.contact.phoneE164,
+                      text: inbound.contentText,
+                      inboundMessageId: inbound.id,
+                    }),
+                  )
+                  .catch((err) => {
+                    console.warn('[wa-evolution-webhook] day-of text handler failed', err);
+                    return false;
+                  });
+            if (!dayOfConsumed) {
               console.log('[wa-evolution-webhook] encolando wa-process', {
                 tenantId: conn.tenantId,
                 conversationId: persisted.conversation.id,
