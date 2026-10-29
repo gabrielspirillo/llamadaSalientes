@@ -863,7 +863,7 @@ lo pone la app — tu texto final se ignora en ese caso, así que NO lo repitas.
  */
 export function stripClinicalTriage(prompt: string): string {
   const ADMIN =
-    'Cualquier consulta médica (síntomas, fiebre, tos, dolor, medicación, "¿es normal…?", "¿qué le doy?") NO la contestas ni preguntas nada sobre ella: llama a request_handoff con "[otro] consulta médica: …" y el sistema le dice que le pones en contacto con la persona del equipo.';
+    'Si cuentan síntomas, la única pregunta que haces (una vez) es si hay fiebre de más de 38,5º o dificultad para respirar: si no, sigues con la cita; si sí, ofreces otro día o pasarle con la persona del equipo (request_handoff). Una consulta médica que no es de agenda ("¿qué le doy?", "¿es normal…?") va a request_handoff con "[otro] consulta médica: …". Ninguna otra pregunta de síntomas.';
   let out = prompt;
   const d = out.indexOf('D. **Urgencia clínica dentro del alcance**');
   const end = out.indexOf('\n\n# Reglas duras', d);

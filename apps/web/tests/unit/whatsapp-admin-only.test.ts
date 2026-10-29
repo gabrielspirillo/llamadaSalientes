@@ -9,7 +9,7 @@ import { stripClinicalTriage } from '@/lib/whatsapp/agent/prompt';
 describe('asistente administrativo', () => {
   it('detecta preguntas sobre síntomas', () => {
     expect(looksLikeMedicalQuestion('¿Desde cuándo tiene fiebre? ¿Ha tenido tos?')).toBe(true);
-    expect(looksLikeMedicalQuestion('¿La fiebre ha superado los 38.5º?')).toBe(true);
+    expect(looksLikeMedicalQuestion('¿Ha vomitado o tiene diarrea?')).toBe(true);
     expect(looksLikeMedicalQuestion('¿Ha tomado algún medicamento?')).toBe(true);
   });
 
@@ -21,6 +21,12 @@ describe('asistente administrativo', () => {
     ).toBe(false);
     expect(looksLikeMedicalQuestion('¿Te viene bien el martes a las 17:00?')).toBe(false);
     expect(looksLikeMedicalQuestion('No duele aunque resulte incómodo.')).toBe(false);
+    // La pregunta permitida: fiebre de más de 38,5º o dificultad para respirar.
+    expect(
+      looksLikeMedicalQuestion(
+        '¿Ahora mismo tiene fiebre de más de 38,5º o dificultad para respirar?',
+      ),
+    ).toBe(false);
   });
 
   it('quita el protocolo de urgencias del prompt', () => {

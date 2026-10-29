@@ -367,9 +367,13 @@ export async function runWhatsappAgent(
   // síntomas no sale aunque el modelo la escriba. Se pasa a la persona del
   // equipo con el mensaje de la clínica.
   if (adminOnly && finalText && !handoff && !derivation && looksLikeMedicalQuestion(finalText)) {
+    // No se deriva: se cambia por la ÚNICA pregunta permitida (fiebre de más
+    // de 38,5º o dificultad para respirar) o, si ya se hizo, se sigue con la cita.
     guardrailFlags.push('admin_only:medical_question');
-    handoff = true;
-    finalText = careProfile?.messageScripts?.handoff?.trim() || HANDOFF_RESPONSE_TEXT;
+    const asked = input.history.some((h) => h.role === 'assistant' && /38[.,]5/.test(h.content));
+    finalText = asked
+      ? 'Gracias por contármelo. ¿Qué día y a qué hora te vendría bien la cita?'
+      : 'Para poder darle cita solo necesito saber una cosa: ¿ahora mismo tiene fiebre de más de 38,5º o dificultad para respirar?';
   }
 
   if (finalText) finalText = toWhatsappFormatting(finalText);
@@ -511,5 +515,7 @@ export function looksLikeMedicalQuestion(text: string): boolean {
   return questions.some((q) => MEDICAL.test(q));
 }
 
+// Fiebre y dificultad para respirar SÍ se pueden preguntar (es lo que decide si
+// se puede hacer la sesión). Lo demás no.
 const MEDICAL =
-  /\b(fiebre|tos\b|toser|s[ií]ntoma|respir|ahog|pitid|mocos?\b|flema|v[oó]mit|diarrea|dolor|duele|temperatura|grados|medicaci[oó]n|medicamento|antibi[oó]tico|paracetamol|ibuprofeno|inhalador|saturaci[oó]n|molesti)/i;
+  /(\btos\b|toser|s[ií]ntoma|pitid|mocos?\b|flema|v[oó]mit|diarrea|dolor|duele|medicaci[oó]n|medicamento|antibi[oó]tico|paracetamol|ibuprofeno|inhalador|saturaci[oó]n|molesti|desde cu[aá]ndo|constante|duerm|dormir|comer\b)/i;
