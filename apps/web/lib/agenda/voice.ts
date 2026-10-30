@@ -30,10 +30,16 @@ import { resolvePatientForBooking } from '@/lib/care-profile/agent';
 import { getCareProfileSafe } from '@/lib/care-profile/queries';
 import type { CancelledBy } from '@/lib/care-profile/signals';
 import { db } from '@/lib/db/client';
-import { agendaAppointments, clinicSettings, professionals, treatments } from '@/lib/db/schema';
+import {
+  agendaAppointments,
+  clinicSettings,
+  patients,
+  professionals,
+  treatments,
+} from '@/lib/db/schema';
 import { clockArticle, speakClockTime } from '@/lib/retell/time-speech';
 import { addDaysToKey, localDateKey } from '@/lib/tasks/tz';
-import { and, asc, eq, gte, inArray, lt } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, lt, ne } from 'drizzle-orm';
 
 /**
  * La agenda interna vista por los agentes virtuales (voz y WhatsApp).
@@ -94,6 +100,11 @@ export interface AgendaBookArgs {
   dedupe_key?: string;
   /** Canal desde el que se reserva. Queda en la cita y en las métricas. */
   source?: 'VOICE_AGENT' | 'WHATSAPP_AGENT';
+  /**
+   * Cambio de cita: la que se sustituye. Se anula DESPUÉS de crear la nueva,
+   * y sólo si es del mismo paciente.
+   */
+  replaces_appointment_id?: string;
 }
 
 async function usesInternalAgenda(tenantId: string): Promise<boolean> {
@@ -195,14 +206,79 @@ async function compactForAgents<T extends { start: Date; end: Date; professional
   return compactSlots(slots, busy, timezone, window);
 }
 
+/**
+ * Clínicas con perfil: el tratamiento lo decide la ficha, no el modelo. Sin
+ * historia es la primera visita; con historia, el seguimiento; y el mellizo de
+ * un niño que ya tiene cita va con el tratamiento de mellizos (seguimiento, sin
+ * la regla de primeras seguidas) para que entre justo detrás de su hermano. El
+ * modelo pedía "VISITA RECURRENTE" para un niño nuevo y los huecos cambiaban.
+ */
+async function treatmentForPatient(
+  tenantId: string,
+  patientId: string | undefined,
+  requested: string | undefined,
+): Promise<{ name: string; twin: boolean } | null> {
+  if (!patientId || !isUuid(patientId)) return null;
+  if (!(await getCareProfileSafe(tenantId))) return null;
+  const [person] = await db
+    .select({ contactId: patients.contactId, birthDate: patients.birthDate })
+    .from(patients)
+    .where(and(eq(patients.tenantId, tenantId), eq(patients.id, patientId)))
+    .limit(1);
+  if (!person) return null;
+
+  const catalog = await db
+    .select({ name: treatments.name, visitKind: treatments.visitKind })
+    .from(treatments)
+    .where(and(eq(treatments.tenantId, tenantId), eq(treatments.active, true)));
+  const isTwinTreatment = (n: string) => /gemel|melliz/i.test(n);
+  const firstKind = catalog.filter((t) => t.visitKind === 'FIRST');
+  const followUps = catalog.filter((t) => t.visitKind === 'FOLLOW_UP');
+  const twinTreatment = followUps.find((t) => isTwinTreatment(t.name)) ?? null;
+  const plainFollowUp = followUps.filter((t) => !isTwinTreatment(t.name));
+
+  let twinHasAppointment = false;
+  if (twinTreatment && person.contactId && person.birthDate) {
+    const [row] = await db
+      .select({ id: agendaAppointments.id })
+      .from(agendaAppointments)
+      .innerJoin(patients, eq(patients.id, agendaAppointments.patientId))
+      .where(
+        and(
+          eq(agendaAppointments.tenantId, tenantId),
+          eq(patients.tenantId, tenantId),
+          eq(patients.contactId, person.contactId),
+          eq(patients.birthDate, person.birthDate),
+          ne(patients.id, patientId),
+          inArray(agendaAppointments.status, BUSY_STATUSES),
+          gte(agendaAppointments.startsAt, new Date()),
+        ),
+      )
+      .limit(1);
+    twinHasAppointment = Boolean(row);
+  }
+  if (twinHasAppointment && twinTreatment) return { name: twinTreatment.name, twin: true };
+
+  const hasHistory = await patientHasHistory(tenantId, { patientId }).catch(() => null);
+  if (hasHistory === null) return null;
+  const req = requested?.trim().toLowerCase() ?? '';
+  const keepIfIn = (list: { name: string }[]) =>
+    list.find((t) => t.name.toLowerCase() === req)?.name ??
+    (list.length === 1 ? list[0]?.name : null);
+  const name = hasHistory ? keepIfIn(plainFollowUp) : keepIfIn(firstKind);
+  return name ? { name, twin: false } : null;
+}
+
 export async function agendaCheckAvailability(
   tenantId: string,
-  args: AgendaAvailabilityArgs,
+  rawArgs: AgendaAvailabilityArgs,
   ctx: AgendaAvailabilityContext = {},
 ): Promise<AgendaToolResult> {
   if (!(await usesInternalAgenda(tenantId))) return null;
 
   try {
+    const fitted = await treatmentForPatient(tenantId, rawArgs.patient_id, rawArgs.treatment_name);
+    const args = fitted ? { ...rawArgs, treatment_name: fitted.name } : rawArgs;
     // Primera visita: quien ya tiene historia (cita o nota clínica) nunca lo
     // es. Con patient_id se mira esa ficha; si no, lo que diga el agente; y si
     // no dice nada, el historial del teléfono. Un fallo al mirarlo no deja sin
@@ -221,6 +297,8 @@ export async function agendaCheckAvailability(
       returning = await phoneHasHistory(tenantId, ctx.patientPhone).catch(() => true);
       firstVisit = !returning;
     }
+    // El mellizo va detrás de su hermano: no cuenta como otra primera visita.
+    if (fitted?.twin) firstVisit = false;
 
     const search = await findAgentSlots(tenantId, {
       treatmentName: args.treatment_name ?? null,
@@ -435,8 +513,10 @@ export async function agendaBookAppointment(
       };
     }
 
-    const treatment = args.treatment_name
-      ? matchByName(args.treatment_name, professional.treatments, (t) => t.name)
+    const fitted = await treatmentForPatient(tenantId, patientId ?? undefined, args.treatment_name);
+    const treatmentName = fitted?.name ?? args.treatment_name;
+    const treatment = treatmentName
+      ? matchByName(treatmentName, professional.treatments, (t) => t.name)
       : null;
 
     // Invariante: un profesional sólo recibe citas de los tratamientos que tiene
@@ -576,10 +656,41 @@ export async function agendaBookAppointment(
       timeZone: timezone,
     })}`;
 
+    // Cambio de cita: el modelo reservaba la nueva y se olvidaba de anular la
+    // vieja, y el paciente quedaba con dos. La anulación va aquí, después de
+    // tener la nueva, y sólo sobre citas del mismo paciente.
+    const others = deduped
+      ? []
+      : await otherUpcomingFor(tenantId, appointment.id, {
+          patientId,
+          phone: normalizePatientPhone(args.phone),
+          patientName,
+        });
+    let tail = '';
+    const replaces = args.replaces_appointment_id?.trim();
+    const target = replaces ? others.find((o) => o.id === replaces) : undefined;
+    if (target) {
+      await cancelAppointment(
+        systemAgendaContext(tenantId),
+        target.id,
+        'Cambiada por el paciente',
+        'PATIENT',
+      );
+      tail = ` La cita anterior (${localDateKey(target.startsAt, timezone)} ${speakClockTime(target.startsAt, timezone)}) quedó ANULADA: el cambio está hecho, no llames a cancel_appointment.`;
+    } else if (others.length > 0) {
+      const list = others
+        .map(
+          (o) =>
+            `${localDateKey(o.startsAt, timezone)} ${speakClockTime(o.startsAt, timezone)} (appointment_id=${o.id})`,
+        )
+        .join('; ');
+      tail = ` OJO: ${patientName} ya tenía otra cita: ${list}. Si esta reserva era para CAMBIAR esa cita, anúlala AHORA con cancel_appointment(appointment_id) antes de contestar; si quiere mantener las dos, no hagas nada.`;
+    }
+
     return {
       result: deduped
         ? `Esa cita ya estaba agendada (${cuando} con ${professional.fullName}). No se duplicó.`
-        : `Cita agendada: ${cuando} con ${professional.fullName}. Confírmale al paciente EXACTAMENTE ese día y esa hora (no otra) y el profesional. Esa hora ya está ocupada: si vas a dar otra cita (un hermano), vuelve a llamar a check_availability antes de ofrecer horas.`,
+        : `Cita agendada: ${cuando} con ${professional.fullName}. Confírmale al paciente EXACTAMENTE ese día y esa hora (no otra) y el profesional. Esa hora ya está ocupada: si vas a dar otra cita (un hermano), vuelve a llamar a check_availability antes de ofrecer horas.${tail}`,
       booked: deduped
         ? undefined
         : {
@@ -712,6 +823,39 @@ export async function agendaCancelByPatient(
     console.error('[agenda-voice] cancel_appointment por paciente', err);
     return null;
   }
+}
+
+/** Citas próximas del mismo paciente, sin contar la recién creada. */
+async function otherUpcomingFor(
+  tenantId: string,
+  newId: string,
+  who: { patientId: string | null; phone: string | null; patientName: string },
+): Promise<{ id: string; startsAt: Date }[]> {
+  // Con ficha, la ficha manda; sin ella, teléfono y nombre juntos (un teléfono
+  // solo es de la familia entera).
+  const byPerson = who.patientId
+    ? eq(agendaAppointments.patientId, who.patientId)
+    : who.phone && who.patientName
+      ? and(
+          eq(agendaAppointments.patientPhone, who.phone),
+          eq(agendaAppointments.patientName, who.patientName),
+        )
+      : null;
+  if (!byPerson) return [];
+  const rows = await db
+    .select({ id: agendaAppointments.id, startsAt: agendaAppointments.startsAt })
+    .from(agendaAppointments)
+    .where(
+      and(
+        eq(agendaAppointments.tenantId, tenantId),
+        byPerson,
+        inArray(agendaAppointments.status, ['SCHEDULED', 'CONFIRMED']),
+        gte(agendaAppointments.startsAt, new Date()),
+      ),
+    )
+    .orderBy(asc(agendaAppointments.startsAt))
+    .limit(5);
+  return rows.filter((r) => r.id !== newId);
 }
 
 /** Próxima cita del paciente en la agenda, si la clínica la usa. */

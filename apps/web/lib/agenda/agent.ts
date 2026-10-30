@@ -157,6 +157,8 @@ export async function listAgentProfessionals(tenantId: string): Promise<AgentPro
         and(
           eq(professionalTreatments.tenantId, tenantId),
           inArray(professionalTreatments.professionalId, ids),
+          // Un tratamiento dado de baja no se ofrece ni se reserva.
+          eq(treatments.active, true),
         ),
       ),
     db

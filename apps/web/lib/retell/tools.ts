@@ -63,6 +63,8 @@ export type BookAppointmentArgs = {
   /** Clínicas con perfil de atención: el niño al que va la cita. */
   patient_id?: string;
   email?: string;
+  /** Cambio de cita: la que se anula una vez creada la nueva. */
+  replaces_appointment_id?: string;
 };
 
 export type CancelAppointmentArgs = {
@@ -306,6 +308,7 @@ export async function bookAppointment(
     phone: phone ?? undefined,
     email: args.email,
     contact_id: crmContactId,
+    replaces_appointment_id: args.replaces_appointment_id?.trim() || undefined,
     source: ctx.channel === 'WHATSAPP' ? 'WHATSAPP_AGENT' : 'VOICE_AGENT',
     // La clave lleva al paciente: con la misma hora y la misma conversación,
     // la reserva del hermano devolvía la del primero como "ya estaba

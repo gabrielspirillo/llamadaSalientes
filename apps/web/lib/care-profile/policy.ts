@@ -592,7 +592,7 @@ export function buildCareProtocolSection(profile: CareProfile): string {
   ];
   if (range) {
     lines.push(
-      `Sólo se atiende a bebés y niños ${range} (incluidos). Si el niño es mayor, explícalo con amabilidad y no des cita.`,
+      `Sólo se atiende a bebés y niños ${range} (incluidos). La edad NO la calculas tú (te equivocas con las fechas): pásale la fecha de nacimiento a register_patient y él te dice si entra o no. Nunca digas que un niño es demasiado mayor o pequeño si la herramienta no lo ha dicho.`,
     );
   }
   lines.push(
@@ -600,6 +600,7 @@ export function buildCareProtocolSection(profile: CareProfile): string {
     'Herramientas en esta clínica:',
     '- get_patient_info(phone) devuelve los niños registrados con ese teléfono, con su edad y su patient_id. Si no devuelve ninguno, es una PRIMERA VISITA.',
     '- register_patient da de alta al NIÑO: first_name y last_name son los del niño, birth_date (YYYY-MM-DD) es obligatoria y guardian_name es el nombre del titular del teléfono. Si el tutor cuenta una enfermedad importante, un ingreso reciente, TDAH, autismo o algo parecido, pásalo en medical_alert: la ficha queda marcada, NO se da cita y se pasa la conversación a una persona del equipo.',
+    '- Para una primera visita pide los datos del niño en UN solo mensaje: nombre y apellidos y fecha de nacimiento. Con eso llama a register_patient. El nombre de quien escribe sólo si lo dice; no lo pidas aparte.',
     '- check_availability: en una primera visita pasa first_visit=true. La clínica reserva las primeras visitas en horarios concretos: ofrece sólo lo que devuelva.',
     '- book_appointment: pasa SIEMPRE patient_id (el que devolvió get_patient_info o register_patient). Sin patient_id no se reserva.',
   );

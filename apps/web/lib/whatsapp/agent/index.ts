@@ -132,6 +132,8 @@ const defaultAgentDeps: AgentRunDeps = {
  */
 
 const MAX_TOOL_ITERATIONS = 7;
+/** Correcciones de la autorrevisión por turno: si a la segunda no sale, sale lo que haya. */
+const MAX_NUDGES = 1;
 const TEMPERATURE = 0.3;
 
 export async function runWhatsappAgent(
@@ -228,6 +230,7 @@ export async function runWhatsappAgent(
     model = 'guardrail';
   }
 
+  let nudges = 0;
   for (let iter = 0; !injection.tripped && iter < MAX_TOOL_ITERATIONS; iter++) {
     let result: LlmCallResult;
     try {
@@ -246,8 +249,21 @@ export async function runWhatsappAgent(
     model = result.model;
     if (result.fallbackUsed) fallbackUsed = true;
 
-    // Sin tool-calls → texto final, salimos.
+    // Sin tool-calls → texto final, salimos. Antes, una revisión de lo que
+    // afirma: si dice que reservó sin haber reservado (o decide por la edad
+    // sin preguntárselo al servidor), se le devuelve para que lo corrija.
     if (result.toolCalls.length === 0) {
+      const correction =
+        nudges < MAX_NUDGES
+          ? reviewFinalText(result.text, toolsCalled, Boolean(careProfile))
+          : null;
+      if (correction) {
+        nudges++;
+        guardrailFlags.push(`self_check:${correction.code}`);
+        messages.push({ role: 'assistant', content: result.text });
+        messages.push({ role: 'user', content: correction.note });
+        continue;
+      }
       finalText = result.text;
       break;
     }
@@ -374,6 +390,15 @@ export async function runWhatsappAgent(
     finalText = asked
       ? 'Gracias por contármelo. ¿Qué día y a qué hora te vendría bien la cita?'
       : 'Para poder darle cita solo necesito saber una cosa: ¿ahora mismo tiene fiebre de más de 38,5º o dificultad para respirar?';
+  }
+
+  // Clínica con saludo propio: la presentación genérica del prompt base no
+  // sale a una familia que no conocemos; sale el de la clínica, que pregunta
+  // si es la primera vez y avisa de la fiebre.
+  const clinicGreeting = careProfile?.messageScripts?.greeting?.trim();
+  if (clinicGreeting && finalText && !handoff && !knownContact && isGenericGreeting(finalText)) {
+    guardrailFlags.push('clinic_greeting');
+    finalText = clinicGreeting;
   }
 
   if (finalText) finalText = toWhatsappFormatting(finalText);
@@ -519,3 +544,85 @@ export function looksLikeMedicalQuestion(text: string): boolean {
 // se puede hacer la sesión). Lo demás no.
 const MEDICAL =
   /(\btos\b|toser|s[ií]ntoma|pitid|mocos?\b|flema|v[oó]mit|diarrea|dolor|duele|medicaci[oó]n|medicamento|antibi[oó]tico|paracetamol|ibuprofeno|inhalador|saturaci[oó]n|molesti|desde cu[aá]ndo|constante|duerm|dormir|comer\b)/i;
+
+/** "Hola, soy …, ¿en qué te puedo ayudar?" y nada más. */
+export function isGenericGreeting(text: string): boolean {
+  const rest = text
+    .trim()
+    .replace(
+      /^hola[,!.]?\s+soy\b[^¿?]{0,80}?[,.]?\s*¿?\s*en qu[eé] (te )?puedo ayudar(te)?\s*\??/i,
+      '',
+    );
+  return rest !== text.trim() && rest.replace(/[\s😊🙂.!]/gu, '') === '';
+}
+
+// Una frase que da la cita por hecha. "Si te va bien, te la reservo" o
+// "¿Te la reservo?" son ofertas y no cuentan.
+const BOOKING_CLAIM =
+  /\b(te (la |lo )?reservo|te (la |lo )?he (reservado|agendado)|(la |tu )?cita (queda|está|ha quedado) (reservada|agendada|confirmada)|ya (tienes|está|queda) (la cita )?(reservad|agendad)|queda(n)? reservad|reservad[ao] para)/i;
+const OFFER = /\?|¿|\bsi\b|dime|prefier|quier|cuando me|conf[ií]rma/i;
+
+const AGE_REFUSAL =
+  /(m[aá]s|mayor|menor) de \d+ (años|meses)|no (le )?(podemos|puedo) (dar(le)?|atender)[^.]*(edad|años|meses)|fuera de(l)? (rango|la edad)|demasiado (pequeñ|mayor|grande)|s[oó]lo atendemos (a |de )/i;
+
+/**
+ * Autorrevisión del texto final contra lo que de verdad hicieron las tools en
+ * este turno. Devuelve la nota que se le pasa al modelo para corregirse.
+ */
+export function reviewFinalText(
+  text: string | null,
+  toolsCalled: ToolCallTrace[],
+  withCareProfile: boolean,
+): { code: string; note: string } | null {
+  if (!text) return null;
+  // "OK" es lo que contesta tras una reserva (los mensajes los pone la
+  // clínica). Sin reserva en este turno, el paciente se queda sin nada.
+  if (/^\s*ok\.?\s*$/i.test(text)) {
+    const acted = toolsCalled.some(
+      (t) => t.ok && (t.name === 'book_appointment' || t.name === 'confirm_appointment'),
+    );
+    if (!acted) {
+      return {
+        code: 'empty_reply',
+        note: '[Revisión interna, no la menciones] Has contestado sólo "OK" y en este turno no has reservado nada: el paciente no recibe ninguna respuesta. Si ya eligió hora, llama ahora a book_appointment; si no, contéstale lo que corresponda.',
+      };
+    }
+  }
+  const booked = toolsCalled.some(
+    (t) =>
+      t.ok &&
+      t.name === 'book_appointment' &&
+      /^(Cita agendada|Esa cita ya estaba agendada)/.test(t.result),
+  );
+  if (!booked) {
+    const claims = text
+      .split(/(?<=[.!?\n])/)
+      .some((sentence) => BOOKING_CLAIM.test(sentence) && !OFFER.test(sentence));
+    if (claims) {
+      return {
+        code: 'booking_claim',
+        note: '[Revisión interna, no la menciones] Has escrito que la cita está reservada, pero en este turno NO has llamado a book_appointment y la cita NO existe. Si el paciente ya eligió hora, llama ahora a book_appointment (y a register_patient antes si hace falta). Si falta algún dato, pídeselo sin decir que está reservada.',
+      };
+    }
+  }
+  // "Por la mañana tengo: 16:30, 17:15…": la franja tiene que cuadrar con la hora.
+  if (/\b(por|de) la ma[ñn]ana\b/i.test(text) && !/\btarde\b/i.test(text)) {
+    const hours = [...text.matchAll(/\b(\d{1,2})[:.]\d{2}\b/g)].map((m) => Number(m[1]));
+    if (hours.length > 0 && hours.every((h) => h >= 14)) {
+      return {
+        code: 'wrong_daypart',
+        note: '[Revisión interna, no la menciones] Llamas "de mañana" a horas de la tarde. Si pidió mañana y no hay, díselo claro ("por la mañana no hay; por la tarde tengo…") y ofrece esas horas como de tarde.',
+      };
+    }
+  }
+  if (withCareProfile && AGE_REFUSAL.test(text)) {
+    const serverSaid = toolsCalled.some((t) => /s[oó]lo atiende/.test(t.result));
+    if (!serverSaid) {
+      return {
+        code: 'age_guess',
+        note: '[Revisión interna, no la menciones] No calcules tú la edad ni decidas si se le puede atender: llama a register_patient (o get_patient_info) con la fecha de nacimiento que dio el tutor y haz lo que diga el resultado.',
+      };
+    }
+  }
+  return null;
+}

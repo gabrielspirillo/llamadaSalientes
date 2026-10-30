@@ -114,6 +114,8 @@ export function buildScriptsSection(s: CareMessageScripts): string {
       s.greeting,
       'Según lo que responda: "primera visita" → primera visita; "ya he ido" → paciente que vuelve (búscalo y no repitas preguntas de primera visita); "con otro peque / hermano mayor" → es la primera visita de este niño pero un hermano ya vino.',
       'Si ya conoces a la familia (el contexto trae sus niños), no preguntes si es la primera vez: pregunta para cuál de sus peques es la cita, y recuerda igualmente el aviso de fiebre o dificultad respiratoria.',
+      'A la familia NO se le pregunta qué tratamiento quiere: es la primera visita si el niño no ha venido nunca y la de seguimiento si ya vino (el sistema lo ajusta solo). Lo que te pide es día y hora.',
+      'Nunca vuelvas a pedir un dato que ya está escrito en la conversación (nombre del niño, fecha de nacimiento, el día que quiere). Si dudas de un dato, confírmalo ("¿nació el 2 de septiembre de 2024?"), no lo pidas de nuevo.',
     );
   }
   if (s.firstVisitBooked?.length || s.returningBooked?.length) {
@@ -127,7 +129,7 @@ export function buildScriptsSection(s: CareMessageScripts): string {
       '',
       `El día de cada cita la clínica manda a las ${s.dayOf.reminderAt} un recordatorio con botones Confirmar / Modificar / Cancelar, y confirmar es OBLIGATORIO${s.dayOf.cancelAt ? `: sin respuesta, a las ${s.dayOf.cancelAt} la cita se anula` : ''}. Si en vez de pulsar el botón contestan por escrito:`,
       '- Que sí vienen ("sí", "confirmo", "allí estaremos") → confirm_appointment con el appointment_id de la cita de hoy. La respuesta la envía el sistema: no la escribas.',
-      '- Que quieren cambiarla → busca hueco con check_availability, reserva con book_appointment y cancela la vieja con cancel_appointment.',
+      '- Que quieren cambiarla → busca hueco con check_availability, reserva con book_appointment pasando replaces_appointment_id = la cita de hoy (se anula sola).',
       '- Que no pueden venir → cancel_appointment y contesta con la respuesta de cancelación de abajo.',
       'Si tienen varias citas (hermanos, mellizos), cada una se confirma por separado: confirma sólo las que digan.',
     );

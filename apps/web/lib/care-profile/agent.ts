@@ -75,12 +75,20 @@ export async function registerPatientPerson(
   if (!birthDate) {
     return {
       result:
-        'En esta clínica el paciente es el niño y hace falta su fecha de nacimiento para darlo de alta. Pídesela al tutor y vuelve a llamar a register_patient con birth_date en formato YYYY-MM-DD.',
+        'En esta clínica el paciente es el niño y hace falta su fecha de nacimiento para darlo de alta. Pregúntale al tutor cuándo nació (día, mes y año, con naturalidad: no le pidas ningún formato) y vuelve a llamar a register_patient con birth_date como YYYY-MM-DD.',
     };
   }
 
   const timezone = await getClinicTimezone(tenantId);
   const todayKey = todayKeyFor(timezone);
+  // Un bebé nacido hoy no viene a fisioterapia: es la fecha que pone el modelo
+  // cuando no se la han dicho.
+  if (birthDate >= todayKey) {
+    return {
+      result:
+        'Esa fecha de nacimiento es la de hoy o posterior: no te la ha dicho el tutor. Pregúntale cuándo nació el niño (día, mes y año) y vuelve a llamar con la fecha que te diga.',
+    };
+  }
   const age = ageAt(birthDate, todayKey);
   if (!age) {
     return {
@@ -96,6 +104,14 @@ export async function registerPatientPerson(
     };
   }
 
+  // El modelo rellena lo que no sabe ("[pendiente]", "Hija"): una ficha así
+  // acaba en la agenda y en la confirmación al tutor.
+  if (isPlaceholderName(args.firstName)) {
+    return {
+      result:
+        'Falta el nombre del niño. Pregúntale al tutor cómo se llama (nombre y apellidos) y vuelve a llamar a register_patient con ese nombre.',
+    };
+  }
   const fullName = [args.firstName, args.lastName]
     .map((p) => p?.trim())
     .filter(Boolean)
@@ -117,6 +133,16 @@ export async function registerPatientPerson(
     null;
   if (existing) return finishRegistration(tenantId, existing, true, args, profile, todayKey);
 
+  // Para una ficha NUEVA hacen falta los apellidos.
+  if (!args.lastName?.trim() || isPlaceholderName(args.lastName)) {
+    const family = siblings.map((p) => p.lastName).filter(Boolean);
+    return {
+      result: family.length
+        ? `Faltan los apellidos de ${args.firstName.trim()}. Pregúntale al tutor si son ${family[0]}, como su hermano, y vuelve a llamar con last_name.`
+        : `Faltan los apellidos de ${args.firstName.trim()}. Pregúntaselos al tutor y vuelve a llamar con last_name.`,
+    };
+  }
+
   try {
     const created = await createPatient(
       { tenantId, userId: null },
@@ -125,7 +151,7 @@ export async function registerPatientPerson(
         lastName: args.lastName?.trim() ?? '',
         birthDate,
         contactPhone: args.phone,
-        contactName: args.guardianName?.trim() ?? '',
+        contactName: cleanGuardianName(args.guardianName, fullName),
         notes: '',
       },
     );
@@ -135,6 +161,28 @@ export async function registerPatientPerson(
     if (!(err instanceof DuplicatePatientError)) throw err;
     return finishRegistration(tenantId, err.existing, true, args, profile, todayKey);
   }
+}
+
+/** "[pendiente]", "Hija", "Niño", "desconocido"…: no es un nombre. */
+export function isPlaceholderName(raw: string | null | undefined): boolean {
+  const name = raw?.trim() ?? '';
+  if (!name) return true;
+  if (/[[\]{}<>]/.test(name)) return true;
+  return /^(pendiente|desconocid[oa]|sin nombre|no indicad[oa]|n\/?a|hij[oa]|niñ[oa]|bebé|bebe|peque|paciente|tutor)$/i.test(
+    name,
+  );
+}
+
+/**
+ * El modelo rellena el tutor con lo que tenga a mano ("Titular del teléfono",
+ * el nombre del propio niño). Mejor sin nombre que con uno falso en la ficha.
+ */
+export function cleanGuardianName(raw: string | null | undefined, childName: string): string {
+  const name = raw?.trim() ?? '';
+  if (!name) return '';
+  if (/titular|tel[eé]fono|tutor|madre o padre|desconocid|no indicad/i.test(name)) return '';
+  if (normalizeName(name) === normalizeName(childName)) return '';
+  return name;
 }
 
 async function finishRegistration(
@@ -174,8 +222,18 @@ async function finishRegistration(
   }
 
   const fasting = profile.bookingPolicy.fastingHours;
+  // Mellizos: el segundo va con el tratamiento de mellizos, sin la regla de
+  // primeras visitas seguidas, y justo detrás de su hermano.
+  const twins = person.birthDate
+    ? (await listPatientsForPhone(tenantId, args.phone)).filter(
+        (p) => p.id !== person.id && p.birthDate === person.birthDate,
+      )
+    : [];
+  const twinHint = twins.length
+    ? ` Es MELLIZO/GEMELO de ${twins.map((t) => t.fullName).join(' y ')}: si su hermano ya tiene cita, busca con check_availability el tratamiento de mellizos (first_visit=false) el mismo día y ofrécele la hora justo después de la de su hermano.`
+    : '';
   return {
-    result: `${existing ? 'Ya estaba registrado' : 'Paciente dado de alta'}: ${describeChild(person, todayKey)}. patient_id=${person.id}. Para reservar, llamá a check_availability con first_visit=${firstVisit ? 'true' : 'false'} y después a book_appointment con patient_id=${person.id} y el start_time y professional_id exactos del hueco elegido.${
+    result: `${existing ? 'Ya estaba registrado' : 'Paciente dado de alta'}: ${describeChild(person, todayKey)}. patient_id=${person.id}. Para reservar, llamá a check_availability con first_visit=${firstVisit ? 'true' : 'false'} y después a book_appointment con patient_id=${person.id} y el start_time y professional_id exactos del hueco elegido.${twinHint}${
       fasting ? ` Recuérdale al tutor el ayuno de ${fasting} horas antes de la sesión.` : ''
     }`,
   };

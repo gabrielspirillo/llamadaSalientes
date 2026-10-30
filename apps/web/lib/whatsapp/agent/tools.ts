@@ -63,6 +63,7 @@ const bookAppointmentArgs = z.object({
   // Clínicas con perfil de atención: el niño al que va la cita.
   patient_id: z.string().optional(),
   email: z.string().optional(),
+  replaces_appointment_id: z.string().optional(),
 });
 
 const confirmAppointmentArgs = z.object({
@@ -291,6 +292,11 @@ function allToolDefinitions(): AgentToolDefinition[] {
               'El id del paciente que devolvió get_patient_info o register_patient. En las clínicas donde el paciente es un niño con ficha propia es OBLIGATORIO: sin él no se reserva.',
           },
           email: { type: 'string', description: 'Opcional. Email del paciente.' },
+          replaces_appointment_id: {
+            type: 'string',
+            description:
+              'Sólo si el paciente CAMBIA una cita que ya tenía: el appointment_id de esa cita vieja (te lo da get_patient_info). Se anula sola en cuanto la nueva queda reservada; no llames después a cancel_appointment.',
+          },
         },
         required: ['start_time', 'treatment_name'],
         additionalProperties: false,
@@ -315,7 +321,7 @@ function allToolDefinitions(): AgentToolDefinition[] {
     {
       name: 'cancel_appointment',
       description:
-        'Cancela una cita del paciente que escribe. Si quiere CAMBIARLA, no la canceles todavía: primero reserva la nueva con book_appointment y cancela la vieja después. NUNCA le pidas un ID: basta con el nombre del paciente de la cita (y el día si tiene varias); la cita se busca entre las de su teléfono. Si get_patient_info te dio el appointment_id, pásalo.',
+        'Cancela una cita del paciente que escribe. Si quiere CAMBIARLA, no la canceles todavía: reserva la nueva con book_appointment pasando replaces_appointment_id y la vieja se anula sola. NUNCA le pidas un ID: basta con el nombre del paciente de la cita (y el día si tiene varias); la cita se busca entre las de su teléfono. Si get_patient_info te dio el appointment_id, pásalo.',
       parameters: {
         type: 'object',
         properties: {
@@ -367,12 +373,12 @@ function allToolDefinitions(): AgentToolDefinition[] {
           birth_date: {
             type: 'string',
             description:
-              'Fecha de nacimiento del paciente, YYYY-MM-DD. Obligatoria en las clínicas donde el paciente es un niño.',
+              'Fecha de nacimiento del paciente, YYYY-MM-DD, tal como la dijo quien escribe. Obligatoria en las clínicas donde el paciente es un niño. Si no te la ha dicho, PREGÚNTASELA: nunca la deduzcas ni pongas la de hoy.',
           },
           guardian_name: {
             type: 'string',
             description:
-              'Nombre del titular del teléfono (madre, padre o tutor), cuando el paciente es un niño.',
+              'Nombre de pila de la madre, el padre o el tutor que escribe, SÓLO si lo ha dicho. Si no lo sabes, no lo pases (nada de "titular del teléfono" ni el nombre del niño).',
           },
           medical_alert: {
             type: 'string',
