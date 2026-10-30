@@ -901,9 +901,11 @@ export function stripClinicalTriage(prompt: string): string {
     '"reservar cita" o "pedir cita" (NO "turno" ni "agendar").',
     '"reservar cita", "pedir cita" o "agendar" (NO "turno").',
   );
+  // Al "hola" se presenta como siempre; el mensaje inicial de la clínica es
+  // para cuando pide cita.
   out = out.replace(
-    /Si es un\s+saludo o el mensaje es ambiguo[\s\S]*?le busques hueco todavía\./,
-    'Si es un saludo, pide cita o el mensaje es ambiguo y no conoces a la familia, contesta con el mensaje inicial de la clínica (sección "Cómo escribe esta clínica") y espera su respuesta.',
+    /(Si es un\s+saludo o el mensaje es ambiguo[\s\S]*?le busques hueco todavía\.)/,
+    '$1 Cuando PIDA CITA y no conozcas a la familia, contesta con el mensaje inicial de la clínica (sección "Cómo escribe esta clínica").',
   );
   out = out.replace(
     /Y nunca elijas tú el tratamiento[\s\S]*?se lo\s+preguntas\./,

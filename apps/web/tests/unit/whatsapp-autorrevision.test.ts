@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('server-only', () => ({}));
 vi.mock('@/lib/db/client', () => ({ db: {} }));
 
-import { isGenericGreeting, reviewFinalText } from '@/lib/whatsapp/agent';
+import { isBareGreeting, reviewFinalText } from '@/lib/whatsapp/agent';
 import type { ToolCallTrace } from '@/lib/whatsapp/agent/types';
 
 const trace = (name: string, result: string, ok = true): ToolCallTrace => ({
@@ -63,19 +63,13 @@ describe('autorrevisión del texto final', () => {
   });
 });
 
-describe('saludo genérico', () => {
-  it('reconoce la presentación del prompt base', () => {
-    expect(
-      isGenericGreeting('Hola, soy el asistente virtual de Respinens, ¿en qué te puedo ayudar?'),
-    ).toBe(true);
-    expect(isGenericGreeting('Hola, soy Lucía. ¿En qué puedo ayudarte? 😊')).toBe(true);
-    // Si además atiende algo, no se toca.
-    expect(
-      isGenericGreeting(
-        'Hola, soy Lucía, ¿en qué te puedo ayudar? Para la cita necesito el nombre del peque.',
-      ),
-    ).toBe(false);
-    expect(isGenericGreeting('Perfecto, ¿en qué te puedo ayudar?')).toBe(false);
+describe('saludo', () => {
+  it('reconoce un saludo a secas', () => {
+    for (const t of ['hola', 'Hola!!', 'buenas', 'Buenos días 😊', 'hola, buenas']) {
+      expect(isBareGreeting(t)).toBe(true);
+    }
+    expect(isBareGreeting('hola, quiero cita')).toBe(false);
+    expect(isBareGreeting('Hola, ¿tenéis hueco el viernes?')).toBe(false);
   });
 });
 

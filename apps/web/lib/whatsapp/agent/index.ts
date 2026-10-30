@@ -408,13 +408,22 @@ export async function runWhatsappAgent(
       : 'Para poder darle cita solo necesito saber una cosa: ¿ahora mismo tiene fiebre de más de 38,5º o dificultad para respirar?';
   }
 
-  // Clínica con saludo propio: la presentación genérica del prompt base no
-  // sale a una familia que no conocemos; sale el de la clínica, que pregunta
-  // si es la primera vez y avisa de la fiebre.
+  // A un "hola" a secas se le contesta presentándose y preguntando en qué se
+  // le ayuda; el mensaje inicial de la clínica es para cuando pide cita.
   const clinicGreeting = careProfile?.messageScripts?.greeting?.trim();
-  if (clinicGreeting && finalText && !handoff && !knownContact && isGenericGreeting(finalText)) {
-    guardrailFlags.push('clinic_greeting');
-    finalText = clinicGreeting;
+  if (
+    clinicGreeting &&
+    finalText &&
+    !handoff &&
+    isBareGreeting(input.userText) &&
+    finalText.trim().startsWith(clinicGreeting.split('\n')[0]?.trim() ?? clinicGreeting)
+  ) {
+    guardrailFlags.push('bare_greeting');
+    const agentName = agentSettings?.agentName?.trim();
+    const who = agentName
+      ? `${agentName}, el asistente virtual de ${grounding.clinic.name}`
+      : `el asistente virtual de ${grounding.clinic.name}`;
+    finalText = `Hola, soy ${who}, ¿en qué te puedo ayudar?`;
   }
 
   if (finalText) finalText = toWhatsappFormatting(finalText);
@@ -561,15 +570,15 @@ export function looksLikeMedicalQuestion(text: string): boolean {
 const MEDICAL =
   /(\btos\b|toser|s[ií]ntoma|pitid|mocos?\b|flema|v[oó]mit|diarrea|dolor|duele|medicaci[oó]n|medicamento|antibi[oó]tico|paracetamol|ibuprofeno|inhalador|saturaci[oó]n|molesti|desde cu[aá]ndo|constante|duerm|dormir|comer\b)/i;
 
-/** "Hola, soy …, ¿en qué te puedo ayudar?" y nada más. */
-export function isGenericGreeting(text: string): boolean {
-  const rest = text
-    .trim()
-    .replace(
-      /^hola[,!.]?\s+soy\b[^¿?]{0,80}?[,.]?\s*¿?\s*en qu[eé] (te )?puedo ayudar(te)?\s*\??/i,
-      '',
-    );
-  return rest !== text.trim() && rest.replace(/[\s😊🙂.!]/gu, '') === '';
+/** "Hola", "buenas", "buenos días 😊": un saludo sin nada más. */
+export function isBareGreeting(text: string): boolean {
+  const t = fold(text)
+    .replace(/\p{Extended_Pictographic}|\u200d|\ufe0f/gu, '')
+    .replace(/[!¡.,¿?\s]+/g, ' ')
+    .trim();
+  return /^(hola+|buenas+|buenos dias|buenas tardes|buenas noches|hey|ey)( (que tal|buenas|hola))?$/.test(
+    t,
+  );
 }
 
 // Una frase que da la cita por hecha. "Si te va bien, te la reservo" o
