@@ -230,8 +230,18 @@ export async function runWhatsappAgent(
     model = 'guardrail';
   }
 
+  // "Gracias" a secas: la clínica tiene su respuesta y no hace falta el modelo
+  // (que alguna vez lo tomaba como motivo para pasar con Raquel).
+  const thanksScript = careProfile?.messageScripts?.thanks?.trim();
+  const scripted = !injection.tripped && Boolean(thanksScript) && isPureThanks(input.userText);
+  if (scripted && thanksScript) {
+    guardrailFlags.push('clinic_thanks');
+    finalText = thanksScript;
+    model = 'script';
+  }
+
   let nudges = 0;
-  for (let iter = 0; !injection.tripped && iter < MAX_TOOL_ITERATIONS; iter++) {
+  for (let iter = 0; !injection.tripped && !scripted && iter < MAX_TOOL_ITERATIONS; iter++) {
     let result: LlmCallResult;
     try {
       result = await deps.callLLM({ messages, tools, temperature: TEMPERATURE });
@@ -255,7 +265,13 @@ export async function runWhatsappAgent(
     if (result.toolCalls.length === 0) {
       const correction =
         nudges < MAX_NUDGES
-          ? reviewFinalText(result.text, toolsCalled, Boolean(careProfile))
+          ? reviewFinalText(
+              result.text,
+              toolsCalled,
+              Boolean(careProfile),
+              deps.now(),
+              input.userText,
+            )
           : null;
       if (correction) {
         nudges++;
@@ -573,8 +589,45 @@ export function reviewFinalText(
   text: string | null,
   toolsCalled: ToolCallTrace[],
   withCareProfile: boolean,
+  now: Date = new Date(),
+  userText = '',
 ): { code: string; note: string } | null {
   if (!text) return null;
+  // "El 8 de noviembre es un miércoles": el día de la semana se comprueba.
+  const wrongDay = findWrongWeekday(text, now);
+  if (wrongDay) {
+    return {
+      code: 'wrong_weekday',
+      note: `[Revisión interna, no la menciones] ${wrongDay}. Mira el calendario de las reglas, corrige el día (y si la clínica no abre ese día, dilo) antes de contestar.`,
+    };
+  }
+  // Pidió un día sin huecos: hay que decírselo antes de ofrecer otro, no
+  // "para el viernes tengo el martes".
+  // Si se consultó hoy sin que lo pidiera (no dijo ningún día), no hay nada
+  // que avisar: el aviso se lo inventaba sobre otro día.
+  const lastCheck = [...toolsCalled].reverse().find((t) => t.name === 'check_availability');
+  const fullDay = lastCheck?.result.match(
+    /El día que pidió \((\d{4})-(\d{2})-(\d{2})\) no hay huecos libres/,
+  );
+  const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(now);
+  if (
+    fullDay &&
+    (`${fullDay[1]}-${fullDay[2]}-${fullDay[3]}` !== todayKey || /\bhoy\b/i.test(userText)) &&
+    !/\bno (me )?(hay|tengo|queda|quedan|tenemos)\b|no hay hueco|completo|ocupad|cerrad/i.test(text)
+  ) {
+    const d = new Date(Date.UTC(Number(fullDay[1]), Number(fullDay[2]) - 1, Number(fullDay[3])));
+    const label = `${WEEKDAYS[d.getUTCDay()]} ${d.getUTCDate()} de ${MONTHS[d.getUTCMonth()]}`;
+    return {
+      code: 'requested_day_full',
+      note: `[Revisión interna, no la menciones] El día que pidió, ${label}, no tiene huecos (lo dice check_availability). Díselo primero con claridad ("el ${label} no me queda nada") y después ofrece las otras horas, cada una con su día de la semana correcto.`,
+    };
+  }
+  if (/YYYY|AAAA|DD\/MM|formato/i.test(text)) {
+    return {
+      code: 'format_request',
+      note: '[Revisión interna, no la menciones] No le pidas a la familia ningún formato de fecha: pregúntale con naturalidad (por ejemplo "¿cuándo nació?"). Tú la conviertes.',
+    };
+  }
   // "OK" es lo que contesta tras una reserva (los mensajes los pone la
   // clínica). Sin reserva en este turno, el paciente se queda sin nada.
   if (/^\s*ok\.?\s*$/i.test(text)) {
@@ -625,4 +678,64 @@ export function reviewFinalText(
     }
   }
   return null;
+}
+
+const WEEKDAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const MONTHS = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
+];
+const fold = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+
+/**
+ * Busca "martes 3 de noviembre", "el 8 de noviembre es un miércoles" y
+ * parecidos, y devuelve la corrección si el día de la semana no cuadra.
+ */
+export function findWrongWeekday(text: string, now: Date): string | null {
+  const t = fold(text);
+  const wd = '(lunes|martes|miercoles|jueves|viernes|sabado|domingo)';
+  const date =
+    '(\\d{1,2}) de (enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)';
+  const patterns = [
+    new RegExp(`${wd},? (?:el |dia )?${date}`, 'g'),
+    new RegExp(`${date},? (?:es |sera |cae )?(?:un |en )?${wd}`, 'g'),
+  ];
+  const nowYear = now.getUTCFullYear();
+  for (const [i, re] of patterns.entries()) {
+    for (const m of t.matchAll(re)) {
+      const [weekday, dayStr, month] = i === 0 ? [m[1], m[2], m[3]] : [m[3], m[1], m[2]];
+      const monthIdx = MONTHS.indexOf(month ?? '');
+      const day = Number(dayStr);
+      if (monthIdx < 0 || !day || day > 31) continue;
+      // Una fecha que ya pasó hace más de un mes es del año que viene.
+      let year = nowYear;
+      if (Date.UTC(year, monthIdx, day) < now.getTime() - 31 * 86_400_000) year += 1;
+      const real = WEEKDAYS[new Date(Date.UTC(year, monthIdx, day)).getUTCDay()] ?? '';
+      if (fold(real) !== weekday) {
+        return `El ${day} de ${MONTHS[monthIdx]} de ${year} es ${real}, no ${weekday}`;
+      }
+    }
+  }
+  return null;
+}
+
+/** "Gracias", "muchas gracias!!", "mil gracias 😊": nada más que agradecer. */
+export function isPureThanks(text: string): boolean {
+  const t = fold(text)
+    .replace(/\p{Extended_Pictographic}|\u200d|\ufe0f/gu, '')
+    .replace(/[!¡.,\s]+/g, ' ')
+    .trim();
+  return /^(muchas |mil |muchisimas )?gracia+s+( a ti| a vosotras| guapa| de nuevo| por todo)?$/.test(
+    t,
+  );
 }

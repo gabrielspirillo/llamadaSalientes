@@ -33,7 +33,7 @@ describe('buildCareProtocolSection', () => {
     const text = buildCareProtocolSection(profile());
     expect(text).toContain('El PACIENTE es el niño o la niña');
     expect(text).toContain('de 0 a 4 años (incluidos)');
-    expect(text).toContain('birth_date (YYYY-MM-DD) es obligatoria');
+    expect(text).toContain('birth_date es obligatoria');
     expect(text).toContain('medical_alert');
     expect(text).toContain('first_visit=true');
     expect(text).toContain('pasa SIEMPRE patient_id');

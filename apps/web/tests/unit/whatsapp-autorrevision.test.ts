@@ -141,3 +141,89 @@ describe('mañana y tarde', () => {
     expect(reviewFinalText('Por la mañana tengo el martes a las 10:30.', [], true)).toBeNull();
   });
 });
+
+describe('días de la semana', () => {
+  const now = new Date('2026-10-30T12:00:00Z'); // viernes
+  it('detecta un día de la semana equivocado', async () => {
+    const { findWrongWeekday } = await import('@/lib/whatsapp/agent');
+    expect(
+      findWrongWeekday('El 8 de noviembre es un miércoles y la clínica está abierta.', now),
+    ).toMatch(/domingo, no miercoles/);
+    expect(findWrongWeekday('Tengo el miércoles, 4 de noviembre a las 15:00.', now)).toBeNull();
+    expect(findWrongWeekday('Te puedo dar el jueves 4 de noviembre.', now)).toMatch(
+      /miércoles, no jueves/,
+    );
+    // Enero ya es del año que viene.
+    expect(findWrongWeekday('El viernes 8 de enero', now)).toBeNull();
+  });
+
+  it('la autorrevisión lo devuelve al modelo', () => {
+    expect(reviewFinalText('El 8 de noviembre es un miércoles.', [], true, now)?.code).toBe(
+      'wrong_weekday',
+    );
+  });
+
+  it('si el día pedido está lleno, tiene que decirlo', () => {
+    const check = [
+      trace(
+        'check_availability',
+        'El día que pidió (2026-11-06) no hay huecos libres (o la clínica no atiende ese día): díselo y ofrécele lo siguiente. Horas libres…',
+      ),
+    ];
+    expect(
+      reviewFinalText(
+        'Para el viernes tengo el martes 3 a las 15:00.',
+        check,
+        true,
+        now,
+        '¿el viernes?',
+      )?.code,
+    ).toBe('requested_day_full');
+    // Consultado HOY sin que lo pidiera: no hay nada que avisar.
+    const today = [
+      trace(
+        'check_availability',
+        'El día que pidió (2026-10-30) no hay huecos libres (o la clínica no atiende ese día).',
+      ),
+    ];
+    expect(
+      reviewFinalText('Tengo el martes 3 a las 15:00.', today, true, now, 'Leo, 03/02/2025'),
+    ).toBeNull();
+    expect(
+      reviewFinalText('Tengo el martes 3 a las 15:00.', today, true, now, '¿hoy puede ser?')?.code,
+    ).toBe('requested_day_full');
+    expect(
+      reviewFinalText(
+        'El viernes no me queda nada. Tengo el martes 3 a las 15:00.',
+        check,
+        true,
+        now,
+      ),
+    ).toBeNull();
+  });
+});
+
+describe('gracias', () => {
+  it('reconoce un agradecimiento sin nada más', async () => {
+    const { isPureThanks } = await import('@/lib/whatsapp/agent');
+    for (const t of [
+      'Gracias',
+      'Graciass!!',
+      'Muchas gracias 😊',
+      'mil gracias!!',
+      'Gracias a ti 💗',
+    ]) {
+      expect(isPureThanks(t)).toBe(true);
+    }
+    expect(isPureThanks('Gracias, ¿y a qué hora era?')).toBe(false);
+    expect(isPureThanks('gracias, quiero cambiar la cita')).toBe(false);
+  });
+});
+
+describe('formato de fecha', () => {
+  it('no se le pide a la familia', () => {
+    expect(reviewFinalText('Pásame su fecha de nacimiento (YYYY-MM-DD).', [], true)?.code).toBe(
+      'format_request',
+    );
+  });
+});

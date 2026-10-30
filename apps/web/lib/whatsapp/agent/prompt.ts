@@ -179,7 +179,7 @@ export function formatNowInClinicZone(timezone: string, instant: Date = new Date
  * 2026-11-06"). El modelo calculaba mal "el viernes" desde "ahora es…" y
  * buscaba otro día: con la tabla delante sólo tiene que copiarla.
  */
-export function upcomingDaysTable(timezone: string, instant: Date = new Date(), days = 14): string {
+export function upcomingDaysTable(timezone: string, instant: Date = new Date(), days = 28): string {
   const fmt = new Intl.DateTimeFormat('es-ES', {
     timeZone: timezone,
     weekday: 'long',
@@ -554,7 +554,10 @@ D. **Urgencia clínica dentro del alcance** — un dolor agudo o una situación 
    día de ESTA semana como si fuera de la que viene. Si no estás seguro de la fecha,
    pregúntale — NO supongas.
    Calendario de los próximos días (cópialo, no lo calcules): ${upcomingDays}.
-   "El viernes" es el PRIMER viernes de esta lista; pasa su fecha tal cual.
+   "El viernes" (o cualquier otro día) es el primero de esta lista DESPUÉS de hoy: si
+   hoy es viernes y dice "el viernes", es el de la semana que viene (para hoy dirá
+   "hoy"). El día de la semana de una fecha se mira SIEMPRE en esta lista, nunca lo
+   calcules: si dice "el 8", busca el 8 aquí y usa el día que pone.
 8. Confidencialidad: no repitas el teléfono completo del paciente ni datos médicos
    sensibles dentro del mensaje. Usa nombres cuando los tengas.
 
@@ -888,5 +891,31 @@ export function stripClinicalTriage(prompt: string): string {
     '',
   );
   out = out.replace(/- flag_urgent: marca urgencia clínica[\s\S]*?(?=\n- |\n\n)/, '');
+  // Lo que el prompt general dice y la clínica hace de otra forma: si se
+  // quedan las dos versiones, el modelo elige cualquiera.
+  out = out.replace(
+    'Frases cortas, 1-3 por mensaje. Sin emojis.',
+    'Frases cortas, 1-3 por mensaje. Emojis sólo como los usa la clínica en sus mensajes, sin abusar.',
+  );
+  out = out.replace(
+    '"reservar cita" o "pedir cita" (NO "turno" ni "agendar").',
+    '"reservar cita", "pedir cita" o "agendar" (NO "turno").',
+  );
+  out = out.replace(
+    /Si es un\s+saludo o el mensaje es ambiguo[\s\S]*?le busques hueco todavía\./,
+    'Si es un saludo, pide cita o el mensaje es ambiguo y no conoces a la familia, contesta con el mensaje inicial de la clínica (sección "Cómo escribe esta clínica") y espera su respuesta.',
+  );
+  out = out.replace(
+    /Y nunca elijas tú el tratamiento[\s\S]*?se lo\s+preguntas\./,
+    'El tratamiento NO se le pregunta a la familia: es la primera visita si el niño no ha venido nunca y la de seguimiento si ya vino (el sistema lo ajusta).',
+  );
+  out = out.replace(
+    /Si es nuevo,\s+pedile nombre y apellido[\s\S]*?para enseñarle huecos\./,
+    'Si el niño es nuevo, pide en UN solo mensaje su nombre y apellidos y su fecha de nacimiento, y regístralo con "register_patient" antes de buscar hueco.',
+  );
+  out = out.replace(
+    /- register_patient: el paciente es nuevo y YA ha elegido horario;[\s\S]*?No antes\./,
+    '- register_patient: el niño es nuevo; se le da de alta en cuanto tengas su nombre, apellidos y fecha de nacimiento.',
+  );
   return out;
 }
