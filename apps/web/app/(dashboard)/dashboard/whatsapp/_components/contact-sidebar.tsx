@@ -101,9 +101,6 @@ function leadFactEntries(facts: Record<string, unknown>): Array<[string, string]
   return out;
 }
 
-const statusLabel = (s: Props['conversation']['status']) =>
-  s === 'CLOSED' ? 'Cerrada' : s === 'HANDOFF' ? 'La atiende una persona' : 'Abierta';
-
 export function ContactSidebar({
   conversationId,
   fichaHref,
@@ -255,24 +252,12 @@ export function ContactSidebar({
             <UserRound className="h-4 w-4" /> Contacto
           </Link>
         </div>
-        <dl className="mt-4 space-y-2 text-xs">
-          <div className="flex justify-between">
-            <dt className="text-zinc-500">Estado</dt>
-            <dd className="font-medium text-zinc-700">{statusLabel(conversation.status)}</dd>
-          </div>
+        <dl className="mt-4 space-y-2 text-xs empty:hidden">
           {conversation.humanTakeoverUntil && conversation.status === 'HANDOFF' && (
             <div className="flex justify-between">
               <dt className="text-zinc-500">La atiende una persona hasta</dt>
               <dd suppressHydrationWarning className="font-medium text-zinc-700">
                 {new Date(conversation.humanTakeoverUntil).toLocaleTimeString('es-ES')}
-              </dd>
-            </div>
-          )}
-          {conversation.lastMsgAt && (
-            <div className="flex justify-between">
-              <dt className="text-zinc-500">Último mensaje</dt>
-              <dd suppressHydrationWarning className="font-medium text-zinc-700">
-                {new Date(conversation.lastMsgAt).toLocaleString('es-ES', SHORT_DATE)}
               </dd>
             </div>
           )}
