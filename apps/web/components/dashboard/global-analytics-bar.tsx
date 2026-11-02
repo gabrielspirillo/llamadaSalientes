@@ -232,7 +232,7 @@ export async function GlobalAnalyticsBar({
               action={<Badge tone="warn">3 meses</Badge>}
             />
             <div className="px-4 pb-5 sm:px-5">
-              <NoShowTrendChart data={noShowSeries} />
+              <NoShowTrendChart data={pulse ? pulse.noShowSeries : noShowSeries} />
             </div>
           </Card>
         </Reveal>

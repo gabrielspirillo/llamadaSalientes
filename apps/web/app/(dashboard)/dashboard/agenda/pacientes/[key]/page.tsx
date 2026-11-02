@@ -373,7 +373,7 @@ export default async function PacienteDossierPage({
                     const tel = g.phone?.trim() || (g.primary ? person.contactPhone : null);
                     return `${GUARDIAN_ROLE_LABELS[g.role]}: ${g.name || '—'}${tel ? ` · ${formatPhoneDisplay(tel)}` : ''}`;
                   })
-                  .join('  |  ')
+                  .join('\n')
               : person.contactName || '—',
           sub: holderLabel ? `Titular del teléfono: ${holderLabel}` : null,
           wide: true,
@@ -650,6 +650,8 @@ export default async function PacienteDossierPage({
               timezone={timezone}
               hasEsign={hasEsign}
               showFichaLink={false}
+              omit={['medication', 'watchouts']}
+              wide
             />
           </Suspense>
         )}

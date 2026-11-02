@@ -132,7 +132,7 @@ export function PatientHeader({
               <dd className="flex min-w-0 flex-wrap items-baseline gap-x-2">
                 <span
                   className={cn(
-                    'line-clamp-2',
+                    f.wide ? 'line-clamp-4 whitespace-pre-line' : 'line-clamp-2',
                     f.emphasis
                       ? 'text-[20px] font-extrabold md:text-[22px]'
                       : 'text-[15px] font-bold',

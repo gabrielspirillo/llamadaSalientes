@@ -92,7 +92,12 @@ export function PatientTabs({
             <span
               key={chip}
               title={chip}
-              className="hidden max-w-[22rem] truncate rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-800 ring-1 ring-rose-200 sm:inline"
+              className={cn(
+                'hidden max-w-[22rem] truncate rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 sm:inline',
+                chip.startsWith('Medicación')
+                  ? 'bg-sky-50 text-sky-800 ring-sky-200'
+                  : 'bg-rose-50 text-rose-800 ring-rose-200',
+              )}
             >
               {chip}
             </span>

@@ -20,6 +20,8 @@ export interface AgendaPulse {
   lost: { rate: number; lost: number; total: number };
   /** Primeras visitas reservadas este mes. */
   firstVisits: number;
+  /** Faltas por semana (90 días), para el gráfico de tendencia. */
+  noShowSeries: { weekStart: string; rate: number; noShow: number; finished: number }[];
 }
 
 const BUSY: AppointmentStatus[] = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED'];
@@ -49,87 +51,105 @@ export async function getAgendaPulse(tenantId: string, timezone: string): Promis
   const since14 = dayStart(addDaysToKey(todayKey, -13), timezone);
 
   const tenant = eq(agendaAppointments.tenantId, tenantId);
-  const [todayRows, weekBooked, shifts, assistantRows, lostRow, firstRow] = await Promise.all([
-    db
-      .select({ status: agendaAppointments.status, n: sql<number>`count(*)::int` })
-      .from(agendaAppointments)
-      .where(
-        and(
-          tenant,
-          gte(agendaAppointments.startsAt, todayStart),
-          lt(agendaAppointments.startsAt, tomorrowStart),
-          inArray(agendaAppointments.status, BUSY),
+  const since90 = dayStart(addDaysToKey(todayKey, -90), timezone);
+  const [todayRows, weekBooked, shifts, assistantRows, lostRow, firstRow, weekly] =
+    await Promise.all([
+      db
+        .select({ status: agendaAppointments.status, n: sql<number>`count(*)::int` })
+        .from(agendaAppointments)
+        .where(
+          and(
+            tenant,
+            gte(agendaAppointments.startsAt, todayStart),
+            lt(agendaAppointments.startsAt, tomorrowStart),
+            inArray(agendaAppointments.status, BUSY),
+          ),
+        )
+        .groupBy(agendaAppointments.status),
+      db
+        .select({
+          minutes: sql<number>`coalesce(sum(extract(epoch from (${agendaAppointments.endsAt} - ${agendaAppointments.startsAt})) / 60), 0)::int`,
+        })
+        .from(agendaAppointments)
+        .where(
+          and(
+            tenant,
+            gte(agendaAppointments.startsAt, now),
+            lt(agendaAppointments.startsAt, weekEnd),
+            inArray(agendaAppointments.status, BUSY),
+          ),
         ),
-      )
-      .groupBy(agendaAppointments.status),
-    db
-      .select({
-        minutes: sql<number>`coalesce(sum(extract(epoch from (${agendaAppointments.endsAt} - ${agendaAppointments.startsAt})) / 60), 0)::int`,
-      })
-      .from(agendaAppointments)
-      .where(
-        and(
-          tenant,
-          gte(agendaAppointments.startsAt, now),
-          lt(agendaAppointments.startsAt, weekEnd),
-          inArray(agendaAppointments.status, BUSY),
+      db
+        .select({
+          weekday: professionalShifts.weekday,
+          startMinute: professionalShifts.startMinute,
+          endMinute: professionalShifts.endMinute,
+        })
+        .from(professionalShifts)
+        .innerJoin(professionals, eq(professionals.id, professionalShifts.professionalId))
+        .where(
+          and(
+            eq(professionalShifts.tenantId, tenantId),
+            eq(professionalShifts.active, true),
+            eq(professionals.active, true),
+            eq(professionals.agendaEnabled, true),
+          ),
         ),
-      ),
-    db
-      .select({
-        weekday: professionalShifts.weekday,
-        startMinute: professionalShifts.startMinute,
-        endMinute: professionalShifts.endMinute,
-      })
-      .from(professionalShifts)
-      .innerJoin(professionals, eq(professionals.id, professionalShifts.professionalId))
-      .where(
-        and(
-          eq(professionalShifts.tenantId, tenantId),
-          eq(professionalShifts.active, true),
-          eq(professionals.active, true),
-          eq(professionals.agendaEnabled, true),
+      db
+        .select({
+          day: sql<string>`to_char(${agendaAppointments.createdAt} at time zone ${timezone}, 'YYYY-MM-DD')`,
+          n: sql<number>`count(*)::int`,
+        })
+        .from(agendaAppointments)
+        .where(
+          and(
+            tenant,
+            gte(agendaAppointments.createdAt, prevMonthStart < since14 ? prevMonthStart : since14),
+            inArray(agendaAppointments.source, ['WHATSAPP_AGENT', 'VOICE_AGENT']),
+          ),
+        )
+        .groupBy(sql`1`),
+      db
+        .select({
+          total: sql<number>`count(*)::int`,
+          lost: sql<number>`count(*) filter (where ${agendaAppointments.status} = 'NO_SHOW' or (${agendaAppointments.status} = 'CANCELLED' and coalesce(${agendaAppointments.cancelledBy}, 'PATIENT') = 'PATIENT'))::int`,
+        })
+        .from(agendaAppointments)
+        .where(
+          and(
+            tenant,
+            gte(agendaAppointments.startsAt, since30),
+            lt(agendaAppointments.startsAt, now),
+          ),
         ),
-      ),
-    db
-      .select({
-        day: sql<string>`to_char(${agendaAppointments.createdAt} at time zone ${timezone}, 'YYYY-MM-DD')`,
-        n: sql<number>`count(*)::int`,
-      })
-      .from(agendaAppointments)
-      .where(
-        and(
-          tenant,
-          gte(agendaAppointments.createdAt, prevMonthStart < since14 ? prevMonthStart : since14),
-          inArray(agendaAppointments.source, ['WHATSAPP_AGENT', 'VOICE_AGENT']),
+      db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(agendaAppointments)
+        .where(
+          and(
+            tenant,
+            gte(agendaAppointments.createdAt, monthStart),
+            eq(agendaAppointments.isFirstVisit, true),
+            inArray(agendaAppointments.status, BUSY),
+          ),
         ),
-      )
-      .groupBy(sql`1`),
-    db
-      .select({
-        total: sql<number>`count(*)::int`,
-        lost: sql<number>`count(*) filter (where ${agendaAppointments.status} = 'NO_SHOW' or (${agendaAppointments.status} = 'CANCELLED' and coalesce(${agendaAppointments.cancelledBy}, 'PATIENT') = 'PATIENT'))::int`,
-      })
-      .from(agendaAppointments)
-      .where(
-        and(
-          tenant,
-          gte(agendaAppointments.startsAt, since30),
-          lt(agendaAppointments.startsAt, now),
-        ),
-      ),
-    db
-      .select({ n: sql<number>`count(*)::int` })
-      .from(agendaAppointments)
-      .where(
-        and(
-          tenant,
-          gte(agendaAppointments.createdAt, monthStart),
-          eq(agendaAppointments.isFirstVisit, true),
-          inArray(agendaAppointments.status, BUSY),
-        ),
-      ),
-  ]);
+      db
+        .select({
+          weekStart: sql<string>`to_char(date_trunc('week', ${agendaAppointments.startsAt} at time zone ${timezone}), 'YYYY-MM-DD')`,
+          finished: sql<number>`count(*) filter (where ${agendaAppointments.status} <> 'CANCELLED')::int`,
+          noShow: sql<number>`count(*) filter (where ${agendaAppointments.status} = 'NO_SHOW')::int`,
+        })
+        .from(agendaAppointments)
+        .where(
+          and(
+            tenant,
+            gte(agendaAppointments.startsAt, since90),
+            lt(agendaAppointments.startsAt, now),
+          ),
+        )
+        .groupBy(sql`1`)
+        .orderBy(sql`1`),
+    ]);
 
   const total = todayRows.reduce((s, r) => s + r.n, 0);
   const pending = todayRows.find((r) => r.status === 'SCHEDULED')?.n ?? 0;
@@ -182,5 +202,11 @@ export async function getAgendaPulse(tenantId: string, timezone: string): Promis
     assistant: { thisMonth, lastMonth, daily },
     lost: { rate: lostTotal > 0 ? lost / lostTotal : 0, lost, total: lostTotal },
     firstVisits: firstRow[0]?.n ?? 0,
+    noShowSeries: weekly.map((w) => ({
+      weekStart: w.weekStart,
+      finished: w.finished,
+      noShow: w.noShow,
+      rate: w.finished > 0 ? w.noShow / w.finished : 0,
+    })),
   };
 }

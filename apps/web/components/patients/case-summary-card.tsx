@@ -78,6 +78,8 @@ export async function CaseSummaryCards({
   timezone,
   hasEsign,
   showFichaLink = true,
+  omit = [],
+  wide = false,
 }: {
   tenantId: string;
   patientIds: string[];
@@ -85,6 +87,10 @@ export async function CaseSummaryCards({
   timezone: string;
   hasEsign: boolean;
   showFichaLink?: boolean;
+  /** Puntos que ya se ven en la página (en la ficha, medicación y alertas van justo encima). */
+  omit?: CasePointKind[];
+  /** A todo el ancho (ficha): los puntos en dos columnas. */
+  wide?: boolean;
 }) {
   const ids = patientIds.slice(0, MAX_PATIENTS);
   if (ids.length === 0) return null;
@@ -267,26 +273,28 @@ export async function CaseSummaryCards({
                 </Link>
               )}
             </div>
-            <ul className="stagger relative mt-3 grid gap-1.5">
-              {summary.points.map((pt, i) => {
-                const Icon = ICONS[pt.kind];
-                return (
-                  <li
-                    key={pt.kind}
-                    style={{ ['--i' as string]: i }}
-                    className={cn(
-                      'flex items-start gap-2.5 rounded-2xl px-3 py-2 text-[13px] ring-1 animate-fade-up',
-                      TONES[pt.tone],
-                    )}
-                  >
-                    <Icon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-                    <span className="min-w-0">
-                      <span className="font-bold text-white">{pt.label}: </span>
-                      <span className="break-words">{pt.text}</span>
-                    </span>
-                  </li>
-                );
-              })}
+            <ul className={cn('stagger relative mt-3 grid gap-1.5', wide && 'md:grid-cols-2')}>
+              {summary.points
+                .filter((pt) => !omit.includes(pt.kind))
+                .map((pt, i) => {
+                  const Icon = ICONS[pt.kind];
+                  return (
+                    <li
+                      key={pt.kind}
+                      style={{ ['--i' as string]: i }}
+                      className={cn(
+                        'flex items-start gap-2.5 rounded-2xl px-3 py-2 text-[13px] ring-1 animate-fade-up',
+                        TONES[pt.tone],
+                      )}
+                    >
+                      <Icon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                      <span className="min-w-0">
+                        <span className="font-bold text-white">{pt.label}: </span>
+                        <span className="break-words">{pt.text}</span>
+                      </span>
+                    </li>
+                  );
+                })}
             </ul>
           </section>
         );
