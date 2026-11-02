@@ -80,6 +80,11 @@ describe('nombre del tutor', () => {
     expect(cleanGuardianName('Vega Ortiz Ramos', 'Vega Ortiz Ramos')).toBe('');
     expect(cleanGuardianName('  ', 'Leo')).toBe('');
     expect(cleanGuardianName('Jose', 'Nico Ruiz Moya')).toBe('Jose');
+    expect(cleanGuardianName('mamá', 'Bruno')).toBe('');
+    const { guardianRoleFrom } = await import('@/lib/care-profile/agent');
+    expect(guardianRoleFrom('mamá')).toBe('MADRE');
+    expect(guardianRoleFrom('el padre')).toBe('PADRE');
+    expect(guardianRoleFrom(undefined)).toBe('OTRO');
   });
 });
 

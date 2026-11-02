@@ -143,7 +143,7 @@ export function RichTextEditor({
           }
         }}
         className={cn(
-          'press absolute right-1.5 top-1 z-10 grid h-8 w-8 place-items-center rounded-full transition-all',
+          'press absolute right-1.5 top-1 z-[1] grid h-8 w-8 place-items-center rounded-full transition-all',
           tools
             ? 'bg-[linear-gradient(120deg,#37766a_0%,#479183_45%,#5fa896_100%)] text-white shadow-[0_6px_16px_-8px_rgba(55,118,106,0.8)]'
             : 'bg-white text-brand-700 ring-1 ring-(--color-border) hover:-translate-y-0.5 hover:bg-brand-50 hover:ring-brand-200',

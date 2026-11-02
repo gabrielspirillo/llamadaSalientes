@@ -7,6 +7,7 @@ import { getClinicTimezone } from '@/lib/agenda/queries';
 import { BUSY_STATUSES } from '@/lib/agenda/shared';
 import {
   type CareProfile,
+  type Guardian,
   PRIORITY_LABELS,
   ageAt,
   describeAge,
@@ -20,6 +21,7 @@ import { agendaAppointments } from '@/lib/db/schema';
 import {
   DuplicatePatientError,
   type PatientPerson,
+  addGuardianToPatient,
   createPatient,
   getPatientPerson,
   listPatientsForPhone,
@@ -66,6 +68,23 @@ export interface RegisterPersonArgs {
   medicalAlert?: string | null;
   /** El tutor confirmó que tiene un solo apellido. */
   onlyOneSurname?: boolean;
+  /** Quién escribe: "madre", "padre", "abuela"… */
+  guardianRole?: string | null;
+  /** El otro tutor (papá si escribe mamá, o al revés). */
+  otherGuardianName?: string | null;
+  otherGuardianPhone?: string | null;
+  otherGuardianRole?: string | null;
+}
+
+/** "mamá", "madre", "la madre" → MADRE. Lo que no se reconoce, OTRO. */
+export function guardianRoleFrom(raw: string | null | undefined): Guardian['role'] {
+  const t = (raw ?? '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+  if (/madre|mama/.test(t)) return 'MADRE';
+  if (/padre|papa/.test(t)) return 'PADRE';
+  if (/abuela/.test(t)) return 'ABUELA';
+  if (/abuelo/.test(t)) return 'ABUELO';
+  if (/tutor/.test(t)) return 'TUTOR';
+  return 'OTRO';
 }
 
 export async function registerPatientPerson(
@@ -164,6 +183,25 @@ export async function registerPatientPerson(
         birthDate,
         contactPhone: args.phone,
         contactName: cleanGuardianName(args.guardianName, fullName),
+        // Quien escribe es el titular del teléfono; el otro tutor, si lo dio.
+        guardians: [
+          {
+            role: guardianRoleFrom(args.guardianRole || args.guardianName),
+            name: cleanGuardianName(args.guardianName, fullName),
+            phone: args.phone,
+            primary: true,
+          },
+          ...(normalizePatientPhone(args.otherGuardianPhone)
+            ? [
+                {
+                  role: guardianRoleFrom(args.otherGuardianRole),
+                  name: cleanGuardianName(args.otherGuardianName, fullName),
+                  phone: normalizePatientPhone(args.otherGuardianPhone) ?? '',
+                  primary: false,
+                },
+              ]
+            : []),
+        ],
         notes: '',
       },
     );
@@ -193,6 +231,8 @@ export function cleanGuardianName(raw: string | null | undefined, childName: str
   const name = raw?.trim() ?? '';
   if (!name) return '';
   if (/titular|tel[eé]fono|tutor|madre o padre|desconocid|no indicad/i.test(name)) return '';
+  // "mamá", "el papá": es el parentesco, no el nombre.
+  if (/^(la |el )?(mam[aá]|pap[aá]|madre|padre|abuel[ao])$/i.test(name)) return '';
   if (normalizeName(name) === normalizeName(childName)) return '';
   return name;
 }
@@ -233,6 +273,29 @@ async function finishRegistration(
     };
   }
 
+  // El otro tutor, si lo acaba de dar (también para un niño que ya tenía ficha).
+  const otherPhone = normalizePatientPhone(args.otherGuardianPhone);
+  if (otherPhone && otherPhone !== normalizePatientPhone(args.phone)) {
+    // Sin parentesco dicho: si quien escribe es mamá, el otro es papá (y al revés).
+    const holder = person.guardians.find((g) => g.primary)?.role;
+    const said = guardianRoleFrom(args.otherGuardianRole);
+    await addGuardianToPatient(tenantId, person.id, {
+      role:
+        said !== 'OTRO' ? said : holder === 'MADRE' ? 'PADRE' : holder === 'PADRE' ? 'MADRE' : said,
+      name: args.otherGuardianName ?? null,
+      phone: otherPhone,
+    }).catch(() => false);
+  }
+  const ownDigits = (args.phone ?? '').replace(/\D/g, '').slice(-9);
+  const hasSecondPhone =
+    Boolean(otherPhone) ||
+    person.guardians.some((g) => {
+      const d = (g.phone ?? '').replace(/\D/g, '').slice(-9);
+      return d.length === 9 && d !== ownDigits;
+    });
+  const askSecond = hasSecondPhone
+    ? ''
+    : ' Pregúntale UNA vez, sin insistir, si quiere dejar también el teléfono del otro tutor (papá o mamá) y su nombre; si lo da, vuelve a llamar a register_patient con other_guardian_phone, other_guardian_name y other_guardian_role.';
   const fasting = profile.bookingPolicy.fastingHours;
   // Mellizos: el segundo va con el tratamiento de mellizos, sin la regla de
   // primeras visitas seguidas, y justo detrás de su hermano.
@@ -245,7 +308,7 @@ async function finishRegistration(
     ? ` Es MELLIZO/GEMELO de ${twins.map((t) => t.fullName).join(' y ')}: si su hermano ya tiene cita, busca con check_availability el tratamiento de mellizos (first_visit=false) el mismo día y ofrécele la hora justo después de la de su hermano.`
     : '';
   return {
-    result: `${existing ? 'Ya estaba registrado' : 'Paciente dado de alta'}: ${describeChild(person, todayKey)}. patient_id=${person.id}. Para reservar, llamá a check_availability con first_visit=${firstVisit ? 'true' : 'false'} y después a book_appointment con patient_id=${person.id} y el start_time y professional_id exactos del hueco elegido.${twinHint}${
+    result: `${existing ? 'Ya estaba registrado' : 'Paciente dado de alta'}: ${describeChild(person, todayKey)}. patient_id=${person.id}. Para reservar, llamá a check_availability con first_visit=${firstVisit ? 'true' : 'false'} y después a book_appointment con patient_id=${person.id} y el start_time y professional_id exactos del hueco elegido.${twinHint}${askSecond}${
       fasting ? ` Recuérdale al tutor el ayuno de ${fasting} horas antes de la sesión.` : ''
     }`,
   };

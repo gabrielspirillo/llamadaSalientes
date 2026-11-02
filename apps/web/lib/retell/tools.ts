@@ -91,6 +91,10 @@ export type RegisterPatientArgs = {
   medical_alert?: string;
   /** El tutor confirmó que el niño tiene un solo apellido. */
   only_one_surname?: boolean;
+  guardian_role?: string;
+  other_guardian_name?: string;
+  other_guardian_phone?: string;
+  other_guardian_role?: string;
 };
 
 export type AcceptWaitlistOfferArgs = {
@@ -488,6 +492,10 @@ export async function registerPatient(
         birthDate: args.birth_date,
         medicalAlert: args.medical_alert,
         onlyOneSurname: args.only_one_surname === true,
+        guardianRole: args.guardian_role,
+        otherGuardianName: args.other_guardian_name,
+        otherGuardianPhone: args.other_guardian_phone,
+        otherGuardianRole: args.other_guardian_role,
       },
       careProfile,
     );

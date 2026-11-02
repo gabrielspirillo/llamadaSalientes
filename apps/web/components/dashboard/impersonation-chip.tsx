@@ -25,11 +25,11 @@ export function ImpersonationChip({ clinicName }: { clinicName: string }) {
 
   return (
     <output
-      className="inline-flex max-w-[320px] items-center gap-1.5 rounded-full bg-amber-100/90 py-1 pl-3 pr-1 text-[12px] font-semibold text-amber-900 ring-1 ring-amber-300/70"
+      className="inline-flex min-w-0 max-w-[360px] items-center gap-1.5 rounded-full bg-amber-100/90 py-1 pl-3 pr-1 text-[12px] font-semibold text-amber-900 ring-1 ring-amber-300/70"
       title={`Estás gestionando ${clinicName} como Futura`}
     >
       <Eye className="h-3.5 w-3.5 shrink-0" aria-hidden />
-      <span className="truncate">
+      <span className="min-w-0 truncate">
         <span className="hidden sm:inline">Gestionando </span>
         {clinicName}
       </span>
@@ -39,14 +39,14 @@ export function ImpersonationChip({ clinicName }: { clinicName: string }) {
         disabled={pending}
         aria-label="Salir de la cuenta del cliente"
         title="Volver al panel de Futura (no cierra tu sesión)"
-        className="ml-1 inline-flex h-7 items-center gap-1 rounded-full bg-white/80 px-2.5 text-[12px] font-semibold text-amber-900 ring-1 ring-amber-300/70 transition-colors hover:bg-white disabled:opacity-60"
+        className="ml-1 inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-white/80 px-2.5 text-[12px] font-semibold text-amber-900 ring-1 ring-amber-300/70 transition-colors hover:bg-white disabled:opacity-60"
       >
         {pending ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
         ) : (
           <LogOut className="h-3.5 w-3.5" />
         )}
-        <span className="hidden sm:inline">Salir de la cuenta del cliente</span>
+        <span className="hidden sm:inline">Salir</span>
       </button>
     </output>
   );

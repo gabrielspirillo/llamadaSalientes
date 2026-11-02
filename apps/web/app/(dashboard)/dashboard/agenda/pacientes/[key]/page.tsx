@@ -14,6 +14,7 @@ import { PatientSignalBadges } from '@/components/agenda/patient-signals';
 import { PatientTabs } from '@/components/agenda/patient-tabs';
 import { RemovePatientButton } from '@/components/agenda/remove-patient-button';
 import { TodayAppointmentCard, type TodayItem } from '@/components/agenda/today-appointment-card';
+import { CaseSummaryCards } from '@/components/patients/case-summary-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardTopbar } from '@/components/ui/card';
@@ -44,6 +45,7 @@ import {
   activeGuardians,
   ageAt,
   describeAge,
+  describeMedication,
   describePriority,
   describeWatchouts,
   formatWatchout,
@@ -60,6 +62,7 @@ import { localDateKey } from '@/lib/tasks/tz';
 import { CalendarDays, CalendarPlus, MessageCircle, Pencil, Phone, Star } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { Suspense } from 'react';
 import { AgendaNav } from '../../agenda-nav';
 
 export const dynamic = 'force-dynamic';
@@ -306,6 +309,7 @@ export default async function PacienteDossierPage({
         priorityReason: person.priorityReason,
       })
     : [];
+  const medication = person ? describeMedication(template, person.anamnesis) : null;
   const now = Date.now();
   const nextAppointment = [...dossier.appointments]
     .reverse()
@@ -363,8 +367,13 @@ export default async function PacienteDossierPage({
           value:
             guardians.length > 0
               ? guardians
-                  .map((g) => `${GUARDIAN_ROLE_LABELS[g.role]}: ${g.name || '—'}`)
-                  .join(' · ')
+                  .map((g) => {
+                    // El teléfono de cada tutor: el del titular, si no lo tiene
+                    // apuntado, es el de la ficha.
+                    const tel = g.phone?.trim() || (g.primary ? person.contactPhone : null);
+                    return `${GUARDIAN_ROLE_LABELS[g.role]}: ${g.name || '—'}${tel ? ` · ${formatPhoneDisplay(tel)}` : ''}`;
+                  })
+                  .join('  |  ')
               : person.contactName || '—',
           sub: holderLabel ? `Titular del teléfono: ${holderLabel}` : null,
           wide: true,
@@ -626,9 +635,24 @@ export default async function PacienteDossierPage({
 
         <PatientAlertsBanner
           items={watchouts}
+          medication={medication}
           pendingAnamnesis={hasAnamnesis ? pendingAnamnesis : 0}
           anamnesisHref={hrefFor('anamnesis')}
         />
+
+        {person && careProfile && (
+          // Aparte: sus lecturas no retrasan el resto de la ficha.
+          <Suspense fallback={null}>
+            <CaseSummaryCards
+              tenantId={ctx.tenantId}
+              patientIds={[person.id]}
+              profile={careProfile}
+              timezone={timezone}
+              hasEsign={hasEsign}
+              showFichaLink={false}
+            />
+          </Suspense>
+        )}
 
         {person?.needsHumanReview && (
           <PatientReviewAlert
@@ -645,7 +669,15 @@ export default async function PacienteDossierPage({
           items={tabItems}
           active={tab}
           headerId={HEADER_ID}
-          identity={{ name: dossier.patientName, chips: watchouts.map(formatWatchout) }}
+          identity={{
+            name: dossier.patientName,
+            chips: [
+              ...(medication && medication.state !== 'UNKNOWN'
+                ? [`Medicación: ${medication.text}`]
+                : []),
+              ...watchouts.map(formatWatchout),
+            ],
+          }}
         />
 
         <div

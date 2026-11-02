@@ -3,6 +3,8 @@ import { Card, CardTopbar } from '@/components/ui/card';
 import { SectionTitle } from '@/components/ui/feedback';
 import { Reveal } from '@/components/ui/motion';
 import { StatTile } from '@/components/ui/stat';
+import { getClinicTimezone, tenantHasAgenda } from '@/lib/agenda/queries';
+import { type AgendaPulse, getAgendaPulse } from '@/lib/data/analytics/agenda-pulse';
 import {
   getAppointmentsToday,
   getCancellationRecoveryStats,
@@ -16,7 +18,9 @@ import { tasks, tenantMemberships } from '@/lib/db/schema';
 import { getDemoAnalytics } from '@/lib/demo-data';
 import { and, count, eq, isNull, ne } from 'drizzle-orm';
 import {
+  Bot,
   CalendarCheck,
+  CalendarRange,
   Coins,
   ListTodo,
   MessageCircle,
@@ -25,6 +29,7 @@ import {
   Sparkles,
   Stethoscope,
   TrendingDown,
+  UserX,
   Users,
 } from 'lucide-react';
 import { NoShowTrendChart, TopTreatmentsChart } from './charts-lazy';
@@ -62,6 +67,16 @@ export async function GlobalAnalyticsBar({
         getNoShowSeries(tenantId, 90),
       ]);
 
+  // Clínica con agenda propia: los cuatro números de arriba salen de ella. Los
+  // de antes (no-show sobre la caché de GHL, revenue de ofertas automáticas,
+  // recuperación de huecos) se quedaban a cero en estas clínicas.
+  const pulse: AgendaPulse | null =
+    !demo && (await tenantHasAgenda(tenantId).catch(() => false))
+      ? await getClinicTimezone(tenantId)
+          .then((tz) => getAgendaPulse(tenantId, tz))
+          .catch(() => null)
+      : null;
+
   // Serie corta para el sparkline de la tarjeta de no-show.
   const noShowTrend = noShowSeries.slice(-10).map((p) => p.rate * 100);
 
@@ -90,8 +105,12 @@ export async function GlobalAnalyticsBar({
   return (
     <section className="mb-8">
       <SectionTitle
-        title="Métricas globales"
-        description="Todos los canales combinados: llamadas, WhatsApp, recordatorios y waitlist."
+        title={pulse ? 'Tu agenda en directo' : 'Métricas globales'}
+        description={
+          pulse
+            ? 'Hoy, los próximos 7 días y lo que hace el asistente por ti.'
+            : 'Todos los canales combinados: llamadas, WhatsApp, recordatorios y waitlist.'
+        }
         action={
           <Badge tone="accent" size="lg" className="hidden sm:inline-flex">
             <Sparkles className="h-3 w-3" />
@@ -100,50 +119,54 @@ export async function GlobalAnalyticsBar({
         }
       />
 
-      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
-        <Reveal delay={0}>
-          <StatTile
-            label="Citas hoy"
-            numeric={today}
-            hint="Agendadas y confirmadas"
-            icon={<CalendarCheck className="h-4 w-4" />}
-            tone="grape"
-          />
-        </Reveal>
-        <Reveal delay={80}>
-          <StatTile
-            label="No-show (90 días)"
-            numeric={noShow.rate * 100}
-            decimals={1}
-            suffix="%"
-            hint={`${noShow.noShow} de ${noShow.finished} citas finalizadas`}
-            icon={<TrendingDown className="h-4 w-4" />}
-            tone="honey"
-            trend={noShowTrend.length > 1 ? noShowTrend : undefined}
-          />
-        </Reveal>
-        <Reveal delay={160}>
-          <StatTile
-            label="Revenue optimizado"
-            value={formatMoney(revenue.cents, revenue.currency)}
-            hint="Slots recuperados este mes"
-            icon={<Coins className="h-4 w-4" />}
-            tone="mint"
-          />
-        </Reveal>
-        <Reveal delay={240}>
-          <StatTile
-            label="Recuperación de cancelaciones"
-            numeric={recovery.rate * 100}
-            decimals={1}
-            suffix="%"
-            hint={`${recovery.recovered} de ${recovery.totalCancelled} canceladas`}
-            icon={<CalendarCheck className="h-4 w-4" />}
-            tone="sky"
-            progress={recovery.rate * 100}
-          />
-        </Reveal>
-      </div>
+      {pulse ? (
+        <AgendaPulseTiles pulse={pulse} />
+      ) : (
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+          <Reveal delay={0}>
+            <StatTile
+              label="Citas hoy"
+              numeric={today}
+              hint="Agendadas y confirmadas"
+              icon={<CalendarCheck className="h-4 w-4" />}
+              tone="grape"
+            />
+          </Reveal>
+          <Reveal delay={80}>
+            <StatTile
+              label="No-show (90 días)"
+              numeric={noShow.rate * 100}
+              decimals={1}
+              suffix="%"
+              hint={`${noShow.noShow} de ${noShow.finished} citas finalizadas`}
+              icon={<TrendingDown className="h-4 w-4" />}
+              tone="honey"
+              trend={noShowTrend.length > 1 ? noShowTrend : undefined}
+            />
+          </Reveal>
+          <Reveal delay={160}>
+            <StatTile
+              label="Revenue optimizado"
+              value={formatMoney(revenue.cents, revenue.currency)}
+              hint="Slots recuperados este mes"
+              icon={<Coins className="h-4 w-4" />}
+              tone="mint"
+            />
+          </Reveal>
+          <Reveal delay={240}>
+            <StatTile
+              label="Recuperación de cancelaciones"
+              numeric={recovery.rate * 100}
+              decimals={1}
+              suffix="%"
+              hint={`${recovery.recovered} de ${recovery.totalCancelled} canceladas`}
+              icon={<CalendarCheck className="h-4 w-4" />}
+              tone="sky"
+              progress={recovery.rate * 100}
+            />
+          </Reveal>
+        </div>
+      )}
 
       <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
         <Reveal delay={0}>
@@ -251,5 +274,70 @@ function ChannelChip({
       <span className="font-medium opacity-80">{label}</span>
       <span className="font-bold tabular-nums">{value}</span>
     </span>
+  );
+}
+
+function hours(minutes: number): string {
+  return `${Math.round(minutes / 60)} h`;
+}
+
+/** Los cuatro números que importan en una clínica con agenda propia. */
+function AgendaPulseTiles({ pulse }: { pulse: AgendaPulse }) {
+  const { today, occupancy, assistant, lost } = pulse;
+  return (
+    <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+      <Reveal delay={0}>
+        <StatTile
+          label="Citas hoy"
+          numeric={today.total}
+          hint={
+            today.total === 0
+              ? 'Hoy no hay citas'
+              : `${today.confirmed} confirmadas · ${today.pending} sin confirmar`
+          }
+          icon={<CalendarCheck className="h-4 w-4" />}
+          tone="grape"
+          progress={today.total > 0 ? (today.confirmed / today.total) * 100 : 0}
+        />
+      </Reveal>
+      <Reveal delay={80}>
+        <StatTile
+          label="Ocupación próximos 7 días"
+          numeric={occupancy.rate * 100}
+          suffix="%"
+          hint={
+            occupancy.shiftMinutes > 0
+              ? `${hours(occupancy.bookedMinutes)} reservadas de ${hours(occupancy.shiftMinutes)} de agenda`
+              : 'Falta el horario de los profesionales'
+          }
+          icon={<CalendarRange className="h-4 w-4" />}
+          tone="mint"
+          progress={occupancy.rate * 100}
+        />
+      </Reveal>
+      <Reveal delay={160}>
+        <StatTile
+          label="Citas del asistente este mes"
+          numeric={assistant.thisMonth}
+          delta={assistant.thisMonth - assistant.lastMonth}
+          hint={`Por WhatsApp y teléfono · ${assistant.lastMonth} el mes pasado · ${pulse.firstVisits} primeras visitas`}
+          icon={<Bot className="h-4 w-4" />}
+          tone="sky"
+          trend={assistant.daily}
+        />
+      </Reveal>
+      <Reveal delay={240}>
+        <StatTile
+          label="Faltas y anulaciones (30 días)"
+          numeric={lost.rate * 100}
+          decimals={1}
+          suffix="%"
+          hint={`${lost.lost} de ${lost.total} citas · anulaciones de la clínica aparte`}
+          icon={<UserX className="h-4 w-4" />}
+          tone="coral"
+          progress={lost.rate * 100}
+        />
+      </Reveal>
+    </div>
   );
 }

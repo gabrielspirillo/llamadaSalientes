@@ -96,6 +96,10 @@ const registerPatientArgs = z.object({
   guardian_name: z.string().optional(),
   medical_alert: z.string().optional(),
   only_one_surname: z.boolean().optional(),
+  guardian_role: z.string().max(40).optional(),
+  other_guardian_name: z.string().max(120).optional(),
+  other_guardian_phone: z.string().max(40).optional(),
+  other_guardian_role: z.string().max(40).optional(),
 });
 
 const listTreatmentsArgs = z.object({}).strict();
@@ -411,6 +415,20 @@ function allToolDefinitions(): AgentToolDefinition[] {
             description:
               'Nombre de pila de la madre, el padre o el tutor que escribe, SÓLO si lo ha dicho. Si no lo sabes, no lo pases (nada de "titular del teléfono" ni el nombre del niño).',
           },
+          guardian_role: {
+            type: 'string',
+            description: 'Quién escribe para el niño, si se sabe: "madre", "padre", "abuela"…',
+          },
+          other_guardian_phone: {
+            type: 'string',
+            description:
+              'Teléfono del OTRO tutor (el que no escribe), si lo da. Con prefijo si lo dice; si no, tal cual.',
+          },
+          other_guardian_name: { type: 'string', description: 'Nombre del otro tutor, si lo da.' },
+          other_guardian_role: {
+            type: 'string',
+            description: 'Qué es del niño el otro tutor: "padre", "madre"…',
+          },
           only_one_surname: {
             type: 'boolean',
             description:
@@ -714,6 +732,12 @@ export async function executeAgentTool(input: ExecuteToolInput): Promise<ToolCal
       name === 'book_appointment' && result.booked
         ? await clinicBookingMessages(input.tenantId, result.booked, input.contactPhoneE164)
         : [];
+    // Niño con un solo teléfono en la ficha: el orquestador pregunta por el del
+    // otro tutor tras la confirmación.
+    const askSecondGuardian =
+      name === 'book_appointment' && result.booked?.patientId
+        ? await onlyOneGuardianPhone(input.tenantId, result.booked.patientId).catch(() => false)
+        : false;
     return {
       name,
       args,
@@ -722,7 +746,9 @@ export async function executeAgentTool(input: ExecuteToolInput): Promise<ToolCal
         ? `${result.result.replace(/ Confírmale[^.]*\./, '')} La confirmación de la clínica (fecha, hora, ayuno, cambios y dirección) se la envía el sistema ahora con sus palabras: NO la escribas ni repitas la fecha. Si no tienes nada más que añadir, responde sólo "OK".`
         : result.result,
       latencyMs: Date.now() - started,
-      ...(confirmation.length ? { data: { confirmationMessages: confirmation } } : {}),
+      ...(confirmation.length || askSecondGuardian
+        ? { data: { confirmationMessages: confirmation, askSecondGuardian } }
+        : {}),
     };
   } catch (err) {
     const message = (err as Error).message ?? 'unknown_error';
@@ -817,4 +843,17 @@ function formatZodError(err: z.ZodError): string {
     .map((e) => `${e.path.join('.') || '(root)'}: ${e.message}`)
     .join('; ')
     .slice(0, 220);
+}
+
+/** La ficha sólo tiene un teléfono de tutor (el del que escribe). */
+async function onlyOneGuardianPhone(tenantId: string, patientId: string): Promise<boolean> {
+  const { getPatientPerson } = await import('@/lib/patients/persons');
+  const person = await getPatientPerson(tenantId, patientId);
+  if (!person) return false;
+  const phones = new Set(
+    [person.contactPhone, ...person.guardians.map((g) => g.phone)]
+      .map((p) => (p ?? '').replace(/\D/g, '').slice(-9))
+      .filter((d) => d.length === 9),
+  );
+  return phones.size < 2;
 }

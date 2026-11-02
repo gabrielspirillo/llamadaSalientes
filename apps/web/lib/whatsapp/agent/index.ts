@@ -518,6 +518,22 @@ export async function runWhatsappAgent(
     additionalTexts = trivial ? rest : [...rest, extra];
   }
 
+  // El teléfono del otro tutor: se pregunta una vez, cuando la cita ya está
+  // hecha (antes estorba), y no depende de que el modelo se acuerde.
+  const SECOND_GUARDIAN_Q =
+    'Por cierto, ¿quieres dejarnos también el teléfono del otro tutor (papá o mamá) y su nombre? Así os podemos avisar a los dos 😊';
+  const needsSecond = toolsCalled.some(
+    (t) => t.name === 'book_appointment' && t.data?.askSecondGuardian === true,
+  );
+  const bookedNow = clinicMessages.length > 0;
+  const alreadyAsked = input.history.some(
+    (h) => h.role === 'assistant' && h.content.includes('teléfono del otro tutor'),
+  );
+  if (needsSecond && bookedNow && !alreadyAsked && !handoff && !derivation) {
+    guardrailFlags.push('ask_second_guardian');
+    additionalTexts = [...additionalTexts, SECOND_GUARDIAN_Q];
+  }
+
   const intent = deriveIntent({ urgent, handoff: handoff || !!derivation, toolsCalled });
   const intentConfidence = deriveConfidence({
     urgent,

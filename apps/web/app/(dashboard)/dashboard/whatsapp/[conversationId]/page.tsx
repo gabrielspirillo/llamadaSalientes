@@ -22,6 +22,7 @@ import { getLeadMemory } from '@/lib/memory/lead-memory';
 import { getCurrentTenant } from '@/lib/tenant';
 import { listTenantMembersSynced } from '@/lib/tenant-members';
 
+import { CaseSummaryCards } from '@/components/patients/case-summary-card';
 import { getCareProfile } from '@/lib/care-profile/queries';
 import { tenantHasEsign } from '@/lib/consents/service';
 import { contactDisplayNames } from '@/lib/patients/display-names';
@@ -31,7 +32,6 @@ import { ContactSidebar } from '../_components/contact-sidebar';
 import { ConversationActions } from '../_components/conversation-actions';
 import { MessageComposer } from '../_components/message-composer';
 import { MessagesStream } from '../_components/messages-stream';
-import { PatientBrief } from '../_components/patient-brief';
 
 export const dynamic = 'force-dynamic';
 
@@ -247,7 +247,7 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
         conversationId={row.conv.id}
         fichaHref={fichaHref}
         brief={
-          <PatientBrief
+          <CaseSummaryCards
             tenantId={tenant.id}
             patientIds={patientIds}
             profile={careProfile}

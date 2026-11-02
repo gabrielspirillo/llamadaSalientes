@@ -217,6 +217,30 @@ export function describeWatchouts(
   return out;
 }
 
+export interface MedicationInfo {
+  /** TAKES = toma algo; NONE = no toma nada; UNKNOWN = sin contestar. */
+  state: 'TAKES' | 'NONE' | 'UNKNOWN';
+  /** Lo que se lee de un vistazo: "Ventolín 2 puffs/12 h", "Sin medicación". */
+  text: string;
+}
+
+/**
+ * La medicación de la anamnesis, para tenerla siempre a la vista arriba de la
+ * ficha. Sale del ítem de la plantilla cuya clave o nombre es "medicación";
+ * si la clínica no lo tiene, null.
+ */
+export function describeMedication(
+  template: AnamnesisItem[],
+  answers: AnamnesisAnswers,
+): MedicationInfo | null {
+  const item = template.find((i) => i.key === 'medicacion' || /medicaci[oó]n/i.test(i.label));
+  if (!item) return null;
+  const a = answers[item.key];
+  if (!a || a.value === null) return { state: 'UNKNOWN', text: 'Sin contestar' };
+  if (a.value === false) return { state: 'NONE', text: 'Sin medicación' };
+  return { state: 'TAKES', text: a.detail.trim() || 'Sí (sin detallar cuál)' };
+}
+
 /** "Prematuro: 34 semanas" o "Ingresos". */
 export function formatWatchout(item: WatchoutItem): string {
   return item.detail ? `${item.label}: ${item.detail}` : item.label;

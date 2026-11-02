@@ -74,7 +74,7 @@ export function PatientTabs({
   return (
     <div
       className={cn(
-        'sticky top-[68px] z-10 -mx-4 border-b border-(--color-border) bg-white/[.94] px-4 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-9 lg:px-9',
+        'sticky top-[68px] z-30 -mx-4 border-b border-(--color-border) bg-white/[.94] px-4 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-9 lg:px-9',
         compact && 'shadow-[0_10px_24px_-18px_rgba(20,33,29,0.45)]',
       )}
       aria-busy={pending || undefined}
@@ -82,16 +82,17 @@ export function PatientTabs({
       {identity && (
         <div
           className={cn(
-            'flex items-center gap-2 overflow-hidden transition-[max-height,opacity,padding] duration-300',
-            compact ? 'max-h-12 pt-2 opacity-100' : 'max-h-0 opacity-0',
+            'flex flex-wrap items-center gap-x-2 gap-y-1 overflow-hidden transition-[max-height,opacity,padding] duration-300',
+            compact ? 'max-h-40 pt-2 opacity-100' : 'max-h-0 opacity-0',
           )}
           aria-hidden={!compact}
         >
           <span className="truncate text-[14px] font-bold text-zinc-900">{identity.name}</span>
-          {identity.chips.slice(0, 3).map((chip) => (
+          {identity.chips.map((chip) => (
             <span
               key={chip}
-              className="hidden shrink-0 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-800 ring-1 ring-rose-200 sm:inline"
+              title={chip}
+              className="hidden max-w-[22rem] truncate rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-800 ring-1 ring-rose-200 sm:inline"
             >
               {chip}
             </span>

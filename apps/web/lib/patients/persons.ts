@@ -518,6 +518,41 @@ export async function createPatient(
   return person;
 }
 
+/**
+ * Añade un tutor (el "otro": papá, mamá…) a la ficha sin tocar nada más. Si su
+ * teléfono ya está, sólo completa nombre y parentesco. Lo usa el asistente,
+ * que pide el teléfono del segundo tutor tras el alta.
+ */
+export async function addGuardianToPatient(
+  tenantId: string,
+  patientId: string,
+  guardian: { role: Guardian['role']; name?: string | null; phone: string },
+): Promise<boolean> {
+  const current = await getPatientPerson(tenantId, patientId);
+  const phone = normalizePatientPhone(guardian.phone);
+  if (!current || !phone) return false;
+  const digits = phone.replace(/\D/g, '').slice(-9);
+  const list = [...current.guardians];
+  const idx = list.findIndex((g) => (g.phone ?? '').replace(/\D/g, '').slice(-9) === digits);
+  if (idx >= 0) {
+    const g = list[idx];
+    if (!g) return false;
+    list[idx] = {
+      ...g,
+      role: g.role === 'OTRO' ? guardian.role : g.role,
+      name: g.name.trim() || guardian.name?.trim() || '',
+    };
+  } else {
+    if (list.length >= 4) return false;
+    list.push({ role: guardian.role, name: guardian.name?.trim() ?? '', phone, primary: false });
+  }
+  await db
+    .update(patients)
+    .set({ guardians: normalizeGuardians(list), updatedAt: new Date() })
+    .where(and(eq(patients.tenantId, tenantId), eq(patients.id, patientId)));
+  return true;
+}
+
 export async function updatePatient(
   scope: PatientScope,
   patientId: string,
