@@ -169,6 +169,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           });
           break;
         }
+        // Mensaje borrado, reacción, edición, cambio de mensajes temporales…:
+        // eventos de WhatsApp sin contenido. Se guardaban como "[SYSTEM]" y
+        // despertaban al asistente, que repetía su última respuesta.
+        if (normalizeEvolutionMessage(parsed.data, conn.tenantId).type === 'SYSTEM') break;
         // Enviado desde el teléfono de la clínica (o eco de lo que mandó la
         // app): se refleja en el chat como del equipo, sin pasar por el agente.
         // El job decide si ya estaba guardado.

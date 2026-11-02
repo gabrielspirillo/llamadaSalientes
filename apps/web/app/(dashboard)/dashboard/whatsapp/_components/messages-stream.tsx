@@ -142,9 +142,13 @@ export function MessagesStream({ conversationId, initialMessages, senderUserEmai
         </div>
       ) : (
         <ul className="space-y-2.5">
-          {messages.map((m) => (
-            <MessageBubble key={m.id} message={m} senderUserEmails={senderUserEmails} />
-          ))}
+          {/* Eventos de WhatsApp sin contenido (borrados, reacciones) que se
+              guardaron antes de filtrarlos en el webhook: no se pintan. */}
+          {messages
+            .filter((m) => !(m.type === 'SYSTEM' && !m.contentText && !m.mediaUrl))
+            .map((m) => (
+              <MessageBubble key={m.id} message={m} senderUserEmails={senderUserEmails} />
+            ))}
           {isAgentTyping && <TypingBubble />}
         </ul>
       )}

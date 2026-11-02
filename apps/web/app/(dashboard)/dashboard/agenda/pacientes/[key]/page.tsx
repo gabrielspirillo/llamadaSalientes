@@ -640,22 +640,6 @@ export default async function PacienteDossierPage({
           anamnesisHref={hrefFor('anamnesis')}
         />
 
-        {person && careProfile && (
-          // Aparte: sus lecturas no retrasan el resto de la ficha.
-          <Suspense fallback={null}>
-            <CaseSummaryCards
-              tenantId={ctx.tenantId}
-              patientIds={[person.id]}
-              profile={careProfile}
-              timezone={timezone}
-              hasEsign={hasEsign}
-              showFichaLink={false}
-              omit={['medication', 'watchouts']}
-              wide
-            />
-          </Suspense>
-        )}
-
         {person?.needsHumanReview && (
           <PatientReviewAlert
             patientId={person.id}
@@ -884,6 +868,20 @@ export default async function PacienteDossierPage({
 
           {showAside && (
             <aside className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-[132px]">
+              {person && careProfile && (
+                // Aparte: sus lecturas no retrasan el resto de la ficha.
+                <Suspense fallback={null}>
+                  <CaseSummaryCards
+                    tenantId={ctx.tenantId}
+                    patientIds={[person.id]}
+                    profile={careProfile}
+                    timezone={timezone}
+                    hasEsign={hasEsign}
+                    showFichaLink={false}
+                    omit={['medication', 'watchouts']}
+                  />
+                </Suspense>
+              )}
               {lastNote && (
                 <div className="hidden flex-col gap-2 rounded-[22px] border border-(--color-border) bg-white p-[18px] shadow-[var(--shadow-soft)] lg:flex">
                   <span className="text-[12px] font-bold uppercase tracking-[0.14em] text-zinc-600">

@@ -83,17 +83,19 @@ export function PatientTabs({
         <div
           className={cn(
             'flex flex-wrap items-center gap-x-2 gap-y-1 overflow-hidden transition-[max-height,opacity,padding] duration-300',
-            compact ? 'max-h-40 pt-2 opacity-100' : 'max-h-0 opacity-0',
+            compact ? 'max-h-40 pb-1 pt-2.5 opacity-100' : 'max-h-0 opacity-0',
           )}
           aria-hidden={!compact}
         >
-          <span className="truncate text-[14px] font-bold text-zinc-900">{identity.name}</span>
+          <span className="min-w-0 shrink-0 truncate text-[14px] font-bold leading-[22px] text-zinc-900">
+            {identity.name}
+          </span>
           {identity.chips.map((chip) => (
             <span
               key={chip}
               title={chip}
               className={cn(
-                'hidden max-w-[22rem] truncate rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 sm:inline',
+                'hidden max-w-[22rem] truncate rounded-full px-2 py-0.5 text-[11px] font-semibold leading-[18px] ring-1 ring-inset sm:inline-block',
                 chip.startsWith('Medicación')
                   ? 'bg-sky-50 text-sky-800 ring-sky-200'
                   : 'bg-rose-50 text-rose-800 ring-rose-200',
