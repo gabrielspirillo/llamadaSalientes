@@ -232,11 +232,28 @@ export async function runWhatsappAgent(
 
   // "Gracias" a secas: la clínica tiene su respuesta y no hace falta el modelo
   // (que alguna vez lo tomaba como motivo para pasar con Raquel).
-  const thanksScript = careProfile?.messageScripts?.thanks?.trim();
-  const scripted = !injection.tripped && Boolean(thanksScript) && isPureThanks(input.userText);
-  if (scripted && thanksScript) {
+  // Y a un "hola" a secas, la presentación: siempre igual, sin el modelo.
+  const scripts = careProfile?.messageScripts ?? null;
+  const newSession = input.newSession ?? input.history.length === 0;
+  const assistantName =
+    scripts?.assistantName?.trim() ||
+    (agentSettings?.agentName?.trim()
+      ? `${agentSettings.agentName.trim()}, el asistente virtual de ${grounding.clinic.name}`
+      : `el asistente virtual de ${grounding.clinic.name}`);
+  const thanksScript = scripts?.thanks?.trim();
+  let scriptedText: string | null = null;
+  if (!injection.tripped && thanksScript && isPureThanks(input.userText)) {
     guardrailFlags.push('clinic_thanks');
-    finalText = thanksScript;
+    scriptedText = thanksScript;
+  } else if (!injection.tripped && scripts && isBareGreeting(input.userText)) {
+    guardrailFlags.push('bare_greeting');
+    scriptedText = newSession
+      ? `Hola😊, soy ${assistantName}, ¿en qué te puedo ayudar?`
+      : 'Hola😊, ¿en qué te puedo ayudar?';
+  }
+  const scripted = scriptedText !== null;
+  if (scriptedText) {
+    finalText = scriptedText;
     model = 'script';
   }
 
@@ -295,20 +312,55 @@ export async function runWhatsappAgent(
     // Ejecutamos todas las tools de esta vuelta y guardamos sus traces.
     let terminalHit = false;
     for (const tc of result.toolCalls) {
-      const trace = await deps.executeTool({
-        tenantId: input.tenantId,
-        toolName: tc.name,
-        rawArgs: tc.args,
-        // Le da idempotencia a las reservas en la agenda interna: dos vueltas
-        // del loop sobre la misma conversación y el mismo hueco no crean dos
-        // citas.
-        conversationId: input.conversationId,
-        // Su WhatsApp es su teléfono: las tools lo usan para la ficha del
-        // paciente y para la cita sin depender de que el modelo lo pase.
-        contactPhoneE164: input.contactPhoneE164,
-        mode,
-        deriveFallbackPhone: agentSettings?.deriveFallbackPhone ?? null,
-      });
+      // La fecha de nacimiento tiene que estar ENTERA en lo que escribió la
+      // familia: con "nació el 3 de junio" el modelo se inventaba el año.
+      const birth = typeof tc.args?.birth_date === 'string' ? tc.args.birth_date : '';
+      const missingYear =
+        careProfile &&
+        tc.name === 'register_patient' &&
+        /^\d{4}-\d{2}-\d{2}$/.test(birth) &&
+        !birthYearSaid(birth, [
+          input.userText,
+          ...input.history.filter((h) => h.role === 'user').map((h) => h.content),
+        ]);
+      const trace = missingYear
+        ? {
+            name: tc.name,
+            args: tc.args,
+            ok: true,
+            // Lo que falte, todo junto: pedirlo de a uno hace que la familia
+            // repita los datos.
+            result: `NO registrado: la familia no ha dicho el AÑO de nacimiento y no se puede suponer${
+              String(tc.args?.last_name ?? '')
+                .trim()
+                .split(/\s+/)
+                .filter(Boolean).length < 2
+                ? ', y falta el segundo apellido'
+                : ''
+            }. Pídele en un solo mensaje lo que falte (fecha completa con día, mes y año${
+              String(tc.args?.last_name ?? '')
+                .trim()
+                .split(/\s+/)
+                .filter(Boolean).length < 2
+                ? ', y los dos apellidos'
+                : ''
+            }) y vuelve a llamar con lo que te diga.`,
+            latencyMs: 0,
+          }
+        : await deps.executeTool({
+            tenantId: input.tenantId,
+            toolName: tc.name,
+            rawArgs: tc.args,
+            // Le da idempotencia a las reservas en la agenda interna: dos vueltas
+            // del loop sobre la misma conversación y el mismo hueco no crean dos
+            // citas.
+            conversationId: input.conversationId,
+            // Su WhatsApp es su teléfono: las tools lo usan para la ficha del
+            // paciente y para la cita sin depender de que el modelo lo pase.
+            contactPhoneE164: input.contactPhoneE164,
+            mode,
+            deriveFallbackPhone: agentSettings?.deriveFallbackPhone ?? null,
+          });
       toolsCalled.push(trace);
 
       messages.push({
@@ -357,6 +409,35 @@ export async function runWhatsappAgent(
           careProfile?.messageScripts?.handoff?.trim() || HANDOFF_RESPONSE_TEXT;
       break;
     }
+  }
+
+  // "Muchísimas gracias!" no es motivo para pasar con nadie: si el modelo
+  // derivó un agradecimiento, sale el de la clínica.
+  if (
+    handoff &&
+    !derivation &&
+    thanksScript &&
+    /gracias/i.test(input.userText) &&
+    input.userText.length < 80 &&
+    !/\?|hablar|llam|raquel|duda|consulta/i.test(input.userText)
+  ) {
+    guardrailFlags.push('thanks_not_handoff');
+    handoff = false;
+    finalText = thanksScript;
+  }
+
+  // Pedir mañanas tampoco: la clínica tiene su respuesta.
+  const morningsScript = scripts?.mornings?.trim();
+  if (
+    handoff &&
+    !derivation &&
+    morningsScript &&
+    /por la ma[ñn]ana|las ma[ñn]anas|entro a trabajar|por la tarde no/i.test(input.userText) &&
+    !/hablar|raquel|duda|consulta/i.test(input.userText)
+  ) {
+    guardrailFlags.push('mornings_not_handoff');
+    handoff = false;
+    finalText = morningsScript;
   }
 
   // Llegamos al límite de iteraciones sin respuesta final → handoff fallback.
@@ -408,22 +489,20 @@ export async function runWhatsappAgent(
       : 'Para poder darle cita solo necesito saber una cosa: ¿ahora mismo tiene fiebre de más de 38,5º o dificultad para respirar?';
   }
 
-  // A un "hola" a secas se le contesta presentándose y preguntando en qué se
-  // le ayuda; el mensaje inicial de la clínica es para cuando pide cita.
-  const clinicGreeting = careProfile?.messageScripts?.greeting?.trim();
+  // Primer mensaje en un rato: el asistente dice quién es (lo pidió la
+  // clínica), una vez, no en cada mensaje.
   if (
-    clinicGreeting &&
-    finalText &&
+    scripts?.assistantName &&
+    newSession &&
+    !scripted &&
     !handoff &&
-    isBareGreeting(input.userText) &&
-    finalText.trim().startsWith(clinicGreeting.split('\n')[0]?.trim() ?? clinicGreeting)
+    !derivation &&
+    finalText &&
+    clinicMessages.length === 0 &&
+    !/asistente virtual/i.test(finalText)
   ) {
-    guardrailFlags.push('bare_greeting');
-    const agentName = agentSettings?.agentName?.trim();
-    const who = agentName
-      ? `${agentName}, el asistente virtual de ${grounding.clinic.name}`
-      : `el asistente virtual de ${grounding.clinic.name}`;
-    finalText = `Hola, soy ${who}, ¿en qué te puedo ayudar?`;
+    const rest = finalText.replace(/^\s*hola[^\n.!?,]{0,20}[,.!]?\s*/i, '').trim();
+    finalText = `Hola😊, soy ${assistantName}.\n\n${rest.charAt(0).toUpperCase()}${rest.slice(1)}`;
   }
 
   if (finalText) finalText = toWhatsappFormatting(finalText);
@@ -631,6 +710,28 @@ export function reviewFinalText(
       note: `[Revisión interna, no la menciones] El día que pidió, ${label}, no tiene huecos (lo dice check_availability). Díselo primero con claridad ("el ${label} no me queda nada") y después ofrece las otras horas, cada una con su día de la semana correcto.`,
     };
   }
+  // Instrucciones internas que se le escapan al paciente.
+  if (
+    /Según lo que responda|patient_id|start_time|check_availability|register_patient|book_appointment|«««|»»»|Revisión interna/.test(
+      text,
+    )
+  ) {
+    return {
+      code: 'leak',
+      note: '[Revisión interna, no la menciones] Tu respuesta incluye instrucciones internas o nombres de herramientas. Escríbele al paciente sólo lo que le corresponde leer.',
+    };
+  }
+  // "Hola, soy el asistente…, ¿en qué te puedo ayudar?" cuando ya dijo lo que quería.
+  if (
+    /^\s*hola[,!.]?\s+soy\b[^?]{0,90}en qu[eé] (te )?puedo ayudar/i.test(text) &&
+    userText &&
+    !isBareGreeting(userText)
+  ) {
+    return {
+      code: 'ignored_request',
+      note: '[Revisión interna, no la menciones] El paciente ya te ha dicho lo que necesita: contéstale a eso directamente, sin volver a presentarte.',
+    };
+  }
   if (/YYYY|AAAA|DD\/MM|formato/i.test(text)) {
     return {
       code: 'format_request',
@@ -747,4 +848,12 @@ export function isPureThanks(text: string): boolean {
   return /^(muchas |mil |muchisimas )?gracia+s+( a ti| a vosotras| guapa| de nuevo| por todo)?$/.test(
     t,
   );
+}
+
+/** El año de la fecha de nacimiento aparece en lo que escribió la familia ("2025", "3/6/25"). */
+export function birthYearSaid(birthDate: string, texts: string[]): boolean {
+  const yyyy = birthDate.slice(0, 4);
+  const yy = birthDate.slice(2, 4);
+  const re = new RegExp(`\\b${yyyy}\\b|\\d{1,2}\\s*[/.-]\\s*\\d{1,2}\\s*[/.-]\\s*${yy}\\b`);
+  return texts.some((t) => re.test(t));
 }

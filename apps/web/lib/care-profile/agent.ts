@@ -64,6 +64,8 @@ export interface RegisterPersonArgs {
   birthDate?: string | null;
   /** Lo que contó el tutor y que la clínica quiere valorar en persona. */
   medicalAlert?: string | null;
+  /** El tutor confirmó que tiene un solo apellido. */
+  onlyOneSurname?: boolean;
 }
 
 export async function registerPatientPerson(
@@ -133,7 +135,17 @@ export async function registerPatientPerson(
     null;
   if (existing) return finishRegistration(tenantId, existing, true, args, profile, todayKey);
 
-  // Para una ficha NUEVA hacen falta los apellidos.
+  // Para una ficha NUEVA hacen falta los apellidos: los DOS (lo pidió la
+  // clínica; con uno solo no se encuentra luego al niño).
+  const surnames = (args.lastName ?? '')
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w && !/^(de|del|la|las|los|y|i)$/i.test(w));
+  if (surnames.length === 1 && !args.onlyOneSurname && !isPlaceholderName(args.lastName)) {
+    return {
+      result: `Falta el segundo apellido de ${args.firstName.trim()} (sólo tengo "${args.lastName?.trim()}"). Pídeselo al tutor: hacen falta los dos. Si te dice que sólo tiene uno, vuelve a llamar con only_one_surname=true.`,
+    };
+  }
   if (!args.lastName?.trim() || isPlaceholderName(args.lastName)) {
     const family = siblings.map((p) => p.lastName).filter(Boolean);
     return {

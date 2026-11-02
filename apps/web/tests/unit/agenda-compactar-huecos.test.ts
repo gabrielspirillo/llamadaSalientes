@@ -33,10 +33,25 @@ describe('huecos compactos alrededor de las citas del día', () => {
     expect(out).toContain(at(20, 30).getTime());
   });
 
-  it('primero los huecos pegados a una cita', () => {
+  it('uno por arriba y uno por abajo, los más pegados', () => {
     const out = compactSlots(free, busy, TZ, 120);
-    const firstThree = out.slice(0, 3).map((s) => s.start.getTime());
-    expect(firstThree).toEqual([at(15, 30), at(17, 30), at(19)].map((d) => d.getTime()));
+    // Por arriba (antes de la última cita), el más pegado: 15:30, justo tras
+    // la de las 15:00. Por abajo (tras la última, 18:30-19:00): 19:00.
+    expect(out.slice(0, 2).map((s) => s.start.getTime())).toEqual(
+      [at(15, 30), at(19)].map((d) => d.getTime()),
+    );
+  });
+
+  it('dos de cada día primero, luego el resto', () => {
+    const otroDia = (h: number) => ({
+      start: new Date(at(h).getTime() + 86_400_000),
+      end: new Date(at(h).getTime() + 86_400_000 + 30 * 60_000),
+      professionalId: 'raquel',
+    });
+    const out = compactSlots([...free, otroDia(16), otroDia(17)], busy, TZ, 120);
+    // Día 5: dos; día 6 (sin citas): dos; luego el resto del día 5.
+    expect(out[2]?.start.getTime()).toBe(otroDia(16).start.getTime());
+    expect(out[3]?.start.getTime()).toBe(otroDia(17).start.getTime());
   });
 
   it('un día sin citas, o de otro profesional, no se toca', () => {

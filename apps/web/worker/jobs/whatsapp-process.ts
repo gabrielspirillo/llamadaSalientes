@@ -220,9 +220,15 @@ async function runWhatsappJob(
   }
 
   // 5. Historial breve para contexto del LLM.
-  const history = await step.run('load-history', async () => {
+  const { turns: history, lastAt } = await step.run('load-history', async () => {
     return loadHistory(conversationId, batch.firstMessageCreatedAt);
   });
+  // Sin mensajes en las últimas horas es una conversación nueva: el asistente
+  // se vuelve a presentar.
+  const newSession =
+    !lastAt ||
+    new Date(batch.firstMessageCreatedAt).getTime() - new Date(lastAt).getTime() >
+      NEW_SESSION_GAP_MS;
 
   const triggerMessageId = batch.lastMessageId;
   const remindersResume = readRemindersResume(gate.context);
@@ -234,6 +240,7 @@ async function runWhatsappJob(
     userText: multimodal.combinedText,
     history,
     triggerMessageId,
+    newSession,
     remindersResume,
   };
 
@@ -532,7 +539,12 @@ async function loadInboundBatch(
   };
 }
 
-async function loadHistory(conversationId: string, beforeOrEqual: Date): Promise<HistoryTurn[]> {
+const NEW_SESSION_GAP_MS = 6 * 60 * 60 * 1000;
+
+async function loadHistory(
+  conversationId: string,
+  beforeOrEqual: Date,
+): Promise<{ turns: HistoryTurn[]; lastAt: string | null }> {
   const rows = await db
     .select({
       direction: whatsappMessages.direction,
@@ -551,8 +563,8 @@ async function loadHistory(conversationId: string, beforeOrEqual: Date): Promise
     .orderBy(desc(whatsappMessages.createdAt))
     .limit(MAX_HISTORY_TURNS * 3);
 
-  return rows
-    .filter((r) => r.createdAt < beforeOrEqual)
+  const before = rows.filter((r) => r.createdAt < new Date(beforeOrEqual));
+  const turns = before
     .map<HistoryTurn>((r) => ({
       role: r.direction === 'OUTBOUND' ? 'assistant' : 'user',
       // `||`: un audio llega con contentText vacío ('') y la transcripción
@@ -562,6 +574,10 @@ async function loadHistory(conversationId: string, beforeOrEqual: Date): Promise
     .filter((t) => t.content.length > 0)
     .slice(0, MAX_HISTORY_TURNS)
     .reverse();
+  return {
+    turns,
+    lastAt: before[0]?.createdAt ? new Date(before[0].createdAt).toISOString() : null,
+  };
 }
 
 export async function resolveConnector(tenantId: string): Promise<WhatsAppConnector | null> {

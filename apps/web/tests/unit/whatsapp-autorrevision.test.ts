@@ -221,3 +221,37 @@ describe('formato de fecha', () => {
     );
   });
 });
+
+describe('fecha de nacimiento completa', () => {
+  it('el año tiene que haberlo dicho la familia', async () => {
+    const { birthYearSaid } = await import('@/lib/whatsapp/agent');
+    expect(birthYearSaid('2025-06-03', ['Sofía García y nació el 3 de junio'])).toBe(false);
+    expect(birthYearSaid('2025-06-03', ['nació el 3 de junio de 2025'])).toBe(true);
+    expect(birthYearSaid('2025-06-03', ['3/6/25'])).toBe(true);
+    expect(birthYearSaid('2025-06-03', ['Lucía (03-06-2025)'])).toBe(true);
+    expect(birthYearSaid('2025-06-03', ['tiene 25 meses'])).toBe(false);
+  });
+});
+
+describe('instrucciones internas y peticiones ignoradas', () => {
+  it('no deja salir texto del prompt', () => {
+    expect(
+      reviewFinalText(
+        '¿Es la primera vez?\nSegún lo que responda: "primera visita" → primera visita',
+        [],
+        true,
+      )?.code,
+    ).toBe('leak');
+  });
+  it('no se presenta otra vez si ya pidió algo', () => {
+    expect(
+      reviewFinalText(
+        'Hola, soy el asistente virtual de Respinens, ¿en qué te puedo ayudar?',
+        [],
+        true,
+        new Date(),
+        'mi bebé tiene mocos, ¿se puede hacer la sesión?',
+      )?.code,
+    ).toBe('ignored_request');
+  });
+});

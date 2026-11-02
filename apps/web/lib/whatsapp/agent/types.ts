@@ -143,6 +143,11 @@ export interface AgentInput {
    */
   triggerMessageId: string;
   /**
+   * Primer mensaje en un rato (o de siempre): el asistente se presenta. Sin
+   * dato, se deduce de que no haya historial.
+   */
+  newSession?: boolean;
+  /**
    * Si la conversación tiene un context.remindersResume activo (el paciente
    * tocó "Reagendar" en un reminder reciente), pasamos esa metadata al
    * agente para que arranque proactivamente proponiendo slots.

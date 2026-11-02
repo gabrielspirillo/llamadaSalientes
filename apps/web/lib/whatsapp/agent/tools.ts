@@ -76,6 +76,12 @@ const cancelAppointmentArgs = z.object({
   date: z.string().max(10).optional(),
 });
 
+const requestEarlierArgs = z.object({
+  patient_name: z.string().max(160).optional(),
+  date: z.string().max(10).optional(),
+  note: z.string().max(200).optional(),
+});
+
 const getPatientInfoArgs = z.object({
   phone: z.string().min(1),
 });
@@ -89,6 +95,7 @@ const registerPatientArgs = z.object({
   birth_date: z.string().optional(),
   guardian_name: z.string().optional(),
   medical_alert: z.string().optional(),
+  only_one_surname: z.boolean().optional(),
 });
 
 const listTreatmentsArgs = z.object({}).strict();
@@ -124,6 +131,7 @@ const SCHEMAS = {
   book_appointment: bookAppointmentArgs,
   cancel_appointment: cancelAppointmentArgs,
   confirm_appointment: confirmAppointmentArgs,
+  request_earlier_appointment: requestEarlierArgs,
   get_patient_info: getPatientInfoArgs,
   register_patient: registerPatientArgs,
   list_treatments: listTreatmentsArgs,
@@ -159,6 +167,7 @@ const TOOLS_FUERA_EN_DERIVE: ReadonlySet<AgentToolName> = new Set([
   'book_appointment',
   'cancel_appointment',
   'confirm_appointment',
+  'request_earlier_appointment',
   'list_professionals',
 ]);
 
@@ -319,6 +328,28 @@ function allToolDefinitions(): AgentToolDefinition[] {
       },
     },
     {
+      name: 'request_earlier_appointment',
+      description:
+        'El paciente ya tiene cita y quiere que le avisen si se libera un hueco antes ("si se anula algo mañana, avísame"). La deja apuntada en la lista de la clínica para adelantar. Es la ÚNICA forma de "avisarle": no prometas avisar sin llamarla.',
+      parameters: {
+        type: 'object',
+        properties: {
+          patient_name: { type: 'string', description: 'Nombre del niño de la cita.' },
+          date: {
+            type: 'string',
+            description: 'Opcional. Día de la cita actual, YYYY-MM-DD, si tiene varias.',
+          },
+          note: {
+            type: 'string',
+            description:
+              'Cuándo podría venir, con sus palabras ("mañana martes a cualquier hora").',
+          },
+        },
+        required: [],
+        additionalProperties: false,
+      },
+    },
+    {
       name: 'cancel_appointment',
       description:
         'Cancela una cita del paciente que escribe. Si quiere CAMBIARLA, no la canceles todavía: reserva la nueva con book_appointment pasando replaces_appointment_id y la vieja se anula sola. NUNCA le pidas un ID: basta con el nombre del paciente de la cita (y el día si tiene varias); la cita se busca entre las de su teléfono. Si get_patient_info te dio el appointment_id, pásalo.',
@@ -379,6 +410,11 @@ function allToolDefinitions(): AgentToolDefinition[] {
             type: 'string',
             description:
               'Nombre de pila de la madre, el padre o el tutor que escribe, SÓLO si lo ha dicho. Si no lo sabes, no lo pases (nada de "titular del teléfono" ni el nombre del niño).',
+          },
+          only_one_surname: {
+            type: 'boolean',
+            description:
+              'Sólo si el tutor te ha dicho expresamente que el niño tiene UN solo apellido. Si no, last_name lleva los dos.',
           },
           medical_alert: {
             type: 'string',
@@ -580,6 +616,9 @@ export async function executeAgentTool(input: ExecuteToolInput): Promise<ToolCal
   ) {
     raw.phone = input.contactPhoneE164;
   }
+  // Un opcional que el modelo manda como null ("guardian_name": null) es un
+  // dato que no tiene, no un error: tumbaba el alta del niño.
+  for (const k of Object.keys(raw)) if (raw[k] === null) delete raw[k];
   const parsed = schema.safeParse(raw);
   if (!parsed.success) {
     const message = formatZodError(parsed.error);
@@ -631,6 +670,28 @@ export async function executeAgentTool(input: ExecuteToolInput): Promise<ToolCal
           : 'Cita confirmada. Díselo en una frase.',
       latencyMs: Date.now() - started,
       ...(answer?.messages.length ? { data: { confirmationMessages: answer.messages } } : {}),
+    };
+  }
+
+  if (name === 'request_earlier_appointment') {
+    const { agendaRequestEarlier } = await import('@/lib/agenda/voice');
+    const r = await agendaRequestEarlier(
+      input.tenantId,
+      {
+        patient_name: typeof args.patient_name === 'string' ? args.patient_name : null,
+        date: typeof args.date === 'string' ? args.date : null,
+        note: typeof args.note === 'string' ? args.note : null,
+      },
+      { patientPhone: input.contactPhoneE164 ?? null },
+    ).catch(() => null);
+    return {
+      name,
+      args,
+      ok: !!r,
+      result:
+        r?.result ??
+        'No se pudo apuntar. No le prometas que le avisarán: dile que se lo pasas a la persona del equipo (request_handoff).',
+      latencyMs: Date.now() - started,
     };
   }
 

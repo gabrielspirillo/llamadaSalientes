@@ -22,6 +22,12 @@ const scripts = z
     staffName: z.string().optional(),
     /** Lo que se le dice al paciente al pasarle con esa persona. */
     handoff: z.string().optional(),
+    /** Cómo se presenta el asistente ("el asistente virtual de la agenda de …"). */
+    assistantName: z.string().optional(),
+    /** Si piden por la mañana y la clínica sólo atiende de tarde. */
+    mornings: z.string().optional(),
+    /** "¿Puede venir con mocos / tos?", "¿desde qué edad?": la respuesta de la clínica. */
+    sessionInfo: z.string().optional(),
     /** Confirmación obligatoria el día de la cita (`lib/care-profile/day-of.ts`). */
     dayOf: z
       .object({
@@ -110,8 +116,10 @@ export function buildScriptsSection(s: CareMessageScripts): string {
   if (s.greeting) {
     lines.push(
       '',
-      'Cuando alguien pide cita y NO sabes si ya vino (no hay niños en el contexto), contesta con este mensaje tal cual, opciones incluidas:',
+      'Cuando alguien pide cita y NO sabes si ya vino (no hay niños en el contexto) ni te lo ha dicho, contesta SÓLO con el mensaje que va entre las líneas «««  »»» (sin las líneas), opciones incluidas. Si ya te dijo si es la primera vez, no lo mandes: sigue con lo que falte.',
+      '«««',
       s.greeting,
+      '»»»',
       'Según lo que responda: "primera visita" → primera visita; "ya he ido" → paciente que vuelve (búscalo y no repitas preguntas de primera visita); "con otro peque / hermano mayor" → es la primera visita de este niño pero un hermano ya vino.',
       'Si ya conoces a la familia (el contexto trae sus niños), no preguntes si es la primera vez: pregunta para cuál de sus peques es la cita, y recuerda igualmente el aviso de fiebre o dificultad respiratoria.',
       'A la familia NO se le pregunta qué tratamiento quiere: es la primera visita si el niño no ha venido nunca y la de seguimiento si ya vino (el sistema lo ajusta solo). Lo que te pide es día y hora.',
@@ -132,6 +140,20 @@ export function buildScriptsSection(s: CareMessageScripts): string {
       '- Que quieren cambiarla → busca hueco con check_availability, reserva con book_appointment pasando replaces_appointment_id = la cita de hoy (se anula sola).',
       '- Que no pueden venir → cancel_appointment y contesta con la respuesta de cancelación de abajo.',
       'Si tienen varias citas (hermanos, mellizos), cada una se confirma por separado: confirma sólo las que digan.',
+    );
+  }
+  if (s.mornings) {
+    lines.push(
+      '',
+      'Si piden cita por la mañana (o dicen que por la tarde no pueden), contesta con esto (NO es motivo para derivar) y vuelve a ofrecer las horas que hay; no repitas la misma lista sin decirlo:',
+      s.mornings,
+    );
+  }
+  if (s.sessionInfo) {
+    lines.push(
+      '',
+      'Si preguntan si puede venir con mocos, tos o catarro, si le va a venir bien, o desde qué edad se puede hacer la sesión, contesta con esto (no es una consulta médica: no derives):',
+      s.sessionInfo,
     );
   }
   const short: [string, string | undefined][] = [
@@ -169,9 +191,11 @@ export function buildRoleSection(s: CareMessageScripts): string {
     `- Cualquier otra cosa (un informe, una factura, una queja, una consulta médica, algo que no sepas) NO la resuelves ni la improvisas: le dices que se lo pasas a ${who} (request_handoff).`,
     '- NO haces preguntas médicas: ni síntomas, ni enfermedades, ni antecedentes, ni medicación. No valoras, no aconsejas, no tranquilizas sobre síntomas.',
     `- ${SCREEN.replace('Raquel', who)}`,
-    '- Para reservar a un niño nuevo pide en UN solo mensaje lo que falte: nombre y apellidos del peque y su fecha de nacimiento. El nombre de quien escribe, sólo si lo dice. Nada de cuestionarios.',
-    `- Sólo derivas (request_handoff) si pide hablar con ${who}, si pregunta algo médico que no es de agenda ("¿qué le doy?", "¿es normal…?"), si es algo que no está en tu lista de arriba, o si hay fiebre de más de 38,5º o dificultad para respirar y no quiere otro día. Contar un síntoma NO es motivo para derivar: pregunta lo de la fiebre y sigue con la cita. Dar las gracias, decir "vale" u "ok" NUNCA es motivo para derivar. El mensaje de derivación lo pone el sistema.`,
+    '- Para reservar a un niño nuevo pide en UN solo mensaje lo que falte: nombre y LOS DOS apellidos del peque y su fecha de nacimiento COMPLETA (día, mes y año). Son obligatorios: si falta un apellido o el año, pídeselo antes de seguir. El nombre de quien escribe, sólo si lo dice.',
+    `- Sólo derivas (request_handoff) si pide hablar con ${who}, si el niño tiene una enfermedad especial (una enfermedad importante, un ingreso, una condición crónica), si pregunta algo médico que no es de agenda ni está en los mensajes de la clínica ("¿qué le doy?", "¿es normal…?"), si es algo que no está en tu lista de arriba, o si hay fiebre de más de 38,5º o dificultad para respirar y no quiere otro día. Mocos, tos o catarro NO son motivo para derivar. Contar un síntoma NO es motivo para derivar: pregunta lo de la fiebre y sigue con la cita. Dar las gracias, decir "vale" u "ok" NUNCA es motivo para derivar. El mensaje de derivación lo pone el sistema.`,
     '- Fechas: el día de la semana de una fecha lo miras SIEMPRE en el calendario de las reglas (nunca lo calcules). Si pidió un día y check_availability dice que ese día no hay hueco, díselo primero ("el viernes no me queda nada") y luego ofrece lo que haya.',
+    '- Si no ha pedido ningún día, no le digas que "hoy no hay hueco": ofrécele directamente lo que haya.',
+    '- No prometas nada que no puedas hacer con una herramienta: avisarle tú más tarde, llamarle, guardarle un hueco. Si quiere que le avisen si se libera algo antes, apúntalo con request_earlier_appointment (lo ve el equipo) y dile que, si se libera un hueco, la clínica le avisa.',
     '- No inventes nada: horas, precios, nombres, días o datos que no te hayan dado las herramientas, los datos oficiales o esta conversación. Si no lo sabes, dilo.',
   ].join('\n');
 }

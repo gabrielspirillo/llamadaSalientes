@@ -23,7 +23,12 @@ import {
   getClinicTimezone,
   tenantHasAgenda,
 } from '@/lib/agenda/queries';
-import { AgendaValidationError, cancelAppointment, createAppointment } from '@/lib/agenda/service';
+import {
+  AgendaValidationError,
+  cancelAppointment,
+  createAppointment,
+  setAdvancePreference,
+} from '@/lib/agenda/service';
 import { BUSY_STATUSES } from '@/lib/agenda/shared';
 import { matchRequestedSlot } from '@/lib/agenda/slot-match';
 import { resolvePatientForBooking } from '@/lib/care-profile/agent';
@@ -856,6 +861,75 @@ async function otherUpcomingFor(
     .orderBy(asc(agendaAppointments.startsAt))
     .limit(5);
   return rows.filter((r) => r.id !== newId);
+}
+
+/**
+ * "Si se libera algo antes, avísame": se marca la cita para adelantar (sale en
+ * Lista de espera → "Quieren adelantar su cita"). El asistente no puede avisar
+ * a nadie más tarde; quien avisa es la clínica, y para eso tiene que verlo.
+ */
+export async function agendaRequestEarlier(
+  tenantId: string,
+  args: { patient_name?: string | null; date?: string | null; note?: string | null },
+  ctx: { patientPhone?: string | null },
+): Promise<AgendaToolResult> {
+  if (!(await usesInternalAgenda(tenantId))) return null;
+  const phone = normalizePatientPhone(ctx.patientPhone);
+  if (!phone) return null;
+  const timezone = await getClinicTimezone(tenantId);
+  const rows = await db
+    .select({
+      id: agendaAppointments.id,
+      patientName: agendaAppointments.patientName,
+      startsAt: agendaAppointments.startsAt,
+      professionalName: professionals.fullName,
+    })
+    .from(agendaAppointments)
+    .innerJoin(professionals, eq(professionals.id, agendaAppointments.professionalId))
+    .where(
+      and(
+        eq(agendaAppointments.tenantId, tenantId),
+        eq(agendaAppointments.patientPhone, phone),
+        inArray(agendaAppointments.status, ['SCHEDULED', 'CONFIRMED']),
+        gte(agendaAppointments.startsAt, new Date()),
+      ),
+    )
+    .orderBy(asc(agendaAppointments.startsAt))
+    .limit(20);
+  if (rows.length === 0) {
+    return {
+      result:
+        'Este teléfono no tiene ninguna cita próxima que adelantar. Si quiere cita, ofrécele los huecos que haya con check_availability; no le prometas avisarle.',
+    };
+  }
+  // El día que dice el modelo suele ser el que QUIERE ("mañana"), no el de su
+  // cita: si el nombre ya deja una sola, vale ésa.
+  const byName = pickAppointmentsToCancel(rows, { patientName: args.patient_name, timezone });
+  const matches =
+    byName.length === 1
+      ? byName
+      : pickAppointmentsToCancel(rows, {
+          patientName: args.patient_name,
+          dateKey: args.date,
+          timezone,
+        });
+  if (matches.length !== 1) {
+    const list = (matches.length ? matches : rows)
+      .map((a) => `${a.patientName}, el ${localDateKey(a.startsAt, timezone)}`)
+      .join('; ');
+    return {
+      result: `Tiene varias citas: ${list}. Pregúntale cuál quiere adelantar (por el nombre del niño o el día) y vuelve a llamar con patient_name y date.`,
+    };
+  }
+  const target = matches[0];
+  if (!target) return null;
+  await setAdvancePreference(systemAgendaContext(tenantId), target.id, {
+    preference: 'ACCEPTS',
+    note: args.note ?? null,
+  });
+  return {
+    result: `Apuntado: ${target.patientName} (cita del ${localDateKey(target.startsAt, timezone)}) queda en la lista de la clínica para adelantar si se libera un hueco${args.note ? ` (${args.note})` : ''}. Díselo así: si se libera un hueco, desde la clínica le avisan. No digas que le avisarás tú ni prometas el hueco.`,
+  };
 }
 
 /** Próxima cita del paciente en la agenda, si la clínica la usa. */

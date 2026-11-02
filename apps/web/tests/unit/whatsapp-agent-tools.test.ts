@@ -33,6 +33,7 @@ describe('getAgentToolDefinitions', () => {
         'list_professionals',
         'list_treatments',
         'register_patient',
+        'request_earlier_appointment',
         'request_handoff',
         'search_faqs',
       ].sort(),

@@ -8,10 +8,13 @@ export interface CompactSlot {
 
 /**
  * Huecos "compactos": si el profesional ya tiene citas ese día, sólo los que
- * caen como mucho `windowMinutes` antes de la primera o después de la última,
- * y primero los que quedan pegados a una cita. Así la agenda se llena por
- * bloques y no quedan horas sueltas entre medias. Un día sin citas no se
- * toca. Respeta el orden de los días.
+ * caen como mucho `windowMinutes` antes de la primera o después de la última.
+ * Así la agenda se llena por bloques y no quedan horas sueltas entre medias.
+ *
+ * Orden (lo pidió la clínica): de cada día, primero uno "por arriba" (antes de
+ * una cita) y uno "por abajo" (después), los más pegados; nunca dos por arriba
+ * antes que uno por abajo. Esas dos de cada día van primero, por orden de días,
+ * y luego el resto. Un día sin citas va por orden de hora.
  */
 export function compactSlots<T extends CompactSlot>(
   slots: T[],
@@ -28,12 +31,15 @@ export function compactSlots<T extends CompactSlot>(
     byKey.set(key, list);
   }
 
-  const scored: { slot: T; day: string; distance: number }[] = [];
+  type Scored = { slot: T; distance: number; up: boolean };
+  const days = new Map<string, Scored[]>();
   for (const slot of slots) {
     const day = localDateKey(slot.start, timezone);
+    const list = days.get(day) ?? [];
+    days.set(day, list);
     const around = byKey.get(`${slot.professionalId}|${day}`);
     if (!around?.length) {
-      scored.push({ slot, day, distance: Number.POSITIVE_INFINITY });
+      list.push({ slot, distance: Number.POSITIVE_INFINITY, up: true });
       continue;
     }
     const first = Math.min(...around.map((b) => b.start.getTime()));
@@ -44,18 +50,33 @@ export function compactSlots<T extends CompactSlot>(
         Math.max(0, b.start.getTime() - slot.end.getTime(), slot.start.getTime() - b.end.getTime()),
       ),
     );
-    scored.push({ slot, day, distance });
+    // Por abajo: después de la última cita del día. Lo demás (antes de la
+    // primera o un hueco entre dos citas) es por arriba.
+    list.push({ slot, distance, up: slot.start.getTime() < last });
   }
 
-  return scored
-    .sort((a, b) =>
-      a.day !== b.day
-        ? a.day < b.day
-          ? -1
-          : 1
-        : a.distance !== b.distance
-          ? a.distance - b.distance
-          : a.slot.start.getTime() - b.slot.start.getTime(),
-    )
-    .map((s) => s.slot);
+  const byStart = (a: Scored, b: Scored) => a.slot.start.getTime() - b.slot.start.getTime();
+  const byDistance = (a: Scored, b: Scored) => a.distance - b.distance || byStart(a, b);
+  const firstRound: T[] = [];
+  const rest: T[] = [];
+  for (const day of [...days.keys()].sort()) {
+    const list = days.get(day) ?? [];
+    let ordered: Scored[];
+    if (list.every((s) => s.distance === Number.POSITIVE_INFINITY)) {
+      ordered = [...list].sort(byStart);
+    } else {
+      const ups = list.filter((s) => s.up).sort(byDistance);
+      const downs = list.filter((s) => !s.up).sort(byDistance);
+      ordered = [];
+      for (let k = 0; k < Math.max(ups.length, downs.length); k++) {
+        const u = ups[k];
+        const d = downs[k];
+        if (u) ordered.push(u);
+        if (d) ordered.push(d);
+      }
+    }
+    firstRound.push(...ordered.slice(0, 2).map((s) => s.slot));
+    rest.push(...ordered.slice(2).map((s) => s.slot));
+  }
+  return [...firstRound, ...rest];
 }
