@@ -44,6 +44,7 @@ import {
 } from '@/lib/db/schema';
 import { clockArticle, speakClockTime } from '@/lib/retell/time-speech';
 import { addDaysToKey, localDateKey } from '@/lib/tasks/tz';
+import { relativeDayLabel } from '@/lib/whatsapp/agent/slot-mention';
 import { and, asc, eq, gte, inArray, lt, ne } from 'drizzle-orm';
 
 /**
@@ -291,9 +292,10 @@ export async function agendaCheckAvailability(
     let returning = false;
     let firstVisit = false;
     if (args.patient_id && isUuid(args.patient_id)) {
-      returning = await patientHasHistory(tenantId, { patientId: args.patient_id }).catch(
-        () => true,
-      );
+      returning = await patientHasHistory(tenantId, {
+        patientId: args.patient_id,
+        phone: ctx.patientPhone,
+      }).catch(() => true);
       firstVisit = !returning;
     } else if (typeof args.first_visit === 'boolean') {
       firstVisit = args.first_visit;
@@ -399,9 +401,10 @@ export async function agendaCheckAvailability(
             },
           )} (${requested}): si no es el día que pidió el paciente, vuelve a llamar con la fecha correcta antes de contestar. `
         : '';
+    const todayKeyNow = localDateKey(new Date(), search.timezone);
     const noneOnRequested =
       requested && /^\d{4}-\d{2}-\d{2}$/.test(requested) && firstDay !== requested
-        ? `El día que pidió (${requested}) no hay huecos libres (o la clínica no atiende ese día): díselo y ofrécele lo siguiente. `
+        ? `El día que pidió (${requested}) no hay huecos libres (o la clínica no atiende ese día): díselo primero EXACTAMENTE así, "${capitalize(relativeDayLabel(requested, todayKeyNow))} no me queda nada", y después ofrécele lo siguiente. `
         : '';
 
     const varios =
@@ -438,7 +441,12 @@ export async function agendaCheckAvailability(
  */
 async function bookingIsFirstVisit(
   tenantId: string,
-  input: { treatmentId: string | null; patientId: string | null; phone: string | null },
+  input: {
+    treatmentId: string | null;
+    patientId: string | null;
+    phone: string | null;
+    patientName?: string | null;
+  },
 ): Promise<boolean> {
   let byTreatment: boolean | null = null;
   if (input.treatmentId) {
@@ -450,7 +458,11 @@ async function bookingIsFirstVisit(
     byTreatment = firstVisitFromTreatment(row?.visitKind);
   }
   const hasHistory = input.patientId
-    ? await patientHasHistory(tenantId, { patientId: input.patientId })
+    ? await patientHasHistory(tenantId, {
+        patientId: input.patientId,
+        phone: input.phone,
+        name: input.patientName,
+      })
     : input.phone
       ? await phoneHasHistory(tenantId, input.phone).catch(() => true)
       : true;
@@ -545,6 +557,7 @@ export async function agendaBookAppointment(
       treatmentId: treatment?.id ?? null,
       patientId,
       phone: args.phone ?? null,
+      patientName,
     });
     const [settings] = await db
       .select({ workingHours: clinicSettings.workingHours })
@@ -1022,4 +1035,8 @@ function speakDayAndTime(at: Date, timezone: string): string {
     timeZone: timezone,
   });
   return `${day} a las ${time}`;
+}
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }

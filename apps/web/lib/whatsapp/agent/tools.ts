@@ -732,12 +732,6 @@ export async function executeAgentTool(input: ExecuteToolInput): Promise<ToolCal
       name === 'book_appointment' && result.booked
         ? await clinicBookingMessages(input.tenantId, result.booked, input.contactPhoneE164)
         : [];
-    // Niño con un solo teléfono en la ficha: el orquestador pregunta por el del
-    // otro tutor tras la confirmación.
-    const askSecondGuardian =
-      name === 'book_appointment' && result.booked?.patientId
-        ? await onlyOneGuardianPhone(input.tenantId, result.booked.patientId).catch(() => false)
-        : false;
     return {
       name,
       args,
@@ -746,9 +740,7 @@ export async function executeAgentTool(input: ExecuteToolInput): Promise<ToolCal
         ? `${result.result.replace(/ Confírmale[^.]*\./, '')} La confirmación de la clínica (fecha, hora, ayuno, cambios y dirección) se la envía el sistema ahora con sus palabras: NO la escribas ni repitas la fecha. Si no tienes nada más que añadir, responde sólo "OK".`
         : result.result,
       latencyMs: Date.now() - started,
-      ...(confirmation.length || askSecondGuardian
-        ? { data: { confirmationMessages: confirmation, askSecondGuardian } }
-        : {}),
+      ...(confirmation.length ? { data: { confirmationMessages: confirmation } } : {}),
     };
   } catch (err) {
     const message = (err as Error).message ?? 'unknown_error';
@@ -843,17 +835,4 @@ function formatZodError(err: z.ZodError): string {
     .map((e) => `${e.path.join('.') || '(root)'}: ${e.message}`)
     .join('; ')
     .slice(0, 220);
-}
-
-/** La ficha sólo tiene un teléfono de tutor (el del que escribe). */
-async function onlyOneGuardianPhone(tenantId: string, patientId: string): Promise<boolean> {
-  const { getPatientPerson } = await import('@/lib/patients/persons');
-  const person = await getPatientPerson(tenantId, patientId);
-  if (!person) return false;
-  const phones = new Set(
-    [person.contactPhone, ...person.guardians.map((g) => g.phone)]
-      .map((p) => (p ?? '').replace(/\D/g, '').slice(-9))
-      .filter((d) => d.length === 9),
-  );
-  return phones.size < 2;
 }

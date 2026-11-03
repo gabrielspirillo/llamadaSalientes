@@ -286,16 +286,6 @@ async function finishRegistration(
       phone: otherPhone,
     }).catch(() => false);
   }
-  const ownDigits = (args.phone ?? '').replace(/\D/g, '').slice(-9);
-  const hasSecondPhone =
-    Boolean(otherPhone) ||
-    person.guardians.some((g) => {
-      const d = (g.phone ?? '').replace(/\D/g, '').slice(-9);
-      return d.length === 9 && d !== ownDigits;
-    });
-  const askSecond = hasSecondPhone
-    ? ''
-    : ' Pregúntale UNA vez, sin insistir, si quiere dejar también el teléfono del otro tutor (papá o mamá) y su nombre; si lo da, vuelve a llamar a register_patient con other_guardian_phone, other_guardian_name y other_guardian_role.';
   const fasting = profile.bookingPolicy.fastingHours;
   // Mellizos: el segundo va con el tratamiento de mellizos, sin la regla de
   // primeras visitas seguidas, y justo detrás de su hermano.
@@ -308,7 +298,7 @@ async function finishRegistration(
     ? ` Es MELLIZO/GEMELO de ${twins.map((t) => t.fullName).join(' y ')}: si su hermano ya tiene cita, busca con check_availability el tratamiento de mellizos (first_visit=false) el mismo día y ofrécele la hora justo después de la de su hermano.`
     : '';
   return {
-    result: `${existing ? 'Ya estaba registrado' : 'Paciente dado de alta'}: ${describeChild(person, todayKey)}. patient_id=${person.id}. Para reservar, llamá a check_availability con first_visit=${firstVisit ? 'true' : 'false'} y después a book_appointment con patient_id=${person.id} y el start_time y professional_id exactos del hueco elegido.${twinHint}${askSecond}${
+    result: `${existing ? 'Ya estaba registrado' : 'Paciente dado de alta'}: ${describeChild(person, todayKey)}. patient_id=${person.id}. Para reservar, llamá a check_availability con first_visit=${firstVisit ? 'true' : 'false'} y después a book_appointment con patient_id=${person.id} y el start_time y professional_id exactos del hueco elegido.${twinHint}${
       fasting ? ` Recuérdale al tutor el ayuno de ${fasting} horas antes de la sesión.` : ''
     }`,
   };

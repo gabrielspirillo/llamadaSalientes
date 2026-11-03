@@ -38,7 +38,7 @@ import {
 } from '@/lib/db/schema';
 import { listPatientsForPhone } from '@/lib/patients/persons';
 import { richToPlain, sanitizeRich } from '@/lib/rich-text';
-import { zonedToUtc } from '@/lib/tasks/tz';
+import { localDateKey, zonedToUtc } from '@/lib/tasks/tz';
 import { normalizeWhatsappE164, parseWhatsappPhone } from '@/lib/whatsapp/phone';
 
 export class AgendaValidationError extends Error {
@@ -913,7 +913,13 @@ export async function createAppointment(
         ghlContactId: emptyToNull(input.ghlContactId),
         startsAt,
         endsAt,
-        status: input.status ?? 'SCHEDULED',
+        // Reservada para HOY: acaban de hablar con la clínica, queda confirmada
+        // (no hay recordatorio del día que confirmar).
+        status:
+          input.status ??
+          (localDateKey(startsAt, timezone) === localDateKey(new Date(), timezone)
+            ? 'CONFIRMED'
+            : 'SCHEDULED'),
         source: input.source ?? 'PANEL',
         notes: emptyToNull(input.notes),
         advancePreference: input.advancePreference ?? null,

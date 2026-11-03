@@ -82,3 +82,29 @@ describe('confirmación el día de la cita', () => {
     expect(parseDayOfTextReply('hola, una pregunta')).toBeNull();
   });
 });
+
+describe('respuestas naturales al recordatorio del día', () => {
+  it('con recordatorio pendiente entiende lo que contesta la gente', async () => {
+    const { parseDayOfTextReply } = await import('@/lib/care-profile/day-of');
+    for (const t of [
+      'Nos vemos esta tarde',
+      'Confirmado',
+      'Vale',
+      'Sí',
+      'Allí estaremos',
+      '👍',
+      'ok gracias',
+    ]) {
+      expect(parseDayOfTextReply(t, true), t).toBe('confirm');
+    }
+    for (const t of ['No podemos ir', 'cancelar por favor', 'Hoy no vamos a poder']) {
+      expect(parseDayOfTextReply(t, true), t).toBe('cancel');
+    }
+    expect(parseDayOfTextReply('No podemos a esa hora, ¿se puede cambiar?', true)).toBe('modify');
+    // Algo que no es una respuesta al recordatorio va al asistente.
+    expect(parseDayOfTextReply('¿Puedo llevar también a su hermana?', true)).toBeNull();
+    // Sin recordatorio pendiente, sólo lo de siempre.
+    expect(parseDayOfTextReply('Nos vemos esta tarde')).toBeNull();
+    expect(parseDayOfTextReply('1')).toBe('confirm');
+  });
+});

@@ -89,17 +89,51 @@ export function whenToday(startMinute: number): string {
 
 export type DayOfAction = 'confirm' | 'modify' | 'cancel';
 
-/** "1", "confirmar", "Confirmo ✅"… → acción. Sólo respuestas cortas. */
-export function parseDayOfTextReply(text: string | null | undefined): DayOfAction | null {
-  const t = (text ?? '')
+/**
+ * "1", "confirmar", "Confirmo ✅"… → acción. Sólo respuestas cortas.
+ *
+ * Con `natural`, también lo que la gente contesta de verdad a un recordatorio
+ * ("nos vemos esta tarde", "vale", "allí estaremos", "👍", "no podemos ir"):
+ * se usa sólo cuando hay un recordatorio del día pendiente de respuesta, donde
+ * un "sí" no puede significar otra cosa.
+ */
+export function parseDayOfTextReply(
+  text: string | null | undefined,
+  natural = false,
+): DayOfAction | null {
+  const raw = (text ?? '').trim();
+  const emojiOnly = raw.replace(/\p{Extended_Pictographic}|\u200d|\ufe0f|\s/gu, '') === '';
+  if (natural && emojiOnly && /👍|👌|✅|🙌|💪|🙏/u.test(raw)) return 'confirm';
+  const t = raw
     .toLowerCase()
     .normalize('NFD')
     .replace(/\p{M}/gu, '')
     .replace(/[^a-z0-9 ]/g, '')
+    .replace(/\s+/g, ' ')
     .trim();
-  if (!t || t.length > 20) return null;
+  if (!t || t.length > (natural ? 60 : 20)) return null;
   if (/^(1|confirmar|confirmo|confirmada|confirmado)$/.test(t)) return 'confirm';
   if (/^(2|modificar|modifico|cambiar)$/.test(t)) return 'modify';
   if (/^(3|cancelar|cancelo|anular)$/.test(t)) return 'cancel';
+  if (!natural) return null;
+
+  if (
+    /\b(no (podemos|podremos|puedo|podre|vamos|iremos|va a poder|vamos a poder|podra)|cancel\w*|anul\w*|imposible|no (nos )?viene bien)\b/.test(
+      t,
+    )
+  ) {
+    return /\b(cambi|mover|otro dia|otra hora|modific)/.test(t) ? 'modify' : 'cancel';
+  }
+  if (/\b(cambi|mover|otro dia|otra hora|modific|mas tarde|antes)\b/.test(t)) return 'modify';
+  if (
+    /^(si|sii+|vale|ok|okey|okay|claro|perfecto|genial|confirm\w*|correcto|de acuerdo|por supuesto|sin problema|hecho|alli estaremos|ahi estaremos|nos vemos|vamos|iremos|contamos con ello|all[i] estaremos)\b/.test(
+      t,
+    ) ||
+    /\b(nos vemos|alli estaremos|ahi estaremos|confirmad|confirmo|si vamos|si iremos|si podemos|contad con nosotros|estaremos ahi|estaremos alli)\b/.test(
+      t,
+    )
+  ) {
+    return 'confirm';
+  }
   return null;
 }

@@ -1,9 +1,11 @@
 import 'server-only';
-import { and, eq, inArray, or } from 'drizzle-orm';
+import { and, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 
 import { BUSY_STATUSES } from '@/lib/agenda/shared';
 import { db } from '@/lib/db/client';
 import { agendaAppointments, clinicalNotes } from '@/lib/db/schema';
+import { samePhoneSql } from '@/lib/patients/registry';
+import { FOLD_FROM, FOLD_TO, foldSearchText } from '@/lib/patients/search-text';
 
 type Executor = Pick<typeof db, 'select'>;
 
@@ -15,12 +17,32 @@ type Executor = Pick<typeof db, 'select'>;
  */
 export async function patientHasHistory(
   tenantId: string,
-  who: { patientId?: string | null; patientKey?: string | null },
+  who: {
+    patientId?: string | null;
+    patientKey?: string | null;
+    /**
+     * Citas de antes de tener ficha (clave `tel:`): mismo teléfono y mismo
+     * nombre. Sin esto, al abrirle ficha a un niño que ya venía, su primera
+     * cita con ficha salía como "primera visita".
+     */
+    phone?: string | null;
+    name?: string | null;
+  },
   executor: Executor = db,
 ): Promise<boolean> {
+  const digits = (who.phone ?? '').replace(/\D/g, '').slice(-9);
+  const byPhoneAndName =
+    who.patientId && digits.length === 9 && who.name?.trim()
+      ? and(
+          isNull(agendaAppointments.patientId),
+          samePhoneSql(agendaAppointments.patientPhone, digits),
+          sql`lower(translate(coalesce(${agendaAppointments.patientName}, ''), ${FOLD_FROM}, ${FOLD_TO})) = ${foldSearchText(who.name.trim()).toLowerCase()}`,
+        )
+      : undefined;
   const apptBy = [
     who.patientId ? eq(agendaAppointments.patientId, who.patientId) : undefined,
     who.patientKey ? eq(agendaAppointments.patientKey, who.patientKey) : undefined,
+    byPhoneAndName,
   ].filter(Boolean);
   const noteBy = [
     who.patientId ? eq(clinicalNotes.patientId, who.patientId) : undefined,

@@ -134,10 +134,18 @@ describe('mañana y tarde', () => {
     const t =
       'Para Nico tengo estos huecos por la mañana:\n- Martes 3 a las 16:30\n- Martes 3 a las 17:15';
     expect(reviewFinalText(t, [], true)?.code).toBe('wrong_daypart');
+    const friday = new Date('2026-11-06T12:00:00Z');
     expect(
-      reviewFinalText('Por la mañana no hay; por la tarde tengo el martes a las 16:30.', [], true),
+      reviewFinalText(
+        'Por la mañana no hay; por la tarde tengo el martes a las 16:30.',
+        [],
+        true,
+        friday,
+      ),
     ).toBeNull();
-    expect(reviewFinalText('Por la mañana tengo el martes a las 10:30.', [], true)).toBeNull();
+    expect(
+      reviewFinalText('Por la mañana tengo el martes a las 10:30.', [], true, friday),
+    ).toBeNull();
   });
 });
 
@@ -192,12 +200,7 @@ describe('días de la semana', () => {
       reviewFinalText('Tengo el martes 3 a las 15:00.', today, true, now, '¿hoy puede ser?')?.code,
     ).toBe('requested_day_full');
     expect(
-      reviewFinalText(
-        'El viernes no me queda nada. Tengo el martes 3 a las 15:00.',
-        check,
-        true,
-        now,
-      ),
+      reviewFinalText('Hoy no me queda nada. Tengo el martes 3 a las 15:00.', check, true, now),
     ).toBeNull();
   });
 });
@@ -258,5 +261,56 @@ describe('instrucciones internas y peticiones ignoradas', () => {
         'mi bebé tiene mocos, ¿se puede hacer la sesión?',
       )?.code,
     ).toBe('ignored_request');
+  });
+});
+
+describe('pedir cita y días relativos', () => {
+  it('reconoce cuándo piden cita y cuándo ya dijeron si es la primera vez', async () => {
+    const { asksForAppointment, answersFirstVisit } = await import('@/lib/whatsapp/agent');
+    expect(asksForAppointment('Buenas, quería pedir cita para Clara')).toBe(true);
+    expect(asksForAppointment('¿tenéis hueco el viernes?')).toBe(true);
+    expect(asksForAppointment('hola, una duda sobre el precio')).toBe(false);
+    expect(answersFirstVisit('Sí, es la primera vez')).toBe(true);
+    expect(answersFirstVisit('ya hemos ido con su hermano')).toBe(true);
+    expect(answersFirstVisit('quería cita para Clara')).toBe(false);
+  });
+
+  it('"el martes" siendo martes se dice "hoy"', () => {
+    const tuesday = new Date('2026-11-03T12:00:00Z');
+    expect(reviewFinalText('El martes no me queda nada.', [], true, tuesday)?.code).toBe(
+      'relative_day',
+    );
+    expect(reviewFinalText('El miércoles no me queda nada.', [], true, tuesday)?.code).toBe(
+      'relative_day',
+    );
+    expect(reviewFinalText('El martes 10 no me queda nada.', [], true, tuesday)).toBeNull();
+    expect(reviewFinalText('Hoy no me queda nada.', [], true, tuesday)).toBeNull();
+  });
+
+  it('"mañana" cuando la cita quedó el jueves se corrige', () => {
+    const tuesday = new Date('2026-11-03T12:00:00Z');
+    const booked = [
+      trace(
+        'book_appointment',
+        'Cita agendada: jueves, 5 de noviembre a las 16:00 con Raquel López.',
+      ),
+    ];
+    expect(
+      reviewFinalText('Listo, la cita es mañana a las 16:00.', booked, true, tuesday)?.code,
+    ).toBe('wrong_relative_day');
+    const history = [
+      'Ya tienes la cita reservada para Clara\n\n🗓️ Jueves, 5 de noviembre\n⏰ 16:00',
+    ];
+    expect(
+      reviewFinalText(
+        'Sí, mañana es miércoles, la cita es mañana a las 16:00.',
+        [],
+        true,
+        tuesday,
+        '¿es mañana?',
+        history,
+      )?.code,
+    ).toBe('wrong_relative_day');
+    expect(reviewFinalText('Por la mañana no hay huecos.', booked, true, tuesday)).toBeNull();
   });
 });

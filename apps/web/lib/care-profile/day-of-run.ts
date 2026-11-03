@@ -4,7 +4,7 @@ import { and, desc, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm';
 import { systemAgendaContext } from '@/lib/agenda/agent';
 import { samePhone } from '@/lib/agenda/patients';
 import { updateAppointment } from '@/lib/agenda/service';
-import { OPTIONS_MARKER, sendClinicWhatsapp } from '@/lib/care-profile/clinic-whatsapp';
+import { sendClinicWhatsapp } from '@/lib/care-profile/clinic-whatsapp';
 import {
   type DayOfAction,
   type DayOfStep,
@@ -328,7 +328,6 @@ export async function answerDayOf(args: {
           : `Perfecto 😊 Queda confirmada la cita de ${v.paciente ?? 'tu peque'} a las ${v.hora}. Muchas gracias✨`,
       );
     }
-    if (dayOf?.firstVisitInfo && appt.isFirstVisit) messages.push(dayOf.firstVisitInfo);
     return { messages, appointment: appt };
   }
 
@@ -465,38 +464,35 @@ export async function handleDayOfTextReply(args: {
   text: string | null | undefined;
   inboundMessageId: string;
 }): Promise<boolean> {
-  const action = parseDayOfTextReply(args.text);
-  if (!action) return false;
-
-  const [lastOut] = await db
-    .select({ text: whatsappMessages.contentText, at: whatsappMessages.createdAt })
-    .from(whatsappMessages)
-    .where(
-      and(
-        eq(whatsappMessages.tenantId, args.tenantId),
-        eq(whatsappMessages.conversationId, args.conversationId),
-        eq(whatsappMessages.direction, 'OUTBOUND'),
-      ),
-    )
-    .orderBy(desc(whatsappMessages.createdAt))
-    .limit(1);
-  if (!lastOut?.text?.includes(OPTIONS_MARKER)) return false;
-  if (Date.now() - lastOut.at.getTime() > 18 * 3_600_000) return false;
-
+  // ¿Hay un recordatorio del día de HOY mandado a este teléfono y sin
+  // respuesta? Antes se miraba si el último mensaje llevaba los botones, y el
+  // segundo aviso de las 09:00 no los lleva: "Confirmado" a las 09:02 se iba
+  // al asistente y la cita se quedaba sin confirmar.
   const now = new Date();
   const pending = await db
-    .select({ id: agendaAppointments.id, phone: agendaAppointments.patientPhone })
+    .select({
+      id: agendaAppointments.id,
+      phone: agendaAppointments.patientPhone,
+      reminderSentAt: appointmentDayOf.reminderSentAt,
+      outcome: appointmentDayOf.outcome,
+    })
     .from(agendaAppointments)
+    .innerJoin(appointmentDayOf, eq(appointmentDayOf.appointmentId, agendaAppointments.id))
     .where(
       and(
         eq(agendaAppointments.tenantId, args.tenantId),
         inArray(agendaAppointments.status, ['SCHEDULED', 'CONFIRMED']),
         gte(agendaAppointments.startsAt, now),
-        lt(agendaAppointments.startsAt, new Date(now.getTime() + 8 * 86_400_000)),
+        lt(agendaAppointments.startsAt, new Date(now.getTime() + 36 * 3_600_000)),
+        isNull(appointmentDayOf.outcome),
+        gte(appointmentDayOf.reminderSentAt, new Date(now.getTime() - 18 * 3_600_000)),
       ),
     );
   const mine = pending.filter((a) => samePhone(a.phone, args.contactPhoneE164));
   if (mine.length !== 1) return false;
+
+  const action = parseDayOfTextReply(args.text, true);
+  if (!action) return false;
 
   return handleDayOfButton({
     tenantId: args.tenantId,

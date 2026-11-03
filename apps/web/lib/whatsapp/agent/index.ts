@@ -14,6 +14,7 @@ import { getLeadMemory } from '@/lib/memory/lead-memory';
 import { listPatientsForPhone } from '@/lib/patients/persons';
 import { findPatientByPhone } from '@/lib/patients/registry';
 import { getPatientInfo } from '@/lib/retell/tools';
+import { localDateKey } from '@/lib/tasks/tz';
 import { type LlmCallResult, type LlmMessage, callLLM } from './llm';
 import {
   HANDOFF_RESPONSE_TEXT,
@@ -28,6 +29,13 @@ import { toWhatsappFormatting } from '@/lib/whatsapp/format';
 import { buildDerivationReply } from './derivation';
 
 import { detectDiagnosis, detectInjection, redactPii } from './guardrails';
+import {
+  lastConfirmedDate,
+  relativeDayInText,
+  relativeDayLabel,
+  slotNotOffered,
+  weekdayOf,
+} from './slot-mention';
 import {
   type AgentToolName,
   type ExecuteToolInput,
@@ -251,6 +259,25 @@ export async function runWhatsappAgent(
       ? `Hola😊, soy ${assistantName}, ¿en qué te puedo ayudar?`
       : 'Hola😊, ¿en qué te puedo ayudar?';
   }
+  // Pide cita y no sabemos si ya vino: el mensaje inicial de la clínica
+  // (¿es la primera vez?) sale siempre, sin que el modelo decida.
+  const greetingScript = scripts?.greeting?.trim();
+  if (
+    scriptedText === null &&
+    !injection.tripped &&
+    greetingScript &&
+    newSession &&
+    // "Conocer" a la familia es tener niños en ficha; un nombre guardado en
+    // la libreta no dice si ya vino.
+    !/Niños registrados/.test(knownContact ?? '') &&
+    asksForAppointment(input.userText) &&
+    !answersFirstVisit(input.userText)
+  ) {
+    guardrailFlags.push('clinic_greeting');
+    // El guion ya empieza por "Hola😊,": se quita para no saludar dos veces.
+    const rest = greetingScript.replace(/^hola\S*,?\s*/i, '');
+    scriptedText = `Hola😊, soy ${assistantName}.\n\n${rest.charAt(0).toUpperCase()}${rest.slice(1)}`;
+  }
   const scripted = scriptedText !== null;
   if (scriptedText) {
     finalText = scriptedText;
@@ -323,44 +350,67 @@ export async function runWhatsappAgent(
           input.userText,
           ...input.history.filter((h) => h.role === 'user').map((h) => h.content),
         ]);
-      const trace = missingYear
+      // Sólo se reserva una hora que la familia pidió o que el asistente le
+      // ofreció. Si no, el modelo reservaba otro día por su cuenta.
+      const todayKeyClinic = localDateKey(deps.now(), grounding.clinic.timezone);
+      const notOffered =
+        tc.name === 'book_appointment' && typeof tc.args?.start_time === 'string'
+          ? slotNotOffered(
+              tc.args.start_time,
+              [input.userText, ...input.history.map((h) => h.content)],
+              todayKeyClinic,
+            )
+          : null;
+      const trace = notOffered
         ? {
             name: tc.name,
             args: tc.args,
             ok: true,
-            // Lo que falte, todo junto: pedirlo de a uno hace que la familia
-            // repita los datos.
-            result: `NO registrado: la familia no ha dicho el AÑO de nacimiento y no se puede suponer${
-              String(tc.args?.last_name ?? '')
-                .trim()
-                .split(/\s+/)
-                .filter(Boolean).length < 2
-                ? ', y falta el segundo apellido'
-                : ''
-            }. Pídele en un solo mensaje lo que falte (fecha completa con día, mes y año${
-              String(tc.args?.last_name ?? '')
-                .trim()
-                .split(/\s+/)
-                .filter(Boolean).length < 2
-                ? ', y los dos apellidos'
-                : ''
-            }) y vuelve a llamar con lo que te diga.`,
+            result: `NO reservada: ${relativeDayLabel(notOffered.dateKey, todayKeyClinic)} a las ${notOffered.hhmm} no se lo has ofrecido a la familia ni lo ha pedido (${
+              notOffered.missing === 'day'
+                ? 'ese día no ha salido en la conversación'
+                : 'esa hora no ha salido en la conversación'
+            }). Ofrécele las horas que devolvió check_availability, con su día, y reserva sólo cuando elija una. Si el día que pidió no tiene hueco, díselo primero.`,
             latencyMs: 0,
           }
-        : await deps.executeTool({
-            tenantId: input.tenantId,
-            toolName: tc.name,
-            rawArgs: tc.args,
-            // Le da idempotencia a las reservas en la agenda interna: dos vueltas
-            // del loop sobre la misma conversación y el mismo hueco no crean dos
-            // citas.
-            conversationId: input.conversationId,
-            // Su WhatsApp es su teléfono: las tools lo usan para la ficha del
-            // paciente y para la cita sin depender de que el modelo lo pase.
-            contactPhoneE164: input.contactPhoneE164,
-            mode,
-            deriveFallbackPhone: agentSettings?.deriveFallbackPhone ?? null,
-          });
+        : missingYear
+          ? {
+              name: tc.name,
+              args: tc.args,
+              ok: true,
+              // Lo que falte, todo junto: pedirlo de a uno hace que la familia
+              // repita los datos.
+              result: `NO registrado: la familia no ha dicho el AÑO de nacimiento y no se puede suponer${
+                String(tc.args?.last_name ?? '')
+                  .trim()
+                  .split(/\s+/)
+                  .filter(Boolean).length < 2
+                  ? ', y falta el segundo apellido'
+                  : ''
+              }. Pídele en un solo mensaje lo que falte (fecha completa con día, mes y año${
+                String(tc.args?.last_name ?? '')
+                  .trim()
+                  .split(/\s+/)
+                  .filter(Boolean).length < 2
+                  ? ', y los dos apellidos'
+                  : ''
+              }) y vuelve a llamar con lo que te diga.`,
+              latencyMs: 0,
+            }
+          : await deps.executeTool({
+              tenantId: input.tenantId,
+              toolName: tc.name,
+              rawArgs: tc.args,
+              // Le da idempotencia a las reservas en la agenda interna: dos vueltas
+              // del loop sobre la misma conversación y el mismo hueco no crean dos
+              // citas.
+              conversationId: input.conversationId,
+              // Su WhatsApp es su teléfono: las tools lo usan para la ficha del
+              // paciente y para la cita sin depender de que el modelo lo pase.
+              contactPhoneE164: input.contactPhoneE164,
+              mode,
+              deriveFallbackPhone: agentSettings?.deriveFallbackPhone ?? null,
+            });
       toolsCalled.push(trace);
 
       messages.push({
@@ -518,20 +568,30 @@ export async function runWhatsappAgent(
     additionalTexts = trivial ? rest : [...rest, extra];
   }
 
-  // El teléfono del otro tutor: se pregunta una vez, cuando la cita ya está
-  // hecha (antes estorba), y no depende de que el modelo se acuerde.
-  const SECOND_GUARDIAN_Q =
-    'Por cierto, ¿quieres dejarnos también el teléfono del otro tutor (papá o mamá) y su nombre? Así os podemos avisar a los dos 😊';
-  const needsSecond = toolsCalled.some(
-    (t) => t.name === 'book_appointment' && t.data?.askSecondGuardian === true,
+  // Info de la primera visita (ayuno, duración, no duele, aparcar): al
+  // OFRECER la cita de una primera visita, una vez por conversación.
+  const firstVisitInfo = scripts?.dayOf?.firstVisitInfo?.trim();
+  const offeredFirstVisit = toolsCalled.some(
+    (t) =>
+      t.name === 'check_availability' &&
+      t.ok &&
+      t.args?.first_visit === true &&
+      /Horas libres/.test(t.result),
   );
-  const bookedNow = clinicMessages.length > 0;
-  const alreadyAsked = input.history.some(
-    (h) => h.role === 'assistant' && h.content.includes('teléfono del otro tutor'),
+  const infoAlreadySent = input.history.some(
+    (h) =>
+      h.role === 'assistant' && firstVisitInfo && h.content.includes(firstVisitInfo.slice(0, 40)),
   );
-  if (needsSecond && bookedNow && !alreadyAsked && !handoff && !derivation) {
-    guardrailFlags.push('ask_second_guardian');
-    additionalTexts = [...additionalTexts, SECOND_GUARDIAN_Q];
+  if (
+    firstVisitInfo &&
+    offeredFirstVisit &&
+    !infoAlreadySent &&
+    !handoff &&
+    !derivation &&
+    finalText
+  ) {
+    guardrailFlags.push('first_visit_info');
+    additionalTexts = [...additionalTexts, firstVisitInfo];
   }
 
   const intent = deriveIntent({ urgent, handoff: handoff || !!derivation, toolsCalled });
@@ -695,8 +755,10 @@ export function reviewFinalText(
   withCareProfile: boolean,
   now: Date = new Date(),
   userText = '',
+  historyAssistant: string[] = [],
 ): { code: string; note: string } | null {
   if (!text) return null;
+  const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(now);
   // "El 8 de noviembre es un miércoles": el día de la semana se comprueba.
   const wrongDay = findWrongWeekday(text, now);
   if (wrongDay) {
@@ -713,14 +775,13 @@ export function reviewFinalText(
   const fullDay = lastCheck?.result.match(
     /El día que pidió \((\d{4})-(\d{2})-(\d{2})\) no hay huecos libres/,
   );
-  const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(now);
   if (
     fullDay &&
     (`${fullDay[1]}-${fullDay[2]}-${fullDay[3]}` !== todayKey || /\bhoy\b/i.test(userText)) &&
     !/\bno (me )?(hay|tengo|queda|quedan|tenemos)\b|no hay hueco|completo|ocupad|cerrad/i.test(text)
   ) {
     const d = new Date(Date.UTC(Number(fullDay[1]), Number(fullDay[2]) - 1, Number(fullDay[3])));
-    const label = `${WEEKDAYS[d.getUTCDay()]} ${d.getUTCDate()} de ${MONTHS[d.getUTCMonth()]}`;
+    const label = relativeDayLabel(d.toISOString().slice(0, 10), todayKey);
     return {
       code: 'requested_day_full',
       note: `[Revisión interna, no la menciones] El día que pidió, ${label}, no tiene huecos (lo dice check_availability). Díselo primero con claridad ("el ${label} no me queda nada") y después ofrece las otras horas, cada una con su día de la semana correcto.`,
@@ -792,6 +853,45 @@ export function reviewFinalText(
         code: 'wrong_daypart',
         note: '[Revisión interna, no la menciones] Llamas "de mañana" a horas de la tarde. Si pidió mañana y no hay, díselo claro ("por la mañana no hay; por la tarde tengo…") y ofrece esas horas como de tarde.',
       };
+    }
+  }
+  // "El martes no me queda nada" cuando hoy es martes: se dice "hoy" (y
+  // "mañana" para el de mañana). Sin número ni "que viene" detrás.
+  const todayWd = weekdayOf(todayKey);
+  const tomorrowWd = weekdayOf(addDaysKey(todayKey, 1));
+  for (const [wd, say] of [
+    [todayWd, 'hoy'],
+    [tomorrowWd, 'mañana'],
+  ] as const) {
+    const re = new RegExp(`\\bel ${wd}\\b(?! \\d| que viene| pr[oó]ximo| siguiente)`, 'i');
+    if (re.test(text)) {
+      return {
+        code: 'relative_day',
+        note: `[Revisión interna, no la menciones] Hoy es ${todayWd}: "el ${wd}" se dice "${say}". Reescribe la frase con "${say}".`,
+      };
+    }
+  }
+  // "La cita es mañana" cuando quedó el jueves: se comprueba contra lo que
+  // se reservó en este turno o lo último que confirmó la clínica.
+  const rel = relativeDayInText(text);
+  if (rel) {
+    const bookedNow = toolsCalled
+      .filter((t) => t.name === 'book_appointment' && t.ok)
+      .map((t) => /Cita agendada: (\p{L}+), (\d{1,2}) de (\p{L}+)/u.exec(t.result))
+      .find(Boolean);
+    const bookedKey = bookedNow
+      ? keyFromDayMonth(Number(bookedNow[2]), bookedNow[3] ?? '', todayKey)
+      : /\bcita\b/i.test(text)
+        ? lastConfirmedDate(historyAssistant, todayKey)
+        : null;
+    if (bookedKey) {
+      const real = relativeDayLabel(bookedKey, todayKey);
+      if (real !== rel) {
+        return {
+          code: 'wrong_relative_day',
+          note: `[Revisión interna, no la menciones] Dices "${rel}" pero la cita es ${real} (${bookedKey}). Corrige el día; si la familia quería otro día, díselo claro y ofrécele cambiarla.`,
+        };
+      }
     }
   }
   if (withCareProfile && AGE_REFUSAL.test(text)) {
@@ -872,4 +972,31 @@ export function birthYearSaid(birthDate: string, texts: string[]): boolean {
   const yy = birthDate.slice(2, 4);
   const re = new RegExp(`\\b${yyyy}\\b|\\d{1,2}\\s*[/.-]\\s*\\d{1,2}\\s*[/.-]\\s*${yy}\\b`);
   return texts.some((t) => re.test(t));
+}
+
+function addDaysKey(key: string, days: number): string {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) + days)).toISOString().slice(0, 10);
+}
+
+/** "5 de noviembre" → 'YYYY-MM-DD' (el año que lo deja más cerca de hoy). */
+function keyFromDayMonth(day: number, month: string, todayKey: string): string | null {
+  const idx = MONTHS.findIndex((m) => fold(m) === fold(month));
+  if (idx < 0 || !day) return null;
+  let year = Number(todayKey.slice(0, 4));
+  const key = `${year}-${String(idx + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  if (key < addDaysKey(todayKey, -31)) year += 1;
+  return `${year}${key.slice(4)}`;
+}
+
+/** "quiero cita", "tenéis hueco", "pedir hora"…: pide cita. */
+export function asksForAppointment(text: string): boolean {
+  return /\b(cita|hueco|turno|hora para|pedir hora|reservar|agendar|consulta para)\b/i.test(text);
+}
+
+/** Ya dijo si es la primera vez o no (o da los datos de un niño conocido). */
+export function answersFirstVisit(text: string): boolean {
+  return /primera (vez|visita)|ya (he|hemos|fuimos|fui) (ido|venido|estado|acudido)|ya (vamos|venimos|somos pacientes)|otro peque|hermano|nunca (hemos|he) (ido|venido)|es nuev|ya es paciente|ya (la |lo )?conoc|ya (ha|han) venido/i.test(
+    text,
+  );
 }

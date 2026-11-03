@@ -1,3 +1,4 @@
+import { localDateKey } from '@/lib/tasks/tz';
 import { z } from 'zod';
 
 /**
@@ -105,8 +106,21 @@ export function bookingMessages(
   const fresh = booking.isFirstVisit && !booking.siblingCameBefore;
   const list = (fresh ? s.firstVisitBooked : s.returningBooked) ?? [];
   const parts = scriptDateParts(booking.startsAt, booking.timezone);
+  // Cita para HOY: queda confirmada al reservarla, así que el párrafo del
+  // WhatsApp obligatorio del día de la cita sobra.
+  const today =
+    localDateKey(booking.startsAt, booking.timezone) === localDateKey(new Date(), booking.timezone);
   return list
     .map((t) => fillScript(t, { paciente: booking.patientFirstName, ...parts }).trim())
+    .map((t) =>
+      today
+        ? t
+            .split(/\n{2,}/)
+            .filter((p) => !/El día de la cita/i.test(p))
+            .join('\n\n')
+            .trim()
+        : t,
+    )
     .filter(Boolean);
 }
 
@@ -191,7 +205,7 @@ export function buildRoleSection(s: CareMessageScripts): string {
     `- Cualquier otra cosa (un informe, una factura, una queja, una consulta médica, algo que no sepas) NO la resuelves ni la improvisas: le dices que se lo pasas a ${who} (request_handoff).`,
     '- NO haces preguntas médicas: ni síntomas, ni enfermedades, ni antecedentes, ni medicación. No valoras, no aconsejas, no tranquilizas sobre síntomas.',
     `- ${SCREEN.replace('Raquel', who)}`,
-    '- Para reservar a un niño nuevo pide en UN solo mensaje lo que falte: nombre y LOS DOS apellidos del peque y su fecha de nacimiento COMPLETA (día, mes y año). Son obligatorios: si falta un apellido o el año, pídeselo antes de seguir. El nombre de quien escribe, sólo si lo dice. Tras darlo de alta, pregúntale UNA vez si quiere dejar también el teléfono del otro tutor (papá o mamá).',
+    '- Para reservar a un niño nuevo pide en UN solo mensaje lo que falte: nombre y LOS DOS apellidos del peque y su fecha de nacimiento COMPLETA (día, mes y año). Son obligatorios: si falta un apellido o el año, pídeselo antes de seguir. El nombre de quien escribe, sólo si lo dice. No pidas el teléfono de otro tutor; si lo dan, guárdalo (other_guardian_phone).',
     `- Sólo derivas (request_handoff) si pide hablar con ${who}, si el niño tiene una enfermedad especial (una enfermedad importante, un ingreso, una condición crónica), si pregunta algo médico que no es de agenda ni está en los mensajes de la clínica ("¿qué le doy?", "¿es normal…?"), si es algo que no está en tu lista de arriba, o si hay fiebre de más de 38,5º o dificultad para respirar y no quiere otro día. Mocos, tos o catarro NO son motivo para derivar. Contar un síntoma NO es motivo para derivar: pregunta lo de la fiebre y sigue con la cita. Dar las gracias, decir "vale" u "ok" NUNCA es motivo para derivar. El mensaje de derivación lo pone el sistema.`,
     '- Fechas: el día de la semana de una fecha lo miras SIEMPRE en el calendario de las reglas (nunca lo calcules). Si pidió un día y check_availability dice que ese día no hay hueco, díselo primero ("el viernes no me queda nada") y luego ofrece lo que haya.',
     '- Si no ha pedido ningún día, no le digas que "hoy no hay hueco": ofrécele directamente lo que haya.',

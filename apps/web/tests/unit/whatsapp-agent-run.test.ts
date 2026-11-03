@@ -225,7 +225,11 @@ describe('runWhatsappAgent', () => {
 
     const out = await runWhatsappAgent({
       ...baseInput(),
-      userText: 'Tengo un dolor de muela horrible desde anoche',
+      history: [
+        { role: 'user', content: 'Tengo un dolor de muela horrible desde anoche' },
+        { role: 'assistant', content: 'Tengo hueco el 8 de junio a las 13:00. ¿Te viene bien?' },
+      ],
+      userText: 'Sí, el 8 de junio a las 13:00',
     });
 
     // Sigue marcada como urgencia, pero NO derivada a recepción: se agendó.
@@ -403,10 +407,13 @@ describe('runWhatsappAgent', () => {
       data: { confirmationMessages: ['Ya tienes la cita', 'Ayuno', 'Dirección'] },
     });
 
-    const out = await runWhatsappAgent(baseInput(), {
-      loadCareProfile: async () => null,
-      loadKnownContact: async () => null,
-    });
+    const out = await runWhatsappAgent(
+      { ...baseInput(), userText: 'Vale, el 2 de noviembre a las 12:30' },
+      {
+        loadCareProfile: async () => null,
+        loadKnownContact: async () => null,
+      },
+    );
     expect(out.responseText).toBe('Ya tienes la cita');
     expect(out.additionalTexts).toEqual(['Ayuno', 'Dirección']);
   });
@@ -437,10 +444,13 @@ describe('runWhatsappAgent', () => {
       data: { confirmationMessages: ['Ya tienes la cita', 'Recuerda'] },
     });
 
-    const out = await runWhatsappAgent(baseInput(), {
-      loadCareProfile: async () => null,
-      loadKnownContact: async () => null,
-    });
+    const out = await runWhatsappAgent(
+      { ...baseInput(), userText: 'Vale, el 2 de noviembre a las 12:30' },
+      {
+        loadCareProfile: async () => null,
+        loadKnownContact: async () => null,
+      },
+    );
     expect(out.responseText).toBe('Ya tienes la cita');
     expect(out.additionalTexts).toEqual(['Recuerda', '¿Agendamos también a su hermana?']);
   });
