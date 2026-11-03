@@ -314,3 +314,47 @@ describe('pedir cita y días relativos', () => {
     expect(reviewFinalText('Por la mañana no hay huecos.', booked, true, tuesday)).toBeNull();
   });
 });
+
+describe('casos del 3 de noviembre', () => {
+  const tuesday = new Date('2026-11-03T12:00:00Z');
+
+  it('"el martes 4" es miércoles (y es mañana)', async () => {
+    const { findWrongWeekday } = await import('@/lib/whatsapp/agent');
+    expect(findWrongWeekday('El martes 4 no me queda hueco.', tuesday)).toMatch(
+      /miércoles, no martes/,
+    );
+    expect(findWrongWeekday('Tengo el viernes 6 a las 15:00.', tuesday)).toBeNull();
+    expect(reviewFinalText('El miércoles 4 no me queda hueco.', [], true, tuesday)?.code).toBe(
+      'relative_day',
+    );
+    expect(reviewFinalText('Tengo el viernes 6 a las 15:00.', [], true, tuesday)).toBeNull();
+  });
+
+  it('no "ve" una cita que no está en la agenda', () => {
+    const agenda =
+      'Niños registrados:\n- Leo Prueba Ficticio (1 año y 7 meses) · última visita 2026-10-28';
+    expect(
+      reviewFinalText(
+        'Sí, es de Leo. Veo que tiene cita hoy, pero no me aparece el mensaje.',
+        [],
+        true,
+        tuesday,
+        'Tenía cita para hoy a las 18:00',
+        [],
+        agenda,
+      )?.code,
+    ).toBe('phantom_appointment');
+    const conCita = `${agenda} · próxima cita 2026-11-03 seis de la tarde`;
+    expect(
+      reviewFinalText(
+        'Sí, tiene cita hoy a las 18:00.',
+        [],
+        true,
+        tuesday,
+        '¿tengo cita hoy?',
+        [],
+        conCita,
+      ),
+    ).toBeNull();
+  });
+});

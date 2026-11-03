@@ -2205,6 +2205,11 @@ export const patients = pgTable(
     hesitantNote: text('hesitant_note'),
     /** Faltas y cancelaciones de antes de la plataforma; las nuevas se cuentan de la agenda. */
     priorRedFlags: smallint('prior_red_flags').notNull().default(0),
+    /**
+     * Ya era paciente antes de la plataforma (ficha importada de los
+     * contactos de la clínica): no es primera visita aunque no tenga citas aquí.
+     */
+    cameBefore: boolean('came_before').notNull().default(false),
     /** Fuerza la etiqueta de hermanos (migración 0048). Null = se calcula. */
     siblingMark: text('sibling_mark').$type<'TWIN' | 'SIBLING' | 'NONE'>(),
     notes: text('notes'),

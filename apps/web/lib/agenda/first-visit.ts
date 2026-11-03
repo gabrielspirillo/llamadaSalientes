@@ -3,7 +3,7 @@ import { and, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 
 import { BUSY_STATUSES } from '@/lib/agenda/shared';
 import { db } from '@/lib/db/client';
-import { agendaAppointments, clinicalNotes } from '@/lib/db/schema';
+import { agendaAppointments, clinicalNotes, patients } from '@/lib/db/schema';
 import { samePhoneSql } from '@/lib/patients/registry';
 import { FOLD_FROM, FOLD_TO, foldSearchText } from '@/lib/patients/search-text';
 
@@ -68,7 +68,16 @@ export async function patientHasHistory(
       .where(and(eq(clinicalNotes.tenantId, tenantId), or(...noteBy)))
       .limit(1),
   ]);
-  return appt.length > 0 || note.length > 0;
+  if (appt.length > 0 || note.length > 0) return true;
+  // Ficha importada de los contactos de la clínica: ya venía, aunque sus
+  // visitas sean de antes de la plataforma.
+  if (!who.patientId) return false;
+  const [person] = await executor
+    .select({ cameBefore: patients.cameBefore })
+    .from(patients)
+    .where(and(eq(patients.tenantId, tenantId), eq(patients.id, who.patientId)))
+    .limit(1);
+  return Boolean(person?.cameBefore);
 }
 
 /**

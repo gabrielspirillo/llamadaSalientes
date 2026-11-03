@@ -315,6 +315,15 @@ export async function runWhatsappAgent(
               Boolean(careProfile),
               deps.now(),
               input.userText,
+              input.history.filter((h) => h.role === 'assistant').map((h) => h.content),
+              careProfile
+                ? [
+                    knownContact ?? '',
+                    ...toolsCalled
+                      .filter((t) => t.name === 'get_patient_info')
+                      .map((t) => t.result),
+                  ].join('\n')
+                : null,
             )
           : null;
       if (correction) {
@@ -756,6 +765,8 @@ export function reviewFinalText(
   now: Date = new Date(),
   userText = '',
   historyAssistant: string[] = [],
+  /** Lo que la agenda dice de este teléfono (get_patient_info / contexto). */
+  agendaText: string | null = null,
 ): { code: string; note: string } | null {
   if (!text) return null;
   const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(now);
@@ -845,6 +856,23 @@ export function reviewFinalText(
       };
     }
   }
+  // "Veo que tiene cita hoy": la cita tiene que estar en la agenda. Cuando la
+  // familia dice que tiene una que no consta, el modelo le daba la razón.
+  const claimed =
+    /\b(?:veo|aparece|consta|tengo)\b[^.?!]{0,30}\bcita\b[^.?!]{0,20}\b(hoy|mañana)\b|\b(?:tiene|tienes|tenéis)\s+(?:una |la |su )?cita\s+(?:para\s+)?(hoy|mañana)\b/i.exec(
+      text,
+    );
+  if (claimed && agendaText !== null) {
+    const which = (claimed[1] ?? claimed[2] ?? '').toLowerCase();
+    const key = which === 'hoy' ? todayKey : addDaysKey(todayKey, 1);
+    const booked = toolsCalled.some((t) => t.name === 'book_appointment' && t.ok);
+    if (!booked && !agendaText.includes(key)) {
+      return {
+        code: 'phantom_appointment',
+        note: `[Revisión interna, no la menciones] En la agenda NO hay ninguna cita ${which} para este teléfono. No digas que la ves ni la des por buena: dile que no la encuentras en la agenda y que se lo pasas a la persona del equipo para que lo revise (request_handoff).`,
+      };
+    }
+  }
   // "Por la mañana tengo: 16:30, 17:15…": la franja tiene que cuadrar con la hora.
   if (/\b(por|de) la ma[ñn]ana\b/i.test(text) && !/\btarde\b/i.test(text)) {
     const hours = [...text.matchAll(/\b(\d{1,2})[:.]\d{2}\b/g)].map((m) => Number(m[1]));
@@ -863,7 +891,11 @@ export function reviewFinalText(
     [todayWd, 'hoy'],
     [tomorrowWd, 'mañana'],
   ] as const) {
-    const re = new RegExp(`\\bel ${wd}\\b(?! \\d| que viene| pr[oó]ximo| siguiente)`, 'i');
+    const dayNum = Number((wd === todayWd ? todayKey : addDaysKey(todayKey, 1)).slice(8, 10));
+    const re = new RegExp(
+      `\\bel ${wd}\\b(?:,? (?:d[ií]a )?${dayNum}\\b)?(?! \\d| que viene| pr[oó]ximo| siguiente)`,
+      'i',
+    );
     if (re.test(text)) {
       return {
         code: 'relative_day',
@@ -937,6 +969,26 @@ export function findWrongWeekday(text: string, now: Date): string | null {
     new RegExp(`${date},? (?:es |sera |cae )?(?:un |en )?${wd}`, 'g'),
   ];
   const nowYear = now.getUTCFullYear();
+  // "El martes 4" sin mes: el próximo día 4 (este mes o el siguiente).
+  const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(now);
+  const todayDay = Number(todayKey.slice(8, 10));
+  const bareDay = new RegExp(`${wd},? (?:el |dia )?(\\d{1,2})\\b(?! de |:|h| y|[.,]\\d)`, 'g');
+  for (const m of t.matchAll(bareDay)) {
+    const day = Number(m[2]);
+    if (!day || day > 31) continue;
+    let y = Number(todayKey.slice(0, 4));
+    let mo = Number(todayKey.slice(5, 7)) - (day >= todayDay ? 1 : 0);
+    if (mo > 11) {
+      mo = 0;
+      y += 1;
+    }
+    const d = new Date(Date.UTC(y, mo, day));
+    if (d.getUTCMonth() !== mo) continue;
+    const real = WEEKDAYS[d.getUTCDay()] ?? '';
+    if (fold(real) !== m[1]) {
+      return `El ${day} de ${MONTHS[mo]} es ${real}, no ${m[1]}`;
+    }
+  }
   for (const [i, re] of patterns.entries()) {
     for (const m of t.matchAll(re)) {
       const [weekday, dayStr, month] = i === 0 ? [m[1], m[2], m[3]] : [m[3], m[1], m[2]];

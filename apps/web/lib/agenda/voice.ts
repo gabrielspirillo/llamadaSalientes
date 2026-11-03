@@ -403,7 +403,11 @@ export async function agendaCheckAvailability(
         : '';
     const todayKeyNow = localDateKey(new Date(), search.timezone);
     const noneOnRequested =
-      requested && /^\d{4}-\d{2}-\d{2}$/.test(requested) && firstDay !== requested
+      requested &&
+      /^\d{4}-\d{2}-\d{2}$/.test(requested) &&
+      firstDay !== requested &&
+      // Desde hoy es lo que pasa el modelo cuando no le dijeron día.
+      requested !== todayKeyNow
         ? `El día que pidió (${requested}) no hay huecos libres (o la clínica no atiende ese día): díselo primero EXACTAMENTE así, "${capitalize(relativeDayLabel(requested, todayKeyNow))} no me queda nada", y después ofrécele lo siguiente. `
         : '';
 

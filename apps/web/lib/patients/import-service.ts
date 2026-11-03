@@ -1,5 +1,5 @@
 import 'server-only';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import { patients, whatsappContacts } from '@/lib/db/schema';
@@ -157,6 +157,11 @@ export async function importContactsBatch(
       });
       seen.add(key);
       result.created++;
+      // Viene de los contactos de la clínica: ya era paciente.
+      await db
+        .update(patients)
+        .set({ cameBefore: true })
+        .where(and(eq(patients.tenantId, scope.tenantId), eq(patients.id, person.id)));
       if (hasMarks(c)) {
         await setPatientMarks(scope, person.id, {
           priorityFlag: false,
