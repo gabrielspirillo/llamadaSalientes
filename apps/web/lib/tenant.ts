@@ -9,6 +9,14 @@ import { clerkClient } from '@clerk/nextjs/server';
 import { eq } from 'drizzle-orm';
 import { cache } from 'react';
 
+/** La clínica está archivada por Futura: nadie de ella entra ni opera. */
+export class TenantArchivedError extends Error {
+  constructor(public readonly tenantName: string) {
+    super(`La clínica ${tenantName} está archivada`);
+    this.name = 'TenantArchivedError';
+  }
+}
+
 export class TenantNotFoundError extends Error {
   constructor(orgId: string) {
     super(`Tenant no existe para Clerk org ${orgId}`);
@@ -65,12 +73,18 @@ export const getCurrentTenant = cache(async () => {
   const { orgId, userId } = await requireOrg();
   const { tenant: realTenant } = await resolveTenantForOrg(orgId, userId);
   const isSuperAdmin = isSuperAdminTenant(realTenant.id);
+  // Clínica archivada: corte de servidor para TODO lo que pasa por aquí
+  // (páginas, Server Actions, rutas de API). El layout lo pinta como aviso.
+  if (!isSuperAdmin && realTenant.status === 'archived') {
+    throw new TenantArchivedError(realTenant.name);
+  }
 
   if (isSuperAdmin) {
     const actingId = await getActingTenantId();
     if (actingId && actingId !== realTenant.id) {
       const acting = await findTenantById(actingId);
-      if (acting) {
+      // A una archivada no se entra a operar: sólo se restaura desde Futura.
+      if (acting && acting.status !== 'archived') {
         return { tenant: acting, userId, isSuperAdmin, impersonating: true as const, realTenant };
       }
     }
@@ -83,7 +97,9 @@ export const getCurrentTenant = cache(async () => {
 export async function getCurrentTenantOrNull() {
   try {
     return await getCurrentTenant();
-  } catch {
+  } catch (err) {
+    // Archivada no es "todavía no hay tenant": que lo pinte quien llama.
+    if (err instanceof TenantArchivedError) throw err;
     return null;
   }
 }

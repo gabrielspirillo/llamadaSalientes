@@ -80,9 +80,11 @@ export async function runDayOfTick(now = new Date()): Promise<{ steps: number }>
     .from(tenantCareProfile)
     .where(sql`${tenantCareProfile.messageScripts} ? 'dayOf'`);
 
+  const { isTenantArchived } = await import('@/lib/tenants/archive');
   for (const profile of profiles) {
     const dayOf = parseMessageScripts(profile.scripts)?.dayOf;
     if (!dayOf) continue;
+    if (await isTenantArchived(profile.tenantId)) continue;
     try {
       steps += await tickTenant(profile.tenantId, dayOf, now);
     } catch (err) {

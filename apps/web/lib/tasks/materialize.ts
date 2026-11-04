@@ -31,7 +31,7 @@ export async function listActiveTenantIds(): Promise<string[]> {
   const rows = await db
     .select({ id: tenants.id })
     .from(tenants)
-    .where(sql`${tenants.status} <> 'suspended'`);
+    .where(sql`${tenants.status} not in ('suspended', 'archived')`);
   return rows.map((r) => r.id);
 }
 

@@ -20,6 +20,8 @@ export async function processReminderSendJob(
 ): Promise<{ status: 'sent' | 'skipped' | 'failed'; reason?: string }> {
   return step.run('process-reminder-send', async () => {
     const { tenantId, reminderId } = data;
+    const { isTenantArchived } = await import('@/lib/tenants/archive');
+    if (await isTenantArchived(tenantId)) return { status: 'skipped', reason: 'tenant_archived' };
 
     // 1. Cargar reminder + verificar status SCHEDULED.
     const [rem] = await db

@@ -81,6 +81,8 @@ export async function offerFreedSlot(
 ): Promise<boolean> {
   const slotMs = slot.endsAt.getTime() - slot.startsAt.getTime();
   if (slotMs <= 0 || slot.startsAt.getTime() - now.getTime() < MIN_LEAD_MS) return false;
+  const { isTenantArchived } = await import('@/lib/tenants/archive');
+  if (await isTenantArchived(tenantId)) return false;
   const expiresAt = new Date(
     Math.min(now.getTime() + HOLD_MS, slot.startsAt.getTime() - 30 * 60_000),
   );

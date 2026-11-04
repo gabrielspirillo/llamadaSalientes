@@ -230,3 +230,164 @@ export async function saveEsignIntegrationAction(
   revalidatePath('/dashboard', 'layout');
   return { ok: true };
 }
+
+// ─── Archivar / restaurar / eliminar clínicas ───────────────────────────────
+
+export type ArchiveResult = { ok: true; warning?: string } | { ok: false; error: string };
+
+async function requireSuperAdmin() {
+  const ctx = await getCurrentTenant();
+  if (!ctx.isSuperAdmin) throw new Error('No autorizado.');
+  return ctx;
+}
+
+function refreshFutura() {
+  revalidatePath('/dashboard/futura');
+  revalidatePath('/dashboard', 'layout');
+}
+
+export async function archiveClinicAction(targetTenantId: string): Promise<ArchiveResult> {
+  try {
+    await requireSuperAdmin();
+    const { archiveTenant } = await import('@/lib/tenants/archive');
+    // Si se estaba gestionando esa clínica, `getCurrentTenant` deja de
+    // respetar la cookie en cuanto está archivada.
+    await archiveTenant(targetTenantId);
+    refreshFutura();
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message || 'No se pudo archivar.' };
+  }
+}
+
+export async function restoreClinicAction(targetTenantId: string): Promise<ArchiveResult> {
+  try {
+    await requireSuperAdmin();
+    const { restoreTenant } = await import('@/lib/tenants/archive');
+    await restoreTenant(targetTenantId);
+    refreshFutura();
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message || 'No se pudo restaurar.' };
+  }
+}
+
+/**
+ * Elimina para siempre una clínica archivada. Primero la base (es lo que
+ * importa y lo que no se puede dejar a medias); después la organización de
+ * Clerk. Si Clerk falla, la clínica ya no existe y se avisa de que la
+ * organización hay que borrarla a mano.
+ */
+export async function deleteClinicAction(
+  targetTenantId: string,
+  confirmName: string,
+): Promise<ArchiveResult> {
+  try {
+    const ctx = await requireSuperAdmin();
+    const { deleteArchivedTenant } = await import('@/lib/tenants/archive');
+    const deleted = await deleteArchivedTenant(targetTenantId, confirmName);
+    const { recordAudit } = await import('@/lib/audit');
+    await recordAudit({
+      tenantId: ctx.realTenant.id,
+      actorUserId: null,
+      action: 'delete',
+      entity: 'tenant',
+      entityId: targetTenantId,
+      after: { name: deleted.name, clerkOrganizationId: deleted.clerkOrganizationId },
+    }).catch(() => undefined);
+    refreshFutura();
+    try {
+      await (await clerkClient()).organizations.deleteOrganization(deleted.clerkOrganizationId);
+    } catch {
+      return {
+        ok: true,
+        warning:
+          'La clínica se eliminó, pero su organización en Clerk no. Bórrala desde el panel de Clerk.',
+      };
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message || 'No se pudo eliminar.' };
+  }
+}
+
+// ─── Equipo de Futura (super-admins) ────────────────────────────────────────
+
+export type TeamResult = { ok: true; message: string } | { ok: false; error: string };
+
+/**
+ * Da acceso de super-admin: ser miembro de la organización de Futura en Clerk
+ * es lo que convierte a alguien en super-admin (`isSuperAdminTenant`). Si la
+ * persona ya tiene cuenta, entra al momento; si no, se le manda una
+ * invitación por correo.
+ */
+export async function addFuturaMemberAction(rawEmail: string): Promise<TeamResult> {
+  try {
+    const ctx = await requireSuperAdmin();
+    const email = rawEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return { ok: false, error: 'Ese correo no es válido.' };
+    }
+    const clerk = await clerkClient();
+    const orgId = ctx.realTenant.clerkOrganizationId;
+    const found = await clerk.users.getUserList({ emailAddress: [email] });
+    const user = found.data[0];
+    if (user) {
+      const members = await clerk.organizations.getOrganizationMembershipList({
+        organizationId: orgId,
+        limit: 200,
+      });
+      if (members.data.some((m) => m.publicUserData?.userId === user.id)) {
+        return { ok: true, message: `${email} ya es parte del equipo de Futura.` };
+      }
+      await clerk.organizations.createOrganizationMembership({
+        organizationId: orgId,
+        userId: user.id,
+        role: 'org:admin',
+      });
+      revalidatePath('/dashboard/futura');
+      return {
+        ok: true,
+        message: `${email} ya es super-admin. Lo verá al elegir "Futura" en el selector de organizaciones.`,
+      };
+    }
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.futuradigital.es').replace(
+      /\/+$/,
+      '',
+    );
+    await clerk.organizations.createOrganizationInvitation({
+      organizationId: orgId,
+      emailAddress: email,
+      role: 'org:admin',
+      redirectUrl: `${appUrl}/dashboard/futura`,
+    });
+    revalidatePath('/dashboard/futura');
+    return {
+      ok: true,
+      message: `${email} todavía no tiene cuenta: le llegó una invitación por correo.`,
+    };
+  } catch (err) {
+    const msg = (err as { errors?: { longMessage?: string; message?: string }[] }).errors?.[0];
+    return { ok: false, error: msg?.longMessage || msg?.message || (err as Error).message };
+  }
+}
+
+export async function removeFuturaMemberAction(clerkUserId: string): Promise<TeamResult> {
+  try {
+    const ctx = await requireSuperAdmin();
+    const { auth } = await import('@clerk/nextjs/server');
+    const { userId } = await auth();
+    if (userId === clerkUserId) {
+      return { ok: false, error: 'No puedes quitarte a ti. Que lo haga otra persona del equipo.' };
+    }
+    const clerk = await clerkClient();
+    await clerk.organizations.deleteOrganizationMembership({
+      organizationId: ctx.realTenant.clerkOrganizationId,
+      userId: clerkUserId,
+    });
+    revalidatePath('/dashboard/futura');
+    return { ok: true, message: 'Quitado del equipo de Futura.' };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message || 'No se pudo quitar.' };
+  }
+}

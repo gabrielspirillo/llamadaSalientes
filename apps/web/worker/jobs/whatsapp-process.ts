@@ -90,6 +90,12 @@ async function runWhatsappJob(
   step: StepRunner,
 ): Promise<WhatsappJobResult> {
   const { tenantId, conversationId, contactPhoneE164 } = data;
+  // Clínica archivada: el asistente no contesta a nadie.
+  const { isTenantArchived } = await import('@/lib/tenants/archive');
+  if (await isTenantArchived(tenantId)) {
+    console.log('[wa-process] clínica archivada, no se responde', { tenantId, conversationId });
+    return { ok: false, reason: 'tenant_archived' };
+  }
   const agentEnabled = process.env.WHATSAPP_AGENT_ENABLED === 'true';
   console.log('[wa-process] job recibido', {
     tenantId,

@@ -24,6 +24,8 @@ export async function processWaitlistOfferSendJob(
 ): Promise<{ status: 'sent' | 'skipped' | 'failed'; reason?: string }> {
   return step.run('process-waitlist-offer-send', async () => {
     const { tenantId, offerId } = data;
+    const { isTenantArchived } = await import('@/lib/tenants/archive');
+    if (await isTenantArchived(tenantId)) return { status: 'skipped', reason: 'tenant_archived' };
 
     const [offer] = await db
       .select()

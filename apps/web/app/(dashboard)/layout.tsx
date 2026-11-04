@@ -1,3 +1,4 @@
+import { ArchivedClinicNotice } from '@/components/dashboard/archived-clinic-notice';
 import { DashboardOverlays } from '@/components/dashboard/dashboard-overlays';
 import { NavProgressBar } from '@/components/dashboard/nav-progress';
 import { ScrollReset } from '@/components/dashboard/scroll-reset';
@@ -15,7 +16,7 @@ import { DEFAULT_ENABLED_MODULES, type EnabledModules } from '@/lib/modules';
 import { normalizeRole } from '@/lib/tasks/auth';
 import { getTenantTimezone } from '@/lib/tasks/materialize';
 import { countActionableTasks, internalUserIdFor } from '@/lib/tasks/queries';
-import { getCurrentTenantOrNull } from '@/lib/tenant';
+import { TenantArchivedError, getCurrentTenantOrNull } from '@/lib/tenant';
 import { auth } from '@clerk/nextjs/server';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -47,7 +48,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   // Tenant puede no existir si el webhook de Clerk todavía no llegó (1-2s).
   // En ese caso renderizamos con módulos OFF — al refrescar el tenant ya estará.
-  const tenantCtx = await getCurrentTenantOrNull();
+  let tenantCtx: Awaited<ReturnType<typeof getCurrentTenantOrNull>>;
+  try {
+    tenantCtx = await getCurrentTenantOrNull();
+  } catch (err) {
+    if (err instanceof TenantArchivedError) {
+      return <ArchivedClinicNotice clinicName={err.tenantName} />;
+    }
+    throw err;
+  }
 
   // Clínica nueva que todavía no completó el onboarding → al wizard. Solo aplica
   // a clínicas en estado 'onboarding' (las nuevas) y SOLO al admin/dueño: un

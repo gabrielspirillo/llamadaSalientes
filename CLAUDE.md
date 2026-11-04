@@ -593,6 +593,34 @@ de organizaciones. Al cambiar la marca hay que invalidar el **layout**
 (`revalidatePath('/dashboard', 'layout')`), no sólo la página: el sidebar y el
 topbar viven ahí.
 
+## Equipo Futura (super-admins) y clínicas archivadas
+
+**Ser super-admin = ser miembro de la organización de Futura en Clerk**
+(`isSuperAdminTenant`, `lib/modules.ts`). En `/dashboard/futura`, la tarjeta
+**Equipo Futura** da acceso por correo (`addFuturaMemberAction`): si la persona
+ya tiene cuenta entra al momento como `org:admin`; si no, le llega una
+invitación de Clerk. Para ver el panel tiene que elegir la organización de
+Futura en el selector. "Quitar" la saca de la organización; nadie se puede
+quitar a sí mismo.
+
+**Archivar** (`lib/tenants/archive.ts`) deja la clínica fuera de servicio sin
+borrar nada: `tenants.status = 'archived'`. Corte de servidor en
+`getCurrentTenant` (lanza `TenantArchivedError`; el layout pinta
+`ArchivedClinicNotice`), así que no hay página, acción ni API de esa clínica
+que funcione. Al archivar se cancelan recordatorios `SCHEDULED`, ofertas de
+lista de espera y de adelanto pendientes (y sus bloqueos de reserva); y
+`isTenantArchived` (caché 1 min) frena al asistente de WhatsApp, los envíos de
+recordatorios y ofertas, la confirmación del día, los adelantos y las rutinas
+(`listActiveTenantIds` excluye archivadas). Futura no puede "Gestionar" una
+archivada: sólo restaurarla. ⚠️ La voz no se corta: el número vive en Retell y
+Zadarma, hay que apagarlo allí.
+
+**Eliminar** sólo existe para una archivada y exige escribir el nombre exacto
+(se compara en el servidor). Borra la fila de `tenants` —todas las FK son
+`ON DELETE CASCADE`, así que se va todo lo suyo— y después la organización de
+Clerk (si Clerk falla, se avisa para borrarla a mano). La organización de
+Futura no se puede archivar ni eliminar.
+
 ## Funcionar sin CRM: la agenda propia es la fuente
 
 GoHighLevel es **opcional**. Una clínica sin CRM conectado tiene que poder dar

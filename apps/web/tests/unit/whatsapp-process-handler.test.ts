@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
+// La clínica no está archivada (tiene su propio módulo y sus pruebas).
+vi.mock('@/lib/tenants/archive', () => ({ isTenantArchived: async () => false }));
 
 // El handler toma un lock por conversación antes de correr; acá no hay Redis.
 vi.mock('@/lib/queue/lock', () => ({

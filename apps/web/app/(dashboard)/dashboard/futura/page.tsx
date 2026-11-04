@@ -5,15 +5,18 @@ import { db } from '@/lib/db/client';
 import { esignIntegrations, tenants, whatsappAgentSettings } from '@/lib/db/schema';
 import { type EnabledModules, MODULE_DEFINITIONS, MODULE_KEYS } from '@/lib/modules';
 import { getCurrentTenant } from '@/lib/tenant';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 import { eq } from 'drizzle-orm';
 import { LayoutDashboard } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { ModuleToggle } from '../configuration/_panels/modules-panel-toggle';
 import { ActivateButton } from './activate-button';
 import { AgentModeDialog } from './agent-mode-dialog';
+import { ArchiveClinicButton, DeleteClinicButton, RestoreClinicButton } from './archive-controls';
 import { BrandingDialog } from './branding-dialog';
 import { EnterButton } from './enter-button';
 import { EsignDialog } from './esign-dialog';
+import { type FuturaInvite, type FuturaMember, FuturaTeam } from './futura-team';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +31,7 @@ const STATUS_META: Record<
   trial: { label: 'Trial', tone: 'info' },
   active: { label: 'Activa', tone: 'success' },
   suspended: { label: 'Suspendida', tone: 'danger' },
+  archived: { label: 'Archivada', tone: 'neutral' },
 };
 
 // Prioridad de orden: primero las que necesitan atención.
@@ -88,8 +92,14 @@ export default async function FuturaPanelPage() {
     '',
   );
 
-  const clinics = rows
-    .map((r) => ({ ...r, status: (r.status ?? 'trial') as Status }))
+  const team = await loadFuturaTeam(realTenant.clerkOrganizationId);
+
+  const all = rows.map((r) => ({ ...r, status: (r.status ?? 'trial') as Status }));
+  const archived = all
+    .filter((c) => c.status === 'archived')
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const clinics = all
+    .filter((c) => c.status !== 'archived')
     .sort((a, b) => {
       const pa = ORDER[a.status] ?? 5;
       const pb = ORDER[b.status] ?? 5;
@@ -119,6 +129,8 @@ export default async function FuturaPanelPage() {
         </code>{' '}
         · {realTenant.slug}
       </p>
+
+      <FuturaTeam members={team.members} invites={team.invites} />
 
       {/* Resumen */}
       <div className="stagger mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -195,6 +207,7 @@ export default async function FuturaPanelPage() {
                           <EnterButton tenantId={c.id} />
                         )}
                         <ActivateButton tenantId={c.id} active={c.status === 'active'} />
+                        <ArchiveClinicButton tenantId={c.id} name={c.name} />
                       </>
                     )}
                   </div>
@@ -221,6 +234,33 @@ export default async function FuturaPanelPage() {
           })}
         </div>
       )}
+
+      {archived.length > 0 && (
+        <section className="mt-10">
+          <h2 className="mb-3 text-[12px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+            Archivadas ({archived.length})
+          </h2>
+          <div className="space-y-2">
+            {archived.map((c) => (
+              <div
+                key={c.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-dashed border-(--color-border) bg-white/60 px-5 py-3.5"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-[15px] font-semibold text-zinc-700">{c.name}</p>
+                  <p className="text-xs text-zinc-500">
+                    {c.slug} · creada el {fmtDate(c.createdAt)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RestoreClinicButton tenantId={c.id} />
+                  <DeleteClinicButton tenantId={c.id} name={c.name} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </>
   );
 }
@@ -246,4 +286,36 @@ function StatCard({
       </p>
     </div>
   );
+}
+
+/** Miembros e invitaciones de la organización de Futura en Clerk. */
+async function loadFuturaTeam(
+  orgId: string,
+): Promise<{ members: FuturaMember[]; invites: FuturaInvite[] }> {
+  try {
+    const [{ userId }, clerk] = await Promise.all([auth(), clerkClient()]);
+    const [memberships, invitations] = await Promise.all([
+      clerk.organizations.getOrganizationMembershipList({ organizationId: orgId, limit: 200 }),
+      clerk.organizations
+        .getOrganizationInvitationList({ organizationId: orgId, status: ['pending'], limit: 100 })
+        .catch(() => ({ data: [] as { emailAddress: string }[] })),
+    ]);
+    return {
+      members: memberships.data
+        .map((m) => {
+          const u = m.publicUserData;
+          return {
+            clerkUserId: u?.userId ?? '',
+            name: [u?.firstName, u?.lastName].filter(Boolean).join(' '),
+            email: u?.identifier ?? '',
+            isMe: u?.userId === userId,
+          };
+        })
+        .filter((m) => m.clerkUserId)
+        .sort((a, b) => Number(b.isMe) - Number(a.isMe) || a.email.localeCompare(b.email)),
+      invites: invitations.data.map((i) => ({ email: i.emailAddress })),
+    };
+  } catch {
+    return { members: [], invites: [] };
+  }
 }
