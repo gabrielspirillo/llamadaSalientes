@@ -31,11 +31,25 @@ export const Textarea = React.forwardRef<
 ));
 Textarea.displayName = 'Textarea';
 
+/**
+ * Desplegable nativo con la flecha dibujada por nosotros: la del navegador
+ * sale pegada al borde, con otro grosor y sin alinear con el texto, y en
+ * cada sistema de una forma. `appearance-none` la quita y el chevrón va en
+ * un `background-image` SVG (no hace falta envolver el select en nada).
+ */
 export const Select = React.forwardRef<
   HTMLSelectElement,
   React.SelectHTMLAttributes<HTMLSelectElement>
 >(({ className, ...props }, ref) => (
-  <select ref={ref} className={cn(fieldBase, 'h-11 cursor-pointer px-4', className)} {...props} />
+  <select
+    ref={ref}
+    className={cn(
+      fieldBase,
+      'select-chevron h-11 cursor-pointer appearance-none pr-10 pl-4',
+      className,
+    )}
+    {...props}
+  />
 ));
 Select.displayName = 'Select';
 

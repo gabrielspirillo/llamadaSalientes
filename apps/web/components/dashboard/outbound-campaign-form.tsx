@@ -115,7 +115,7 @@ export function OutboundCampaignForm() {
             id="campaign-use-case"
             value={useCase}
             onChange={(e) => setUseCase(e.target.value as typeof useCase)}
-            className="h-11 w-full rounded-[14px] border border-(--color-border) bg-white px-4 text-sm transition-[border-color,box-shadow] duration-300 hover:border-brand-200 focus-visible:border-brand-400 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/12 px-3.5 text-sm"
+            className="select-chevron appearance-none pr-9 h-11 w-full rounded-[14px] border border-(--color-border) bg-white px-4 text-sm transition-[border-color,box-shadow] duration-300 hover:border-brand-200 focus-visible:border-brand-400 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/12 px-3.5 text-sm"
           >
             {USE_CASES.map((u) => (
               <option key={u.value} value={u.value}>

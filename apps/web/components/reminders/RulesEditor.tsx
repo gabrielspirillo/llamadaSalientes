@@ -346,7 +346,7 @@ function RuleRow(props: {
           onChange={(e) =>
             props.onPatch({ primaryChannel: e.target.value as 'WHATSAPP' | 'VOICE' })
           }
-          className="rounded-md border border-(--color-border) px-2 py-1.5 text-sm"
+          className="select-chevron appearance-none pr-9 rounded-md border border-(--color-border) px-2 py-1.5 text-sm"
         >
           <option value="WHATSAPP">WhatsApp</option>
           <option value="VOICE">Voz</option>
@@ -360,7 +360,7 @@ function RuleRow(props: {
               fallbackWindowHours: v === '' ? null : (props.rule.fallbackWindowHours ?? 1),
             });
           }}
-          className="rounded-md border border-(--color-border) px-2 py-1.5 text-sm"
+          className="select-chevron appearance-none pr-9 rounded-md border border-(--color-border) px-2 py-1.5 text-sm"
         >
           <option value="">Sin segundo intento</option>
           <option value="WHATSAPP">Si no responde, WhatsApp</option>
@@ -624,7 +624,7 @@ function TemplateEditor(props: {
           <select
             value={selectedDriver}
             onChange={(e) => setSelectedDriver(e.target.value)}
-            className="rounded-md border border-(--color-border) px-2 py-1.5 text-sm"
+            className="select-chevron appearance-none pr-9 rounded-md border border-(--color-border) px-2 py-1.5 text-sm"
           >
             {available.map((d) => (
               <option key={d.value} value={d.value}>
@@ -788,7 +788,7 @@ function TreatmentOverridesSection(props: {
         <div className="flex flex-wrap items-center gap-2">
           <select
             id="addOverride"
-            className="rounded-md border border-(--color-border) px-2 py-1.5 text-sm"
+            className="select-chevron appearance-none pr-9 rounded-md border border-(--color-border) px-2 py-1.5 text-sm"
             defaultValue=""
           >
             <option value="" disabled>

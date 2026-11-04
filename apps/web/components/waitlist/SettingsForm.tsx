@@ -68,7 +68,7 @@ export function WaitlistSettingsForm({ initial }: { initial: Settings }) {
 
       <Row label="Canal de oferta" hint="Cómo se avisa al paciente cuando queda un hueco libre.">
         <select
-          className="w-full sm:w-auto max-w-full rounded-md border border-(--color-border) px-3 py-1.5 text-sm bg-white"
+          className="select-chevron appearance-none pr-9 w-full sm:w-auto max-w-full rounded-md border border-(--color-border) px-3 py-1.5 text-sm bg-white"
           value={s.channelMode}
           onChange={(e) => setS({ ...s, channelMode: e.target.value as Settings['channelMode'] })}
         >

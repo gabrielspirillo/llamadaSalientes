@@ -375,7 +375,7 @@ function TemplateCard({
                   onChange={(e) =>
                     onPatch(template.id, { defaultAssigneeUserId: e.target.value || null })
                   }
-                  className="w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-sm"
+                  className="select-chevron appearance-none pr-9 w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-sm"
                 >
                   <option value="">Sin asignar</option>
                   {members.map((m) => (
@@ -583,7 +583,7 @@ function RuleRow({
                   value={rule.assigneeUserId ?? ''}
                   disabled={busy}
                   onChange={(e) => onPatch(rule.id, { assigneeUserId: e.target.value || null })}
-                  className="w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-sm"
+                  className="select-chevron appearance-none pr-9 w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-sm"
                 >
                   <option value="">Cualquiera del equipo</option>
                   {members.map((m) => (

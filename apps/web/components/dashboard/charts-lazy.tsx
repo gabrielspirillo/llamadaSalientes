@@ -18,6 +18,11 @@ export const NoShowTrendChart = dynamic(
   { ssr: false, loading },
 );
 
+export const WeeklyAppointmentsChart = dynamic(
+  () => import('./analytics-global-charts').then((m) => m.WeeklyAppointmentsChart),
+  { ssr: false, loading },
+);
+
 export const TopTreatmentsChart = dynamic(
   () => import('./analytics-global-charts').then((m) => m.TopTreatmentsChart),
   { ssr: false, loading },

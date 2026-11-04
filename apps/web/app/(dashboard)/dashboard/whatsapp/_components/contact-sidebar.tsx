@@ -383,7 +383,7 @@ export function ContactSidebar({
           value={assignedUserId ?? ''}
           onChange={(e) => handleAssign(e.target.value || null)}
           disabled={pending}
-          className="mt-2 w-full rounded-lg border border-(--color-border) px-2 py-1.5 text-sm focus:border-zinc-400 focus:outline-none disabled:bg-zinc-50"
+          className="select-chevron appearance-none pr-9 mt-2 w-full rounded-lg border border-(--color-border) px-2 py-1.5 text-sm focus:border-zinc-400 focus:outline-none disabled:bg-zinc-50"
         >
           <option value="">Sin asignar</option>
           {members.map((m) => (

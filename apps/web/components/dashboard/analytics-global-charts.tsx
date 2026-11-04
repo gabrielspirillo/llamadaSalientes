@@ -4,7 +4,8 @@ import type { NoShowSeriesPoint, TopTreatment } from '@/lib/data/analytics/globa
 import {
   Area,
   AreaChart,
-  CartesianGrid,
+  Bar,
+  BarChart,
   Cell,
   Pie,
   PieChart,
@@ -13,14 +14,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import {
-  axisProps,
-  chartAnim,
-  chartPalette,
-  chartSequence,
-  gridProps,
-  tooltipStyle,
-} from './chart-theme';
+import { axisProps, chartAnim, chartPalette, chartSequence, tooltipStyle } from './chart-theme';
 
 function ChartEmpty({ label }: { label: string }) {
   return (
@@ -41,31 +35,78 @@ export function NoShowTrendChart({ data }: { data: NoShowSeriesPoint[] }) {
     }),
     value: Number((p.rate * 100).toFixed(1)),
   }));
+  const max = Math.max(5, ...chartData.map((d) => d.value));
 
   return (
     <ResponsiveContainer width="100%" height={224}>
-      <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+      <AreaChart data={chartData} margin={{ top: 14, right: 8, left: -6, bottom: 0 }}>
         <defs>
           <linearGradient id="noShowFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={chartPalette.rose} stopOpacity={0.32} />
+            <stop offset="0%" stopColor={chartPalette.rose} stopOpacity={0.22} />
             <stop offset="100%" stopColor={chartPalette.rose} stopOpacity={0} />
           </linearGradient>
         </defs>
-        <CartesianGrid {...gridProps} />
-        <XAxis dataKey="label" {...axisProps} />
-        <YAxis {...axisProps} width={36} tickFormatter={(v) => `${v}%`} />
-        <Tooltip contentStyle={tooltipStyle} formatter={(v) => [`${v}%`, 'No-show']} />
+        <XAxis dataKey="label" {...axisProps} interval="preserveStartEnd" minTickGap={28} />
+        <YAxis
+          {...axisProps}
+          width={40}
+          domain={[0, Math.ceil(max / 5) * 5]}
+          ticks={[0, Math.ceil(max / 5) * 5]}
+          tickFormatter={(v) => `${v}%`}
+        />
+        <Tooltip
+          contentStyle={tooltipStyle}
+          cursor={{ stroke: '#e4e7e6', strokeWidth: 1 }}
+          formatter={(v) => [`${v}%`, 'No-show']}
+        />
         <Area
-          type="monotone"
+          type="natural"
           dataKey="value"
           stroke={chartPalette.rose}
-          strokeWidth={2.5}
+          strokeWidth={2.25}
           fill="url(#noShowFill)"
-          dot={{ r: 3, fill: '#fff', stroke: chartPalette.rose, strokeWidth: 2 }}
-          activeDot={{ r: 6, fill: chartPalette.rose, strokeWidth: 3, stroke: '#fff' }}
+          dot={false}
+          activeDot={{ r: 5, fill: chartPalette.rose, strokeWidth: 3, stroke: '#fff' }}
           {...chartAnim}
         />
       </AreaChart>
+    </ResponsiveContainer>
+  );
+}
+
+export interface WeeklyPoint {
+  label: string;
+  count: number;
+  current: boolean;
+}
+
+/** Citas por semana, ocho semanas: barras redondeadas, la actual en marca. */
+export function WeeklyAppointmentsChart({ data }: { data: WeeklyPoint[] }) {
+  if (data.every((d) => d.count === 0)) return <ChartEmpty label="Sin citas aún" />;
+  return (
+    <ResponsiveContainer width="100%" height={224}>
+      <BarChart
+        data={data}
+        margin={{ top: 14, right: 8, left: -14, bottom: 0 }}
+        barCategoryGap="28%"
+      >
+        <XAxis dataKey="label" {...axisProps} interval={0} minTickGap={4} fontSize={10.5} />
+        <YAxis {...axisProps} width={40} allowDecimals={false} tickCount={3} />
+        <Tooltip
+          contentStyle={tooltipStyle}
+          cursor={{ fill: 'rgba(55,118,106,0.06)', radius: 10 }}
+          formatter={(v) => [`${v}`, 'Citas']}
+        />
+        <Bar dataKey="count" radius={[10, 10, 10, 10]} maxBarSize={34} {...chartAnim}>
+          {data.map((d) => (
+            <Cell
+              key={d.label}
+              fill={d.current ? chartPalette.brand : '#d9ebe4'}
+              fillOpacity={d.current ? 1 : 0.95}
+            />
+          ))}
+        </Bar>
+      </BarChart>
     </ResponsiveContainer>
   );
 }

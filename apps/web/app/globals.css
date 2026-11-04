@@ -449,6 +449,18 @@ body {
    Interacciones — hover lift, sheen, magnetic press
    ========================================================================== */
 
+/* Chevrón de los desplegables (ver `Select` en components/ui/input.tsx). */
+.select-chevron {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  background-size: 16px 16px;
+}
+.select-chevron:hover,
+.select-chevron:focus-visible {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236d28d9' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>");
+}
+
 .hover-lift {
   transition: transform 380ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 380ms
     cubic-bezier(0.22, 1, 0.36, 1), border-color 250ms ease;

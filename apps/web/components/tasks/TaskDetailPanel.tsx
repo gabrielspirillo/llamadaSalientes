@@ -266,7 +266,7 @@ export function TaskDetailPanel({
                   value={task.status}
                   disabled={!canEdit}
                   onChange={(e) => void patch({ status: e.target.value as TaskStatus })}
-                  className="w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-sm"
+                  className="select-chevron appearance-none pr-9 w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-sm"
                 >
                   {TASK_STATUSES.map((s) => (
                     <option key={s} value={s}>
@@ -280,7 +280,7 @@ export function TaskDetailPanel({
                   value={task.priority}
                   disabled={!canEdit}
                   onChange={(e) => void patch({ priority: e.target.value as TaskPriority })}
-                  className="w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-sm"
+                  className="select-chevron appearance-none pr-9 w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-sm"
                 >
                   {TASK_PRIORITIES.map((p) => (
                     <option key={p} value={p}>
@@ -294,7 +294,7 @@ export function TaskDetailPanel({
                   value={task.category}
                   disabled={!canEdit}
                   onChange={(e) => void patch({ category: e.target.value as TaskCategory })}
-                  className="w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-sm"
+                  className="select-chevron appearance-none pr-9 w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-sm"
                 >
                   {TASK_CATEGORIES.map((c) => (
                     <option key={c} value={c}>

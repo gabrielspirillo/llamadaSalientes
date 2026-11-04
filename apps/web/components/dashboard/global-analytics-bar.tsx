@@ -13,6 +13,7 @@ import {
   getOptimizedRevenueMTD,
   getTopTreatments,
 } from '@/lib/data/analytics/global';
+import type { TodayBoard } from '@/lib/data/analytics/today-board';
 import { db } from '@/lib/db/client';
 import { tasks, tenantMemberships } from '@/lib/db/schema';
 import { getDemoAnalytics } from '@/lib/demo-data';
@@ -32,7 +33,7 @@ import {
   UserX,
   Users,
 } from 'lucide-react';
-import { NoShowTrendChart, TopTreatmentsChart } from './charts-lazy';
+import { NoShowTrendChart, TopTreatmentsChart, WeeklyAppointmentsChart } from './charts-lazy';
 
 function formatMoney(cents: number, currency: string): string {
   try {
@@ -51,9 +52,12 @@ function formatMoney(cents: number, currency: string): string {
 export async function GlobalAnalyticsBar({
   tenantId,
   demo = false,
+  board = null,
 }: {
   tenantId: string;
   demo?: boolean;
+  /** Citas por semana, si la clínica tiene agenda propia. */
+  board?: TodayBoard | null;
 }) {
   // En modo demo usamos el dataset ficticio; nunca tocamos la DB del tenant.
   const [noShow, revenue, recovery, today, treatments, noShowSeries] = demo
@@ -111,12 +115,6 @@ export async function GlobalAnalyticsBar({
             ? 'Hoy, los próximos 7 días y lo que hace el asistente por ti.'
             : 'Todos los canales combinados: llamadas, WhatsApp, recordatorios y waitlist.'
         }
-        action={
-          <Badge tone="accent" size="lg" className="hidden sm:inline-flex">
-            <Sparkles className="h-3 w-3" />
-            Cross-channel
-          </Badge>
-        }
       />
 
       {pulse ? (
@@ -168,27 +166,6 @@ export async function GlobalAnalyticsBar({
         </div>
       )}
 
-      <div className="rise-stagger mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-        <Reveal className="[--i:0]">
-          <StatTile
-            label="Tareas abiertas"
-            numeric={openTasks}
-            hint="Pendientes del equipo"
-            icon={<ListTodo className="h-4 w-4" />}
-            tone="honey"
-          />
-        </Reveal>
-        <Reveal className="[--i:1]">
-          <StatTile
-            label="Equipo"
-            numeric={teamCount}
-            hint={teamCount === 1 ? 'persona en la clínica' : 'personas en la clínica'}
-            icon={<Users className="h-4 w-4" />}
-            tone="grape"
-          />
-        </Reveal>
-      </div>
-
       {revenue.cents > 0 && (
         <Reveal>
           <Card className="mb-4 overflow-hidden p-0">
@@ -221,23 +198,38 @@ export async function GlobalAnalyticsBar({
         </Reveal>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:gap-4 xl:grid-cols-3">
-        <Reveal direction="left" className="xl:col-span-2">
+      <div className="rise-stagger grid grid-cols-1 gap-3 sm:gap-4 xl:grid-cols-3">
+        <Reveal className="[--i:0]">
           <Card className="group h-full">
             <CardTopbar
               icon={<TrendingDown className="h-4 w-4" />}
               tone="honey"
-              title="Tendencia de no-show"
-              subtitle="Semanal, últimos 90 días"
-              action={<Badge tone="warn">3 meses</Badge>}
+              title="Faltas por semana"
+              subtitle="Últimos 90 días"
             />
-            <div className="px-4 pb-5 sm:px-5">
+            <div className="px-3 pb-4 sm:px-4">
               <NoShowTrendChart data={pulse ? pulse.noShowSeries : noShowSeries} />
             </div>
           </Card>
         </Reveal>
 
-        <Reveal direction="right">
+        {board && (
+          <Reveal className="[--i:1]">
+            <Card className="group h-full">
+              <CardTopbar
+                icon={<CalendarRange className="h-4 w-4" />}
+                tone="grape"
+                title="Citas por semana"
+                subtitle="Ocho semanas, la actual en color"
+              />
+              <div className="px-3 pb-4 sm:px-4">
+                <WeeklyAppointmentsChart data={board.weekly} />
+              </div>
+            </Card>
+          </Reveal>
+        )}
+
+        <Reveal className={board ? '[--i:2]' : '[--i:1] xl:col-span-2'}>
           <Card className="group h-full">
             <CardTopbar
               icon={<Stethoscope className="h-4 w-4" />}
@@ -286,8 +278,9 @@ function AgendaPulseTiles({ pulse }: { pulse: AgendaPulse }) {
   const { today, occupancy, assistant, lost } = pulse;
   return (
     <div className="rise-stagger mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
-      <Reveal delay={0}>
+      <Reveal className="[--i:0] h-full">
         <StatTile
+          className="h-full"
           label="Citas hoy"
           numeric={today.total}
           hint={
@@ -300,8 +293,9 @@ function AgendaPulseTiles({ pulse }: { pulse: AgendaPulse }) {
           progress={today.total > 0 ? (today.confirmed / today.total) * 100 : 0}
         />
       </Reveal>
-      <Reveal delay={80}>
+      <Reveal className="[--i:1] h-full">
         <StatTile
+          className="h-full"
           label="Ocupación próximos 7 días"
           numeric={occupancy.rate * 100}
           suffix="%"
@@ -315,8 +309,9 @@ function AgendaPulseTiles({ pulse }: { pulse: AgendaPulse }) {
           progress={occupancy.rate * 100}
         />
       </Reveal>
-      <Reveal delay={160}>
+      <Reveal className="[--i:2] h-full">
         <StatTile
+          className="h-full"
           label="Citas del asistente este mes"
           numeric={assistant.thisMonth}
           delta={assistant.thisMonth - assistant.lastMonth}
@@ -326,8 +321,9 @@ function AgendaPulseTiles({ pulse }: { pulse: AgendaPulse }) {
           trend={assistant.daily}
         />
       </Reveal>
-      <Reveal delay={240}>
+      <Reveal className="[--i:3] h-full">
         <StatTile
+          className="h-full"
           label="Faltas y anulaciones (30 días)"
           numeric={lost.rate * 100}
           decimals={1}
