@@ -938,6 +938,42 @@ diario para distinguir a cada paciente de un vistazo. Migración `0048`.
 - Calendario de 10:00 a 22:00 por defecto; el titular del teléfono ("Mamá:
   Vanesa") encima del número en el listado de pacientes.
 
+## Huecos que se liberan: a quién se le ofrecen (adelantos)
+
+Cuando se cancela una cita de la agenda propia, el hueco no va directo a la
+lista de espera: antes se ofrece, de una familia en una, a quien ya tiene cita
+y podría adelantarla. Módulos: `lib/agenda/advance-ranking.ts` (el orden, puro,
+con tests en `tests/unit/agenda-adelanto-orden.test.ts`) y
+`lib/agenda/advance-offers.ts` (la oferta: reserva, WhatsApp, respuesta,
+caducidad). Tabla `advance_offers` (migración `0061`).
+
+**El orden lo fijó la clínica y no se toca a la ligera**:
+
+1. Quien tiene cita **ese mismo día**, más tarde, y marcó **↑ quiere
+   adelantar**. La más cercana al hueco primero.
+2. Si no hay nadie, los **tres días siguientes**, uno a uno: primero quien
+   tiene cita a **la misma hora** que el hueco, luego la de justo antes (una
+   duración por encima), luego la de justo después. Siempre con ↑. La idea:
+   a esa familia sólo le cambia el día, no la hora, y acepta más.
+3. Agotado eso, el **resto de citas del mismo día sin preferencia** (ni ↑ ni
+   "no mover"), empezando por la **última hora** del día.
+4. Sin nadie, el hueco sigue su camino de siempre: lista de espera.
+
+Quien marcó **"no mover" no entra nunca**. Sólo citas posteriores al hueco,
+del mismo profesional y que quepan en él.
+
+**Cómo va la oferta**: el hueco queda **reservado con un bloqueo** de la
+agenda (`professional_time_off`, motivo "Hueco reservado…") mientras la
+familia contesta: 2 h, o hasta 30 min antes del hueco si es antes. Se manda
+por el WhatsApp de la clínica con dos opciones (1 Sí / 2 No; botones en
+Cloud API, numeradas en Evolution). **Sí** → se quita el bloqueo, se mueve la
+cita (`rescheduleAppointment`) y el hueco que deja se ofrece al siguiente con
+la misma regla. **No** o sin respuesta (`expireAdvanceOffers`, en el tick de
+cada 5 min) → siguiente familia; a quien ya rechazó ese hueco no se le vuelve
+a ofrecer. Cada paso deja tarjeta en `#agenda`, y el panel cuenta los huecos
+ofrecidos en "Requiere atención". Un bloqueo de reserva se puede quitar a
+mano desde el calendario; la oferta sigue viva hasta que conteste o caduque.
+
 ## Señales de conducta del paciente (Respinens): duda y banderas rojas
 
 La clínica las llevaba con emojis en el nombre de cada contacto de Google (🤔

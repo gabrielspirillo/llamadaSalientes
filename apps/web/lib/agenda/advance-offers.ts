@@ -1,6 +1,7 @@
 import 'server-only';
-import { and, eq, gt, gte, inArray, isNotNull, lte, ne, notInArray } from 'drizzle-orm';
+import { and, eq, gte, inArray, isNotNull, isNull, lt, lte, ne, notInArray, or } from 'drizzle-orm';
 
+import { NEXT_DAYS, rankAdvanceCandidates } from '@/lib/agenda/advance-ranking';
 import { systemAgendaContext } from '@/lib/agenda/agent';
 import { samePhone } from '@/lib/agenda/patients';
 import { rescheduleAppointment } from '@/lib/agenda/service';
@@ -16,7 +17,7 @@ import {
 } from '@/lib/db/schema';
 import { postSystemEvent } from '@/lib/messaging/bot';
 import { getPatientPerson } from '@/lib/patients/persons';
-import { localDateKey, localParts } from '@/lib/tasks/tz';
+import { addDaysToKey, localDateKey, localParts, parseDateKey, zonedToUtc } from '@/lib/tasks/tz';
 import { relativeDayLabel } from '@/lib/whatsapp/agent/slot-mention';
 
 /**
@@ -39,6 +40,11 @@ export interface FreedSlot {
   /** La cita que dejó el hueco, si fue una cancelación. */
   freedAppointmentId?: string | null;
   cancelledSlotId?: string | null;
+}
+
+function dayStart(key: string, tz: string): Date {
+  const p = parseDateKey(key);
+  return p ? zonedToUtc(p.year, p.month, p.day, 0, 0, tz) : new Date();
 }
 
 async function tenantTimezone(tenantId: string): Promise<string> {
@@ -93,7 +99,11 @@ export async function offerFreedSlot(
     );
   if (already.some((o) => o.status === 'SENT')) return true;
   const skip = new Set(already.map((o) => o.appointmentId));
+  const tz0 = await tenantTimezone(tenantId);
 
+  // Ventana: el mismo día del hueco y los tres siguientes (fases 1 a 3 de
+  // `rankAdvanceCandidates`). Quien dijo "no mover" no se trae.
+  const windowEnd = dayStart(addDaysToKey(localDateKey(slot.startsAt, tz0), NEXT_DAYS + 1), tz0);
   const candidates = await db
     .select()
     .from(agendaAppointments)
@@ -102,14 +112,17 @@ export async function offerFreedSlot(
         eq(agendaAppointments.tenantId, tenantId),
         eq(agendaAppointments.professionalId, slot.professionalId),
         inArray(agendaAppointments.status, ['SCHEDULED', 'CONFIRMED']),
-        eq(agendaAppointments.advancePreference, 'ACCEPTS'),
+        or(
+          eq(agendaAppointments.advancePreference, 'ACCEPTS'),
+          isNull(agendaAppointments.advancePreference),
+        ),
         isNotNull(agendaAppointments.patientPhone),
-        gt(agendaAppointments.startsAt, slot.endsAt),
+        gte(agendaAppointments.startsAt, slot.endsAt),
+        lt(agendaAppointments.startsAt, windowEnd),
         ...(slot.freedAppointmentId ? [ne(agendaAppointments.id, slot.freedAppointmentId)] : []),
         ...(skip.size ? [notInArray(agendaAppointments.id, [...skip])] : []),
       ),
-    )
-    .orderBy(agendaAppointments.startsAt);
+    );
   const pendingIds = new Set(
     (
       await db
@@ -118,12 +131,14 @@ export async function offerFreedSlot(
         .where(and(eq(advanceOffers.tenantId, tenantId), eq(advanceOffers.status, 'SENT')))
     ).map((o) => o.appointmentId),
   );
-  const target = candidates.find(
-    (c) =>
-      !pendingIds.has(c.id) &&
-      c.endsAt.getTime() - c.startsAt.getTime() <= slotMs &&
-      c.patientPhone,
+  const ranked = rankAdvanceCandidates(
+    { startsAt: slot.startsAt, endsAt: slot.endsAt },
+    candidates.filter((c) => !pendingIds.has(c.id) && c.patientPhone),
+    tz0,
   );
+  const first = ranked[0];
+  const target = first?.candidate;
+  const phase = first?.phase;
   if (!target || !target.patientPhone) return false;
 
   const [professional] = await db
@@ -131,9 +146,9 @@ export async function offerFreedSlot(
     .from(professionals)
     .where(and(eq(professionals.tenantId, tenantId), eq(professionals.id, slot.professionalId)))
     .limit(1);
-  const [tenant, tz, person] = await Promise.all([
+  const tz = tz0;
+  const [tenant, person] = await Promise.all([
     getTenant(tenantId),
-    tenantTimezone(tenantId),
     target.patientId ? getPatientPerson(tenantId, target.patientId).catch(() => null) : null,
   ]);
   const todayKey = localDateKey(now, tz);
@@ -182,10 +197,12 @@ export async function offerFreedSlot(
   }
 
   const clinic = tenant?.name?.trim() || 'la clínica';
-  const text =
-    `${hello}, soy el asistente virtual de la agenda de ${clinic}. ` +
-    `Se ha liberado un hueco ${hueco.day} a las ${hueco.time}${professional ? ` con ${professional.name}` : ''}. ` +
-    `Nos dijisteis que queríais adelantar la cita de ${patientName} del ${cita.day} a las ${cita.time}. ¿Os la cambiamos a ese hueco?`;
+  const ask =
+    phase === 'SAME_DAY_REST'
+      ? `Tenéis la cita de ${patientName} ese mismo día a las ${cita.time}. ¿Os vendría bien adelantarla a ese hueco?`
+      : `Nos dijisteis que queríais adelantar la cita de ${patientName} del ${cita.day} a las ${cita.time}. ¿Os la cambiamos a ese hueco?`;
+  const withWhom = professional ? ` con ${professional.name}` : '';
+  const text = `${hello}, soy el asistente virtual de la agenda de ${clinic}. Se ha liberado un hueco ${hueco.day} a las ${hueco.time}${withWhom}. ${ask}`;
   const sent = await sendClinicWhatsapp(
     tenantId,
     target.patientPhone,
