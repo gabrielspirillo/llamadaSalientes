@@ -1,6 +1,9 @@
 'use client';
 
-import { createAppointmentAction } from '@/app/(dashboard)/dashboard/agenda/actions';
+import {
+  addTimeOffAction,
+  createAppointmentAction,
+} from '@/app/(dashboard)/dashboard/agenda/actions';
 import { type AvailabilityReason, NoSlotsNotice } from '@/components/agenda/no-slots-notice';
 import { PatientDialog } from '@/components/agenda/patient-dialog';
 import { Button } from '@/components/ui/button';
@@ -15,7 +18,7 @@ import {
 import { Input, Label, Select, Textarea } from '@/components/ui/input';
 import { PhoneInput } from '@/components/ui/phone-input';
 import { cn } from '@/lib/cn';
-import { AlertTriangle, CalendarPlus, Loader2, Sparkles, UserPlus } from 'lucide-react';
+import { AlertTriangle, Ban, CalendarPlus, Loader2, Sparkles, UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
@@ -286,6 +289,30 @@ export function AppointmentDialog({
         : !time
           ? 'Elige la hora.'
           : null;
+
+  // Bloquear el hueco sin inventar un paciente: hasta ahora recepción creaba
+  // una cita falsa, y a una familia le llegó un recordatorio que no era.
+  function block() {
+    setError(null);
+    const [h, m] = time.split(':').map(Number);
+    const startMinute = (h ?? 0) * 60 + (m ?? 0);
+    startTransition(async () => {
+      const result = await addTimeOffAction(professionalId, {
+        startDateKey: dateKey,
+        startMinute,
+        endDateKey: dateKey,
+        endMinute: startMinute + duration,
+        kind: 'OTHER',
+        reason: notes.trim() || 'Bloqueo',
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      router.refresh();
+      onClose();
+    });
+  }
 
   function submit(forceOutsideHours = false) {
     setError(null);
@@ -665,6 +692,15 @@ export function AppointmentDialog({
         <DialogFooter className="mt-5 flex justify-end gap-2">
           <Button variant="ghost" onClick={onClose} disabled={pending}>
             Cancelar
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={block}
+            disabled={pending || !professionalId || !dateKey || !time}
+            title="Deja este hueco bloqueado sin cita: ni el asistente ni el panel lo ofrecen"
+          >
+            <Ban className="h-4 w-4" />
+            Bloquear hueco
           </Button>
           {missing && (
             <p className="mr-auto self-center text-[12px] font-semibold text-amber-700">

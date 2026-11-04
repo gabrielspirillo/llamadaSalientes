@@ -122,8 +122,8 @@ export async function GlobalAnalyticsBar({
       {pulse ? (
         <AgendaPulseTiles pulse={pulse} />
       ) : (
-        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
-          <Reveal delay={0}>
+        <div className="rise-stagger mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+          <Reveal className="[--i:0]">
             <StatTile
               label="Citas hoy"
               numeric={today}
@@ -132,7 +132,7 @@ export async function GlobalAnalyticsBar({
               tone="grape"
             />
           </Reveal>
-          <Reveal delay={80}>
+          <Reveal className="[--i:1]">
             <StatTile
               label="No-show (90 días)"
               numeric={noShow.rate * 100}
@@ -144,7 +144,7 @@ export async function GlobalAnalyticsBar({
               trend={noShowTrend.length > 1 ? noShowTrend : undefined}
             />
           </Reveal>
-          <Reveal delay={160}>
+          <Reveal className="[--i:2]">
             <StatTile
               label="Revenue optimizado"
               value={formatMoney(revenue.cents, revenue.currency)}
@@ -153,7 +153,7 @@ export async function GlobalAnalyticsBar({
               tone="mint"
             />
           </Reveal>
-          <Reveal delay={240}>
+          <Reveal className="[--i:3]">
             <StatTile
               label="Recuperación de cancelaciones"
               numeric={recovery.rate * 100}
@@ -168,8 +168,8 @@ export async function GlobalAnalyticsBar({
         </div>
       )}
 
-      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-        <Reveal delay={0}>
+      <div className="rise-stagger mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+        <Reveal className="[--i:0]">
           <StatTile
             label="Tareas abiertas"
             numeric={openTasks}
@@ -178,7 +178,7 @@ export async function GlobalAnalyticsBar({
             tone="honey"
           />
         </Reveal>
-        <Reveal delay={160}>
+        <Reveal className="[--i:1]">
           <StatTile
             label="Equipo"
             numeric={teamCount}
@@ -285,7 +285,7 @@ function hours(minutes: number): string {
 function AgendaPulseTiles({ pulse }: { pulse: AgendaPulse }) {
   const { today, occupancy, assistant, lost } = pulse;
   return (
-    <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+    <div className="rise-stagger mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
       <Reveal delay={0}>
         <StatTile
           label="Citas hoy"

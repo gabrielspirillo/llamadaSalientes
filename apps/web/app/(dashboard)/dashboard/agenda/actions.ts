@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 
+import { AttendanceError, sendAttendanceWhatsapp } from '@/lib/agenda/attendance';
 import {
   AgendaForbiddenError,
   assertProfessionalInScope,
@@ -524,6 +525,32 @@ export async function sendDayOfReminderNowAction(appointmentId: string): Promise
     const { sendDayOfReminderNow } = await import('@/lib/care-profile/day-of-run');
     return await sendDayOfReminderNow(ctx.tenantId, appointmentId);
   } catch (err) {
+    return fail(err);
+  }
+}
+
+/** Manda el justificante de asistencia de la cita por el WhatsApp de la clínica. */
+export async function sendAttendanceJustificanteAction(
+  appointmentId: string,
+  phone?: string,
+): Promise<ActionResult<{ phone: string }>> {
+  try {
+    const ctx = await requireAgendaWriter();
+    const appt = await getAppointment(ctx.tenantId, appointmentId);
+    if (!appt) return { ok: false, error: 'Esa cita no existe.' };
+    await assertProfessionalInScope(ctx, appt.professionalId);
+    const result = await sendAttendanceWhatsapp(ctx.tenantId, appointmentId, phone);
+    await recordAudit({
+      tenantId: ctx.tenantId,
+      actorUserId: ctx.userId,
+      action: 'update',
+      entity: 'agenda_appointment',
+      entityId: appointmentId,
+      after: { patientKey: result.patientKey, attendanceSent: true },
+    }).catch(() => undefined);
+    return { ok: true, data: { phone: result.phone } };
+  } catch (err) {
+    if (err instanceof AttendanceError) return { ok: false, error: err.message };
     return fail(err);
   }
 }

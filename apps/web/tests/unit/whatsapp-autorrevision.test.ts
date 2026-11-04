@@ -20,6 +20,7 @@ describe('autorrevisión del texto final', () => {
       'Vale, te reservo el martes 3 a las 18:00 con Raquel López.',
       [],
       true,
+      new Date('2026-11-02T12:00:00Z'),
     );
     expect(r?.code).toBe('booking_claim');
   });
@@ -133,7 +134,9 @@ describe('mañana y tarde', () => {
   it('no deja llamar "de mañana" a horas de la tarde', () => {
     const t =
       'Para Nico tengo estos huecos por la mañana:\n- Martes 3 a las 16:30\n- Martes 3 a las 17:15';
-    expect(reviewFinalText(t, [], true)?.code).toBe('wrong_daypart');
+    expect(reviewFinalText(t, [], true, new Date('2026-11-02T12:00:00Z'))?.code).toBe(
+      'wrong_daypart',
+    );
     const friday = new Date('2026-11-06T12:00:00Z');
     expect(
       reviewFinalText(

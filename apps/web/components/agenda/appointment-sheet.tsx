@@ -5,6 +5,7 @@ import {
   markAppointmentUnpaidAction,
   registerPaymentAction,
   rescheduleAppointmentAction,
+  sendAttendanceJustificanteAction,
   sendDayOfReminderNowAction,
   setAdvancePreferenceAction,
   updateAppointmentAction,
@@ -30,6 +31,7 @@ import {
   CalendarClock,
   CreditCard,
   Euro,
+  FileCheck2,
   Flag,
   Loader2,
   Minus,
@@ -149,6 +151,7 @@ export function AppointmentSheet({
   );
   const [advanceNote, setAdvanceNote] = React.useState(item.advanceNote ?? '');
   const [reminderSent, setReminderSent] = React.useState(false);
+  const [justificanteSent, setJustificanteSent] = React.useState(false);
 
   /** Como `run`, pero la hoja sigue abierta: pago y adelanto se ajustan sin salir. */
   function runStay(fn: () => Promise<{ ok: true } | { ok: false; error: string }>) {
@@ -385,6 +388,38 @@ export function AppointmentSheet({
               >
                 Enviar ahora
               </Button>
+            </div>
+          )}
+
+          {!['CANCELLED', 'NO_SHOW'].includes(item.status) && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-(--color-border) p-3">
+              <p className="text-[13px] text-zinc-600">
+                <FileCheck2 className="mr-1 inline h-4 w-4 text-zinc-400" />
+                {justificanteSent
+                  ? 'Justificante enviado por WhatsApp.'
+                  : 'Justificante de asistencia para el trabajo o el colegio.'}
+              </p>
+              <div className="flex gap-2">
+                <Button asChild size="sm" variant="ghost">
+                  <a href={`/api/agenda/citas/${item.id}/justificante?download=1`}>Descargar</a>
+                </Button>
+                {canWrite && item.patientPhone && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={pending}
+                    onClick={() =>
+                      runStay(async () => {
+                        const r = await sendAttendanceJustificanteAction(item.id);
+                        if (r.ok) setJustificanteSent(true);
+                        return r;
+                      })
+                    }
+                  >
+                    Enviar por WhatsApp
+                  </Button>
+                )}
+              </div>
             </div>
           )}
 

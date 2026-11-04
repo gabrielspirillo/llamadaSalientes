@@ -1,3 +1,4 @@
+import { DemoToggle } from '@/components/dashboard/demo-switch';
 import { Button } from '@/components/ui/button';
 import { Sparkles } from 'lucide-react';
 import Link from 'next/link';
@@ -32,9 +33,7 @@ export function DemoBanner() {
           <Button asChild variant="secondary" size="sm">
             <Link href="/dashboard/configuration?tab=telephony">Conectar mi clínica</Link>
           </Button>
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/dashboard">Salir del modo demo</Link>
-          </Button>
+          <DemoToggle to="real">Salir del modo demo</DemoToggle>
         </div>
       </div>
     </div>

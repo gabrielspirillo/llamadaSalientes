@@ -31,6 +31,7 @@ import { getPatientPerson } from '@/lib/patients/persons';
 import { sendQueueEvent } from '@/lib/queue/client';
 import { formatDateTime } from '@/lib/tasks/materialize';
 import { localDateKey, localParts, parseDateKey, zonedToUtc } from '@/lib/tasks/tz';
+import { relativeDayLabel } from '@/lib/whatsapp/agent/slot-mention';
 
 type DayOfScripts = NonNullable<CareMessageScripts['dayOf']>;
 type Appointment = typeof agendaAppointments.$inferSelect;
@@ -68,6 +69,12 @@ function vars(appt: Appointment, timezone: string, paciente: string | null) {
  */
 export async function runDayOfTick(now = new Date()): Promise<{ steps: number }> {
   let steps = 0;
+  // Ofertas de adelanto vencidas (todas las clínicas, tengan o no guiones).
+  const { expireAdvanceOffers } = await import('@/lib/agenda/advance-offers');
+  steps += await expireAdvanceOffers(now).catch((err) => {
+    console.warn('[adelanto] caducar ofertas', (err as Error).message);
+    return 0;
+  });
   const profiles = await db
     .select({ tenantId: tenantCareProfile.tenantId, scripts: tenantCareProfile.messageScripts })
     .from(tenantCareProfile)
@@ -123,11 +130,15 @@ async function tickTenant(tenantId: string, dayOf: DayOfScripts, now: Date): Pro
     if (localDateKey(appt.startsAt, tz) !== localDateKey(now, tz)) continue;
     if (state?.outcome) continue;
     const p = localParts(appt.startsAt, tz);
+    // Un recordatorio mandado a mano otro día ("Enviar ahora" la víspera) no
+    // cuenta: el de las 08:00 sale igual.
+    const sentToday =
+      state?.reminderSentAt && state.reminderSentAt >= dayStart ? state.reminderSentAt : null;
     const step = nextDayOfStep({
       times: dayOf,
       state: {
-        reminderSentAt: state?.reminderSentAt ?? null,
-        nudgeSentAt: state?.nudgeSentAt ?? null,
+        reminderSentAt: sentToday,
+        nudgeSentAt: state?.nudgeSentAt && state.nudgeSentAt >= dayStart ? state.nudgeSentAt : null,
         callsDone: state?.callsDone ?? 0,
       },
       now,
@@ -442,13 +453,38 @@ export async function sendDayOfReminderNow(
     .where(eq(clinicSettings.tenantId, tenantId))
     .limit(1);
   const tz = settings?.timezone || 'Europe/Madrid';
-  const sent = await sendClinicWhatsapp(
-    tenantId,
-    appt.patientPhone,
-    [fillScript(dayOf.reminder, vars(appt, tz, await firstNameOf(appt)))],
-    dayOfButtons(appt.id),
-  );
-  return sent ? { ok: true } : { ok: false, error: 'WhatsApp no está conectado.' };
+  // El guion dice "tu cita de hoy": si la cita es otro día, se dice ese día
+  // ("de mañana, miércoles 4 de noviembre"). Mandarlo con "hoy" para una cita
+  // de mañana confundía a las familias.
+  const todayKey = localDateKey(new Date(), tz);
+  const apptKey = localDateKey(appt.startsAt, tz);
+  let text = fillScript(dayOf.reminder, vars(appt, tz, await firstNameOf(appt)));
+  if (apptKey !== todayKey) {
+    const long = appt.startsAt.toLocaleDateString('es-ES', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      timeZone: tz,
+    });
+    const rel = relativeDayLabel(apptKey, todayKey);
+    const label =
+      rel === 'mañana' || rel === 'pasado mañana' ? `de ${rel}, ${long},` : `del ${long},`;
+    text = text.replace(/\bde hoy\b/i, label).replace(/\bhoy\b/i, long);
+  }
+  const sent = await sendClinicWhatsapp(tenantId, appt.patientPhone, [text], dayOfButtons(appt.id));
+  if (!sent) return { ok: false, error: 'WhatsApp no está conectado.' };
+  // Cuenta como recordatorio mandado: así "1", "confirmado" o "nos vemos" lo
+  // confirman. Si la cita es otro día, el tick de ese día lo vuelve a mandar
+  // a su hora (mira sólo lo enviado ese mismo día).
+  const at = new Date();
+  await db
+    .insert(appointmentDayOf)
+    .values({ appointmentId: appt.id, tenantId, reminderSentAt: at })
+    .onConflictDoUpdate({
+      target: appointmentDayOf.appointmentId,
+      set: { reminderSentAt: at, updatedAt: at },
+    });
+  return { ok: true };
 }
 
 /**

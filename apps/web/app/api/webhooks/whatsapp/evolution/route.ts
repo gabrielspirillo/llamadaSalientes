@@ -252,7 +252,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
                     console.warn('[wa-evolution-webhook] day-of text handler failed', err);
                     return false;
                   });
-            if (!dayOfConsumed) {
+            const advanceConsumed = dayOfConsumed
+              ? true
+              : await import('@/lib/agenda/advance-offers')
+                  .then((m) =>
+                    m.handleAdvanceTextReply({
+                      tenantId: conn.tenantId,
+                      contactPhoneE164: persisted.contact.phoneE164,
+                      text: inbound.contentText,
+                    }),
+                  )
+                  .catch((err) => {
+                    console.warn('[wa-evolution-webhook] advance text handler failed', err);
+                    return false;
+                  });
+            if (!advanceConsumed) {
               console.log('[wa-evolution-webhook] encolando wa-process', {
                 tenantId: conn.tenantId,
                 conversationId: persisted.conversation.id,

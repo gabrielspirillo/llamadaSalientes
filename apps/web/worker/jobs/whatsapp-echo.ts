@@ -1,8 +1,8 @@
 import 'server-only';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, gte } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
-import { whatsappConversations, whatsappMessages } from '@/lib/db/schema';
+import { whatsappContacts, whatsappConversations, whatsappMessages } from '@/lib/db/schema';
 import type { QueueJobs } from '@/lib/queue/queues';
 import { processInboundMessages } from '@/lib/whatsapp/agent/multimodal';
 import { persistOutboundEcho } from '@/lib/whatsapp/persist';
@@ -30,6 +30,32 @@ export async function processWhatsappEchoJob(
     )
     .limit(1);
   if (already) return { ok: false, reason: 'sent_by_app' };
+  // Mismo texto que algo que la app mandó a esa conversación hace un momento
+  // (el id del eco no siempre coincide con el del envío): tampoco es alguien
+  // del equipo escribiendo desde el móvil. Tratarlo como tal apagaba al
+  // asistente dos horas cada vez que salía el aviso de las 09:00.
+  const text = data.message.text?.trim();
+  if (text) {
+    const [sameText] = await db
+      .select({ id: whatsappMessages.id })
+      .from(whatsappMessages)
+      .innerJoin(
+        whatsappConversations,
+        eq(whatsappConversations.id, whatsappMessages.conversationId),
+      )
+      .innerJoin(whatsappContacts, eq(whatsappContacts.id, whatsappConversations.contactId))
+      .where(
+        and(
+          eq(whatsappMessages.tenantId, data.message.tenantId),
+          eq(whatsappMessages.direction, 'OUTBOUND'),
+          eq(whatsappContacts.phoneE164, data.message.fromPhoneE164),
+          eq(whatsappMessages.contentText, text),
+          gte(whatsappMessages.createdAt, new Date(Date.now() - 5 * 60_000)),
+        ),
+      )
+      .limit(1);
+    if (sameText) return { ok: false, reason: 'sent_by_app_text' };
+  }
 
   const persisted = await persistOutboundEcho({
     ...data.message,

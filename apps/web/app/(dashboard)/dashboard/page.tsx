@@ -1,4 +1,5 @@
 import { DemoBanner } from '@/components/dashboard/demo-banner';
+import { DemoSwitch, DemoToggle } from '@/components/dashboard/demo-switch';
 import { GlobalAnalyticsBar } from '@/components/dashboard/global-analytics-bar';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { RealtimeRefresh } from '@/components/dashboard/realtime-refresh';
@@ -23,6 +24,24 @@ export default async function DashboardOverview({
 }) {
   const { tenant } = await getCurrentTenant();
   const demo = (await searchParams).demo === '1';
+  // Las dos vistas se renderizan en el servidor; la de muestra es fija y no
+  // toca la base. El cambio entre una y otra es instantáneo, en el cliente.
+  return (
+    <DemoSwitch
+      initialDemo={demo}
+      real={<DashboardBody tenant={tenant} demo={false} />}
+      demo={<DashboardBody tenant={tenant} demo />}
+    />
+  );
+}
+
+async function DashboardBody({
+  tenant,
+  demo,
+}: {
+  tenant: Awaited<ReturnType<typeof getCurrentTenant>>['tenant'];
+  demo: boolean;
+}) {
   // El saludo con nombre y hora vivía en el topbar, donde gastaba sitio en
   // todas las pantallas de trabajo. Aquí es el único lugar donde aporta.
   const [user, timezone] = await Promise.all([
@@ -68,16 +87,10 @@ export default async function DashboardOverview({
         demoBadge={demo}
         actions={
           demo ? (
-            <Button asChild variant="secondary">
-              <Link href="/dashboard">Salir del ejemplo</Link>
-            </Button>
+            <DemoToggle to="real" />
           ) : (
             <>
-              <Button asChild variant="secondary">
-                <Link href="/dashboard?demo=1">
-                  <Sparkles className="h-4 w-4" /> Ver ejemplo
-                </Link>
-              </Button>
+              <DemoToggle to="demo" />
               <Button asChild>
                 <Link href="/dashboard/agent">
                   Probar el asistente
@@ -128,10 +141,11 @@ export default async function DashboardOverview({
               Todavía no hay citas reservadas. Cuando el asistente dé una cita, aparecerá aquí.
             </p>
           ) : (
-            <ul className="divide-y divide-(--color-border-subtle)">
-              {upcoming.slice(0, 6).map((a) => (
+            <ul className="rise-stagger divide-y divide-(--color-border-subtle)">
+              {upcoming.slice(0, 6).map((a, i) => (
                 <li
                   key={a.callId}
+                  style={{ ['--i' as string]: i }}
                   className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-zinc-50"
                 >
                   <Avatar name={a.patientName ?? a.phone ?? 'Paciente'} size={36} />
@@ -167,8 +181,8 @@ export default async function DashboardOverview({
         </Card>
       </Reveal>
 
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-        <Reveal direction="left">
+      <div className="rise-stagger grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <Reveal direction="left" className="[--i:0]">
           <BoardColumn title="Hoy en la clínica" count={upcoming.length}>
             <BoardCard
               href="/dashboard/calls"
@@ -215,7 +229,7 @@ export default async function DashboardOverview({
           </BoardColumn>
         </Reveal>
 
-        <Reveal>
+        <Reveal className="[--i:1]">
           <BoardColumn title="Canales de contacto">
             <BoardCard
               href="/dashboard/whatsapp"
@@ -252,7 +266,7 @@ export default async function DashboardOverview({
           </BoardColumn>
         </Reveal>
 
-        <Reveal direction="right">
+        <Reveal direction="right" className="[--i:2]">
           <BoardColumn title="Tu clínica">
             <TeamBoardCard />
             <BoardCard

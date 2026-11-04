@@ -210,7 +210,21 @@ async function onCancelled(
     return null;
   });
 
-  if (cancelled) {
+  // Primero, a quien marcó "quiere adelantar" con el mismo profesional; el
+  // hueco queda reservado hasta que conteste. La lista de espera va después.
+  const { offerFreedSlot } = await import('@/lib/agenda/advance-offers');
+  const offered = await offerFreedSlot(tenantId, {
+    professionalId: appointment.professionalId,
+    startsAt: appointment.startsAt,
+    endsAt: appointment.endsAt,
+    freedAppointmentId: appointment.id,
+    cancelledSlotId: cancelled?.id ?? null,
+  }).catch((err) => {
+    console.warn('[agenda-sync] oferta de adelanto', err);
+    return false;
+  });
+
+  if (cancelled && !offered) {
     const { enqueueOfferForCancelledSlot } = await import('@/lib/waitlist/engine');
     await enqueueOfferForCancelledSlot(tenantId, cancelled.id).catch((err) =>
       console.warn('[agenda-sync] oferta de lista de espera', err),

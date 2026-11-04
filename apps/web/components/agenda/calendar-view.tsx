@@ -1,5 +1,6 @@
 'use client';
 
+import { removeTimeOffAction } from '@/app/(dashboard)/dashboard/agenda/actions';
 import { Button, IconButton } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/feedback';
@@ -20,6 +21,7 @@ import {
   Minus,
   Plus,
   Users,
+  X,
 } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import * as React from 'react';
@@ -223,6 +225,7 @@ export function CalendarView(props: CalendarViewProps) {
   );
 
   const router = useRouter();
+  const [, startTransition] = React.useTransition();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [seed, setSeed] = React.useState<AppointmentDialogSeed | null>(null);
@@ -546,15 +549,40 @@ export function CalendarView(props: CalendarViewProps) {
                       return (
                         <div
                           key={`${b.id}-${b.dateKey}`}
-                          className="pointer-events-none absolute inset-x-1 rounded-lg bg-[repeating-linear-gradient(45deg,rgba(120,120,120,0.12),rgba(120,120,120,0.12)_6px,transparent_6px,transparent_12px)] ring-1 ring-zinc-200"
+                          className="group/block absolute inset-x-1 rounded-lg bg-[repeating-linear-gradient(45deg,rgba(120,120,120,0.12),rgba(120,120,120,0.12)_6px,transparent_6px,transparent_12px)] ring-1 ring-zinc-200"
                           style={{
                             top: minutesToTop(from, dayWindow.startMinute),
                             height: Math.max(18, ((to - from) / 60) * HOUR_PX),
                           }}
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
                         >
                           <span className="block truncate px-2 py-1 text-[11px] font-semibold text-zinc-500">
                             {b.reason ?? 'No disponible'}
                           </span>
+                          {canWrite && (
+                            <button
+                              type="button"
+                              title="Quitar este bloqueo"
+                              aria-label="Quitar este bloqueo"
+                              className="absolute right-1 top-1 hidden h-6 w-6 place-items-center rounded-full bg-white text-zinc-500 shadow ring-1 ring-zinc-200 hover:text-rose-600 group-hover/block:grid"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (
+                                  !window.confirm(
+                                    '¿Quitar este bloqueo? El hueco vuelve a quedar libre.',
+                                  )
+                                )
+                                  return;
+                                startTransition(async () => {
+                                  await removeTimeOffAction(b.id);
+                                  router.refresh();
+                                });
+                              }}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                         </div>
                       );
                     })}

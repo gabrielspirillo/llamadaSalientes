@@ -240,6 +240,15 @@ export async function tryHandleReminderInbound(args: {
 }): Promise<{ consumed: boolean; action?: ReminderButtonAction }> {
   const replyId = extractInteractiveReplyId(args.rawMessage, args.channel);
   if (!replyId) return { consumed: false };
+  if (replyId.startsWith('adv:')) {
+    const { handleAdvanceButton } = await import('@/lib/agenda/advance-offers');
+    const consumed = await handleAdvanceButton({
+      tenantId: args.tenantId,
+      contactPhoneE164: args.contactPhoneE164,
+      rawButtonId: replyId,
+    });
+    return { consumed };
+  }
   if (replyId.startsWith('dayof:')) {
     // Botones del recordatorio del día de la cita (perfil de atención).
     const { handleDayOfButton } = await import('@/lib/care-profile/day-of-run');

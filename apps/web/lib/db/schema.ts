@@ -2662,6 +2662,45 @@ export const invoices = pgTable(
 );
 
 // ─── Confirmación el día de la cita (perfil de atención) ─────────────────────
+// Oferta de un hueco liberado a una familia que quería adelantar su cita.
+// Ver `lib/agenda/advance-offers.ts` y migración 0061.
+export const advanceOffers = pgTable(
+  'advance_offers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    appointmentId: uuid('appointment_id')
+      .references(() => agendaAppointments.id, { onDelete: 'cascade' })
+      .notNull(),
+    professionalId: uuid('professional_id')
+      .references(() => professionals.id, { onDelete: 'cascade' })
+      .notNull(),
+    freedAppointmentId: uuid('freed_appointment_id').references(() => agendaAppointments.id, {
+      onDelete: 'set null',
+    }),
+    cancelledSlotId: uuid('cancelled_slot_id').references(() => cancelledSlots.id, {
+      onDelete: 'set null',
+    }),
+    slotStartsAt: timestamp('slot_starts_at', { withTimezone: true }).notNull(),
+    slotEndsAt: timestamp('slot_ends_at', { withTimezone: true }).notNull(),
+    holdBlockId: uuid('hold_block_id').references(() => professionalTimeOff.id, {
+      onDelete: 'set null',
+    }),
+    phoneE164: text('phone_e164').notNull(),
+    /** SENT | ACCEPTED | DECLINED | EXPIRED | CANCELLED */
+    status: text('status').notNull().default('SENT'),
+    sentAt: timestamp('sent_at', { withTimezone: true }).defaultNow().notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    answeredAt: timestamp('answered_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    pendingIdx: index('advance_offers_pending_idx').on(t.tenantId, t.status, t.expiresAt),
+  }),
+);
+
 // Un paso por fila: qué se mandó ya de la secuencia 08:00 → 12:30 y cómo
 // acabó. Ver `lib/care-profile/day-of.ts` y migración 0055.
 export const appointmentDayOf = pgTable(
