@@ -20,3 +20,16 @@ describe('respuesta a la oferta de adelanto', () => {
     ).toBeNull();
   });
 });
+
+describe('plazo para contestar la oferta', () => {
+  it('dice los 45 minutos o, si el hueco está cerca, la hora límite', async () => {
+    const { validityLine } = await import('@/lib/agenda/advance-offers');
+    const now = new Date('2026-11-05T15:00:00Z');
+    expect(validityLine(now, new Date(now.getTime() + 45 * 60_000), 'Europe/Madrid')).toBe(
+      'Esta oferta es válida durante los próximos 45 minutos.',
+    );
+    expect(validityLine(now, new Date(now.getTime() + 20 * 60_000), 'Europe/Madrid')).toBe(
+      'Esta oferta es válida hasta las 16:20.',
+    );
+  });
+});

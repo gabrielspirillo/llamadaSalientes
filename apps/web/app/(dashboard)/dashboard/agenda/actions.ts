@@ -1015,6 +1015,8 @@ export async function createPriorityRequestAction(input: {
   untilDay: string;
   professionalId?: string | null;
   note?: string | null;
+  /** Sin fecha de fin: hasta que tenga la cita o se desactive. */
+  openEnded?: boolean;
 }): Promise<ActionResult<{ id: string }>> {
   try {
     const ctx = await requireAgendaWriter();

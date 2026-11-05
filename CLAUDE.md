@@ -992,9 +992,11 @@ caducidad). Tabla `advance_offers` (migración `0061`).
 1. Quien tiene cita **ese mismo día**, más tarde, y marcó **↑ quiere
    adelantar**. La más cercana al hueco primero.
 0. Antes que nadie, el paciente que la clínica eligió desde su ficha con
-   **"Primer hueco libre"** (`slot_priority_requests`, migración `0063`;
-   `lib/agenda/priority-requests.ts` + `PrioritySlotButton`): tenga o no cita,
-   en el rango de días y con el profesional que se diga. Si acepta, se le
+   **"Prioridad"** (`slot_priority_requests`, migración `0063`;
+   `lib/agenda/priority-requests.ts` + `PrioritySlotButton`): tenga o no cita.
+   Un clic, sin fechas ni motivo (la clínica lo pidió así): queda activa
+   hasta que tenga la cita o se desactive (`openEnded`, tope de 60 días);
+   el profesional sólo se pregunta si hay más de uno. Si acepta, se le
    CREA la cita (`source = WAITLIST`) y le llegan los mensajes de
    confirmación de la clínica (`clinicBookingMessages`). Es "la niña que
    está muy malita" de Raquel (5/11).
@@ -1022,7 +1024,10 @@ en pie. Una cancelación ya no equivale a "hueco libre".
 
 **Cómo va la oferta**: el hueco queda **reservado con un bloqueo** de la
 agenda (`professional_time_off`, motivo "Hueco reservado…") mientras la
-familia contesta: 2 h, o hasta 30 min antes del hueco si es antes. Se manda
+familia contesta: **45 minutos** (lo pidió la clínica el 5/11; antes eran 2 h),
+o hasta 30 min antes del hueco si es antes. El propio WhatsApp lo dice
+("Esta oferta es válida durante los próximos 45 minutos" / "…hasta las
+16:30", `validityLine`). Se manda
 por el WhatsApp de la clínica con dos opciones (1 Sí / 2 No; botones en
 Cloud API, numeradas en Evolution). **Sí** → se quita el bloqueo, se mueve la
 cita (`rescheduleAppointment`) y el hueco que deja se ofrece al siguiente con

@@ -7,6 +7,7 @@ import { AgendaValidationError } from '@/lib/agenda/service';
 import { db } from '@/lib/db/client';
 import { professionals, slotPriorityRequests } from '@/lib/db/schema';
 import { getPatientPerson } from '@/lib/patients/persons';
+import { addDaysToKey } from '@/lib/tasks/tz';
 
 /**
  * "Si se libera un hueco, que sea para este paciente". La clínica lo pide
@@ -28,14 +29,17 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 export async function createPriorityRequest(
   ctx: AgendaContext,
-  input: {
+  raw: {
     patientId: string;
     fromDay: string;
     untilDay: string;
     professionalId?: string | null;
     note?: string | null;
+    /** Sin fecha de fin: hasta que tenga la cita o se desactive (tope de 60 días). */
+    openEnded?: boolean;
   },
 ): Promise<{ id: string }> {
+  const input = raw.openEnded ? { ...raw, untilDay: addDaysToKey(raw.fromDay, 60) } : raw;
   if (!DAY.test(input.fromDay) || !DAY.test(input.untilDay) || input.untilDay < input.fromDay) {
     throw new AgendaValidationError('Las fechas no son válidas.');
   }

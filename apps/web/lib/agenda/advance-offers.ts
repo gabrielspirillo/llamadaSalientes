@@ -47,7 +47,18 @@ import { relativeDayLabel } from '@/lib/whatsapp/agent/slot-mention';
 
 import { HOLD_REASON } from '@/lib/agenda/shared';
 export { HOLD_REASON };
-const HOLD_MS = 2 * 3_600_000;
+/** Lo que tiene cada familia para contestar (la clínica pidió 45 min el 5/11). */
+const HOLD_MS = 45 * 60_000;
+
+/** "Esta oferta es válida durante los próximos 45 minutos" (o "hasta las 16:30" si el hueco está cerca). */
+export function validityLine(now: Date, expiresAt: Date, tz: string): string {
+  const mins = Math.round((expiresAt.getTime() - now.getTime()) / 60_000);
+  if (mins >= HOLD_MS / 60_000 - 1) {
+    return `Esta oferta es válida durante los próximos ${HOLD_MS / 60_000} minutos.`;
+  }
+  const p = localParts(expiresAt, tz);
+  return `Esta oferta es válida hasta las ${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}.`;
+}
 const MIN_LEAD_MS = 45 * 60_000;
 
 export interface FreedSlot {
@@ -282,7 +293,7 @@ export async function offerFreedSlot(
       ? `Tenéis la cita de ${patientName} ese mismo día a las ${cita.time}. ¿Os vendría bien adelantarla a ese hueco?`
       : `Nos dijisteis que queríais adelantar la cita de ${patientName} del ${cita.day} a las ${cita.time}. ¿Os la cambiamos a ese hueco?`;
   const withWhom = professional ? ` con ${professional.name}` : '';
-  const text = `${hello}, soy el asistente virtual de la agenda de ${clinic}. Se ha liberado un hueco ${hueco.day} a las ${hueco.time}${withWhom}. ${ask}`;
+  const text = `${hello}, soy el asistente virtual de la agenda de ${clinic}. Se ha liberado un hueco ${hueco.day} a las ${hueco.time}${withWhom}. ${ask}\n\n${validityLine(now, expiresAt, tz)}`;
   const sent = await sendClinicWhatsapp(
     tenantId,
     target.patientPhone,
@@ -415,7 +426,7 @@ async function offerToPriorityRequest(
   }
   const clinic = tenant?.name?.trim() || 'la clínica';
   const withWhom = professional ? ` con ${professional.name}` : '';
-  const text = `${hello}, soy el asistente virtual de la agenda de ${clinic}. Se ha liberado un hueco ${hueco.day} a las ${hueco.time}${withWhom} y la clínica nos ha pedido ofrecéroslo para ${firstName}. ¿Os lo reservamos?`;
+  const text = `${hello}, soy el asistente virtual de la agenda de ${clinic}. Se ha liberado un hueco ${hueco.day} a las ${hueco.time}${withWhom} y la clínica nos ha pedido ofrecéroslo para ${firstName}. ¿Os lo reservamos?\n\n${validityLine(now, expiresAt, tz)}`;
   const sent = await sendClinicWhatsapp(
     tenantId,
     req.phoneE164,
