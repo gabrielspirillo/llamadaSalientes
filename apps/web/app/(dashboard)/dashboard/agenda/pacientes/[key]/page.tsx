@@ -14,7 +14,6 @@ import { PatientSignalBadges } from '@/components/agenda/patient-signals';
 import { PatientTabs } from '@/components/agenda/patient-tabs';
 import { RemovePatientButton } from '@/components/agenda/remove-patient-button';
 import { TodayAppointmentCard, type TodayItem } from '@/components/agenda/today-appointment-card';
-import { CaseSummaryCards } from '@/components/patients/case-summary-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardTopbar } from '@/components/ui/card';
@@ -62,7 +61,6 @@ import { localDateKey } from '@/lib/tasks/tz';
 import { CalendarDays, CalendarPlus, MessageCircle, Pencil, Phone, Star } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Suspense } from 'react';
 import { AgendaNav } from '../../agenda-nav';
 
 export const dynamic = 'force-dynamic';
@@ -868,21 +866,18 @@ export default async function PacienteDossierPage({
 
           {showAside && (
             <aside className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-[132px]">
-              {person && careProfile && (
-                // Aparte: sus lecturas no retrasan el resto de la ficha.
-                <Suspense fallback={null}>
-                  <CaseSummaryCards
-                    tenantId={ctx.tenantId}
-                    patientIds={[person.id]}
-                    profile={careProfile}
-                    timezone={timezone}
-                    hasEsign={hasEsign}
-                    showFichaLink={false}
-                    omit={['medication', 'watchouts']}
-                  />
-                </Suspense>
-              )}
-              {lastNote && (
+              {/* La clínica pidió (5/11) ver aquí la historia clínica entera, no el
+                  resumen del caso: lo que escribió en visitas anteriores, la más
+                  reciente arriba. El resumen sigue en el chat de WhatsApp. */}
+              <div className="hidden overflow-hidden rounded-[22px] border border-(--color-border) bg-white shadow-[var(--shadow-soft)] lg:block">
+                <HistoryTimeline
+                  notes={historyNotes}
+                  pediatric={Boolean(careProfile)}
+                  writeHref={null}
+                  compact
+                />
+              </div>
+              {!historyNotes.length && lastNote && (
                 <div className="hidden flex-col gap-2 rounded-[22px] border border-(--color-border) bg-white p-[18px] shadow-[var(--shadow-soft)] lg:flex">
                   <span className="text-[12px] font-bold uppercase tracking-[0.14em] text-zinc-600">
                     Última visita · {fmtShort.format(lastNote.createdAt)}

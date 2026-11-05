@@ -38,11 +38,14 @@ export function HistoryTimeline({
   notes,
   pediatric,
   writeHref,
+  compact = false,
 }: {
   notes: HistoryNoteView[];
   pediatric: boolean;
   /** Dónde se escribe la nota; null si el rol no puede. */
   writeHref: string | null;
+  /** En el lateral de la ficha: cabecera pequeña, sin filtro, letra menor. */
+  compact?: boolean;
 }) {
   const [professionalId, setProfessionalId] = React.useState<string>('all');
   const professionals = React.useMemo(() => {
@@ -55,13 +58,22 @@ export function HistoryTimeline({
     professionalId === 'all' ? notes : notes.filter((n) => n.professionalId === professionalId);
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <h2 className="flex-1 text-[18px] font-bold tracking-tight text-zinc-900">
-          Historia clínica{' '}
-          <span className="text-[13px] font-medium text-zinc-600">· la más reciente arriba</span>
-        </h2>
-        {professionals.length > 1 && (
+    <div className={compact ? 'p-[18px]' : 'p-4 md:p-6'}>
+      <div className={cn('flex flex-wrap items-center gap-3', compact ? 'mb-3' : 'mb-4')}>
+        {compact ? (
+          <h2 className="flex-1 text-[12px] font-bold uppercase tracking-[0.14em] text-zinc-600">
+            Historia clínica{' '}
+            <span className="font-medium normal-case tracking-normal">
+              · la más reciente arriba
+            </span>
+          </h2>
+        ) : (
+          <h2 className="flex-1 text-[18px] font-bold tracking-tight text-zinc-900">
+            Historia clínica{' '}
+            <span className="text-[13px] font-medium text-zinc-600">· la más reciente arriba</span>
+          </h2>
+        )}
+        {!compact && professionals.length > 1 && (
           <fieldset className="m-0 flex flex-wrap gap-1.5 border-0 p-0">
             <legend className="sr-only">Filtrar por profesional</legend>
             <Chip active={professionalId === 'all'} onClick={() => setProfessionalId('all')}>
@@ -80,7 +92,11 @@ export function HistoryTimeline({
         )}
       </div>
 
-      {notes.length === 0 ? (
+      {notes.length === 0 && compact ? (
+        <p className="text-[13px] text-zinc-600">
+          Todavía no hay notas. La de hoy se escribe en este mismo formulario.
+        </p>
+      ) : notes.length === 0 ? (
         <EmptyState
           icon={<History className="h-5 w-5" />}
           title="Todavía no hay notas"
@@ -118,7 +134,7 @@ export function HistoryTimeline({
                     <span aria-hidden className="mt-1.5 w-0.5 flex-1 bg-(--color-border)" />
                   )}
                 </div>
-                <div className="flex min-w-0 flex-col gap-1.5 pb-6">
+                <div className={cn('flex min-w-0 flex-col gap-1.5', compact ? 'pb-4' : 'pb-6')}>
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
                     <span className="text-[13px] font-bold text-zinc-900">{n.whenLabel}</span>
                     <span className="text-[12px] text-zinc-600">{n.professionalName}</span>
@@ -134,7 +150,12 @@ export function HistoryTimeline({
                       </Badge>
                     )}
                   </div>
-                  <p className="text-[15px] font-semibold text-zinc-900">
+                  <p
+                    className={cn(
+                      'font-semibold text-zinc-900',
+                      compact ? 'text-[14px]' : 'text-[15px]',
+                    )}
+                  >
                     <span className="text-zinc-600">
                       {pediatric ? 'Diagnóstico: ' : 'Motivo: '}
                     </span>
