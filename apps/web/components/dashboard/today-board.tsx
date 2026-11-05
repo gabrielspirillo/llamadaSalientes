@@ -142,11 +142,7 @@ export function TodayBoardCard({ board, demo }: { board: TodayBoard; demo?: bool
             <>
               <div
                 className="relative mt-4 h-1.5 w-full overflow-hidden rounded-full bg-white/10"
-                role="progressbar"
-                aria-valuenow={pct}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-label="Citas atendidas hoy"
+                title={`${done} de ${board.items.length} atendidas`}
               >
                 <div
                   className="bar-fill h-full rounded-full bg-[linear-gradient(90deg,#6bc2a4,#a7f3d0)]"
