@@ -132,10 +132,13 @@ export function PatientHeader({
               <dd className="flex min-w-0 flex-wrap items-baseline gap-x-2">
                 <span
                   className={cn(
-                    f.wide ? 'line-clamp-4 whitespace-pre-line' : 'line-clamp-2',
+                    // Tutores: una línea por tutor, sin partir el teléfono en dos.
+                    f.wide
+                      ? 'overflow-hidden text-ellipsis whitespace-pre text-[14px] font-bold tabular-nums'
+                      : 'line-clamp-2',
                     f.emphasis
                       ? 'text-[20px] font-extrabold md:text-[22px]'
-                      : 'text-[15px] font-bold',
+                      : !f.wide && 'text-[15px] font-bold',
                     f.tone === 'warn'
                       ? 'text-amber-700'
                       : f.tone === 'muted'

@@ -157,7 +157,14 @@ export async function offerFreedSlot(
       ),
     );
   if (already.some((o) => o.status === 'SENT')) return true;
-  const skip = new Set(already.map((o) => o.appointmentId));
+  // Sólo quien dijo que no o no contestó. Una oferta CANCELADA (el hueco se
+  // ocupó mientras tanto) no es culpa de la familia: si vuelve a liberarse,
+  // se le vuelve a ofrecer.
+  const skip = new Set(
+    already
+      .filter((o) => o.status === 'DECLINED' || o.status === 'EXPIRED')
+      .map((o) => o.appointmentId),
+  );
   const tz0 = await tenantTimezone(tenantId);
 
   // Ventana: el mismo día del hueco y los tres siguientes (fases 1 a 3 de
@@ -357,13 +364,15 @@ async function pendingOfferFor(tenantId: string, phone: string) {
 async function resolveOffer(
   row: typeof advanceOffers.$inferSelect,
   answer: 'yes' | 'no',
-): Promise<string[]> {
+): Promise<{ messages: string[]; after?: () => Promise<void> }> {
   const tz = await tenantTimezone(row.tenantId);
   const todayKey = localDateKey(new Date(), tz);
   if (answer === 'no') {
     await closeOffer(row.id, 'DECLINED');
-    await passToNext(row);
-    return ['Vale, dejamos la cita como estaba. ¡Gracias por contestar!'];
+    return {
+      messages: ['Vale, dejamos la cita como estaba. ¡Gracias por contestar!'],
+      after: () => passToNext(row),
+    };
   }
   // Antes de tocar nada: el hueco tiene que seguir libre (sin contar nuestra
   // propia reserva). Si alguien lo ocupó a mano, se le dice y no se mueve.
@@ -374,12 +383,14 @@ async function resolveOffer(
   });
   if (!stillFree) {
     await closeOffer(row.id, 'CANCELLED');
-    return [
-      'Lo sentimos, ese hueco acaba de ocuparse. Vuestra cita sigue como estaba y os avisaremos si se libera otro.',
-    ];
+    return {
+      messages: [
+        'Lo sentimos, ese hueco acaba de ocuparse. Vuestra cita sigue como estaba y os avisaremos si se libera otro.',
+      ],
+    };
   }
   const closed = await closeOffer(row.id, 'ACCEPTED');
-  if (!closed) return [];
+  if (!closed) return { messages: [] };
   const [before] = await db
     .select({
       startsAt: agendaAppointments.startsAt,
@@ -402,9 +413,11 @@ async function resolveOffer(
   } catch (err) {
     console.warn('[adelanto] no se pudo mover la cita', (err as Error).message);
     await db.update(advanceOffers).set({ status: 'CANCELLED' }).where(eq(advanceOffers.id, row.id));
-    return [
-      'Lo sentimos, ese hueco acaba de ocuparse. Vuestra cita sigue como estaba y os avisaremos si se libera otro.',
-    ];
+    return {
+      messages: [
+        'Lo sentimos, ese hueco acaba de ocuparse. Vuestra cita sigue como estaba y os avisaremos si se libera otro.',
+      ],
+    };
   }
   const when = describe(row.slotStartsAt, tz, todayKey);
   await postSystemEvent({
@@ -414,16 +427,20 @@ async function resolveOffer(
     body: `${before?.patientName ?? 'La familia'} aceptó el hueco y su cita se movió.`,
     dedupeKey: `adv:accepted:${row.id}`,
   }).catch(() => undefined);
-  // El hueco que deja la cita movida se ofrece al siguiente que quería adelantar.
-  if (before) {
-    await offerFreedSlot(row.tenantId, {
-      professionalId: row.professionalId,
-      startsAt: before.startsAt,
-      endsAt: before.endsAt,
-      freedAppointmentId: row.appointmentId,
-    }).catch(() => false);
-  }
-  return [`¡Hecho! La cita queda ${when.day} a las ${when.time}. Os esperamos.`];
+  return {
+    messages: [`¡Hecho! La cita queda ${when.day} a las ${when.time}. Os esperamos.`],
+    // El hueco que deja la cita movida se ofrece al siguiente, ya contestada.
+    after: before
+      ? async () => {
+          await offerFreedSlot(row.tenantId, {
+            professionalId: row.professionalId,
+            startsAt: before.startsAt,
+            endsAt: before.endsAt,
+            freedAppointmentId: row.appointmentId,
+          }).catch(() => false);
+        }
+      : undefined,
+  };
 }
 
 /** Botón "adv:yes:<id>" / "adv:no:<id>" (Cloud API) . */
@@ -446,9 +463,10 @@ export async function handleAdvanceButton(args: {
     )
     .limit(1);
   if (!row || !samePhone(row.phoneE164, args.contactPhoneE164)) return false;
-  const messages = await resolveOffer(row, m[1] === 'yes' ? 'yes' : 'no');
+  const { messages, after } = await resolveOffer(row, m[1] === 'yes' ? 'yes' : 'no');
   if (messages.length)
     await sendClinicWhatsapp(args.tenantId, args.contactPhoneE164, messages).catch(() => false);
+  if (after) await after();
   return true;
 }
 
@@ -462,9 +480,10 @@ export async function handleAdvanceTextReply(args: {
   if (!row) return false;
   const answer = parseAdvanceReply(args.text);
   if (!answer) return false;
-  const messages = await resolveOffer(row, answer);
+  const { messages, after } = await resolveOffer(row, answer);
   if (messages.length)
     await sendClinicWhatsapp(args.tenantId, args.contactPhoneE164, messages).catch(() => false);
+  if (after) await after();
   return true;
 }
 

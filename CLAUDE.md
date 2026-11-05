@@ -1019,7 +1019,12 @@ Cloud API, numeradas en Evolution). **Sí** → se quita el bloqueo, se mueve la
 cita (`rescheduleAppointment`) y el hueco que deja se ofrece al siguiente con
 la misma regla. **No** o sin respuesta (`expireAdvanceOffers`, en el tick de
 cada 5 min) → siguiente familia; a quien ya rechazó ese hueco no se le vuelve
-a ofrecer. Cada paso deja tarjeta en `#agenda`, y el panel cuenta los huecos
+a ofrecer (una oferta CANCELADA porque el hueco se ocupó entre medias no
+cuenta: si vuelve a liberarse se le ofrece otra vez). La respuesta a la familia
+sale ANTES de pasar al siguiente. Hay una prueba de extremo a extremo contra el
+entorno de QA en el scratchpad de la sesión (`qa/e2e-adelanto.ts`: cancelación
+real, rechazo, hueco reocupado, aceptación, cancelación solapada, caducidad).
+Cada paso deja tarjeta en `#agenda`, y el panel cuenta los huecos
 ofrecidos en "Requiere atención". Un bloqueo de reserva se puede quitar a
 mano desde el calendario; la oferta sigue viva hasta que conteste o caduque.
 
