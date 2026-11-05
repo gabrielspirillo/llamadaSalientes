@@ -2664,6 +2664,44 @@ export const invoices = pgTable(
 );
 
 // ─── Confirmación el día de la cita (perfil de atención) ─────────────────────
+// "Si se libera un hueco, que sea para este paciente": la clínica elige a un
+// niño (con o sin cita) y va el primero. Migración 0063.
+export const slotPriorityRequests = pgTable(
+  'slot_priority_requests',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    patientId: uuid('patient_id').references(() => patients.id, { onDelete: 'cascade' }),
+    patientKey: text('patient_key').notNull(),
+    patientName: text('patient_name').notNull(),
+    phoneE164: text('phone_e164').notNull(),
+    professionalId: uuid('professional_id').references(() => professionals.id, {
+      onDelete: 'cascade',
+    }),
+    treatmentId: uuid('treatment_id').references(() => treatments.id, { onDelete: 'set null' }),
+    fromDay: text('from_day').notNull(),
+    untilDay: text('until_day').notNull(),
+    note: text('note'),
+    /** ACTIVE | BOOKED | CANCELLED */
+    status: text('status').notNull().default('ACTIVE'),
+    createdByUserId: uuid('created_by_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    activeIdx: index('slot_priority_requests_active_idx').on(
+      t.tenantId,
+      t.status,
+      t.fromDay,
+      t.untilDay,
+    ),
+  }),
+);
+
 // Oferta de un hueco liberado a una familia que quería adelantar su cita.
 // Ver `lib/agenda/advance-offers.ts` y migración 0061.
 export const advanceOffers = pgTable(
@@ -2673,9 +2711,14 @@ export const advanceOffers = pgTable(
     tenantId: uuid('tenant_id')
       .references(() => tenants.id, { onDelete: 'cascade' })
       .notNull(),
-    appointmentId: uuid('appointment_id')
-      .references(() => agendaAppointments.id, { onDelete: 'cascade' })
-      .notNull(),
+    /** La cita a adelantar. Null cuando la oferta es para una petición de prioridad. */
+    appointmentId: uuid('appointment_id').references(() => agendaAppointments.id, {
+      onDelete: 'cascade',
+    }),
+    /** "Primer hueco para este paciente": se le da cita nueva. Migración 0063. */
+    requestId: uuid('request_id').references(() => slotPriorityRequests.id, {
+      onDelete: 'cascade',
+    }),
     professionalId: uuid('professional_id')
       .references(() => professionals.id, { onDelete: 'cascade' })
       .notNull(),

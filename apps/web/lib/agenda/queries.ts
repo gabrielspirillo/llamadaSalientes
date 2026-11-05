@@ -8,7 +8,12 @@ import {
   patientKeyForPerson,
   phoneFromPatientKey,
 } from '@/lib/agenda/patients';
-import { BUSY_STATUSES, type ShiftRule, type SlotCandidate } from '@/lib/agenda/shared';
+import {
+  BUSY_STATUSES,
+  HOLD_REASON,
+  type ShiftRule,
+  type SlotCandidate,
+} from '@/lib/agenda/shared';
 import {
   GUARDIAN_ROLE_LABELS,
   type Guardian,
@@ -526,7 +531,11 @@ export async function getAvailability(
         ),
       ),
     db
-      .select({ startsAt: professionalTimeOff.startsAt, endsAt: professionalTimeOff.endsAt })
+      .select({
+        startsAt: professionalTimeOff.startsAt,
+        endsAt: professionalTimeOff.endsAt,
+        reason: professionalTimeOff.reason,
+      })
       .from(professionalTimeOff)
       .where(
         and(
@@ -570,7 +579,11 @@ export async function getAvailability(
       end: a.endsAt,
       firstVisit: a.isFirstVisit,
     })),
-    blocks: blockRows.map((b) => ({ start: b.startsAt, end: b.endsAt })),
+    // Recepción ve libre el hueco reservado para una oferta (puede darlo);
+    // los agentes no.
+    blocks: blockRows
+      .filter((b) => !params.staff || b.reason !== HOLD_REASON)
+      .map((b) => ({ start: b.startsAt, end: b.endsAt })),
     options,
     limit: params.limit,
   });

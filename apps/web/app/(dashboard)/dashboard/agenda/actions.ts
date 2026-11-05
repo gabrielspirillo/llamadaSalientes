@@ -1006,3 +1006,46 @@ export async function voidInvoiceAction(invoiceId: string, reason: string): Prom
     return fail(err);
   }
 }
+
+// ─── "Primer hueco que se libere" para un paciente ──────────────────────────
+
+export async function createPriorityRequestAction(input: {
+  patientId: string;
+  fromDay: string;
+  untilDay: string;
+  professionalId?: string | null;
+  note?: string | null;
+}): Promise<ActionResult<{ id: string }>> {
+  try {
+    const ctx = await requireAgendaWriter();
+    const { createPriorityRequest } = await import('@/lib/agenda/priority-requests');
+    const row = await createPriorityRequest(ctx, input);
+    await recordAudit({
+      tenantId: ctx.tenantId,
+      actorUserId: ctx.userId,
+      action: 'create',
+      entity: 'agenda_appointment',
+      entityId: row.id,
+      after: { patientKey: `pat:${input.patientId}`, priorityForFreedSlot: input },
+    }).catch(() => undefined);
+    revalidatePatientKey(`pat:${input.patientId}`);
+    return { ok: true, data: row };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+export async function cancelPriorityRequestAction(
+  id: string,
+  patientId: string,
+): Promise<ActionResult> {
+  try {
+    const ctx = await requireAgendaWriter();
+    const { cancelPriorityRequest } = await import('@/lib/agenda/priority-requests');
+    await cancelPriorityRequest(ctx, id);
+    revalidatePatientKey(`pat:${patientId}`);
+    return { ok: true };
+  } catch (err) {
+    return fail(err);
+  }
+}

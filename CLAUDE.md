@@ -991,10 +991,19 @@ caducidad). Tabla `advance_offers` (migración `0061`).
 
 1. Quien tiene cita **ese mismo día**, más tarde, y marcó **↑ quiere
    adelantar**. La más cercana al hueco primero.
+0. Antes que nadie, el paciente que la clínica eligió desde su ficha con
+   **"Primer hueco libre"** (`slot_priority_requests`, migración `0063`;
+   `lib/agenda/priority-requests.ts` + `PrioritySlotButton`): tenga o no cita,
+   en el rango de días y con el profesional que se diga. Si acepta, se le
+   CREA la cita (`source = WAITLIST`) y le llegan los mensajes de
+   confirmación de la clínica (`clinicBookingMessages`). Es "la niña que
+   está muy malita" de Raquel (5/11).
 2. Si no hay nadie, los **tres días siguientes**, uno a uno: primero quien
    tiene cita a **la misma hora** que el hueco, luego la de justo antes (una
-   duración por encima), luego la de justo después. Siempre con ↑. La idea:
-   a esa familia sólo le cambia el día, no la hora, y acepta más.
+   duración por encima), luego la de justo después. Con ↑ **o sin marca**
+   (la clínica, 5/11: "por norma general la gente siempre quiere
+   adelantar"; sólo queda fuera "no mover"); a igual hueco, primero ↑. A esa
+   familia sólo le cambia el día, no la hora, y acepta más.
 3. Agotado eso, el **resto de citas del mismo día sin preferencia** (ni ↑ ni
    "no mover"), empezando por la **última hora** del día.
 4. Sin nadie, el hueco sigue su camino de siempre: lista de espera.
@@ -1025,8 +1034,12 @@ sale ANTES de pasar al siguiente. Hay una prueba de extremo a extremo contra el
 entorno de QA en el scratchpad de la sesión (`qa/e2e-adelanto.ts`: cancelación
 real, rechazo, hueco reocupado, aceptación, cancelación solapada, caducidad).
 Cada paso deja tarjeta en `#agenda`, y el panel cuenta los huecos
-ofrecidos en "Requiere atención". Un bloqueo de reserva se puede quitar a
-mano desde el calendario; la oferta sigue viva hasta que conteste o caduque.
+ofrecidos en "Requiere atención". **La reserva (`HOLD_REASON`, en
+`lib/agenda/shared.ts`) frena a los agentes, no a recepción**:
+`createAppointment` desde el panel y la disponibilidad `staff` la ignoran
+(el 5/11 no se pudo meter a una familia por ella). En el calendario sale en
+ámbar como "Reservado: oferta enviada" y la X para quitar cualquier bloqueo
+está siempre visible (antes sólo con el ratón encima, y en tablet no salía).
 
 ## Señales de conducta del paciente (Respinens): duda y banderas rojas
 

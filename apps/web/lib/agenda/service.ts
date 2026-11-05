@@ -18,7 +18,7 @@ import {
   resolveTimezone,
   toShiftRule,
 } from '@/lib/agenda/queries';
-import { BUSY_STATUSES, PROFESSIONAL_COLORS } from '@/lib/agenda/shared';
+import { BUSY_STATUSES, HOLD_REASON, PROFESSIONAL_COLORS } from '@/lib/agenda/shared';
 import { syncAppointmentEffects } from '@/lib/agenda/sync';
 import { SESSION_BEHAVIORS, firstVisitRules } from '@/lib/care-profile/policy';
 import { getCareProfile } from '@/lib/care-profile/queries';
@@ -819,8 +819,12 @@ export async function createAppointment(
         ),
       );
 
-    const blocks = await tx
-      .select({ startsAt: professionalTimeOff.startsAt, endsAt: professionalTimeOff.endsAt })
+    const blockRows = await tx
+      .select({
+        startsAt: professionalTimeOff.startsAt,
+        endsAt: professionalTimeOff.endsAt,
+        reason: professionalTimeOff.reason,
+      })
       .from(professionalTimeOff)
       .where(
         and(
@@ -830,6 +834,13 @@ export async function createAppointment(
           gte(professionalTimeOff.endsAt, startsAt),
         ),
       );
+    // La reserva de una oferta de adelanto frena a los agentes, no a
+    // recepción: el 5/11 no se pudo meter a una familia por ella y no se
+    // encontraba dónde quitarla.
+    const blocks =
+      (input.source ?? 'PANEL') === 'PANEL'
+        ? blockRows.filter((b) => b.reason !== HOLD_REASON)
+        : blockRows;
 
     const conflict = describeConflict(
       startsAt,

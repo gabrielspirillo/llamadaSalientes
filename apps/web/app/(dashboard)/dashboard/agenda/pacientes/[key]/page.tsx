@@ -12,6 +12,7 @@ import { PatientMarks } from '@/components/agenda/patient-marks';
 import { PatientReviewAlert } from '@/components/agenda/patient-review-alert';
 import { PatientSignalBadges } from '@/components/agenda/patient-signals';
 import { PatientTabs } from '@/components/agenda/patient-tabs';
+import { PrioritySlotButton } from '@/components/agenda/priority-slot-dialog';
 import { RemovePatientButton } from '@/components/agenda/remove-patient-button';
 import { TodayAppointmentCard, type TodayItem } from '@/components/agenda/today-appointment-card';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +29,7 @@ import {
 } from '@/lib/agenda/billing';
 import { listPatientCharges } from '@/lib/agenda/charges';
 import { type PatientTab, type PatientTabItem, isPatientTab } from '@/lib/agenda/patient-tabs';
+import { getPriorityRequestForPatient } from '@/lib/agenda/priority-requests';
 import {
   countRedFlagsByPatientKey,
   getPatientDossier,
@@ -172,6 +174,9 @@ export default async function PacienteDossierPage({
   const lastBehavior =
     lastNote && isSessionBehavior(lastNote.sessionBehavior) ? lastNote.sessionBehavior : null;
 
+  const priorityRequest = person
+    ? await getPriorityRequestForPatient(ctx.tenantId, person.id, todayKey).catch(() => null)
+    : null;
   const activeProfessionals = professionalRows
     .filter((p) => p.active)
     .map((p) => ({ id: p.id, fullName: p.fullName }));
@@ -593,6 +598,15 @@ export default async function PacienteDossierPage({
                     <span className="hidden sm:inline">Agendar</span>
                   </Link>
                 </Button>
+              )}
+              {person && ctx.canWriteAppointments && (
+                <PrioritySlotButton
+                  patientId={person.id}
+                  patientName={person.firstName}
+                  todayKey={todayKey}
+                  professionals={ctx.professional ? [] : activeProfessionals}
+                  active={priorityRequest}
+                />
               )}
               {person && ctx.canWriteAppointments && (
                 <PatientDialog

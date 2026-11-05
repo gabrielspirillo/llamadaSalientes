@@ -9,8 +9,11 @@
  *     Primero la cita más cercana al hueco.
  *  2. Si no hay nadie, los tres días siguientes, uno a uno: primero quien
  *     tiene cita a LA MISMA HORA que el hueco, luego la de justo antes
- *     (una duración por encima), luego la de justo después. Siempre con ↑.
- *     La idea: a esa familia le cambia el día, no la hora, y acepta más.
+ *     (una duración por encima), luego la de justo después. Con ↑ o SIN
+ *     marca: la clínica lo aclaró el 5/11 ("por norma general la gente
+ *     siempre quiere adelantar"); sólo queda fuera "no mover". A igual
+ *     hueco, primero quien marcó ↑. A esa familia le cambia el día, no la
+ *     hora, y acepta más.
  *  3. Agotado eso, el resto de citas del mismo día que NO dijeron nada
  *     (sin ↑ ni "no mover"), empezando por la última hora del día.
  *
@@ -95,9 +98,7 @@ export function rankAdvanceCandidates<T extends RankCandidate>(
   // 2. Días siguientes: misma hora, luego una por encima, luego una por debajo.
   for (let d = 1; d <= NEXT_DAYS; d++) {
     const dayKey = addDaysToKey(slotDay, d);
-    const sameDay = valid.filter(
-      (c) => c.advancePreference === 'ACCEPTS' && localDateKey(c.startsAt, tz) === dayKey,
-    );
+    const sameDay = valid.filter((c) => localDateKey(c.startsAt, tz) === dayKey);
     const score = (c: T): number | null => {
       const diff = minuteOf(c.startsAt, tz) - slotMinute;
       if (Math.abs(diff) <= SAME_HOUR_TOLERANCE) return 0;
@@ -113,6 +114,8 @@ export function rankAdvanceCandidates<T extends RankCandidate>(
         (a, b) =>
           Number(Boolean(b.c.advancePriority)) - Number(Boolean(a.c.advancePriority)) ||
           a.s - b.s ||
+          Number(b.c.advancePreference === 'ACCEPTS') -
+            Number(a.c.advancePreference === 'ACCEPTS') ||
           byTime(a.c, b.c),
       );
     for (const { c } of scored) push(c, 'NEXT_DAYS_SAME_HOUR');

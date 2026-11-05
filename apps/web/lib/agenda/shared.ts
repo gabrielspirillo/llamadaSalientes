@@ -39,6 +39,14 @@ export type AppointmentSource = 'PANEL' | 'VOICE_AGENT' | 'WHATSAPP_AGENT' | 'WA
 
 export type BlockKind = 'TIME_OFF' | 'HOLIDAY' | 'BREAK' | 'OTHER';
 
+/**
+ * Motivo del bloqueo que reserva un hueco mientras una familia contesta a la
+ * oferta de adelanto (`lib/agenda/advance-offers.ts`). Frena a los agentes;
+ * recepción puede dar la cita encima (y la oferta se resuelve sola: al
+ * aceptar, el hueco ya no está libre).
+ */
+export const HOLD_REASON = 'Hueco reservado: ofrecido a una familia que quería adelantar';
+
 export type PanelAccess = 'AGENDA_ONLY' | 'FULL';
 
 export const STATUS_LABELS: Record<AppointmentStatus, string> = {

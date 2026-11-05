@@ -93,9 +93,23 @@ describe('a quién se le ofrece un hueco libre', () => {
     expect(ids(r)).toEqual(['vale']);
   });
 
-  it('sin preferencia en los días siguientes no se ofrece', () => {
-    const r = rankAdvanceCandidates(slot, [c('x', 5, '16:00', null)], tz);
-    expect(r).toEqual([]);
+  it('en los días siguientes también entra quien no marcó nada (no "no mover")', () => {
+    const r = rankAdvanceCandidates(
+      slot,
+      [c('sinMarca', 5, '16:00', null), c('noMover', 5, '16:00', 'NO_MOVE')],
+      tz,
+    );
+    expect(ids(r)).toEqual(['sinMarca']);
+    expect(r[0]?.phase).toBe('NEXT_DAYS_SAME_HOUR');
+  });
+
+  it('a igual hueco el día siguiente, primero quien marcó ↑', () => {
+    const r = rankAdvanceCandidates(
+      slot,
+      [c('sinMarca', 5, '16:00', null), c('conMarca', 5, '16:00')],
+      tz,
+    );
+    expect(ids(r)).toEqual(['conMarca', 'sinMarca']);
   });
 });
 

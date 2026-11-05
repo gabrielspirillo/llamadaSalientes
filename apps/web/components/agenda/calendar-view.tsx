@@ -5,7 +5,7 @@ import { Button, IconButton } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/feedback';
 import { Select } from '@/components/ui/input';
-import { STATUS_LABELS } from '@/lib/agenda/shared';
+import { HOLD_REASON, STATUS_LABELS } from '@/lib/agenda/shared';
 import type { CalendarBlock, CalendarItem } from '@/lib/agenda/view';
 import { formatDateKeyLong, formatDateKeyShort } from '@/lib/agenda/view';
 import { cn } from '@/lib/cn';
@@ -549,10 +549,16 @@ export function CalendarView(props: CalendarViewProps) {
                       const from = Math.max(b.startMinute, dayWindow.startMinute);
                       const to = Math.min(b.endMinute, dayWindow.endMinute);
                       if (to <= from) return null;
+                      const hold = b.reason === HOLD_REASON;
                       return (
                         <div
                           key={`${b.id}-${b.dateKey}`}
-                          className="group/block absolute inset-x-1 rounded-lg bg-[repeating-linear-gradient(45deg,rgba(120,120,120,0.12),rgba(120,120,120,0.12)_6px,transparent_6px,transparent_12px)] ring-1 ring-zinc-200"
+                          className={cn(
+                            'group/block absolute inset-x-1 rounded-lg ring-1',
+                            hold
+                              ? 'bg-[repeating-linear-gradient(45deg,rgba(245,158,11,0.16),rgba(245,158,11,0.16)_6px,rgba(255,251,235,0.9)_6px,rgba(255,251,235,0.9)_12px)] ring-amber-300'
+                              : 'bg-[repeating-linear-gradient(45deg,rgba(120,120,120,0.12),rgba(120,120,120,0.12)_6px,transparent_6px,transparent_12px)] ring-zinc-200',
+                          )}
                           style={{
                             top: minutesToTop(from, dayWindow.startMinute),
                             height: Math.max(18, ((to - from) / 60) * HOUR_PX),
@@ -560,20 +566,34 @@ export function CalendarView(props: CalendarViewProps) {
                           onClick={(e) => e.stopPropagation()}
                           onKeyDown={(e) => e.stopPropagation()}
                         >
-                          <span className="block truncate px-2 py-1 text-[11px] font-semibold text-zinc-500">
-                            {b.reason ?? 'No disponible'}
+                          <span
+                            className={cn(
+                              'block truncate py-1 pr-8 pl-2 text-[11px] font-semibold',
+                              hold ? 'text-amber-800' : 'text-zinc-500',
+                            )}
+                            title={
+                              hold
+                                ? 'Reservado mientras una familia contesta a la oferta del hueco. Recepción puede dar la cita igualmente.'
+                                : (b.reason ?? undefined)
+                            }
+                          >
+                            {hold ? 'Reservado: oferta enviada' : (b.reason ?? 'No disponible')}
                           </span>
                           {canWrite && (
                             <button
                               type="button"
                               title="Quitar este bloqueo"
                               aria-label="Quitar este bloqueo"
-                              className="absolute right-1 top-1 hidden h-6 w-6 place-items-center rounded-full bg-white text-zinc-500 shadow ring-1 ring-zinc-200 hover:text-rose-600 group-hover/block:grid"
+                              // Siempre visible: en tablet y móvil no hay "hover"
+                              // y el botón no aparecía nunca.
+                              className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-white text-zinc-500 shadow ring-1 ring-zinc-200 hover:text-rose-600"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (
                                   !window.confirm(
-                                    '¿Quitar este bloqueo? El hueco vuelve a quedar libre.',
+                                    hold
+                                      ? '¿Quitar la reserva? La oferta a la familia sigue abierta: si contesta que sí y el hueco está ocupado, se le dirá que se ocupó.'
+                                      : '¿Quitar este bloqueo? El hueco vuelve a quedar libre.',
                                   )
                                 )
                                   return;

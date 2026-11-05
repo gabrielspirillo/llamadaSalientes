@@ -17,7 +17,8 @@ import {
 import { NEXT_DAYS, rankAdvanceCandidates } from '@/lib/agenda/advance-ranking';
 import { systemAgendaContext } from '@/lib/agenda/agent';
 import { samePhone } from '@/lib/agenda/patients';
-import { rescheduleAppointment } from '@/lib/agenda/service';
+import { createAppointment, rescheduleAppointment } from '@/lib/agenda/service';
+import { clinicBookingMessages } from '@/lib/care-profile/booking-confirmation';
 import { sendClinicWhatsapp } from '@/lib/care-profile/clinic-whatsapp';
 import { getTenant } from '@/lib/data/clinic';
 import { db } from '@/lib/db/client';
@@ -27,6 +28,8 @@ import {
   clinicSettings,
   professionalTimeOff,
   professionals,
+  slotPriorityRequests,
+  treatments,
 } from '@/lib/db/schema';
 import { postSystemEvent } from '@/lib/messaging/bot';
 import { getPatientPerson } from '@/lib/patients/persons';
@@ -42,7 +45,8 @@ import { relativeDayLabel } from '@/lib/whatsapp/agent/slot-mention';
  * sigue el camino de siempre (lista de espera).
  */
 
-export const HOLD_REASON = 'Hueco reservado: ofrecido a una familia que quería adelantar';
+import { HOLD_REASON } from '@/lib/agenda/shared';
+export { HOLD_REASON };
 const HOLD_MS = 2 * 3_600_000;
 const MIN_LEAD_MS = 45 * 60_000;
 
@@ -147,7 +151,11 @@ export async function offerFreedSlot(
 
   // Ya ofrecido para este hueco a alguien que dijo que no (o no contestó).
   const already = await db
-    .select({ appointmentId: advanceOffers.appointmentId, status: advanceOffers.status })
+    .select({
+      appointmentId: advanceOffers.appointmentId,
+      requestId: advanceOffers.requestId,
+      status: advanceOffers.status,
+    })
     .from(advanceOffers)
     .where(
       and(
@@ -160,12 +168,16 @@ export async function offerFreedSlot(
   // Sólo quien dijo que no o no contestó. Una oferta CANCELADA (el hueco se
   // ocupó mientras tanto) no es culpa de la familia: si vuelve a liberarse,
   // se le vuelve a ofrecer.
-  const skip = new Set(
-    already
-      .filter((o) => o.status === 'DECLINED' || o.status === 'EXPIRED')
-      .map((o) => o.appointmentId),
-  );
+  const refused = already.filter((o) => o.status === 'DECLINED' || o.status === 'EXPIRED');
+  const skip = new Set(refused.map((o) => o.appointmentId).filter((id): id is string => !!id));
+  const skipRequests = new Set(refused.map((o) => o.requestId).filter((id): id is string => !!id));
   const tz0 = await tenantTimezone(tenantId);
+
+  // 0. Antes que nadie, el paciente que la clínica eligió para el primer
+  // hueco que se libere ("la niña que está muy malita").
+  if (await offerToPriorityRequest(tenantId, slot, tz0, now, expiresAt, skipRequests)) {
+    return true;
+  }
 
   // Ventana: el mismo día del hueco y los tres siguientes (fases 1 a 3 de
   // `rankAdvanceCandidates`). Quien dijo "no mover" no se trae.
@@ -195,7 +207,9 @@ export async function offerFreedSlot(
         .select({ appointmentId: advanceOffers.appointmentId })
         .from(advanceOffers)
         .where(and(eq(advanceOffers.tenantId, tenantId), eq(advanceOffers.status, 'SENT')))
-    ).map((o) => o.appointmentId),
+    )
+      .map((o) => o.appointmentId)
+      .filter((id): id is string => !!id),
   );
   const ranked = rankAdvanceCandidates(
     { startsAt: slot.startsAt, endsAt: slot.endsAt },
@@ -295,6 +309,213 @@ export async function offerFreedSlot(
   return true;
 }
 
+/**
+ * El hueco, para el paciente que la clínica marcó desde su ficha ("primer
+ * hueco que se libere"), si el día y el profesional encajan. Tenga o no cita:
+ * si acepta, se le crea una nueva.
+ */
+async function offerToPriorityRequest(
+  tenantId: string,
+  slot: FreedSlot,
+  tz: string,
+  now: Date,
+  expiresAt: Date,
+  skipRequests: Set<string>,
+): Promise<boolean> {
+  const slotDay = localDateKey(slot.startsAt, tz);
+  const requests = await db
+    .select()
+    .from(slotPriorityRequests)
+    .where(
+      and(
+        eq(slotPriorityRequests.tenantId, tenantId),
+        eq(slotPriorityRequests.status, 'ACTIVE'),
+        lte(slotPriorityRequests.fromDay, slotDay),
+        gte(slotPriorityRequests.untilDay, slotDay),
+        or(
+          isNull(slotPriorityRequests.professionalId),
+          eq(slotPriorityRequests.professionalId, slot.professionalId),
+        ),
+      ),
+    )
+    .orderBy(slotPriorityRequests.createdAt);
+  if (requests.length === 0) return false;
+  const pending = new Set(
+    (
+      await db
+        .select({ requestId: advanceOffers.requestId })
+        .from(advanceOffers)
+        .where(and(eq(advanceOffers.tenantId, tenantId), eq(advanceOffers.status, 'SENT')))
+    )
+      .map((o) => o.requestId)
+      .filter((id): id is string => !!id),
+  );
+  const req = requests.find((r) => !skipRequests.has(r.id) && !pending.has(r.id));
+  if (!req) return false;
+
+  const slotMinutes = Math.round((slot.endsAt.getTime() - slot.startsAt.getTime()) / 60_000);
+  let minutes = slotMinutes;
+  if (req.treatmentId) {
+    const [t] = await db
+      .select({ duration: treatments.durationMinutes })
+      .from(treatments)
+      .where(and(eq(treatments.tenantId, tenantId), eq(treatments.id, req.treatmentId)))
+      .limit(1);
+    if (t?.duration && t.duration > slotMinutes) return false; // no cabe
+    if (t?.duration) minutes = t.duration;
+  }
+
+  const [professional] = await db
+    .select({ name: professionals.fullName })
+    .from(professionals)
+    .where(and(eq(professionals.tenantId, tenantId), eq(professionals.id, slot.professionalId)))
+    .limit(1);
+  const [tenant, person] = await Promise.all([
+    getTenant(tenantId),
+    req.patientId ? getPatientPerson(tenantId, req.patientId).catch(() => null) : null,
+  ]);
+  const guardian =
+    person?.guardians.find((g) => g.primary && g.name) ?? person?.guardians.find((g) => g.name);
+  const hello = guardian?.name ? `Hola ${guardian.name.split(/\s+/)[0]}` : 'Hola';
+  const firstName = person?.firstName ?? req.patientName.split(/\s+/)[0] ?? 'vuestro peque';
+  const hueco = describe(slot.startsAt, tz, localDateKey(now, tz));
+
+  const [hold] = await db
+    .insert(professionalTimeOff)
+    .values({
+      tenantId,
+      professionalId: slot.professionalId,
+      startsAt: slot.startsAt,
+      endsAt: new Date(slot.startsAt.getTime() + minutes * 60_000),
+      allDay: false,
+      kind: 'OTHER',
+      reason: HOLD_REASON,
+    })
+    .returning({ id: professionalTimeOff.id });
+  const [offer] = await db
+    .insert(advanceOffers)
+    .values({
+      tenantId,
+      appointmentId: null,
+      requestId: req.id,
+      professionalId: slot.professionalId,
+      freedAppointmentId: slot.freedAppointmentId ?? null,
+      cancelledSlotId: slot.cancelledSlotId ?? null,
+      slotStartsAt: slot.startsAt,
+      slotEndsAt: new Date(slot.startsAt.getTime() + minutes * 60_000),
+      holdBlockId: hold?.id ?? null,
+      phoneE164: req.phoneE164,
+      expiresAt,
+    })
+    .onConflictDoNothing()
+    .returning({ id: advanceOffers.id });
+  if (!offer) {
+    if (hold) await db.delete(professionalTimeOff).where(eq(professionalTimeOff.id, hold.id));
+    return false;
+  }
+  const clinic = tenant?.name?.trim() || 'la clínica';
+  const withWhom = professional ? ` con ${professional.name}` : '';
+  const text = `${hello}, soy el asistente virtual de la agenda de ${clinic}. Se ha liberado un hueco ${hueco.day} a las ${hueco.time}${withWhom} y la clínica nos ha pedido ofrecéroslo para ${firstName}. ¿Os lo reservamos?`;
+  const sent = await sendClinicWhatsapp(
+    tenantId,
+    req.phoneE164,
+    [text],
+    [
+      { id: `adv:yes:${offer.id}`, title: 'Sí, reservar' },
+      { id: `adv:no:${offer.id}`, title: 'No, gracias' },
+    ],
+  ).catch((err) => {
+    console.warn('[adelanto] no se pudo mandar la oferta prioritaria', (err as Error).message);
+    return false;
+  });
+  if (!sent) {
+    await closeOffer(offer.id, 'CANCELLED');
+    return false;
+  }
+  await postSystemEvent({
+    tenantId,
+    event: 'waitlist.slot_open',
+    title: `Hueco ofrecido con prioridad — ${hueco.day} ${hueco.time}`,
+    body: `Se le ofreció a ${req.patientName}, que la clínica marcó para el primer hueco que se liberara. El hueco queda reservado hasta que conteste.`,
+    dedupeKey: `adv:offer:${offer.id}`,
+  }).catch(() => undefined);
+  return true;
+}
+
+/** "Sí" a una oferta prioritaria: cita nueva y la confirmación de siempre. */
+async function bookPriorityRequest(
+  row: typeof advanceOffers.$inferSelect,
+  tz: string,
+  todayKey: string,
+): Promise<{ messages: string[] }> {
+  const [req] = await db
+    .select()
+    .from(slotPriorityRequests)
+    .where(
+      and(
+        eq(slotPriorityRequests.tenantId, row.tenantId),
+        eq(slotPriorityRequests.id, row.requestId as string),
+      ),
+    )
+    .limit(1);
+  if (!req) return { messages: [] };
+  const minutes = Math.round((row.slotEndsAt.getTime() - row.slotStartsAt.getTime()) / 60_000);
+  try {
+    const { appointment } = await createAppointment(systemAgendaContext(row.tenantId), {
+      professionalId: row.professionalId,
+      treatmentId: req.treatmentId,
+      patientId: req.patientId,
+      patientName: req.patientName,
+      patientPhone: req.phoneE164,
+      startsAt: row.slotStartsAt.toISOString(),
+      durationMinutes: minutes,
+      source: 'WAITLIST',
+      allowOutsideHours: true,
+      overridePolicy: true,
+      dedupeKey: `prio:${row.id}`,
+    });
+    await db
+      .update(slotPriorityRequests)
+      .set({ status: 'BOOKED', updatedAt: new Date() })
+      .where(eq(slotPriorityRequests.id, req.id));
+    const when = describe(row.slotStartsAt, tz, todayKey);
+    await postSystemEvent({
+      tenantId: row.tenantId,
+      event: 'waitlist.slot_open',
+      title: `Cita dada con prioridad — ${when.day} ${when.time}`,
+      body: `${req.patientName} aceptó el hueco que la clínica le reservó.`,
+      dedupeKey: `adv:accepted:${row.id}`,
+    }).catch(() => undefined);
+    const person = req.patientId
+      ? await getPatientPerson(row.tenantId, req.patientId).catch(() => null)
+      : null;
+    const confirmation = await clinicBookingMessages(
+      row.tenantId,
+      {
+        startsAt: appointment.startsAt,
+        patientId: appointment.patientId ?? null,
+        patientFirstName: person?.firstName ?? req.patientName.split(/\s+/)[0] ?? null,
+        isFirstVisit: Boolean(appointment.isFirstVisit),
+        timezone: tz,
+      },
+      req.phoneE164,
+    );
+    return {
+      messages: confirmation.length
+        ? confirmation
+        : [`¡Hecho! La cita queda ${when.day} a las ${when.time}. Os esperamos.`],
+    };
+  } catch (err) {
+    console.warn('[adelanto] no se pudo dar la cita prioritaria', (err as Error).message);
+    await db.update(advanceOffers).set({ status: 'CANCELLED' }).where(eq(advanceOffers.id, row.id));
+    return {
+      messages: [
+        'Lo sentimos, ese hueco acaba de ocuparse. Seguimos pendientes y os avisamos si se libera otro.',
+      ],
+    };
+  }
+}
+
 async function closeOffer(
   offerId: string,
   status: 'ACCEPTED' | 'DECLINED' | 'EXPIRED' | 'CANCELLED',
@@ -370,7 +591,11 @@ async function resolveOffer(
   if (answer === 'no') {
     await closeOffer(row.id, 'DECLINED');
     return {
-      messages: ['Vale, dejamos la cita como estaba. ¡Gracias por contestar!'],
+      messages: [
+        row.requestId
+          ? 'Vale, no pasa nada. ¡Gracias por contestar!'
+          : 'Vale, dejamos la cita como estaba. ¡Gracias por contestar!',
+      ],
       after: () => passToNext(row),
     };
   }
@@ -391,6 +616,9 @@ async function resolveOffer(
   }
   const closed = await closeOffer(row.id, 'ACCEPTED');
   if (!closed) return { messages: [] };
+  if (row.requestId) return bookPriorityRequest(row, tz, todayKey);
+  if (!row.appointmentId) return { messages: [] };
+  const appointmentId = row.appointmentId;
   const [before] = await db
     .select({
       startsAt: agendaAppointments.startsAt,
@@ -399,14 +627,11 @@ async function resolveOffer(
     })
     .from(agendaAppointments)
     .where(
-      and(
-        eq(agendaAppointments.tenantId, row.tenantId),
-        eq(agendaAppointments.id, row.appointmentId),
-      ),
+      and(eq(agendaAppointments.tenantId, row.tenantId), eq(agendaAppointments.id, appointmentId)),
     )
     .limit(1);
   try {
-    await rescheduleAppointment(systemAgendaContext(row.tenantId), row.appointmentId, {
+    await rescheduleAppointment(systemAgendaContext(row.tenantId), appointmentId, {
       startsAt: row.slotStartsAt.toISOString(),
       allowOutsideHours: true,
     });
@@ -436,7 +661,7 @@ async function resolveOffer(
             professionalId: row.professionalId,
             startsAt: before.startsAt,
             endsAt: before.endsAt,
-            freedAppointmentId: row.appointmentId,
+            freedAppointmentId: appointmentId,
           }).catch(() => false);
         }
       : undefined,
