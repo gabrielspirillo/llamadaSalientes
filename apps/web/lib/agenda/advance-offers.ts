@@ -1,5 +1,18 @@
 import 'server-only';
-import { and, eq, gte, inArray, isNotNull, isNull, lt, lte, ne, notInArray, or } from 'drizzle-orm';
+import {
+  and,
+  eq,
+  gt,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  lte,
+  ne,
+  notInArray,
+  or,
+} from 'drizzle-orm';
 
 import { NEXT_DAYS, rankAdvanceCandidates } from '@/lib/agenda/advance-ranking';
 import { systemAgendaContext } from '@/lib/agenda/agent';
@@ -40,6 +53,37 @@ export interface FreedSlot {
   /** La cita que dejó el hueco, si fue una cancelación. */
   freedAppointmentId?: string | null;
   cancelledSlotId?: string | null;
+}
+
+/** Sin citas vivas ni bloqueos (que no sean una reserva de oferta) sobre el hueco. */
+export async function slotIsFree(tenantId: string, slot: FreedSlot): Promise<boolean> {
+  const busy = await db
+    .select({ id: agendaAppointments.id })
+    .from(agendaAppointments)
+    .where(
+      and(
+        eq(agendaAppointments.tenantId, tenantId),
+        eq(agendaAppointments.professionalId, slot.professionalId),
+        inArray(agendaAppointments.status, ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS']),
+        lt(agendaAppointments.startsAt, slot.endsAt),
+        gt(agendaAppointments.endsAt, slot.startsAt),
+        ...(slot.freedAppointmentId ? [ne(agendaAppointments.id, slot.freedAppointmentId)] : []),
+      ),
+    )
+    .limit(1);
+  if (busy.length) return false;
+  const blocks = await db
+    .select({ id: professionalTimeOff.id, reason: professionalTimeOff.reason })
+    .from(professionalTimeOff)
+    .where(
+      and(
+        eq(professionalTimeOff.tenantId, tenantId),
+        eq(professionalTimeOff.professionalId, slot.professionalId),
+        lt(professionalTimeOff.startsAt, slot.endsAt),
+        gt(professionalTimeOff.endsAt, slot.startsAt),
+      ),
+    );
+  return blocks.every((b) => b.reason === HOLD_REASON);
 }
 
 function dayStart(key: string, tz: string): Date {
@@ -87,6 +131,19 @@ export async function offerFreedSlot(
     Math.min(now.getTime() + HOLD_MS, slot.startsAt.getTime() - 30 * 60_000),
   );
   if (expiresAt.getTime() - now.getTime() < 10 * 60_000) return false;
+
+  // ⚠️ El hueco tiene que estar LIBRE de verdad. El 5 de noviembre se ofreció
+  // a tres familias un hueco de las 18:00 que seguía ocupado: la cancelación
+  // que lo "liberó" era de una cita solapada con otra que seguía en pie. Si
+  // hay una cita viva o un bloqueo ajeno sobre ese rato, no se ofrece nada.
+  if (!(await slotIsFree(tenantId, slot))) {
+    console.warn('[adelanto] el hueco no está libre, no se ofrece', {
+      tenantId,
+      professionalId: slot.professionalId,
+      startsAt: slot.startsAt.toISOString(),
+    });
+    return false;
+  }
 
   // Ya ofrecido para este hueco a alguien que dijo que no (o no contestó).
   const already = await db
@@ -307,6 +364,19 @@ async function resolveOffer(
     await closeOffer(row.id, 'DECLINED');
     await passToNext(row);
     return ['Vale, dejamos la cita como estaba. ¡Gracias por contestar!'];
+  }
+  // Antes de tocar nada: el hueco tiene que seguir libre (sin contar nuestra
+  // propia reserva). Si alguien lo ocupó a mano, se le dice y no se mueve.
+  const stillFree = await slotIsFree(row.tenantId, {
+    professionalId: row.professionalId,
+    startsAt: row.slotStartsAt,
+    endsAt: row.slotEndsAt,
+  });
+  if (!stillFree) {
+    await closeOffer(row.id, 'CANCELLED');
+    return [
+      'Lo sentimos, ese hueco acaba de ocuparse. Vuestra cita sigue como estaba y os avisaremos si se libera otro.',
+    ];
   }
   const closed = await closeOffer(row.id, 'ACCEPTED');
   if (!closed) return [];

@@ -2336,6 +2336,8 @@ export const agendaAppointments = pgTable(
     cancelledBy: text('cancelled_by').$type<'PATIENT' | 'CLINIC'>(),
     /** ¿Quiere adelantar ESTA cita si se libera un hueco? (migración 0048). */
     advancePreference: text('advance_preference').$type<'ACCEPTS' | 'NO_MOVE'>(),
+    /** "Ofrecerle el primer hueco que se libere": va la primera en su fase. */
+    advancePriority: boolean('advance_priority').notNull().default(false),
     /** Horario al que puede venir ("desde las 18h"). */
     advanceNote: text('advance_note'),
     createdByUserId: uuid('created_by_user_id').references(() => users.id, {

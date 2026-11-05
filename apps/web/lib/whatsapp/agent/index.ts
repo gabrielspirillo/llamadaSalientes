@@ -267,9 +267,11 @@ export async function runWhatsappAgent(
     !injection.tripped &&
     greetingScript &&
     newSession &&
-    // "Conocer" a la familia es tener niños en ficha; un nombre guardado en
-    // la libreta no dice si ya vino.
-    !/Niños registrados/.test(knownContact ?? '') &&
+    // Se pregunta SIEMPRE, también a una familia con niños en ficha: el 5 de
+    // noviembre la madre de un paciente pidió cita para la hermana pequeña y
+    // el asistente, al conocer el teléfono, no preguntó y la trató como si ya
+    // hubiera venido. Sólo se salta si nombra a un niño que ya está en ficha.
+    !mentionsRegisteredChild(input.userText, knownContact) &&
     asksForAppointment(input.userText) &&
     !answersFirstVisit(input.userText)
   ) {
@@ -277,6 +279,19 @@ export async function runWhatsappAgent(
     // El guion ya empieza por "Hola😊,": se quita para no saludar dos veces.
     const rest = greetingScript.replace(/^hola\S*,?\s*/i, '');
     scriptedText = `Hola😊, soy ${assistantName}.\n\n${rest.charAt(0).toUpperCase()}${rest.slice(1)}`;
+  }
+  // "Quería informarme sobre las terapias": la clínica tiene su respuesta
+  // (web + ofrecer cita). El catálogo con precios no se enumera.
+  const infoScript = scripts?.infoRequest?.trim();
+  if (
+    scriptedText === null &&
+    !injection.tripped &&
+    infoScript &&
+    asksForGeneralInfo(input.userText) &&
+    !/\b(mocos|tos|catarro|fiebre|edad|meses|bebe|bebé)\b/i.test(input.userText)
+  ) {
+    guardrailFlags.push('clinic_info_request');
+    scriptedText = newSession ? `Hola😊, soy ${assistantName}.\n\n${infoScript}` : infoScript;
   }
   const scripted = scriptedText !== null;
   if (scriptedText) {
@@ -362,6 +377,20 @@ export async function runWhatsappAgent(
       // Sólo se reserva una hora que la familia pidió o que el asistente le
       // ofreció. Si no, el modelo reservaba otro día por su cuenta.
       const todayKeyClinic = localDateKey(deps.now(), grounding.clinic.timezone);
+      // Primera visita dicha por la familia: manda sobre lo que pase el modelo.
+      if (
+        careProfile &&
+        tc.name === 'check_availability' &&
+        tc.args &&
+        tc.args.first_visit !== true &&
+        conversationSaysFirstVisit([
+          input.userText,
+          ...input.history.filter((h) => h.role === 'user').map((h) => h.content),
+        ])
+      ) {
+        tc.args = { ...tc.args, first_visit: true };
+        guardrailFlags.push('first_visit_forced');
+      }
       const notOffered =
         tc.name === 'book_appointment' && typeof tc.args?.start_time === 'string'
           ? slotNotOffered(
@@ -873,6 +902,17 @@ export function reviewFinalText(
       };
     }
   }
+  // La clínica no quiere el catálogo con precios en el chat: para eso está la
+  // web y las FAQs. Dos o más líneas con "€" es una lista de precios.
+  if (withCareProfile) {
+    const priceLines = text.split('\n').filter((l) => /\d\s?€|€\s?\d|\beuros?\b/i.test(l));
+    if (priceLines.length >= 2) {
+      return {
+        code: 'price_list',
+        note: '[Revisión interna, no la menciones] NO enumeres los tratamientos con sus precios. Contesta como dicen las FAQs de la clínica: la información de las sesiones está en la web (www.respinens.es) y ofrécete a buscar un hueco para el peque. Si pregunta por un precio concreto, da sólo ese dato de las FAQs.',
+      };
+    }
+  }
   // "Por la mañana tengo: 16:30, 17:15…": la franja tiene que cuadrar con la hora.
   if (/\b(por|de) la ma[ñn]ana\b/i.test(text) && !/\btarde\b/i.test(text)) {
     const hours = [...text.matchAll(/\b(\d{1,2})[:.]\d{2}\b/g)].map((m) => Number(m[1]));
@@ -1048,7 +1088,71 @@ export function asksForAppointment(text: string): boolean {
 
 /** Ya dijo si es la primera vez o no (o da los datos de un niño conocido). */
 export function answersFirstVisit(text: string): boolean {
-  return /primera (vez|visita)|ya (he|hemos|fuimos|fui) (ido|venido|estado|acudido)|ya (vamos|venimos|somos pacientes)|otro peque|hermano|nunca (hemos|he) (ido|venido)|es nuev|ya es paciente|ya (la |lo )?conoc|ya (ha|han) venido/i.test(
+  return /primera (vez|visita)|ya (he|hemos|fuimos|fui) (ido|venido|estado|acudido)|ya (vamos|venimos|somos pacientes)|otro (peque|hij[oa])|herman[oa]|nunca (hemos|he) (ido|venido)|es nuev|ya es paciente|ya (la |lo )?conoc|ya (ha|han) venido/i.test(
     text,
+  );
+}
+
+/**
+ * Nombres de los niños en ficha de este teléfono, sacados del texto de
+ * get_patient_info ("Niños registrados:\n- Darío Pérez Gil (…)").
+ */
+export function registeredChildNames(knownContact: string | null | undefined): string[] {
+  if (!knownContact || !/Niños registrados/.test(knownContact)) return [];
+  const after = knownContact.split(/Niños registrados:?/i)[1] ?? '';
+  return after
+    .split('\n')
+    .map((l) => l.replace(/^[-•\s]+/, '').trim())
+    .filter((l) => l && !/^Pregunta /i.test(l))
+    .map(
+      (l) =>
+        l
+          .split(/[(·:,]/)[0]
+          ?.trim()
+          .split(/\s+/)[0] ?? '',
+    )
+    .filter((n) => n.length >= 2);
+}
+
+/** El mensaje nombra a un niño que ya está en ficha (entonces no es nuevo). */
+export function mentionsRegisteredChild(
+  text: string,
+  knownContact: string | null | undefined,
+): boolean {
+  const f = fold(text);
+  return registeredChildNames(knownContact).some((n) =>
+    new RegExp(`\\b${fold(n).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(f),
+  );
+}
+
+/**
+ * La familia ya dijo en la conversación que es la primera vez (o que es otro
+ * hermano) y no lo desdijo: check_availability va con first_visit=true aunque
+ * el modelo no lo pase. El teléfono conocido por un hermano hacía que se
+ * tratara al nuevo como paciente de siempre.
+ */
+export function conversationSaysFirstVisit(texts: string[]): boolean {
+  const all = texts.map(fold).join('\n');
+  const yes =
+    /primera (vez|visita)|nunca (hemos|he) (ido|venido|estado)|es nuev|otro (peque|hij[oa])|herman[oa] (menor|pequen[oa])|con otro peque|es (su |la |el )?herman[oa]/.test(
+      all,
+    );
+  const no =
+    /no es la primera|ya (he|hemos|fuimos|fui) (ido|venido|estado|acudido)|ya es paciente|ya (ha|han) venido/.test(
+      all,
+    );
+  return yes && !no;
+}
+
+/**
+ * "Quería informarme sobre las terapias / precios / cómo es la sesión": la
+ * clínica no quiere la lista del catálogo con precios, sino su texto (web y
+ * ofrecer cita). Pedir cita o un día concreto no es informarse.
+ */
+export function asksForGeneralInfo(text: string): boolean {
+  const f = fold(text);
+  if (asksForAppointment(text)) return false;
+  return /\b(informa(r|rme|cion)|info|precios?|tarifas?|cuanto (cuesta|vale|es)|que (hac[eé]is|ofreceis|terapias)|en que consiste|como (es|son|funciona)n? (la|las|una) (sesion|sesiones|terapia|terapias)|las terapias|tratamientos que)\b/.test(
+    f,
   );
 }

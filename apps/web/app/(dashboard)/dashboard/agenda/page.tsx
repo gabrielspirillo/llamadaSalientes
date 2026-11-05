@@ -209,6 +209,7 @@ export default async function AgendaPage({
       treatmentPriceCents: a.treatmentPriceCents,
       advancePreference: a.advancePreference ?? null,
       advanceNote: a.advanceNote ?? null,
+      advancePriority: Boolean(a.advancePriority),
       signals: careProfile
         ? {
             redFlags: {

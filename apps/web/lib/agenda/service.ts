@@ -1187,7 +1187,12 @@ export async function updateAppointment(
 export async function setAdvancePreference(
   ctx: AgendaContext,
   appointmentId: string,
-  input: { preference: 'ACCEPTS' | 'NO_MOVE' | null; note?: string | null },
+  input: {
+    preference: 'ACCEPTS' | 'NO_MOVE' | null;
+    note?: string | null;
+    /** Ofrecerle el primer hueco que se libere. Sólo tiene sentido con ACCEPTS. */
+    priority?: boolean;
+  },
 ) {
   if (input.preference !== null && !['ACCEPTS', 'NO_MOVE'].includes(input.preference)) {
     throw new AgendaValidationError('Preferencia de adelanto no válida.');
@@ -1195,7 +1200,12 @@ export async function setAdvancePreference(
   const note = input.note?.trim().slice(0, 200) || null;
   const [row] = await db
     .update(agendaAppointments)
-    .set({ advancePreference: input.preference, advanceNote: note, updatedAt: new Date() })
+    .set({
+      advancePreference: input.preference,
+      advanceNote: note,
+      advancePriority: input.preference === 'ACCEPTS' && Boolean(input.priority),
+      updatedAt: new Date(),
+    })
     .where(
       and(eq(agendaAppointments.tenantId, ctx.tenantId), eq(agendaAppointments.id, appointmentId)),
     )

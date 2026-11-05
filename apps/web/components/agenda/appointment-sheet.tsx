@@ -471,6 +471,31 @@ export function AppointmentSheet({
                 ))}
               </div>
               {item.advancePreference === 'ACCEPTS' && (
+                <label className="mt-2 flex cursor-pointer items-start gap-2 text-[13px] text-zinc-700">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={item.advancePriority}
+                    disabled={pending}
+                    onChange={(e) =>
+                      runStay(() =>
+                        setAdvancePreferenceAction(item.id, {
+                          preference: 'ACCEPTS',
+                          note: advanceNote,
+                          priority: e.target.checked,
+                        }),
+                      )
+                    }
+                  />
+                  <span>
+                    <span className="font-semibold">Ofrecerle el primer hueco que se libere</span>
+                    <span className="block text-[12px] text-zinc-500">
+                      Va por delante del resto de familias que quieren adelantar.
+                    </span>
+                  </span>
+                </label>
+              )}
+              {item.advancePreference === 'ACCEPTS' && (
                 <div className="mt-2 flex flex-wrap items-end gap-2">
                   <div className="grid min-w-[200px] flex-1 gap-1">
                     <Label htmlFor="adv-note">Horario al que puede venir</Label>
@@ -491,6 +516,7 @@ export function AppointmentSheet({
                         setAdvancePreferenceAction(item.id, {
                           preference: 'ACCEPTS',
                           note: advanceNote,
+                          priority: item.advancePriority,
                         }),
                       )
                     }

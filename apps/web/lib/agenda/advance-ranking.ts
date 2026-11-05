@@ -29,6 +29,8 @@ export interface RankCandidate {
   startsAt: Date;
   endsAt: Date;
   advancePreference: 'ACCEPTS' | 'NO_MOVE' | null;
+  /** Marcada por la clínica como "ofrecerle el primer hueco". */
+  advancePriority?: boolean;
 }
 
 export type OfferPhase = 'SAME_DAY_WANTS' | 'NEXT_DAYS_SAME_HOUR' | 'SAME_DAY_REST';
@@ -70,7 +72,11 @@ export function rankAdvanceCandidates<T extends RankCandidate>(
       c.startsAt.getTime() >= slot.endsAt.getTime() &&
       c.endsAt.getTime() - c.startsAt.getTime() <= slotMs,
   );
-  const byTime = (a: T, b: T) => a.startsAt.getTime() - b.startsAt.getTime();
+  // La prioridad que marca la clínica ("si se libera algo hoy, a X") manda
+  // dentro de cada fase; a igualdad, la hora.
+  const byTime = (a: T, b: T) =>
+    Number(Boolean(b.advancePriority)) - Number(Boolean(a.advancePriority)) ||
+    a.startsAt.getTime() - b.startsAt.getTime();
   const out: RankedCandidate<T>[] = [];
   const used = new Set<string>();
   const push = (c: T, phase: OfferPhase) => {
@@ -103,14 +109,19 @@ export function rankAdvanceCandidates<T extends RankCandidate>(
     const scored = sameDay
       .map((c) => ({ c, s: score(c) }))
       .filter((x): x is { c: T; s: number } => x.s !== null)
-      .sort((a, b) => a.s - b.s || byTime(a.c, b.c));
+      .sort(
+        (a, b) =>
+          Number(Boolean(b.c.advancePriority)) - Number(Boolean(a.c.advancePriority)) ||
+          a.s - b.s ||
+          byTime(a.c, b.c),
+      );
     for (const { c } of scored) push(c, 'NEXT_DAYS_SAME_HOUR');
   }
 
   // 3. Resto del mismo día sin preferencia, desde la última hora hacia atrás.
   for (const c of valid
     .filter((c) => c.advancePreference === null && localDateKey(c.startsAt, tz) === slotDay)
-    .sort((a, b) => byTime(b, a))) {
+    .sort((a, b) => b.startsAt.getTime() - a.startsAt.getTime())) {
     push(c, 'SAME_DAY_REST');
   }
 

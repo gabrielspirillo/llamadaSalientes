@@ -98,3 +98,18 @@ describe('a quién se le ofrece un hueco libre', () => {
     expect(r).toEqual([]);
   });
 });
+
+describe('prioridad marcada por la clínica', () => {
+  it('"ofrecerle el primer hueco" manda dentro de su fase', () => {
+    const r = rankAdvanceCandidates(
+      slot,
+      [
+        c('cerca', 4, '17:00'),
+        { ...c('prioritaria', 4, '19:30'), advancePriority: true },
+        c('siguiente', 5, '16:00'),
+      ],
+      tz,
+    );
+    expect(ids(r)).toEqual(['prioritaria', 'cerca', 'siguiente']);
+  });
+});

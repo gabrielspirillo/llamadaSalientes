@@ -29,6 +29,8 @@ const scripts = z
     mornings: z.string().optional(),
     /** "¿Puede venir con mocos / tos?", "¿desde qué edad?": la respuesta de la clínica. */
     sessionInfo: z.string().optional(),
+    /** "Quería informarme sobre las terapias / precios": web + ofrecer cita. Nunca el catálogo. */
+    infoRequest: z.string().optional(),
     /** Confirmación obligatoria el día de la cita (`lib/care-profile/day-of.ts`). */
     dayOf: z
       .object({
@@ -170,6 +172,13 @@ export function buildScriptsSection(s: CareMessageScripts): string {
       s.sessionInfo,
     );
   }
+  if (s.infoRequest) {
+    lines.push(
+      '',
+      'Si piden información general sobre las terapias, las sesiones o los precios, contesta EXACTAMENTE con esto (nunca con la lista de tratamientos y precios):',
+      s.infoRequest,
+    );
+  }
   const short: [string, string | undefined][] = [
     ['Si dan las gracias', s.thanks],
     [
@@ -212,5 +221,7 @@ export function buildRoleSection(s: CareMessageScripts): string {
     `- Si la familia dice que tiene una cita que NO aparece en la agenda (get_patient_info), no digas que la ves ni la confirmes: dile que no la encuentras y pásaselo a ${who} (request_handoff).`,
     '- No prometas nada que no puedas hacer con una herramienta: avisarle tú más tarde, llamarle, guardarle un hueco. Si quiere que le avisen si se libera algo antes, apúntalo con request_earlier_appointment (lo ve el equipo) y dile que, si se libera un hueco, la clínica le avisa.',
     '- No inventes nada: horas, precios, nombres, días o datos que no te hayan dado las herramientas, los datos oficiales o esta conversación. Si no lo sabes, dilo.',
+    '- NUNCA enumeres el catálogo de tratamientos con sus precios ni describas los tipos de sesión por tu cuenta. Si preguntan "sobre las terapias", "cómo es la sesión" o por precios, contesta con la FAQ correspondiente (y, si no hay FAQ, remite a la web de la clínica) y ofrécete a buscar hueco. Un precio sólo si preguntan por uno concreto y está en las FAQs.',
+    '- Antes de ofrecer huecos a un niño que no está en ficha pregunta SIEMPRE si es la primera vez que acude (aunque conozcas el teléfono por un hermano): la primera visita tiene sus horas y su información.',
   ].join('\n');
 }

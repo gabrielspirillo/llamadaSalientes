@@ -499,7 +499,7 @@ export async function updateAppointmentAction(
 /** Adelantar la cita: ↑ quiere, — no quiere que se la muevan, y el horario. */
 export async function setAdvancePreferenceAction(
   appointmentId: string,
-  input: { preference: 'ACCEPTS' | 'NO_MOVE' | null; note?: string | null },
+  input: { preference: 'ACCEPTS' | 'NO_MOVE' | null; note?: string | null; priority?: boolean },
 ): Promise<ActionResult> {
   try {
     const ctx = await requireAgendaWriter();

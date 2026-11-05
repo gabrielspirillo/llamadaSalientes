@@ -177,9 +177,12 @@ function AdvanceMark({ item }: { item: CalendarItem }) {
   if (item.advancePreference === 'ACCEPTS') {
     return (
       <span
-        className="inline-grid h-4 w-4 shrink-0 place-items-center rounded-full bg-emerald-600 text-white"
-        title={`Quiere adelantar${item.advanceNote ? ` · ${item.advanceNote}` : ''}`}
-        aria-label="Quiere adelantar"
+        className={cn(
+          'inline-grid h-4 w-4 shrink-0 place-items-center rounded-full text-white',
+          item.advancePriority ? 'bg-amber-500 ring-2 ring-amber-200' : 'bg-emerald-600',
+        )}
+        title={`${item.advancePriority ? 'Prioridad: el primer hueco que se libere' : 'Quiere adelantar'}${item.advanceNote ? ` · ${item.advanceNote}` : ''}`}
+        aria-label={item.advancePriority ? 'Prioridad para adelantar' : 'Quiere adelantar'}
       >
         <ArrowUp className="h-3 w-3" strokeWidth={3} />
       </span>

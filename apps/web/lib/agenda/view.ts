@@ -33,6 +33,8 @@ export interface CalendarItem {
   advancePreference: 'ACCEPTS' | 'NO_MOVE' | null;
   /** Horario al que puede venir ("desde las 18h"). */
   advanceNote: string | null;
+  /** La clínica quiere que sea la primera en recibir un hueco. */
+  advancePriority: boolean;
   /** Familia que duda y banderas rojas. Sólo en clínicas con perfil; si no, null. */
   signals: CalendarSignals | null;
   treatmentId: string | null;
@@ -93,6 +95,7 @@ interface SourceAppointment {
   treatmentPriceCents?: number | null;
   advancePreference?: 'ACCEPTS' | 'NO_MOVE' | null;
   advanceNote?: string | null;
+  advancePriority?: boolean;
   signals?: CalendarSignals | null;
   treatmentId: string | null;
   treatmentName: string | null;
@@ -153,6 +156,7 @@ export function toCalendarItems(
         treatmentPriceCents: a.treatmentPriceCents ?? null,
         advancePreference: a.advancePreference ?? null,
         advanceNote: a.advanceNote ?? null,
+        advancePriority: Boolean(a.advancePriority),
         signals: a.signals ?? null,
         treatmentId: a.treatmentId,
         treatmentName: a.treatmentName,

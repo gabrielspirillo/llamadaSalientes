@@ -466,6 +466,18 @@ cifra y se nos van" en tarjetas concretas. Claves:
 - El loop es de dos vueltas: Gemini manda el `functionCall` sin texto, así que
   se le devuelve el acuse y se le pide el mensaje para la persona.
 
+**Guiones deterministas del asistente de Respinens** (`messageScripts`,
+`lib/care-profile/messages.ts`; se eligen en `runWhatsappAgent` sin pasar por
+el modelo): `greeting` (¿es la primera vez?) sale **siempre** que piden cita
+sin decir si ya vinieron, también con niños en ficha, salvo que nombren a uno
+registrado (`mentionsRegisteredChild`): el 5/11 la madre de un paciente pidió
+cita para la hermana y el asistente la trató como conocida. Si la conversación
+dice "primera vez" u "otro hermano", `check_availability` va con
+`first_visit=true` aunque el modelo no lo pase (`conversationSaysFirstVisit`).
+`infoRequest` ("quería informarme sobre las terapias / precios") responde con
+el texto de la clínica (web + ofrecer cita): **nunca la lista del catálogo con
+precios**; la autorrevisión (`price_list`) rechaza dos o más líneas con €.
+
 **Dónde entra lo aprendido**: `formatLessonsForPrompt` (puro, en
 `lib/agent-training/model.ts`, con tests) arma una sección que
 `loadGroundingForTenant` carga y `buildSystemPrompt` inyecta en los DOS prompts
@@ -988,7 +1000,16 @@ caducidad). Tabla `advance_offers` (migración `0061`).
 4. Sin nadie, el hueco sigue su camino de siempre: lista de espera.
 
 Quien marcó **"no mover" no entra nunca**. Sólo citas posteriores al hueco,
-del mismo profesional y que quepan en él.
+del mismo profesional y que quepan en él. La casilla **"Ofrecerle el primer
+hueco que se libere"** (`advance_priority`, migración `0062`) es la orden "si
+se libera algo hoy, a X": esa cita va la primera dentro de su fase (↑ ámbar
+en el calendario).
+
+⚠️ **El hueco se comprueba LIBRE antes de cada oferta** (`slotIsFree`: sin
+cita viva ni bloqueo ajeno sobre ese rato) y otra vez al aceptar. El 5/11/2026
+se ofreció a tres familias un hueco de las 18:00 que seguía ocupado: la
+cancelación que disparó la oferta era de una cita solapada con otra que seguía
+en pie. Una cancelación ya no equivale a "hueco libre".
 
 **Cómo va la oferta**: el hueco queda **reservado con un bloqueo** de la
 agenda (`professional_time_off`, motivo "Hueco reservado…") mientras la
