@@ -117,8 +117,15 @@ export function PatientHeader({
 
       {facts.length > 0 && (
         <dl
-          className="grid grid-cols-2 gap-px border-t border-(--color-border-subtle) bg-(--color-border-subtle) md:[grid-template-columns:repeat(var(--facts),minmax(0,1fr))]"
-          style={{ '--facts': facts.length } as CSSProperties}
+          className="grid grid-cols-2 gap-px border-t border-(--color-border-subtle) bg-(--color-border-subtle) md:[grid-template-columns:var(--facts-cols)]"
+          style={
+            {
+              // La columna ancha (tutores) lleva 1,5 partes: el teléfono entero en una línea.
+              '--facts-cols': facts
+                .map((f) => (f.wide ? 'minmax(0,1.5fr)' : 'minmax(0,1fr)'))
+                .join(' '),
+            } as CSSProperties
+          }
         >
           {facts.map((f) => (
             <div
@@ -134,7 +141,7 @@ export function PatientHeader({
                   className={cn(
                     // Tutores: una línea por tutor, sin partir el teléfono en dos.
                     f.wide
-                      ? 'overflow-hidden text-ellipsis whitespace-pre text-[14px] font-bold tabular-nums'
+                      ? 'overflow-hidden text-ellipsis whitespace-pre text-[13px] font-bold tabular-nums'
                       : 'line-clamp-2',
                     f.emphasis
                       ? 'text-[20px] font-extrabold md:text-[22px]'
