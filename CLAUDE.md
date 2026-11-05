@@ -1408,6 +1408,34 @@ puro, con tests), igual que el consentimiento.
   `candidates` nuevos, y con un efecto que dependía de ellos la pantalla de
   "factura emitida" se borraba sola. Hay test de regresión.
 
+## Uso de la plataforma (sólo Futura)
+
+`/dashboard/futura/uso` (botón **Uso de la plataforma** en Panel Futura, gate
+`isSuperAdmin`). Para saber cuánto usa cada clínica el panel, qué usa y qué no,
+y a quién hay que llamar antes de que se enfríe. Migración `0064_uso_plataforma.sql`.
+
+- **Tiempo activo, no tiempo con la pestaña abierta.** `UsageBeacon` (montado
+  en el layout del panel, nunca para super-admins) late cada 60 s a
+  `POST /api/usage/beat` sólo con la pestaña visible y actividad (ratón,
+  teclado, scroll, toque) en los últimos 3 min. Cada latido suma 1 minuto en
+  `usage_minutes` (tenant, usuario, día local de la clínica, sección).
+  Dedupe en servidor: si el usuario ya sumó hace < 50 s en ese día, no suma
+  (dos pestañas no cuentan doble). Sin Redis a propósito: `getRedis` reintenta
+  sin fin y colgaría la petición. El endpoint siempre devuelve 204 y nunca
+  lanza.
+- **Sección** = prefijo de ruta (`lib/usage/sections.ts`, con tests). Rutas
+  nuevas del panel caen en `other` hasta que se añadan a `RULES`.
+- **Lo que HACEN** se cuenta en las tablas de cada módulo, no en `audit_logs`
+  (`lib/usage/report.ts`, una consulta `union all`): citas por origen (panel /
+  asistentes / recuperadas), notas, WhatsApp equipo vs asistente, tareas
+  manuales, facturas, cobros, consentimientos, finanzas, chat interno,
+  enseñanzas. "Trabajo automatizado" = acciones de asistentes y huecos
+  recuperados sobre el total.
+- **Riesgo**: `inactive` (sin uso en 7 días), `dropping` (< 50 % del período
+  anterior con ≥ 1 h antes), `never`. Futura y las archivadas no cuentan.
+- ⚠️ En SQL crudo con postgres-js, las fechas van como string ISO con
+  `::timestamptz`, no como `Date` (revienta), y `day` como alias necesita `as`.
+
 ## Módulo Mensajes (core, sin gate de `enabled_modules`)
 
 Sección `/dashboard/messages` (label "Mensajes"). Chat interno del equipo. Transversal, como Tareas.

@@ -7,7 +7,8 @@ import { type EnabledModules, MODULE_DEFINITIONS, MODULE_KEYS } from '@/lib/modu
 import { getCurrentTenant } from '@/lib/tenant';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { eq } from 'drizzle-orm';
-import { LayoutDashboard } from 'lucide-react';
+import { BarChart3, LayoutDashboard } from 'lucide-react';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ModuleToggle } from '../configuration/_panels/modules-panel-toggle';
 import { ActivateButton } from './activate-button';
@@ -120,6 +121,15 @@ export default async function FuturaPanelPage() {
         icon={<LayoutDashboard className="h-5 w-5" />}
         title="Panel Futura"
         description="Gestiona las clínicas de la plataforma: activa las altas nuevas y controla sus módulos."
+        actions={
+          <Link
+            href="/dashboard/futura/uso"
+            className="inline-flex items-center gap-1.5 rounded-full bg-zinc-900 px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-zinc-800"
+          >
+            <BarChart3 className="h-4 w-4" />
+            Uso de la plataforma
+          </Link>
+        }
       />
 
       <p className="mb-5 text-[13px] text-zinc-500">

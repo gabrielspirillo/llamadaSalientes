@@ -2664,6 +2664,28 @@ export const invoices = pgTable(
 );
 
 // ─── Confirmación el día de la cita (perfil de atención) ─────────────────────
+// Minutos activos en el panel por usuario, día y sección. Migración 0064.
+export const usageMinutes = pgTable(
+  'usage_minutes',
+  {
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    day: date('day', { mode: 'string' }).notNull(),
+    section: text('section').notNull(),
+    minutes: integer('minutes').notNull().default(0),
+    firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).defaultNow().notNull(),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.tenantId, t.userId, t.day, t.section] }),
+    dayIdx: index('usage_minutes_day_idx').on(t.day, t.tenantId),
+  }),
+);
+
 // "Si se libera un hueco, que sea para este paciente": la clínica elige a un
 // niño (con o sin cita) y va el primero. Migración 0063.
 export const slotPriorityRequests = pgTable(

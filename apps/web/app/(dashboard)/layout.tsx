@@ -4,6 +4,7 @@ import { NavProgressBar } from '@/components/dashboard/nav-progress';
 import { ScrollReset } from '@/components/dashboard/scroll-reset';
 import { DashboardSidebar } from '@/components/dashboard/sidebar';
 import { DashboardTopbar } from '@/components/dashboard/topbar';
+import { UsageBeacon } from '@/components/dashboard/usage-beacon';
 import { MessagingProvider } from '@/components/messaging/MessagingProvider';
 import {
   findProfessionalForClerkUser,
@@ -163,6 +164,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </main>
         </div>
         <DashboardOverlays tourAutoStart={!isSuperAdmin && !tenantCtx?.impersonating} />
+        {/* Tiempo de uso por sección para el panel de Futura. Futura no cuenta. */}
+        {!isSuperAdmin && <UsageBeacon />}
       </div>
     </MessagingProvider>
   );
