@@ -195,7 +195,7 @@ export function BoardCard({
       {...(href ? { href } : {})}
       className={cn(
         'group block rounded-[18px] border p-3.5 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
-        'hover:-translate-y-1 hover:shadow-[0_18px_38px_-20px_rgba(20,33,29,0.45)]',
+        'hover:shadow-[0_18px_38px_-20px_rgba(20,33,29,0.45)]',
         t.card,
         className,
       )}

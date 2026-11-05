@@ -661,7 +661,7 @@ function MiniKpi({
     <div
       className={cn(
         'flex h-full items-start gap-3 rounded-[18px] border border-(--color-border) bg-white p-3.5 shadow-[var(--shadow-soft)] transition-all duration-300',
-        href && 'hover:-translate-y-0.5 hover:shadow-[var(--shadow-lifted)]',
+        href && 'hover:shadow-[var(--shadow-lifted)]',
       )}
     >
       <span

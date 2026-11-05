@@ -171,7 +171,7 @@ export const authAppearance = {
     formFieldInput:
       'h-12! rounded-[14px]! border! border-solid! border-(--color-border)! bg-white! px-4! text-[15px]! shadow-none! transition focus:border-brand-400! focus:ring-4! focus:ring-brand-100!',
     formButtonPrimary:
-      'h-12! rounded-[14px]! bg-[linear-gradient(120deg,#37766a_0%,#479183_45%,#5fa896_100%)]! text-[15px]! font-semibold! normal-case! shadow-[0_10px_24px_-10px_rgba(55,118,106,0.8)]! transition hover:-translate-y-0.5 hover:shadow-[0_16px_34px_-12px_rgba(55,118,106,0.85)]!',
+      'h-12! rounded-[14px]! bg-[linear-gradient(120deg,#37766a_0%,#479183_45%,#5fa896_100%)]! text-[15px]! font-semibold! normal-case! shadow-[0_10px_24px_-10px_rgba(55,118,106,0.8)]! transition hover:shadow-[0_16px_34px_-12px_rgba(55,118,106,0.85)]!',
     footer: 'hidden!',
     footerAction: 'hidden!',
     identityPreview: 'rounded-[14px]! border! border-(--color-border)!',

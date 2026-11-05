@@ -65,7 +65,7 @@ export function TaskCard({
       tabIndex={0}
       className={cn(
         'group cursor-pointer rounded-2xl border p-3.5 text-left shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-all',
-        'hover:-translate-y-0.5 hover:shadow-[0_8px_20px_-8px_rgba(16,24,40,0.18)]',
+        'hover:shadow-[0_8px_20px_-8px_rgba(16,24,40,0.18)]',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/15',
         meta.card,
         dragging && 'opacity-40',

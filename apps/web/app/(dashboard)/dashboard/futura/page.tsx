@@ -166,7 +166,7 @@ export default async function FuturaPanelPage() {
             return (
               <div
                 key={c.id}
-                className={`rounded-[22px] border bg-white p-5 shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[var(--shadow-lifted)] ${
+                className={`rounded-[22px] border bg-white p-5 shadow-[var(--shadow-soft)] transition-all duration-300 hover:shadow-[var(--shadow-lifted)] ${
                   needsAttention ? 'border-brand-200' : 'border-(--color-border)'
                 }`}
               >
@@ -288,7 +288,7 @@ function StatCard({
     tone === 'success' ? 'from-emerald-50' : tone === 'accent' ? 'from-brand-50' : 'from-zinc-50';
   return (
     <div
-      className={`rounded-[22px] border border-(--color-border) bg-gradient-to-br ${ring} to-white p-5 shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-lifted)]`}
+      className={`rounded-[22px] border border-(--color-border) bg-gradient-to-br ${ring} to-white p-5 shadow-[var(--shadow-soft)] transition-all duration-300 hover:shadow-[var(--shadow-lifted)]`}
     >
       <p className="text-[14px] font-medium text-zinc-500">{label}</p>
       <p className="mt-2 text-[34px] font-bold leading-none tracking-tight tabular-nums text-zinc-900">

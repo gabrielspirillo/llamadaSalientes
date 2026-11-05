@@ -174,7 +174,7 @@ export function EvolutionConnectionPanel({ initial }: Props) {
             type="button"
             onClick={onConnect}
             disabled={pending}
-            className="rounded-full bg-[linear-gradient(120deg,#059669,#10b981)] px-5 py-2 text-sm font-semibold text-white shadow-[0_8px_24px_-10px_rgba(16,185,129,0.7)] transition-all duration-300 hover:-translate-y-0.5 active:scale-95 hover:opacity-95 disabled:opacity-50"
+            className="rounded-full bg-[linear-gradient(120deg,#059669,#10b981)] px-5 py-2 text-sm font-semibold text-white shadow-[0_8px_24px_-10px_rgba(16,185,129,0.7)] transition-all duration-300 active:scale-95 hover:opacity-95 disabled:opacity-50"
           >
             {pending ? 'Procesando…' : 'Pedir QR'}
           </button>
@@ -184,7 +184,7 @@ export function EvolutionConnectionPanel({ initial }: Props) {
             type="button"
             onClick={onCheckStatus}
             disabled={pending}
-            className="rounded-full border border-(--color-border) bg-white px-4 py-2 text-[14px] font-semibold text-zinc-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:text-brand-700 active:scale-95 disabled:opacity-50"
+            className="rounded-full border border-(--color-border) bg-white px-4 py-2 text-[14px] font-semibold text-zinc-700 transition-all duration-300 hover:border-brand-200 hover:text-brand-700 active:scale-95 disabled:opacity-50"
           >
             Comprobar estado
           </button>

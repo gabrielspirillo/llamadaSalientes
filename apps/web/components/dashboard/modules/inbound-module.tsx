@@ -311,7 +311,7 @@ function QuickAction({
   return (
     <Link
       href={href}
-      className="group/qa flex items-center gap-3 rounded-2xl border border-(--color-border) px-3.5 py-2.5 text-[14px] font-medium text-zinc-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:bg-zinc-50 hover:text-brand-700"
+      className="group/qa flex items-center gap-3 rounded-2xl border border-(--color-border) px-3.5 py-2.5 text-[14px] font-medium text-zinc-700 transition-all duration-300 hover:border-brand-200 hover:bg-zinc-50 hover:text-brand-700"
     >
       <span className="text-zinc-500 transition-colors group-hover/qa:text-brand-500">{icon}</span>
       <span>{label}</span>

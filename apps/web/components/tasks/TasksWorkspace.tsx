@@ -310,7 +310,7 @@ export function TasksWorkspace({
                 onClick={() => setAssigneeFilter((cur) => (cur === m.userId ? null : m.userId))}
                 title={`Filtrar por ${m.name}`}
                 className={cn(
-                  'rounded-full transition-transform hover:z-10 hover:-translate-y-0.5',
+                  'rounded-full transition-transform hover:z-10',
                   assigneeFilter === m.userId && 'ring-2 ring-zinc-900',
                 )}
               >

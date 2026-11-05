@@ -357,7 +357,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
             type="button"
             onClick={sendAudio}
             disabled={pending}
-            className="rounded-full bg-[linear-gradient(120deg,#059669,#10b981)] px-3.5 py-1.5 text-[13px] font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 active:scale-95 disabled:opacity-50"
+            className="rounded-full bg-[linear-gradient(120deg,#059669,#10b981)] px-3.5 py-1.5 text-[13px] font-semibold text-white transition-all duration-300 active:scale-95 disabled:opacity-50"
           >
             {pending ? 'Enviando…' : 'Enviar audio'}
           </button>

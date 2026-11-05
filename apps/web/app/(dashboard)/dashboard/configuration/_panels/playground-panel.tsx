@@ -74,7 +74,7 @@ export function PlaygroundPanel() {
             setTurns([]);
             setError(null);
           }}
-          className="rounded-full border border-(--color-border) bg-white px-4 py-2 text-[14px] font-semibold text-zinc-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:text-brand-700 active:scale-95"
+          className="rounded-full border border-(--color-border) bg-white px-4 py-2 text-[14px] font-semibold text-zinc-700 transition-all duration-300 hover:border-brand-200 hover:text-brand-700 active:scale-95"
         >
           Reiniciar conversación
         </button>

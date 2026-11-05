@@ -161,7 +161,7 @@ export function TodayBoardCard({ board, demo }: { board: TodayBoard; demo?: bool
                         href={demo ? '/dashboard?demo=1' : `/dashboard/agenda?cita=${it.id}`}
                         className={cn(
                           'group block w-[156px] rounded-[16px] p-3.5 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
-                          'hover:-translate-y-1 hover:shadow-[0_18px_34px_-14px_rgba(0,0,0,0.55)]',
+                          'hover:shadow-[0_18px_34px_-14px_rgba(0,0,0,0.55)]',
                           isNext
                             ? 'bg-white text-[#14211d] shadow-[0_14px_30px_-12px_rgba(0,0,0,0.6),0_0_0_2px_rgba(110,231,183,0.9)]'
                             : past

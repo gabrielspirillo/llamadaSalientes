@@ -480,7 +480,7 @@ function ReactionRow({
             onClick={() => onToggleReaction(message.id, r.emoji)}
             className={cn(
               'press inline-flex animate-pop items-center gap-1 rounded-full py-0.5 pl-1.5 pr-2 text-[13px] font-semibold',
-              'transition-all duration-200 hover:-translate-y-0.5',
+              'transition-all duration-200',
               mine
                 ? 'bg-brand-100 text-brand-800 ring-1 ring-brand-300 shadow-[0_6px_14px_-10px_rgba(55,118,106,0.9)]'
                 : 'bg-white text-zinc-600 ring-1 ring-(--color-border) hover:ring-brand-200 hover:shadow-[var(--shadow-soft)]',
@@ -498,7 +498,7 @@ function ReactionRow({
           onClick={onAdd}
           aria-label="Añadir una reacción"
           title="Añadir una reacción"
-          className="press inline-flex h-[26px] w-[26px] items-center justify-center rounded-full bg-white text-zinc-500 opacity-0 ring-1 ring-(--color-border) transition-all duration-200 hover:-translate-y-0.5 hover:text-brand-600 hover:ring-brand-200 group-hover:opacity-100 group-focus-within:opacity-100"
+          className="press inline-flex h-[26px] w-[26px] items-center justify-center rounded-full bg-white text-zinc-500 opacity-0 ring-1 ring-(--color-border) transition-all duration-200 hover:text-brand-600 hover:ring-brand-200 group-hover:opacity-100 group-focus-within:opacity-100"
         >
           <Plus className="h-3.5 w-3.5" />
         </button>
@@ -580,7 +580,7 @@ function AttachmentGrid({
           href={attachmentUrl(a)}
           target="_blank"
           rel="noreferrer"
-          className="group/file flex items-center gap-2.5 rounded-[16px] border border-(--color-border) bg-white px-3 py-2.5 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-[var(--shadow-soft)]"
+          className="group/file flex items-center gap-2.5 rounded-[16px] border border-(--color-border) bg-white px-3 py-2.5 transition-all duration-300 hover:border-brand-200 hover:shadow-[var(--shadow-soft)]"
         >
           <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-[linear-gradient(135deg,#e7f5ef,#ddf3ea)] text-brand-700">
             <FileText className="h-4 w-4" />

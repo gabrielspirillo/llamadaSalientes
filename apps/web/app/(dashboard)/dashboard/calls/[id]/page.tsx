@@ -314,7 +314,7 @@ function GhlContactLink({
       href={url}
       target="_blank"
       rel="noreferrer"
-      className="group inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-[14px] font-semibold text-emerald-700 transition-all duration-300 hover:-translate-y-0.5 hover:bg-emerald-100"
+      className="group inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-[14px] font-semibold text-emerald-700 transition-all duration-300 hover:bg-emerald-100"
     >
       Abrir ficha en GoHighLevel
       <ExternalLink className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />

@@ -630,7 +630,7 @@ export function CalendarView(props: CalendarViewProps) {
                             setOpenItem(item);
                           }}
                           className={cn(
-                            'absolute overflow-hidden rounded-lg bg-white px-2 py-1 text-left shadow-[0_6px_16px_-10px_rgba(20,33,29,0.5)] ring-1 ring-black/5 transition-transform duration-200 hover:z-10 hover:scale-[1.01]',
+                            'absolute overflow-hidden rounded-lg bg-white px-2 py-1 text-left shadow-[0_6px_16px_-10px_rgba(20,33,29,0.5)] ring-1 ring-black/5 transition-[box-shadow,filter] duration-200 hover:z-10 hover:shadow-[0_10px_22px_-10px_rgba(20,33,29,0.55)] hover:brightness-[0.97]',
                             STATUS_STYLES[item.status],
                           )}
                           style={{

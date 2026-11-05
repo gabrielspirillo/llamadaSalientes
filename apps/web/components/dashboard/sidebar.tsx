@@ -183,7 +183,7 @@ const ICON_TONE: Record<Tone, string> = {
 /* Todas las filas del menú comparten forma: enlaces, grupos y el pie. */
 const ROW_BASE =
   'group relative flex w-full items-center gap-3 rounded-2xl px-2.5 py-1.5 text-left text-[14px] font-medium transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]';
-const ROW_IDLE = 'text-zinc-600 hover:translate-x-0.5 hover:bg-white/70 hover:text-zinc-900';
+const ROW_IDLE = 'text-zinc-600 hover:bg-white/70 hover:text-zinc-900';
 const ROW_ACTIVE = 'bg-white text-zinc-900 shadow-[0_8px_20px_-12px_rgba(20,33,29,0.45)]';
 
 function isActive(pathname: string, href: string) {

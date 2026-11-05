@@ -636,7 +636,7 @@ function ResumenTab({
         <Link
           href={waHref}
           onClick={onClose}
-          className="group flex items-center gap-3 rounded-[18px] border border-(--color-border) bg-white p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-[var(--shadow-soft)]"
+          className="group flex items-center gap-3 rounded-[18px] border border-(--color-border) bg-white p-4 transition-all duration-300 hover:border-brand-200 hover:shadow-[var(--shadow-soft)]"
         >
           <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-[linear-gradient(135deg,#e7f5ef,#ddf3ea)] text-brand-700">
             <MessageCircle className="h-5 w-5" />
@@ -710,7 +710,7 @@ function CallCard({ call, onClose }: { call: Call; onClose: () => void }) {
     <Link
       href={`/dashboard/calls/${call.id}`}
       onClick={onClose}
-      className="group block rounded-[16px] border border-(--color-border) bg-white p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-[var(--shadow-soft)]"
+      className="group block rounded-[16px] border border-(--color-border) bg-white p-4 transition-all duration-300 hover:border-brand-200 hover:shadow-[var(--shadow-soft)]"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">

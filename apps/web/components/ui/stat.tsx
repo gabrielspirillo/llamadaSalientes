@@ -97,7 +97,7 @@ export function StatTile({
       className={cn(
         'group relative overflow-hidden rounded-[22px] border border-(--color-border) bg-white p-5',
         'shadow-[var(--shadow-soft)] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]',
-        'hover:-translate-y-1 hover:shadow-[var(--shadow-lifted)]',
+        'hover:shadow-[var(--shadow-lifted)]',
         className,
       )}
     >
@@ -442,7 +442,7 @@ export function AvatarStack({
         .map(({ key, n, i }) => (
           <span
             key={key}
-            className="-ml-2 transition-transform duration-300 first:ml-0 hover:z-10 hover:-translate-y-1"
+            className="-ml-2 transition-transform duration-300 first:ml-0 hover:z-10"
             style={{ zIndex: shown.length - i }}
           >
             <Avatar name={n} size={size} />
