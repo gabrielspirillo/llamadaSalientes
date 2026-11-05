@@ -829,3 +829,22 @@ html [data-instant-reveal] [data-reveal] {
     opacity: 0.6;
   }
 }
+
+/* Historia clínica en el bloque oscuro del lateral de la ficha
+   (`HistoryTimeline compact`): el mismo contenido, sobre fondo verde. */
+.history-dark .text-zinc-900,
+.history-dark .text-zinc-700 {
+  color: rgb(255 255 255 / 0.92);
+}
+.history-dark .text-zinc-600 {
+  color: rgb(209 250 229 / 0.75);
+}
+.history-dark .bg-brand-50 {
+  background: rgb(255 255 255 / 0.1);
+}
+.history-dark .text-brand-800 {
+  color: rgb(236 253 245);
+}
+.history-dark strong {
+  color: rgb(167 243 208);
+}

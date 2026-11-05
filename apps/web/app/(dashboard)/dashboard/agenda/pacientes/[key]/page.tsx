@@ -869,7 +869,7 @@ export default async function PacienteDossierPage({
               {/* La clínica pidió (5/11) ver aquí la historia clínica entera, no el
                   resumen del caso: lo que escribió en visitas anteriores, la más
                   reciente arriba. El resumen sigue en el chat de WhatsApp. */}
-              <div className="hidden overflow-hidden rounded-[22px] border border-(--color-border) bg-white shadow-[var(--shadow-soft)] lg:block">
+              <div className="hidden lg:block">
                 <HistoryTimeline
                   notes={historyNotes}
                   pediatric={Boolean(careProfile)}

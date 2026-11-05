@@ -58,12 +58,24 @@ export function HistoryTimeline({
     professionalId === 'all' ? notes : notes.filter((n) => n.professionalId === professionalId);
 
   return (
-    <div className={compact ? 'p-[18px]' : 'p-4 md:p-6'}>
-      <div className={cn('flex flex-wrap items-center gap-3', compact ? 'mb-3' : 'mb-4')}>
+    <div
+      className={
+        compact
+          ? 'relative overflow-hidden rounded-[22px] border border-white/10 bg-[linear-gradient(140deg,#14211d_0%,#1d3a33_55%,#2b5a4d_100%)] p-4 text-white shadow-[var(--shadow-float)] sm:p-5'
+          : 'p-4 md:p-6'
+      }
+    >
+      {compact && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-emerald-300/20 blur-3xl animate-drift"
+        />
+      )}
+      <div className={cn('relative flex flex-wrap items-center gap-3', compact ? 'mb-3' : 'mb-4')}>
         {compact ? (
-          <h2 className="flex-1 text-[12px] font-bold uppercase tracking-[0.14em] text-zinc-600">
-            Historia clínica{' '}
-            <span className="font-medium normal-case tracking-normal">
+          <h2 className="flex flex-1 items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-200/90">
+            <History className="h-3.5 w-3.5" aria-hidden /> Historia clínica{' '}
+            <span className="font-medium normal-case tracking-normal text-emerald-100/70">
               · la más reciente arriba
             </span>
           </h2>
@@ -93,7 +105,7 @@ export function HistoryTimeline({
       </div>
 
       {notes.length === 0 && compact ? (
-        <p className="text-[13px] text-zinc-600">
+        <p className="relative text-[13px] text-emerald-50/80">
           Todavía no hay notas. La de hoy se escribe en este mismo formulario.
         </p>
       ) : notes.length === 0 ? (
@@ -120,7 +132,7 @@ export function HistoryTimeline({
           Este profesional no tiene notas de este paciente.
         </p>
       ) : (
-        <ol className="flex flex-col">
+        <ol className={cn('relative flex flex-col', compact && 'history-dark')}>
           {shown.map((n, idx) => {
             const last = idx === shown.length - 1;
             return (
@@ -128,10 +140,21 @@ export function HistoryTimeline({
                 <div className="flex flex-col items-center">
                   <span
                     aria-hidden
-                    className="mt-1 h-3 w-3 rounded-full bg-brand-500 ring-4 ring-brand-100"
+                    className={cn(
+                      'mt-1 h-3 w-3 rounded-full',
+                      compact
+                        ? 'bg-emerald-300 ring-4 ring-emerald-300/20'
+                        : 'bg-brand-500 ring-4 ring-brand-100',
+                    )}
                   />
                   {!last && (
-                    <span aria-hidden className="mt-1.5 w-0.5 flex-1 bg-(--color-border)" />
+                    <span
+                      aria-hidden
+                      className={cn(
+                        'mt-1.5 w-0.5 flex-1',
+                        compact ? 'bg-white/15' : 'bg-(--color-border)',
+                      )}
+                    />
                   )}
                 </div>
                 <div className={cn('flex min-w-0 flex-col gap-1.5', compact ? 'pb-4' : 'pb-6')}>
