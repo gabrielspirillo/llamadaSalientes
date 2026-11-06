@@ -120,8 +120,7 @@ queda en `apps/web/.clerk/` (ignorado por git).
 | Retell     | Voice AI (inbound + outbound)                  | API key `RETELL_API_KEY`. Webhook signing key todavía PENDIENTE. SIP trunk Zadarma cargado en Retell dashboard (sin SIP REGISTER persistente — Zadarma muestra offline, es normal). |
 | Twilio     | WhatsApp + SMS (cuando se use)                 | Credenciales globales `TWILIO_ACCOUNT_SID/API_KEY/API_SECRET`. Webhook pendiente reapuntar a `app.futuradigital.es`. |
 | Zadarma    | Telefonía (DIDs + SIP trunk)                   | Cabinet `cabinet.zadarma.com`. Inbound webhook configurado a `app.futuradigital.es/api/zadarma/webhook`. No expone API para setear webhook. |
-| OpenAI     | Whisper + **agente WA principal** (`gpt-5.4`)  | `OPENAI_API_KEY`. Modelo en `OPENAI_AGENT_MODEL` (defecto `gpt-5.4`, desde el 6/11/2026; antes `gpt-5.4-mini`). `WA_AGENT_PROVIDER=gemini` devuelve Gemini a principal. La vieja `OPENAI_AGENT_FALLBACK_MODEL` se ignora. |
-| Gemini     | Vision (imágenes/PDFs WA) + respaldo del agente WA | `GEMINI_API_KEY` (pendiente)                                                 |
+| OpenAI     | **Único modelo de la plataforma**: `gpt-5.4` para el asistente de WhatsApp, el entrenador, imágenes y PDF, resúmenes e insights de llamadas; Whisper para notas de voz | `OPENAI_API_KEY`. Modelo en `OPENAI_AGENT_MODEL` (`lib/openai/model.ts`). ⚠️ **Gemini se retiró del todo el 6/11/2026** a pedido de la clínica (fallaba al interpretar): no volver a añadirlo ni como respaldo. `GEMINI_*` y `OPENAI_AGENT_FALLBACK_MODEL` ya no se leen. |
 | GoHighLevel| CRM por tenant (contactos, calendar)           | Soporta OAuth (client_id/secret) y PIT (`pit-...`). Per-tenant en BD encrypted.  |
 
 ## Acceso al server
@@ -463,8 +462,8 @@ cifra y se nos van" en tarjetas concretas. Claves:
   se cambia.
 - Tampoco propone quitarle el protocolo de urgencias ni el paso a recepción, ni
   que diagnostique.
-- El loop es de dos vueltas: Gemini manda el `functionCall` sin texto, así que
-  se le devuelve el acuse y se le pide el mensaje para la persona.
+- El loop es de dos vueltas: el modelo manda la llamada a la herramienta sin
+  texto, así que se le devuelve el acuse y se le pide el mensaje para la persona.
 
 **Guiones deterministas del asistente de Respinens** (`messageScripts`,
 `lib/care-profile/messages.ts`; se eligen en `runWhatsappAgent` sin pasar por
@@ -1573,12 +1572,12 @@ y no responde:
   mientras el handler sigue vivo y el job nunca se marca stalled. El único modo
   de recuperar ese slot era un redeploy.
 
-Ya lo llevan `lib/{gemini,ghl,zadarma,twilio,logger}`, `lib/ghl/oauth.ts`,
+Ya lo llevan `lib/{openai,ghl,zadarma,twilio,logger}`, `lib/ghl/oauth.ts`,
 `lib/whatsapp/{cloud,twilio,evolution}.ts`, `lib/whatsapp/agent/vision.ts` y el
 proxy de grabaciones. **Un cliente nuevo sin tope es un bug, no un descuido.**
 
 **Y ningún webhook público llama a un LLM antes de contestar.** El de Retell
-resumía con Gemini antes del ack del evento más frecuente de la centralita, y
+resumía con el LLM antes del ack del evento más frecuente de la centralita, y
 encima el job `process-call` ya resumía y pisaba el resultado: dos llamadas a un
 LLM por llamada telefónica, una bloqueando. Ese trabajo va a la cola.
 

@@ -293,9 +293,9 @@ async function SummaryText({ text }: { text: string }) {
 async function ensureSpanish(text: string): Promise<string> {
   // Heurística rápida: si tiene tilde / ñ / palabras españolas frecuentes → ya está
   if (/[áéíóúñ¿¡]|paciente|cita|llamó|consulta|agendar/i.test(text)) return text;
-  if (!process.env.GEMINI_API_KEY) return text;
+  if (!process.env.OPENAI_API_KEY) return text;
   try {
-    const { translateToSpanish } = await import('@/lib/gemini/client');
+    const { translateToSpanish } = await import('@/lib/openai/client');
     return await translateToSpanish(text);
   } catch {
     return text;

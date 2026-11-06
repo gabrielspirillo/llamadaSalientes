@@ -1,34 +1,26 @@
 import 'server-only';
 import OpenAI from 'openai';
 
+import { OPENAI_MODEL } from '@/lib/openai/model';
+
 /**
- * Cliente LLM con tool-calling para el agente de WhatsApp.
+ * Cliente LLM con tool-calling para el asistente de WhatsApp y el entrenador.
  *
- * Provider primario: Gemini (REST `generateContent`). Fallback automático a
- * OpenAI ante errores 5xx, 429, timeout o safety filter (400 con bloqueo).
+ * Un solo proveedor: OpenAI, modelo `OPENAI_MODEL` (gpt-5.4). Gemini se quitó
+ * del todo el 6/11/2026 a pedido de la clínica (fallaba al interpretar). Si
+ * OpenAI falla, el error sube con `retryable` y el job reintenta.
  *
- * API mínima: `callLLM` ejecuta UNA vuelta. El orquestador (F4) hace el
- * loop tool-calling externo para tener control granular sobre las trazas y
- * el corte por terminal-tools (request_handoff / flag_urgent).
+ * API mínima: `callLLM` ejecuta UNA vuelta. El orquestador hace el loop
+ * tool-calling externo para tener control granular sobre las trazas y el
+ * corte por terminal-tools (request_handoff / flag_urgent).
  *
  * Mensajes:
  *   - system / user / assistant: lo habitual.
  *   - assistant con tool_calls: cuando reentregamos al LLM lo que él dijo
  *     en una vuelta previa.
  *   - tool: resultado de ejecutar una tool, identificado por toolCallId.
- *
- * Convertimos a/desde el shape específico de cada provider internamente.
  */
 
-const GEMINI_DEFAULT_MODEL = process.env.GEMINI_AGENT_MODEL ?? 'gemini-flash-latest';
-// El modelo del asistente desde el 6/11/2026: gpt-5.4 (el mini fallaba al
-// interpretar mensajes ambiguos). gpt-4o-mini se saltaba instrucciones largas.
-// Se lee de OPENAI_AGENT_MODEL; la variable vieja OPENAI_AGENT_FALLBACK_MODEL
-// se ignora a propósito: en producción podía seguir apuntando a un mini.
-const OPENAI_FALLBACK_MODEL = process.env.OPENAI_AGENT_MODEL || 'gpt-5.4';
-// Proveedor principal: 'openai' (por defecto) o 'gemini'. El otro, si tiene
-// clave, queda de respaldo ante un fallo reintentable.
-const PREFERRED_PROVIDER = () => (process.env.WA_AGENT_PROVIDER === 'gemini' ? 'gemini' : 'openai');
 const REQUEST_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS ?? 20_000);
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -40,12 +32,6 @@ export interface LlmToolCallRequest {
   id: string;
   name: string;
   args: Record<string, unknown>;
-  /**
-   * Firma opaca que Gemini 2.5+ adjunta a cada functionCall cuando el modelo
-   * pensante está activo. Hay que devolverla intacta en el siguiente turno o
-   * el provider responde 400 ("missing thought_signature"). Vacío para OpenAI.
-   */
-  thoughtSignature?: string;
 }
 
 export type LlmMessage =
@@ -55,7 +41,7 @@ export type LlmMessage =
   | { role: 'tool'; toolCallId: string; name: string; content: string };
 
 /**
- * Una herramienta tal como la declaran los dos providers.
+ * Una herramienta tal como se declara al proveedor.
  *
  * No es `AgentToolDefinition`: el mismo cliente lo usa el entrenador del
  * asistente (`lib/agent-training/coach.ts`), que tiene su propia herramienta y
@@ -78,8 +64,6 @@ export interface LlmCallInput {
   messages: LlmMessage[];
   tools: LlmToolDefinition[];
   temperature?: number;
-  /** Forzar provider (saltarse Gemini). Útil para testing/diagnóstico. */
-  forceProvider?: 'gemini' | 'openai';
 }
 
 export interface LlmCallResult {
@@ -90,13 +74,14 @@ export interface LlmCallResult {
   tokensOut: number;
   model: string;
   latencyMs: number;
+  /** Siempre false: ya no hay proveedor de respaldo. Se conserva por las trazas guardadas. */
   fallbackUsed: boolean;
 }
 
 export class LlmError extends Error {
   constructor(
     message: string,
-    public readonly provider: 'gemini' | 'openai',
+    public readonly provider: 'openai',
     public readonly status?: number,
     public readonly retryable = false,
   ) {
@@ -106,236 +91,11 @@ export class LlmError extends Error {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Entrypoint con fallback chain
+// Entrypoint
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function callLLM(input: LlmCallInput): Promise<LlmCallResult> {
-  const force = input.forceProvider;
-  const useOpenai = !!process.env.OPENAI_API_KEY;
-
-  if (!force && useOpenai && PREFERRED_PROVIDER() === 'openai') {
-    try {
-      return { ...(await callOpenAI(input)), fallbackUsed: false };
-    } catch (err) {
-      const e = err as LlmError;
-      const retryable = e instanceof LlmError ? e.retryable : true;
-      if (!process.env.GEMINI_API_KEY || !retryable) throw err;
-      console.warn('[wa-agent-llm] OpenAI falló, hago fallback a Gemini', {
-        status: e.status,
-        message: e.message?.slice(0, 200),
-      });
-      return { ...(await callGemini(input)), fallbackUsed: true };
-    }
-  }
-
-  const useGemini = force === 'gemini' || (!force && !!process.env.GEMINI_API_KEY);
-
-  if (useGemini) {
-    try {
-      return await callGemini(input);
-    } catch (err) {
-      const e = err as LlmError;
-      const retryable = e instanceof LlmError ? e.retryable : true;
-      if (!useOpenai || !retryable) throw err;
-      console.warn('[wa-agent-llm] Gemini falló, hago fallback a OpenAI', {
-        status: e.status,
-        message: e.message?.slice(0, 200),
-      });
-    }
-  }
-
-  if (!useOpenai) {
-    throw new LlmError(
-      'Ningún proveedor LLM configurado (GEMINI_API_KEY u OPENAI_API_KEY).',
-      'openai',
-      undefined,
-      false,
-    );
-  }
-
-  const result = await callOpenAI(input);
-  return { ...result, fallbackUsed: true };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Gemini provider (REST generateContent)
-// ─────────────────────────────────────────────────────────────────────────────
-
-type GeminiPart =
-  | { text: string }
-  | {
-      functionCall: { name: string; args: Record<string, unknown> };
-      thoughtSignature?: string;
-    }
-  | { functionResponse: { name: string; response: { content: string } } };
-
-type GeminiContent = {
-  role: 'user' | 'model' | 'function';
-  parts: GeminiPart[];
-};
-
-type GeminiResponse = {
-  candidates?: Array<{
-    content?: GeminiContent;
-    finishReason?: string;
-    safetyRatings?: unknown;
-  }>;
-  promptFeedback?: { blockReason?: string };
-  usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
-};
-
-async function callGemini(input: LlmCallInput): Promise<LlmCallResult> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new LlmError('GEMINI_API_KEY no configurada', 'gemini', undefined, false);
-  }
-
-  const model = GEMINI_DEFAULT_MODEL;
-  const { systemInstruction, contents } = toGeminiContents(input.messages);
-  const body = {
-    systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
-    contents,
-    tools: input.tools.length
-      ? [
-          {
-            functionDeclarations: input.tools.map((t) => ({
-              name: t.name,
-              description: t.description,
-              // Gemini acepta un subset de JSON Schema: rechaza
-              // `additionalProperties`, `$schema`, `$id` con 400. OpenAI sí
-              // los acepta, así que mantenemos el shape original en
-              // `t.parameters` y sanitizamos solo aquí.
-              parameters: sanitizeJsonSchemaForGemini(t.parameters),
-            })),
-          },
-        ]
-      : undefined,
-    toolConfig: input.tools.length ? { functionCallingConfig: { mode: 'AUTO' } } : undefined,
-    generationConfig: {
-      temperature: input.temperature ?? 0.3,
-    },
-  };
-
-  const started = Date.now();
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-  const res = await fetchWithTimeout(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const errBody = await res.text().catch(() => '');
-    const retryable =
-      res.status === 429 ||
-      res.status >= 500 ||
-      (res.status === 400 && /safety|block/i.test(errBody));
-    throw new LlmError(
-      `Gemini ${res.status}: ${errBody.slice(0, 200)}`,
-      'gemini',
-      res.status,
-      retryable,
-    );
-  }
-
-  const data = (await res.json()) as GeminiResponse;
-  const latencyMs = Date.now() - started;
-
-  if (data.promptFeedback?.blockReason) {
-    // Safety filter cortó la generación: lo tratamos como retryable para
-    // que el fallback a OpenAI lo recoja.
-    throw new LlmError(
-      `Gemini bloqueado por safety: ${data.promptFeedback.blockReason}`,
-      'gemini',
-      400,
-      true,
-    );
-  }
-
-  const candidate = data.candidates?.[0];
-  const parts = candidate?.content?.parts ?? [];
-
-  const toolCalls: LlmToolCallRequest[] = [];
-  const textChunks: string[] = [];
-  let toolCallCounter = 0;
-  for (const part of parts) {
-    if ('functionCall' in part && part.functionCall) {
-      toolCalls.push({
-        id: `gemini-${started}-${toolCallCounter++}`,
-        name: part.functionCall.name,
-        args: (part.functionCall.args ?? {}) as Record<string, unknown>,
-        thoughtSignature: part.thoughtSignature,
-      });
-    } else if ('text' in part && part.text) {
-      textChunks.push(part.text);
-    }
-  }
-
-  const text = textChunks.join('').trim();
-  return {
-    text: text.length ? text : null,
-    toolCalls,
-    tokensIn: data.usageMetadata?.promptTokenCount ?? 0,
-    tokensOut: data.usageMetadata?.candidatesTokenCount ?? 0,
-    model,
-    latencyMs,
-    fallbackUsed: false,
-  };
-}
-
-function toGeminiContents(messages: LlmMessage[]): {
-  systemInstruction: string | null;
-  contents: GeminiContent[];
-} {
-  // Gemini admite UN systemInstruction al nivel raíz, no inline. Si vienen
-  // varios `system` (raro), los concatenamos.
-  const systemBuf: string[] = [];
-  const contents: GeminiContent[] = [];
-
-  for (const msg of messages) {
-    if (msg.role === 'system') {
-      systemBuf.push(msg.content);
-      continue;
-    }
-    if (msg.role === 'user') {
-      contents.push({ role: 'user', parts: [{ text: msg.content }] });
-      continue;
-    }
-    if (msg.role === 'assistant') {
-      const parts: GeminiContent['parts'] = [];
-      if (msg.content) parts.push({ text: msg.content });
-      if (msg.toolCalls) {
-        for (const tc of msg.toolCalls) {
-          const part: GeminiPart = {
-            functionCall: { name: tc.name, args: tc.args },
-          };
-          if (tc.thoughtSignature) part.thoughtSignature = tc.thoughtSignature;
-          parts.push(part);
-        }
-      }
-      if (parts.length === 0) parts.push({ text: '' });
-      contents.push({ role: 'model', parts });
-      continue;
-    }
-    if (msg.role === 'tool') {
-      contents.push({
-        role: 'function',
-        parts: [
-          {
-            functionResponse: {
-              name: msg.name,
-              response: { content: msg.content },
-            },
-          },
-        ],
-      });
-    }
-  }
-
-  return {
-    systemInstruction: systemBuf.length ? systemBuf.join('\n\n') : null,
-    contents,
-  };
+  return callOpenAI(input);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -349,13 +109,15 @@ function getOpenAI(): OpenAI {
   if (!apiKey) {
     throw new LlmError('OPENAI_API_KEY no configurada', 'openai', undefined, false);
   }
-  _openai = new OpenAI({ apiKey });
+  // Sin reintentos del SDK: el job de la cola ya reintenta, y dos reintentos
+  // encadenados dejaban al paciente minutos sin respuesta.
+  _openai = new OpenAI({ apiKey, timeout: REQUEST_TIMEOUT_MS, maxRetries: 0 });
   return _openai;
 }
 
 async function callOpenAI(input: LlmCallInput): Promise<LlmCallResult> {
   const openai = getOpenAI();
-  const model = OPENAI_FALLBACK_MODEL;
+  const model = OPENAI_MODEL;
   const started = Date.now();
 
   const messages = toOpenAIMessages(input.messages);
@@ -470,44 +232,4 @@ function toOpenAIMessages(messages: LlmMessage[]): OpenAIMessage[] {
     }
   }
   return out;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Gemini admite un subset de JSON Schema en `functionDeclarations.parameters`:
- * rechaza propiedades como `additionalProperties`, `$schema`, `$id` con 400
- * "Unknown name ... Cannot find field". Las eliminamos recursivamente. OpenAI
- * sí las acepta, así que la sanitización solo corre en la rama de Gemini.
- */
-const GEMINI_DROP_KEYS = new Set(['additionalProperties', '$schema', '$id']);
-
-function sanitizeJsonSchemaForGemini(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(sanitizeJsonSchemaForGemini);
-  if (value && typeof value === 'object') {
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      if (GEMINI_DROP_KEYS.has(k)) continue;
-      out[k] = sanitizeJsonSchemaForGemini(v);
-    }
-    return out;
-  }
-  return value;
-}
-
-async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-  try {
-    return await fetch(url, { ...init, signal: controller.signal });
-  } catch (err) {
-    if ((err as Error).name === 'AbortError') {
-      throw new LlmError('LLM request timeout', 'gemini', undefined, true);
-    }
-    throw err;
-  } finally {
-    clearTimeout(timer);
-  }
 }

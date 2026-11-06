@@ -1,13 +1,12 @@
 import 'server-only';
 
+import { OPENAI_MODEL } from '@/lib/openai/model';
+import OpenAI from 'openai';
+
 /**
- * Descripción de imágenes y PDFs con Gemini multimodal.
- *
- * Reutilizamos el endpoint REST de Gemini (mismo patrón que
- * lib/gemini/client.ts) para no traer otra SDK. Por defecto usamos
- * `gemini-flash-latest` que ya está validado en el resto del proyecto y
- * soporta input multimodal. Override vía `GEMINI_VISION_MODEL` cuando
- * necesitemos algo más potente (ej: `gemini-pro-latest` para PDFs largos).
+ * Descripción de imágenes y PDFs con el modelo multimodal de OpenAI (el mismo
+ * del asistente). Antes iba por Gemini Flash; la clínica pidió no usarlo para
+ * nada (6/11/2026).
  *
  * El resultado se cachea en `whatsapp_messages.transcription` (descripción
  * en texto plano) + `whatsapp_messages.media_analysis_json` (model, latency,
@@ -15,27 +14,26 @@ import 'server-only';
  *
  * IMPORTANTE: NO emitimos diagnósticos clínicos — solo descripción literal.
  * El system prompt del agente principal trata cualquier media clínico
- * sospechoso como handoff a recepción (regla #4 del CLAUDE.md de DentalFlow).
+ * sospechoso como handoff a recepción.
  */
 
 /**
- * Tope de espera de Gemini Vision. Corre dentro del job `wa-process`, en bucle
- * sobre cada imagen o PDF de la ráfaga: un fetch colgado se lleva un slot de la
- * cola de WhatsApp para siempre —BullMQ renueva el lock mientras el handler
- * sigue vivo, así que nunca se marca stalled— y el paciente que mandó la foto
- * no recibe respuesta nunca.
+ * Tope de espera. Corre dentro del job `wa-process`, en bucle sobre cada
+ * imagen o PDF de la ráfaga: un fetch colgado se lleva un slot de la cola de
+ * WhatsApp para siempre —BullMQ renueva el lock mientras el handler sigue
+ * vivo— y el paciente que mandó la foto no recibe respuesta nunca.
  */
 const VISION_TIMEOUT_MS = 25_000;
 
-const DEFAULT_MODEL = process.env.GEMINI_VISION_MODEL ?? 'gemini-flash-latest';
+const MODEL = process.env.OPENAI_VISION_MODEL || OPENAI_MODEL;
 
-const IMAGE_PROMPT = `Describí brevemente, en castellano, lo que ves en esta imagen.
-Si es contenido médico u odontológico, explicá qué se observa de forma DESCRIPTIVA y NEUTRAL
+const IMAGE_PROMPT = `Describe brevemente, en castellano, lo que ves en esta imagen.
+Si es contenido médico u odontológico, explica qué se observa de forma DESCRIPTIVA y NEUTRAL
 (ej: "se ve un molar con una zona oscura en la cara oclusal"). NO diagnostiques.
 Máximo 3 frases. Sin emojis ni signos de exclamación.`;
 
-const PDF_PROMPT = `Resumí en castellano el contenido de este PDF, máximo 4 frases.
-Si es un parte médico/odontológico, extraé los datos relevantes (fecha, paciente,
+const PDF_PROMPT = `Resume en castellano el contenido de este PDF, máximo 4 frases.
+Si es un parte médico/odontológico, extrae los datos relevantes (fecha, paciente,
 tratamiento, recomendaciones) de forma descriptiva, SIN diagnosticar ni inventar.
 Sin emojis ni signos de exclamación.`;
 
@@ -45,75 +43,47 @@ export type VisionResult = {
   latencyMs: number;
 };
 
-type GeminiResponse = {
-  candidates?: Array<{
-    content?: { parts?: Array<{ text?: string }> };
-  }>;
-  promptFeedback?: { blockReason?: string };
-};
+let _client: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (_client) return _client;
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error('OPENAI_API_KEY no está configurada');
+  _client = new OpenAI({ apiKey, timeout: VISION_TIMEOUT_MS, maxRetries: 1 });
+  return _client;
+}
 
-async function generateFromInline(input: {
-  prompt: string;
-  buffer: Buffer;
-  mimeType: string;
-  model?: string;
-}): Promise<VisionResult> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY no está configurada');
+type ContentPart = OpenAI.Chat.Completions.ChatCompletionContentPart;
 
-  const model = input.model ?? DEFAULT_MODEL;
+async function describe(prompt: string, part: ContentPart): Promise<VisionResult> {
   const started = Date.now();
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    signal: AbortSignal.timeout(VISION_TIMEOUT_MS),
-    body: JSON.stringify({
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { text: input.prompt },
-            { inlineData: { mimeType: input.mimeType, data: input.buffer.toString('base64') } },
-          ],
-        },
-      ],
-      generationConfig: { temperature: 0.2 },
-    }),
+  const completion = await getOpenAI().chat.completions.create({
+    model: MODEL,
+    messages: [{ role: 'user', content: [{ type: 'text', text: prompt }, part] }],
   });
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(`Gemini ${res.status}: ${body.slice(0, 200)}`);
-  }
-
-  const data = (await res.json()) as GeminiResponse;
-  // Bloqueo por safety filter: devolvemos un placeholder neutral para que el
-  // procesador siga adelante (el LLM principal verá "imagen recibida sin
-  // contenido analizable" y derivará a handoff si hace falta).
-  if (data.promptFeedback?.blockReason) {
-    return {
-      text: '(media recibido, no se pudo analizar el contenido)',
-      model,
-      latencyMs: Date.now() - started,
-    };
-  }
-  const text = (data.candidates?.[0]?.content?.parts?.[0]?.text ?? '').trim();
+  const text = (completion.choices[0]?.message?.content ?? '').trim();
   return {
     text: text || '(media recibido, sin descripción)',
-    model,
+    model: MODEL,
     latencyMs: Date.now() - started,
   };
 }
 
 export async function describeImage(buffer: Buffer, mimeType: string): Promise<VisionResult> {
-  // Algunos paquetes WhatsApp llegan con `image/jpeg; codecs=...`; la API de
-  // Gemini quiere el mime sin parámetros.
+  // Algunos paquetes WhatsApp llegan con `image/jpeg; codecs=...`; el data URL
+  // quiere el mime sin parámetros.
   const cleanMime = mimeType.split(';')[0]?.trim() || 'image/jpeg';
-  return generateFromInline({ prompt: IMAGE_PROMPT, buffer, mimeType: cleanMime });
+  return describe(IMAGE_PROMPT, {
+    type: 'image_url',
+    image_url: { url: `data:${cleanMime};base64,${buffer.toString('base64')}`, detail: 'low' },
+  });
 }
 
 export async function describePdf(buffer: Buffer): Promise<VisionResult> {
-  return generateFromInline({ prompt: PDF_PROMPT, buffer, mimeType: 'application/pdf' });
+  return describe(PDF_PROMPT, {
+    type: 'file',
+    file: {
+      filename: 'documento.pdf',
+      file_data: `data:application/pdf;base64,${buffer.toString('base64')}`,
+    },
+  });
 }

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
 
-// Mock OpenAI SDK al estilo singleton del cliente. Evita tocar la red.
+// Mock del SDK de OpenAI al estilo singleton del cliente. Evita tocar la red.
 const openaiCreate = vi.hoisted(() => vi.fn());
 vi.mock('openai', () => ({
   default: class FakeOpenAI {
@@ -10,7 +10,7 @@ vi.mock('openai', () => ({
   },
 }));
 
-import { callLLM } from '@/lib/whatsapp/agent/llm';
+import { LlmError, callLLM } from '@/lib/whatsapp/agent/llm';
 import type { AgentToolDefinition } from '@/lib/whatsapp/agent/tools';
 
 const TOOL_DEFS: AgentToolDefinition[] = [
@@ -29,38 +29,20 @@ const TOOL_DEFS: AgentToolDefinition[] = [
   },
 ];
 
-const ORIGINAL_FETCH = globalThis.fetch;
-
 beforeEach(() => {
   openaiCreate.mockReset();
-  process.env.GEMINI_API_KEY = 'fake-gemini-key';
   process.env.OPENAI_API_KEY = 'fake-openai-key';
-  process.env.WA_AGENT_PROVIDER = 'gemini';
 });
 
 afterEach(() => {
-  globalThis.fetch = ORIGINAL_FETCH;
+  vi.unstubAllEnvs();
 });
 
-function mockFetchOnce(response: { status?: number; body: unknown; bodyText?: string }) {
-  const status = response.status ?? 200;
-  globalThis.fetch = vi.fn(async () => {
-    return {
-      ok: status >= 200 && status < 300,
-      status,
-      text: async () => response.bodyText ?? JSON.stringify(response.body),
-      json: async () => response.body,
-    } as unknown as Response;
-  }) as unknown as typeof fetch;
-}
-
-describe('callLLM — Gemini', () => {
+describe('callLLM — OpenAI (único proveedor)', () => {
   it('parsea texto puro y devuelve toolCalls vacío + token counts', async () => {
-    mockFetchOnce({
-      body: {
-        candidates: [{ content: { role: 'model', parts: [{ text: 'Vale, te ayudo con eso.' }] } }],
-        usageMetadata: { promptTokenCount: 120, candidatesTokenCount: 8 },
-      },
+    openaiCreate.mockResolvedValue({
+      choices: [{ message: { role: 'assistant', content: 'Vale, te ayudo con eso.' } }],
+      usage: { prompt_tokens: 120, completion_tokens: 8 },
     });
 
     const out = await callLLM({
@@ -76,99 +58,17 @@ describe('callLLM — Gemini', () => {
     expect(out.tokensIn).toBe(120);
     expect(out.tokensOut).toBe(8);
     expect(out.fallbackUsed).toBe(false);
-    expect(out.model).toMatch(/^gemini/);
+    expect(out.model).toBe('gpt-5.4');
+    // Las tools van declaradas como funciones, con el schema tal cual.
+    const body = openaiCreate.mock.calls[0]?.[0] as {
+      model: string;
+      tools: Array<{ type: string; function: { name: string } }>;
+    };
+    expect(body.model).toBe('gpt-5.4');
+    expect(body.tools[0]?.function.name).toBe('check_availability');
   });
 
-  it('parsea functionCall y lo expone como toolCalls', async () => {
-    mockFetchOnce({
-      body: {
-        candidates: [
-          {
-            content: {
-              role: 'model',
-              parts: [
-                {
-                  functionCall: {
-                    name: 'check_availability',
-                    args: { treatment_name: 'Limpieza', preferred_date: '2026-05-22' },
-                  },
-                },
-              ],
-            },
-          },
-        ],
-      },
-    });
-
-    const out = await callLLM({
-      messages: [{ role: 'user', content: '¿Hay hueco para limpieza?' }],
-      tools: TOOL_DEFS,
-    });
-
-    expect(out.text).toBeNull();
-    expect(out.toolCalls).toHaveLength(1);
-    expect(out.toolCalls[0]).toMatchObject({
-      name: 'check_availability',
-      args: { treatment_name: 'Limpieza', preferred_date: '2026-05-22' },
-    });
-    expect(out.toolCalls[0]?.id).toMatch(/^gemini-/);
-  });
-});
-
-describe('callLLM — Fallback Gemini → OpenAI', () => {
-  it('si Gemini devuelve 500, hace fallback a OpenAI y marca fallbackUsed=true', async () => {
-    mockFetchOnce({ status: 500, body: {}, bodyText: 'internal' });
-    openaiCreate.mockResolvedValue({
-      choices: [
-        {
-          message: { role: 'assistant', content: 'Te paso con recepción.' },
-        },
-      ],
-      usage: { prompt_tokens: 50, completion_tokens: 6 },
-    });
-
-    const out = await callLLM({
-      messages: [{ role: 'user', content: 'hola' }],
-      tools: TOOL_DEFS,
-    });
-
-    expect(out.fallbackUsed).toBe(true);
-    expect(out.text).toBe('Te paso con recepción.');
-    expect(openaiCreate).toHaveBeenCalledTimes(1);
-  });
-
-  it('si Gemini devuelve 400 con safety block, hace fallback', async () => {
-    mockFetchOnce({
-      status: 400,
-      body: {},
-      bodyText: 'response was blocked by safety filter',
-    });
-    openaiCreate.mockResolvedValue({
-      choices: [{ message: { role: 'assistant', content: 'ok' } }],
-      usage: { prompt_tokens: 1, completion_tokens: 1 },
-    });
-
-    const out = await callLLM({
-      messages: [{ role: 'user', content: 'foo' }],
-      tools: TOOL_DEFS,
-    });
-    expect(out.fallbackUsed).toBe(true);
-  });
-
-  it('si Gemini devuelve 400 sin safety, NO hace fallback y propaga', async () => {
-    mockFetchOnce({ status: 400, body: {}, bodyText: 'bad request, invalid model' });
-    await expect(
-      callLLM({
-        messages: [{ role: 'user', content: 'foo' }],
-        tools: TOOL_DEFS,
-      }),
-    ).rejects.toThrow(/Gemini 400/);
-    expect(openaiCreate).not.toHaveBeenCalled();
-  });
-});
-
-describe('callLLM — OpenAI tool_calls', () => {
-  it('parsea tool_calls de OpenAI y deserializa los args (forceProvider)', async () => {
+  it('parsea tool_calls y deserializa los args', async () => {
     openaiCreate.mockResolvedValue({
       choices: [
         {
@@ -197,7 +97,6 @@ describe('callLLM — OpenAI tool_calls', () => {
     const out = await callLLM({
       messages: [{ role: 'user', content: 'hueco mañana' }],
       tools: TOOL_DEFS,
-      forceProvider: 'openai',
     });
 
     expect(out.text).toBeNull();
@@ -208,39 +107,41 @@ describe('callLLM — OpenAI tool_calls', () => {
         args: { treatment_name: 'Limpieza', preferred_date: '2026-05-22' },
       },
     ]);
-    // forceProvider=openai → ruta directa OpenAI, marcamos fallbackUsed=true
-    // para que el orquestador sepa que no se intentó el provider primario.
-    expect(out.fallbackUsed).toBe(true);
   });
-});
 
-describe('sanitizeJsonSchemaForGemini (vía cuerpo del request)', () => {
-  it('elimina additionalProperties de los parameters al llamar a Gemini', async () => {
-    let capturedBody: { tools?: Array<{ functionDeclarations: unknown[] }> } | null = null;
-    globalThis.fetch = vi.fn(async (_url, init) => {
-      capturedBody = JSON.parse(String((init as RequestInit).body));
-      return {
-        ok: true,
-        status: 200,
-        text: async () => '',
-        json: async () => ({
-          candidates: [{ content: { role: 'model', parts: [{ text: 'ok' }] } }],
+  it('si el modelo rechaza la temperatura (400), reintenta sin ella', async () => {
+    openaiCreate
+      .mockRejectedValueOnce(
+        Object.assign(new Error("Unsupported value: 'temperature' does not support 0.3"), {
+          status: 400,
         }),
-      } as unknown as Response;
-    }) as unknown as typeof fetch;
+      )
+      .mockResolvedValueOnce({
+        choices: [{ message: { role: 'assistant', content: 'ok' } }],
+        usage: { prompt_tokens: 1, completion_tokens: 1 },
+      });
 
-    await callLLM({
+    const out = await callLLM({
       messages: [{ role: 'user', content: 'hola' }],
-      tools: TOOL_DEFS,
+      tools: [],
+      temperature: 0.3,
     });
 
-    expect(capturedBody).not.toBeNull();
-    const params = (
-      capturedBody as never as {
-        tools: Array<{ functionDeclarations: Array<{ parameters: object }> }>;
-      }
-    ).tools[0]?.functionDeclarations[0]?.parameters as Record<string, unknown> | undefined;
-    expect(params).toBeDefined();
-    expect(params && 'additionalProperties' in params).toBe(false);
+    expect(out.text).toBe('ok');
+    expect(openaiCreate).toHaveBeenCalledTimes(2);
+    expect('temperature' in (openaiCreate.mock.calls[0]?.[0] as object)).toBe(true);
+    expect('temperature' in (openaiCreate.mock.calls[1]?.[0] as object)).toBe(false);
+  });
+
+  it('un 500 sube como LlmError reintentable; un 400 no', async () => {
+    openaiCreate.mockRejectedValueOnce(Object.assign(new Error('boom'), { status: 500 }));
+    await expect(
+      callLLM({ messages: [{ role: 'user', content: 'hola' }], tools: [] }),
+    ).rejects.toMatchObject({ name: 'LlmError', retryable: true, provider: 'openai' });
+
+    openaiCreate.mockRejectedValueOnce(Object.assign(new Error('bad request'), { status: 400 }));
+    await expect(
+      callLLM({ messages: [{ role: 'user', content: 'hola' }], tools: [] }),
+    ).rejects.toSatisfy((e: unknown) => e instanceof LlmError && !e.retryable);
   });
 });

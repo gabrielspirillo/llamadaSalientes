@@ -2,7 +2,7 @@ import { denyUnlessRole } from '@/lib/auth/api-guard';
 import { decrypt } from '@/lib/crypto';
 import { db } from '@/lib/db/client';
 import { calls } from '@/lib/db/schema';
-import { summarizeCallWithGemini } from '@/lib/gemini/client';
+import { summarizeCall } from '@/lib/openai/client';
 import { getCurrentTenant } from '@/lib/tenant';
 import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -13,7 +13,7 @@ export const maxDuration = 300; // 5 min max
 
 /**
  * Re-procesa llamadas viejas con transcript pero sin intent.
- * Útil para llenar datos generados antes de wirear Gemini en el webhook.
+ * Útil para llenar datos generados antes de resumir en el webhook.
  *
  * Solo el owner del tenant logueado puede ejecutarlo.
  */
@@ -28,8 +28,8 @@ export async function POST(_req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (!process.env.GEMINI_API_KEY) {
-    return NextResponse.json({ error: 'GEMINI_API_KEY no configurada' }, { status: 503 });
+  if (!process.env.OPENAI_API_KEY) {
+    return NextResponse.json({ error: 'OPENAI_API_KEY no configurada' }, { status: 503 });
   }
 
   const rows = await db
@@ -58,7 +58,7 @@ export async function POST(_req: NextRequest) {
         results.push({ id: r.id, ok: false, error: 'transcript muy corto' });
         continue;
       }
-      const ai = await summarizeCallWithGemini(transcript);
+      const ai = await summarizeCall(transcript);
       await db
         .update(calls)
         .set({

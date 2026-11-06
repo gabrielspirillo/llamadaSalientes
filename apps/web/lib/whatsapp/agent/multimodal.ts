@@ -17,8 +17,8 @@ import { transcribeAudio } from './whisper';
  * la convierte en un texto unificado listo para alimentar al LLM. Maneja:
  *  - TEXT / INTERACTIVE / LOCATION / CONTACT: usa contentText tal cual.
  *  - AUDIO: descarga via connector → Whisper → cachea transcripción.
- *  - IMAGE / STICKER: descarga → Gemini Vision → cachea descripción.
- *  - PDF: descarga → Gemini Vision (PDF mode) → cachea descripción.
+ *  - IMAGE / STICKER: descarga → gpt-5.4 (visión) → cachea descripción.
+ *  - PDF: descarga → gpt-5.4 (PDF) → cachea descripción.
  *  - VIDEO: placeholder neutral (no procesamos contenido visual de video).
  *
  * Idempotencia:
@@ -179,7 +179,7 @@ async function processOne(msg: DbMessage, input: ProcessMessagesInput): Promise<
     }
   }
 
-  // LLM call: Whisper para audio, Gemini Vision para imagen/PDF.
+  // LLM call: Whisper para audio, gpt-5.4 para imagen/PDF.
   let summaryText = MEDIA_PLACEHOLDER[kind];
   let failed = false;
   let modelUsed = 'noop';

@@ -121,8 +121,7 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json(
       {
-        error:
-          'El agente no pudo responder. Revisa que GEMINI_API_KEY / OPENAI_API_KEY estén configuradas.',
+        error: 'El agente no pudo responder. Revisa que OPENAI_API_KEY esté configurada.',
       },
       { status: 500 },
     );

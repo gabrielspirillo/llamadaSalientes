@@ -99,7 +99,7 @@ export interface MediaSummary {
   summary: string;
   /** URL si el media fue persistido en Supabase Storage (image/audio/pdf). */
   mediaUrl?: string;
-  /** Modelo usado para procesar este media (whisper-1, gemini-2.5-pro, 'cache'). */
+  /** Modelo usado para procesar este media (whisper-1, gpt-5.4, 'cache'). */
   model?: string;
   latencyMs?: number;
   /** No se pudo descargar o analizar: `summary` es el aviso, no el contenido. */

@@ -1,5 +1,5 @@
 import { listCalls } from '@/lib/data/calls-list';
-import { generateCallInsights } from '@/lib/gemini/client';
+import { generateCallInsights } from '@/lib/openai/client';
 import { getCurrentTenant } from '@/lib/tenant';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -19,11 +19,8 @@ export async function GET(_req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (!process.env.GEMINI_API_KEY) {
-    return NextResponse.json(
-      { error: 'GEMINI_API_KEY no está configurada en Vercel. Pedile al admin que la agregue.' },
-      { status: 503 },
-    );
+  if (!process.env.OPENAI_API_KEY) {
+    return NextResponse.json({ error: 'OPENAI_API_KEY no está configurada.' }, { status: 503 });
   }
 
   let recent: Awaited<ReturnType<typeof listCalls>>;
@@ -68,7 +65,7 @@ export async function GET(_req: NextRequest) {
     return NextResponse.json(insights);
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Error desconocido';
-    console.error('[insights] gemini failed:', err);
-    return NextResponse.json({ error: `Gemini falló: ${msg.slice(0, 200)}` }, { status: 502 });
+    console.error('[insights] el modelo falló:', err);
+    return NextResponse.json({ error: `El análisis falló: ${msg.slice(0, 200)}` }, { status: 502 });
   }
 }

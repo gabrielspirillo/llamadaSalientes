@@ -11,7 +11,7 @@
  *   pnpm eval:agent -- --case=urgencia-clinica   # un caso
  *   pnpm eval:agent -- --verbose     # imprime respuesta + tools de cada caso
  *
- * Requiere una key de LLM en el entorno: GEMINI_API_KEY o OPENAI_API_KEY.
+ * Requiere OPENAI_API_KEY en el entorno.
  * El resto del env (DB/Clerk) se rellena con valores dummy porque el sandbox
  * no se conecta a nada de eso.
  */
@@ -40,10 +40,8 @@ const verbose = args.includes('--verbose');
 const caseFilter = args.find((a) => a.startsWith('--case='))?.split('=')[1];
 
 async function main(): Promise<void> {
-  if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY) {
-    console.error(
-      '\n✗ Falta key de LLM. Seteá GEMINI_API_KEY o OPENAI_API_KEY (en apps/web/.env o en el entorno) y reintentá.\n',
-    );
+  if (!process.env.OPENAI_API_KEY) {
+    console.error('\n✗ Falta OPENAI_API_KEY (en apps/web/.env o en el entorno).\n');
     process.exit(1);
   }
 

@@ -102,22 +102,6 @@ export async function processCallJob(
         console.warn('[process-call] resumen fallido', retellCallId, err);
         return null;
       });
-  } else if (transcript && process.env.GEMINI_API_KEY) {
-    summary = await step
-      .run<SummaryShape>('summarize-transcript-gemini', async () => {
-        const { summarizeCallWithGemini } = await import('@/lib/gemini/client');
-        const ai = await summarizeCallWithGemini(transcript);
-        return {
-          intent: ai.intent,
-          sentiment: ai.sentiment,
-          summary: ai.summary,
-          followUp: ai.followUp,
-        };
-      })
-      .catch((err) => {
-        console.warn('[process-call] resumen fallido', retellCallId, err);
-        return null;
-      });
   }
 
   await step.run('persist-results', async () => {

@@ -1,4 +1,5 @@
 import 'server-only';
+import { OPENAI_MODEL } from '@/lib/openai/model';
 import OpenAI from 'openai';
 
 let _client: OpenAI | null = null;
@@ -57,7 +58,7 @@ export async function summarizeCall(transcript: string): Promise<CallSummary> {
 
   const openai = getOpenAI();
   const completion = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
+    model: OPENAI_MODEL,
     temperature: 0.2,
     response_format: { type: 'json_object' },
     messages: [
@@ -116,7 +117,7 @@ export async function summarizeLeadMemory(input: {
 }): Promise<LeadMemoryResult> {
   const openai = getOpenAI();
   const completion = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
+    model: OPENAI_MODEL,
     temperature: 0.2,
     response_format: { type: 'json_object' },
     messages: [
@@ -132,5 +133,88 @@ export async function summarizeLeadMemory(input: {
   return {
     profileSummary: parsed.profileSummary ?? input.priorProfile ?? '',
     facts: (parsed.facts as Record<string, unknown>) ?? {},
+  };
+}
+
+// ─── Insights de llamadas y traducción ───────────────────────────────────────
+
+/** Tope de espera de las llamadas que corren dentro de un request del panel. */
+const PANEL_TIMEOUT_MS = 15_000;
+
+export async function translateToSpanish(text: string): Promise<string> {
+  if (!text || /^[¿¡a-záéíóúñ\s,.\d]+/i.test(text.slice(0, 60))) return text;
+  try {
+    const completion = await getOpenAI().chat.completions.create(
+      {
+        model: OPENAI_MODEL,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Traduce al español de España el texto siguiente. Devuelve SOLO la traducción, sin comentarios.',
+          },
+          { role: 'user', content: text },
+        ],
+      },
+      { timeout: PANEL_TIMEOUT_MS },
+    );
+    return completion.choices[0]?.message.content?.trim() || text;
+  } catch {
+    return text;
+  }
+}
+
+export type CallInsightsInput = {
+  totalCalls: number;
+  byIntent: { intent: string; count: number }[];
+  bySentiment: { sentiment: string; count: number }[];
+  recentSummaries: string[];
+};
+
+export type CallInsights = {
+  topPatterns: string[];
+  alerts: string[];
+  promptSuggestions: string[];
+};
+
+const INSIGHTS_SYSTEM = `Eres un analista experto en agentes de voz IA para clínicas.
+Tu trabajo es analizar los datos agregados de llamadas y devolver insights accionables.
+
+Devuelves EXCLUSIVAMENTE un JSON válido (sin markdown, sin texto extra) con:
+{
+  "topPatterns": [string, string, string]   // 3-5 patrones observados, frases cortas
+  "alerts": [string, ...]                    // problemas urgentes o anomalías (puede ser [])
+  "promptSuggestions": [string, ...]         // mejoras concretas al prompt del agente
+}
+Frases en español de España, máximo 18 palabras cada una. Claro y útil para una recepcionista no técnica.`;
+
+export async function generateCallInsights(input: CallInsightsInput): Promise<CallInsights> {
+  const userPrompt = `Datos de llamadas:
+Total: ${input.totalCalls}
+Por intención: ${JSON.stringify(input.byIntent)}
+Por sentimiento: ${JSON.stringify(input.bySentiment)}
+
+Últimos resúmenes (${input.recentSummaries.length}):
+${input.recentSummaries.map((s, i) => `${i + 1}. ${s}`).join('\n')}
+
+Analiza y devuelve el JSON.`;
+  const completion = await getOpenAI().chat.completions.create(
+    {
+      model: OPENAI_MODEL,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: INSIGHTS_SYSTEM },
+        { role: 'user', content: userPrompt },
+      ],
+    },
+    { timeout: PANEL_TIMEOUT_MS },
+  );
+  const parsed = JSON.parse(
+    completion.choices[0]?.message.content ?? '{}',
+  ) as Partial<CallInsights>;
+  return {
+    topPatterns: parsed.topPatterns ?? [],
+    alerts: parsed.alerts ?? [],
+    promptSuggestions: parsed.promptSuggestions ?? [],
   };
 }

@@ -12,7 +12,7 @@
  * comportamiento del PROMPT/LLM, no el motor de agenda real (disponibilidad,
  * fechas). Para eso están los tests de agenda y una corrida contra BD real.
  *
- * Uso (desde apps/web, con GEMINI_API_KEY u OPENAI_API_KEY en el entorno):
+ * Uso (desde apps/web, con OPENAI_API_KEY en el entorno):
  *   pnpm eval:sim                     # todas las personas
  *   pnpm eval:sim -- --persona=semana-que-viene
  *   pnpm eval:sim -- --turns=8        # máximo de turnos por conversación
@@ -59,8 +59,8 @@ interface Finding {
 }
 
 async function main(): Promise<void> {
-  if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY) {
-    console.error('\n✗ Falta key de LLM. Seteá GEMINI_API_KEY o OPENAI_API_KEY y reintentá.\n');
+  if (!process.env.OPENAI_API_KEY) {
+    console.error('\n✗ Falta OPENAI_API_KEY.\n');
     process.exit(1);
   }
 

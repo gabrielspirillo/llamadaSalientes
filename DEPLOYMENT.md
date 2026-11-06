@@ -246,10 +246,7 @@ GHL_WEBHOOK_PUBLIC_KEY=...
 # AI providers
 OPENAI_API_KEY=...
 OPENAI_TRANSCRIBE_MODEL=whisper-1
-OPENAI_AGENT_FALLBACK_MODEL=gpt-4o-mini
-GEMINI_API_KEY=...
-GEMINI_VISION_MODEL=gemini-flash-latest
-GEMINI_AGENT_MODEL=gemini-flash-latest
+OPENAI_AGENT_MODEL=gpt-5.4
 
 # Feature flags
 WHATSAPP_AGENT_ENABLED=true
@@ -308,7 +305,7 @@ curl -fsS https://app.futuradigital.es/api/health && echo OK
 ### Environment
 
 **Copiar las MISMAS env vars del cliniq-web** (mismo DATABASE_URL, REDIS_URL,
-S3_*, Twilio, Retell, OpenAI, Gemini, R2, etc.). El worker es un consumidor
+S3_*, Twilio, Retell, OpenAI, R2, etc.). El worker es un consumidor
 del mismo lado del servidor que la app web — comparte secrets.
 
 **No necesita** `NEXT_PUBLIC_*` ni `CLERK_*` (no expone HTTP ni sirve UI).

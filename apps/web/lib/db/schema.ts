@@ -922,7 +922,7 @@ export const whatsappAgentRuns = pgTable(
     // Identificador lógico del agente: por ahora 'main' (single agent + tools).
     // Sin enum para poder agregar 'classifier', 'scheduling', etc. sin migrar.
     agent: text('agent').notNull().default('main'),
-    // Modelo LLM final usado (post-fallback): ej. gemini-2.5-flash, gpt-4o.
+    // Modelo LLM usado: ej. gpt-5.4.
     model: text('model').notNull(),
     intent: agentIntentEnum('intent'),
     // 0.00..1.00. Si <0.7 forzamos handoff.
