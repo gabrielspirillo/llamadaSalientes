@@ -35,6 +35,7 @@ beforeEach(() => {
   openaiCreate.mockReset();
   process.env.GEMINI_API_KEY = 'fake-gemini-key';
   process.env.OPENAI_API_KEY = 'fake-openai-key';
+  process.env.WA_AGENT_PROVIDER = 'gemini';
 });
 
 afterEach(() => {

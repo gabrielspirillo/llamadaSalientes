@@ -21,11 +21,14 @@ import OpenAI from 'openai';
  */
 
 const GEMINI_DEFAULT_MODEL = process.env.GEMINI_AGENT_MODEL ?? 'gemini-flash-latest';
-// Sin GEMINI_API_KEY en producción, este es EL modelo del asistente, no un
-// respaldo. gpt-4o-mini (2024) se saltaba instrucciones largas: hacía rondas
-// de preguntas médicas pese a las reglas. gpt-5.4-mini acepta los mismos
-// parámetros (temperature + tools) y contesta en ~1,5 s.
-const OPENAI_FALLBACK_MODEL = process.env.OPENAI_AGENT_FALLBACK_MODEL || 'gpt-5.4-mini';
+// El modelo del asistente desde el 6/11/2026: gpt-5.4 (el mini fallaba al
+// interpretar mensajes ambiguos). gpt-4o-mini se saltaba instrucciones largas.
+// Se lee de OPENAI_AGENT_MODEL; la variable vieja OPENAI_AGENT_FALLBACK_MODEL
+// se ignora a propósito: en producción podía seguir apuntando a un mini.
+const OPENAI_FALLBACK_MODEL = process.env.OPENAI_AGENT_MODEL || 'gpt-5.4';
+// Proveedor principal: 'openai' (por defecto) o 'gemini'. El otro, si tiene
+// clave, queda de respaldo ante un fallo reintentable.
+const PREFERRED_PROVIDER = () => (process.env.WA_AGENT_PROVIDER === 'gemini' ? 'gemini' : 'openai');
 const REQUEST_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS ?? 20_000);
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -108,8 +111,24 @@ export class LlmError extends Error {
 
 export async function callLLM(input: LlmCallInput): Promise<LlmCallResult> {
   const force = input.forceProvider;
-  const useGemini = force === 'gemini' || (!force && !!process.env.GEMINI_API_KEY);
   const useOpenai = !!process.env.OPENAI_API_KEY;
+
+  if (!force && useOpenai && PREFERRED_PROVIDER() === 'openai') {
+    try {
+      return { ...(await callOpenAI(input)), fallbackUsed: false };
+    } catch (err) {
+      const e = err as LlmError;
+      const retryable = e instanceof LlmError ? e.retryable : true;
+      if (!process.env.GEMINI_API_KEY || !retryable) throw err;
+      console.warn('[wa-agent-llm] OpenAI falló, hago fallback a Gemini', {
+        status: e.status,
+        message: e.message?.slice(0, 200),
+      });
+      return { ...(await callGemini(input)), fallbackUsed: true };
+    }
+  }
+
+  const useGemini = force === 'gemini' || (!force && !!process.env.GEMINI_API_KEY);
 
   if (useGemini) {
     try {
@@ -352,16 +371,26 @@ async function callOpenAI(input: LlmCallInput): Promise<LlmCallResult> {
     : undefined;
 
   let completion: Awaited<ReturnType<typeof openai.chat.completions.create>>;
-  try {
-    completion = await openai.chat.completions.create(
+  const create = (withTemperature: boolean) =>
+    openai.chat.completions.create(
       {
         model,
-        temperature: input.temperature ?? 0.3,
+        ...(withTemperature ? { temperature: input.temperature ?? 0.3 } : {}),
         messages,
         tools,
       },
       { timeout: REQUEST_TIMEOUT_MS },
     );
+  try {
+    try {
+      completion = await create(true);
+    } catch (err) {
+      // Algunos modelos de OpenAI sólo aceptan la temperatura por defecto:
+      // sin esto, cambiar de modelo dejaba al asistente mudo.
+      const status = (err as { status?: number }).status;
+      if (status !== 400 || !/temperature/i.test((err as Error).message ?? '')) throw err;
+      completion = await create(false);
+    }
   } catch (err) {
     const status = (err as { status?: number }).status;
     const retryable = !status || status === 429 || status >= 500;

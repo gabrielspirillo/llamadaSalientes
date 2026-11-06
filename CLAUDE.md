@@ -120,8 +120,8 @@ queda en `apps/web/.clerk/` (ignorado por git).
 | Retell     | Voice AI (inbound + outbound)                  | API key `RETELL_API_KEY`. Webhook signing key todavía PENDIENTE. SIP trunk Zadarma cargado en Retell dashboard (sin SIP REGISTER persistente — Zadarma muestra offline, es normal). |
 | Twilio     | WhatsApp + SMS (cuando se use)                 | Credenciales globales `TWILIO_ACCOUNT_SID/API_KEY/API_SECRET`. Webhook pendiente reapuntar a `app.futuradigital.es`. |
 | Zadarma    | Telefonía (DIDs + SIP trunk)                   | Cabinet `cabinet.zadarma.com`. Inbound webhook configurado a `app.futuradigital.es/api/zadarma/webhook`. No expone API para setear webhook. |
-| OpenAI     | Whisper transcripciones + fallback agente WA   | `OPENAI_API_KEY`                                                                 |
-| Gemini     | Vision (imágenes/PDFs WA) + agente WA primario | `GEMINI_API_KEY` (pendiente)                                                     |
+| OpenAI     | Whisper + **agente WA principal** (`gpt-5.4`)  | `OPENAI_API_KEY`. Modelo en `OPENAI_AGENT_MODEL` (defecto `gpt-5.4`, desde el 6/11/2026; antes `gpt-5.4-mini`). `WA_AGENT_PROVIDER=gemini` devuelve Gemini a principal. La vieja `OPENAI_AGENT_FALLBACK_MODEL` se ignora. |
+| Gemini     | Vision (imágenes/PDFs WA) + respaldo del agente WA | `GEMINI_API_KEY` (pendiente)                                                 |
 | GoHighLevel| CRM por tenant (contactos, calendar)           | Soporta OAuth (client_id/secret) y PIT (`pit-...`). Per-tenant en BD encrypted.  |
 
 ## Acceso al server
