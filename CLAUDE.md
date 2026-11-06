@@ -476,6 +476,26 @@ dice "primera vez" u "otro hermano", `check_availability` va con
 `infoRequest` ("quería informarme sobre las terapias / precios") responde con
 el texto de la clínica (web + ofrecer cita): **nunca la lista del catálogo con
 precios**; la autorrevisión (`price_list`) rechaza dos o más líneas con €.
+Se decide sobre la **última línea** de la ráfaga (`lastUserLine`) y nunca si
+el mensaje pide aviso, cancelar, cambiar o confirmar: el 6/11 "¿me avisáis si
+se libera?" cayó al guion de la web por el "precio" del mensaje anterior.
+**Hermano nuevo**: un niño dado de alta por el asistente en un teléfono que ya
+tiene otro niño en ficha, o cuando la familia dice que es hermano
+(`conversationSaysSibling` → `sibling_of_patient`), nace con
+`sibling_mark = SIBLING` ("1ª visita (H)"): el cálculo por familia necesita
+citas del hermano en la plataforma y con la historia de papel salía "1ª
+visita" a secas. **La fecha de nacimiento que escribió la familia manda**
+(`birthDateFromTexts`: "15 de julio de 2026", "15/07/26"): se sobreescribe la
+del modelo antes de `register_patient`; sin año en el texto sigue
+rechazándose (`birthYearSaid`). **Días cerrados**: el prompt lista los días en
+que la clínica no abre (`closedDaysLabel` de `clinic_settings.working_hours`,
+var `closed_days_text`) y `check_availability` contesta "la clínica no abre
+los sábados" en vez de "no me queda nada" (`closedWeekdays` en
+`findAgentSlots`). **Hueco ocupado mientras contestaban**: `book_appointment`
+lo dice ("se ha ocupado mientras tanto, hay mucha demanda") y la regla 9 del
+prompt prohíbe "tienes razón"/"perdona". **Respuestas al recordatorio del
+día**: `parseDayOfTextReply` entiende "1. Confirmamos", "2 cambiar" y
+"confirmamos".
 
 **Dónde entra lo aprendido**: `formatLessonsForPrompt` (puro, en
 `lib/agent-training/model.ts`, con tests) arma una sección que
@@ -988,8 +1008,10 @@ caducidad). Tabla `advance_offers` (migración `0061`).
 
 **El orden lo fijó la clínica y no se toca a la ligera**:
 
-1. Quien tiene cita **ese mismo día**, más tarde, y marcó **↑ quiere
-   adelantar**. La más cercana al hueco primero.
+**En el mismo día no se mueve a nadie** (la clínica, 6/11: "eso ya me
+encargo yo en clínica"; la flecha ↑ es "avisadme si se libera algo antes" en
+DÍAS). Se quitaron las dos fases del mismo día que hubo (la de ↑ y la del
+"resto desde la última hora").
 0. Antes que nadie, el paciente que la clínica eligió desde su ficha con
    **"Prioridad"** (`slot_priority_requests`, migración `0063`;
    `lib/agenda/priority-requests.ts` + `PrioritySlotButton`): tenga o no cita.
@@ -999,15 +1021,13 @@ caducidad). Tabla `advance_offers` (migración `0061`).
    CREA la cita (`source = WAITLIST`) y le llegan los mensajes de
    confirmación de la clínica (`clinicBookingMessages`). Es "la niña que
    está muy malita" de Raquel (5/11).
-2. Si no hay nadie, los **tres días siguientes**, uno a uno: primero quien
+1. Después, los **tres días siguientes**, uno a uno: primero quien
    tiene cita a **la misma hora** que el hueco, luego la de justo antes (una
    duración por encima), luego la de justo después. Con ↑ **o sin marca**
    (la clínica, 5/11: "por norma general la gente siempre quiere
    adelantar"; sólo queda fuera "no mover"); a igual hueco, primero ↑. A esa
    familia sólo le cambia el día, no la hora, y acepta más.
-3. Agotado eso, el **resto de citas del mismo día sin preferencia** (ni ↑ ni
-   "no mover"), empezando por la **última hora** del día.
-4. Sin nadie, el hueco sigue su camino de siempre: lista de espera.
+2. Sin nadie, el hueco sigue su camino de siempre: lista de espera.
 
 Quien marcó **"no mover" no entra nunca**. Sólo citas posteriores al hueco,
 del mismo profesional y que quepan en él. La casilla **"Ofrecerle el primer
@@ -1023,10 +1043,19 @@ en pie. Una cancelación ya no equivale a "hueco libre".
 
 **Cómo va la oferta**: el hueco queda **reservado con un bloqueo** de la
 agenda (`professional_time_off`, motivo "Hueco reservado…") mientras la
-familia contesta: **45 minutos** (lo pidió la clínica el 5/11; antes eran 2 h),
-o hasta 30 min antes del hueco si es antes. El propio WhatsApp lo dice
-("Esta oferta es válida durante los próximos 45 minutos" / "…hasta las
-16:30", `validityLine`). Se manda
+familia contesta: **20 minutos** (la clínica: 2 h → 45 min el 5/11 → 20 min
+el 6/11), o hasta 30 min antes del hueco si es antes. El WhatsApp lo dice con
+sus palabras ("Si en un plazo de 20 minutos no tenemos respuesta, se ofrecerá
+a otro peque", `validityLine`). **Nunca se le ofrece a la familia que dejó el
+hueco** (mismo `patient_id`/`patient_key` que la cita liberada: el 6/11 una
+madre cambió del miércoles al viernes y se le ofreció su propio miércoles) y
+**una respuesta que cita OTRO mensaje no contesta la oferta**
+(`quotedTextFrom`/`quoteIsForOffer`: su "sí, gracias" a la confirmación de la
+cita devolvió la cita al miércoles). **Aceptado para HOY** → la cita queda
+`CONFIRMED` con `appointment_day_of.outcome` (así no sale el recordatorio del
+día un minuto después) y el "¡Hecho!" lleva las indicaciones del guion
+`dayOf.confirmed` sin su primer párrafo (`dayOfReminderTailFromScript`), en un
+solo mensaje. Se manda
 por el WhatsApp de la clínica con dos opciones (1 Sí / 2 No; botones en
 Cloud API, numeradas en Evolution). **Sí** → se quita el bloqueo, se mueve la
 cita (`rescheduleAppointment`) y el hueco que deja se ofrece al siguiente con
@@ -1057,6 +1086,11 @@ familias que dudan, una 🚩 por cada falta o cancelación). Migración
   `CANCELLED` de la agenda (`countRedFlagsByPatientKey`, una consulta
   agrupada; regla pura en `lib/care-profile/signals.ts`, con tests).
   `patients.prior_red_flags` sólo trae las de antes de la plataforma.
+- **Cambiar la cita de día no es bandera**: la vieja se anula con
+  `RESCHEDULE_REASON` ("Cambiada por el paciente", `lib/agenda/shared.ts`) y
+  se excluye del conteo (`isRescheduleReason`, también en el SQL de
+  `countRedFlagsByPatientKey`). El 6/11 una madre que cambió de día amaneció
+  con 🚩.
 - **Una cancelación de la clínica no es bandera**: `agenda_appointments.cancelled_by`
   (`PATIENT` | `CLINIC`; NULL = sin dato, cuenta como familia). Con perfil, el
   botón "Cancelar cita" pregunta quién cancela. Agentes y recordatorios anulan
@@ -1434,6 +1468,22 @@ y a quién hay que llamar antes de que se enfríe. Migración `0064_uso_platafor
   anterior con ≥ 1 h antes), `never`. Futura y las archivadas no cuentan.
 - ⚠️ En SQL crudo con postgres-js, las fechas van como string ISO con
   `::timestamptz`, no como `Date` (revienta), y `day` como alias necesita `as`.
+
+## Revisión del asistente (sólo Futura)
+
+`/dashboard/futura/asistente` (botón **Asistente** en Panel Futura). Cada
+respuesta del asistente de WhatsApp de todas las clínicas (`whatsapp_agent_runs`
+unido a sus mensajes), con lo que entró, las herramientas con sus argumentos y
+resultado, lo que salió, y una **revisión automática** (`lib/agent-review/flags.ts`,
+puro, con tests): error, sin respuesta, herramienta fallida o que no pudo
+(resultado que empieza en negación), guardrails (de `intent_reasoning`),
+lenta (> 20 s), "pide perdón o da la razón", "no me queda nada" en día
+cerrado, tres o más preguntas, muy larga, la familia se queja. Filtros por
+URL (`horas`, `clinica`, `solo=todo`). Nació el 6/11 para ver los fallos antes
+que la clínica; un aviso que se dispara mucho sin ser fallo se afina ahí. El
+enlace al chat sólo funciona gestionando esa clínica. Las consultas SQL de
+diagnóstico ya no hacen falta para esto; para lo demás, Dokploy →
+cliniq-postgres → Terminal → `psql -U cliniq cliniq`.
 
 ## Módulo Mensajes (core, sin gate de `enabled_modules`)
 
