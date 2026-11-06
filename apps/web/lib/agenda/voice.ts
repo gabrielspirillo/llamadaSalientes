@@ -32,6 +32,7 @@ import {
 import { RESCHEDULE_REASON } from '@/lib/agenda/shared';
 import { BUSY_STATUSES } from '@/lib/agenda/shared';
 import { matchRequestedSlot } from '@/lib/agenda/slot-match';
+import { pickTreatmentForChild } from '@/lib/agenda/treatment-pick';
 import { resolvePatientForBooking } from '@/lib/care-profile/agent';
 import { getCareProfileSafe } from '@/lib/care-profile/queries';
 import type { CancelledBy } from '@/lib/care-profile/signals';
@@ -228,7 +229,11 @@ async function treatmentForPatient(
   if (!patientId || !isUuid(patientId)) return null;
   if (!(await getCareProfileSafe(tenantId))) return null;
   const [person] = await db
-    .select({ contactId: patients.contactId, birthDate: patients.birthDate })
+    .select({
+      contactId: patients.contactId,
+      birthDate: patients.birthDate,
+      siblingMark: patients.siblingMark,
+    })
     .from(patients)
     .where(and(eq(patients.tenantId, tenantId), eq(patients.id, patientId)))
     .limit(1);
@@ -239,24 +244,38 @@ async function treatmentForPatient(
     .from(treatments)
     .where(and(eq(treatments.tenantId, tenantId), eq(treatments.active, true)));
   const isTwinTreatment = (n: string) => /gemel|melliz/i.test(n);
-  const firstKind = catalog.filter((t) => t.visitKind === 'FIRST');
-  const followUps = catalog.filter((t) => t.visitKind === 'FOLLOW_UP');
-  const twinTreatment = followUps.find((t) => isTwinTreatment(t.name)) ?? null;
-  const plainFollowUp = followUps.filter((t) => !isTwinTreatment(t.name));
+  const twinTreatment =
+    catalog.find((t) => t.visitKind === 'FOLLOW_UP' && isTwinTreatment(t.name)) ?? null;
+
+  // Hermanos del mismo teléfono: el mellizo con cita (va con el tratamiento de
+  // mellizos) y el hermano que ya vino (la primera visita de hermano).
+  const siblings =
+    person.contactId && person.siblingMark !== 'NONE'
+      ? await db
+          .select({ id: patients.id, birthDate: patients.birthDate })
+          .from(patients)
+          .where(
+            and(
+              eq(patients.tenantId, tenantId),
+              eq(patients.contactId, person.contactId),
+              ne(patients.id, patientId),
+            ),
+          )
+      : [];
+  const siblingIds = siblings.map((s) => s.id);
+  const twinIds = person.birthDate
+    ? siblings.filter((s) => s.birthDate === person.birthDate).map((s) => s.id)
+    : [];
 
   let twinHasAppointment = false;
-  if (twinTreatment && person.contactId && person.birthDate) {
+  if (twinTreatment && twinIds.length > 0) {
     const [row] = await db
       .select({ id: agendaAppointments.id })
       .from(agendaAppointments)
-      .innerJoin(patients, eq(patients.id, agendaAppointments.patientId))
       .where(
         and(
           eq(agendaAppointments.tenantId, tenantId),
-          eq(patients.tenantId, tenantId),
-          eq(patients.contactId, person.contactId),
-          eq(patients.birthDate, person.birthDate),
-          ne(patients.id, patientId),
+          inArray(agendaAppointments.patientId, twinIds),
           inArray(agendaAppointments.status, BUSY_STATUSES),
           gte(agendaAppointments.startsAt, new Date()),
         ),
@@ -268,11 +287,33 @@ async function treatmentForPatient(
 
   const hasHistory = await patientHasHistory(tenantId, { patientId }).catch(() => null);
   if (hasHistory === null) return null;
-  const req = requested?.trim().toLowerCase() ?? '';
-  const keepIfIn = (list: { name: string }[]) =>
-    list.find((t) => t.name.toLowerCase() === req)?.name ??
-    (list.length === 1 ? list[0]?.name : null);
-  const name = hasHistory ? keepIfIn(plainFollowUp) : keepIfIn(firstKind);
+
+  // La familia ya nos conoce: la ficha lo dice (marca H) o un hermano tiene una
+  // cita pasada que no se anuló ni se faltó.
+  let familyKnown = person.siblingMark === 'SIBLING';
+  if (!hasHistory && !familyKnown && siblingIds.length > 0) {
+    const [row] = await db
+      .select({ id: agendaAppointments.id })
+      .from(agendaAppointments)
+      .where(
+        and(
+          eq(agendaAppointments.tenantId, tenantId),
+          inArray(agendaAppointments.patientId, siblingIds),
+          inArray(agendaAppointments.status, BUSY_STATUSES),
+          lt(agendaAppointments.startsAt, new Date()),
+        ),
+      )
+      .limit(1);
+    familyKnown = Boolean(row);
+  }
+
+  const name = pickTreatmentForChild({
+    hasHistory,
+    familyKnown,
+    requested,
+    catalog,
+    isTwinTreatment,
+  });
   return name ? { name, twin: false } : null;
 }
 

@@ -120,7 +120,7 @@ queda en `apps/web/.clerk/` (ignorado por git).
 | Retell     | Voice AI (inbound + outbound)                  | API key `RETELL_API_KEY`. Webhook signing key todavía PENDIENTE. SIP trunk Zadarma cargado en Retell dashboard (sin SIP REGISTER persistente — Zadarma muestra offline, es normal). |
 | Twilio     | WhatsApp + SMS (cuando se use)                 | Credenciales globales `TWILIO_ACCOUNT_SID/API_KEY/API_SECRET`. Webhook pendiente reapuntar a `app.futuradigital.es`. |
 | Zadarma    | Telefonía (DIDs + SIP trunk)                   | Cabinet `cabinet.zadarma.com`. Inbound webhook configurado a `app.futuradigital.es/api/zadarma/webhook`. No expone API para setear webhook. |
-| OpenAI     | **Único modelo de la plataforma**: `gpt-5.4` para el asistente de WhatsApp, el entrenador, imágenes y PDF, resúmenes e insights de llamadas; Whisper para notas de voz | `OPENAI_API_KEY`. Modelo en `OPENAI_AGENT_MODEL` (`lib/openai/model.ts`). ⚠️ **Gemini se retiró del todo el 6/11/2026** a pedido de la clínica (fallaba al interpretar): no volver a añadirlo ni como respaldo. `GEMINI_*` y `OPENAI_AGENT_FALLBACK_MODEL` ya no se leen. |
+| OpenAI     | **Único modelo de la plataforma**: `gpt-5.4` para el asistente de WhatsApp, el entrenador, imágenes y PDF, resúmenes e insights de llamadas; `gpt-4o-transcribe` (caída a `whisper-1`, `OPENAI_TRANSCRIBE_MODEL`) para notas de voz | `OPENAI_API_KEY`. Modelo en `OPENAI_AGENT_MODEL` (`lib/openai/model.ts`). ⚠️ **Gemini se retiró del todo el 6/11/2026** a pedido de la clínica (fallaba al interpretar): no volver a añadirlo ni como respaldo. `GEMINI_*` y `OPENAI_AGENT_FALLBACK_MODEL` ya no se leen. |
 | GoHighLevel| CRM por tenant (contactos, calendar)           | Soporta OAuth (client_id/secret) y PIT (`pit-...`). Per-tenant en BD encrypted.  |
 
 ## Acceso al server
@@ -484,7 +484,12 @@ tiene otro niño en ficha, o cuando la familia dice que es hermano
 (`conversationSaysSibling` → `sibling_of_patient`), nace con
 `sibling_mark = SIBLING` ("1ª visita (H)"): el cálculo por familia necesita
 citas del hermano en la plataforma y con la historia de papel salía "1ª
-visita" a secas. **La fecha de nacimiento que escribió la familia manda**
+visita" a secas. **El tratamiento del hermano lo elige la app**
+(`pickTreatmentForChild`, `lib/agenda/treatment-pick.ts`, puro con tests):
+sin historia y con un hermano que ya vino (o marca H) va la primera visita
+DE HERMANO ("HERMANO PEQUEÑO - PRIMERA VISITA", que Respinens cobra distinto);
+la `0065` la marcó `FIRST` porque sin `visit_kind` el asistente nunca la
+elegía y reservaba la normal. **La fecha de nacimiento que escribió la familia manda**
 (`birthDateFromTexts`: "15 de julio de 2026", "15/07/26"): se sobreescribe la
 del modelo antes de `register_patient`; sin año en el texto sigue
 rechazándose (`birthYearSaid`). **Días cerrados**: el prompt lista los días en

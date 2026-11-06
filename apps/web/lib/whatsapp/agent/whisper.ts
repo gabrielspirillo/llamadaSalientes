@@ -3,7 +3,13 @@ import OpenAI from 'openai';
 import { toFile } from 'openai/uploads';
 
 /**
- * Transcripción de audio con OpenAI Whisper.
+ * Transcripción de las notas de voz con OpenAI.
+ *
+ * Modelo por defecto `gpt-4o-transcribe` (desde el 6/11/2026): es la
+ * generación posterior a Whisper y se equivoca menos en castellano, sobre todo
+ * con nombres propios y fechas, que es justo lo que dicta una familia. Si falla
+ * o devuelve vacío se reintenta con `whisper-1`. Se cambia con
+ * `OPENAI_TRANSCRIBE_MODEL`.
  *
  * Lo usa el procesador multimodal para convertir notas de voz de WhatsApp
  * (audio/ogg con codec opus típicamente) en texto que se concatena al input
@@ -13,8 +19,8 @@ import { toFile } from 'openai/uploads';
  * Lenguaje por defecto: castellano. Override vía `options.language`.
  */
 
-const DEFAULT_MODEL = process.env.OPENAI_TRANSCRIBE_MODEL ?? 'whisper-1';
-const FALLBACK_MODEL = 'gpt-4o-mini-transcribe';
+const DEFAULT_MODEL = process.env.OPENAI_TRANSCRIBE_MODEL ?? 'gpt-4o-transcribe';
+const FALLBACK_MODEL = 'whisper-1';
 
 let _client: OpenAI | null = null;
 
@@ -35,7 +41,7 @@ export type TranscribeResult = {
 
 /**
  * Mapea el mime-type que entrega WhatsApp a una extensión que la API de
- * Whisper acepta. La API valida la extensión del filename, no solo el mime.
+ * transcripción acepta. La API valida la extensión del filename, no solo el mime.
  * WhatsApp Cloud entrega `audio/ogg; codecs=opus` por defecto.
  */
 function audioExtForMime(mime: string): string {
