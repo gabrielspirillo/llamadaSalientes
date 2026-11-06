@@ -394,6 +394,30 @@ async function runWhatsappJob(
     });
     if (connector && responseText) {
       responseMessageId = await step.run('send-outbound', async () => {
+        // Reintento del job con el mensaje ya enviado (el proveedor lo entregó
+        // y falló lo de después): el 6/11 una familia recibió dos veces la
+        // misma lista de huecos, una de ellas DESPUÉS de reservar, y volvió a
+        // elegir. Si ya hay un saliente idéntico desde que empezó la ráfaga, no
+        // se manda otra vez.
+        const [dup] = await db
+          .select({ id: whatsappMessages.id })
+          .from(whatsappMessages)
+          .where(
+            and(
+              eq(whatsappMessages.tenantId, tenantId),
+              eq(whatsappMessages.conversationId, conversationId),
+              eq(whatsappMessages.direction, 'OUTBOUND'),
+              eq(whatsappMessages.contentText, responseText),
+              gt(whatsappMessages.createdAt, batch.firstMessageCreatedAt),
+            ),
+          )
+          .limit(1);
+        if (dup) {
+          console.warn('[wa-process] outbound idéntico ya enviado, no se repite', {
+            conversationId,
+          });
+          return dup.id;
+        }
         const sent = await sendAgentResponse({
           tenantId,
           conversationId,

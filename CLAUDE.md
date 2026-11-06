@@ -498,7 +498,15 @@ var `closed_days_text`) y `check_availability` contesta "la clínica no abre
 los sábados" en vez de "no me queda nada" (`closedWeekdays` en
 `findAgentSlots`). **Hueco ocupado mientras contestaban**: `book_appointment`
 lo dice ("se ha ocupado mientras tanto, hay mucha demanda") y la regla 9 del
-prompt prohíbe "tienes razón"/"perdona". **Respuestas al recordatorio del
+prompt prohíbe "tienes razón"/"perdona". **Antes de decir eso se mira si la hora
+ya es SUYA** (misma ficha o teléfono, mismo profesional): el 6/11 el modelo
+repitió la reserva con otro formato de `start_time`, la clave de idempotencia
+no coincidió y le dijo a la familia que su propia cita "se había ocupado".
+**Envío duplicado en reintentos**: `send-outbound` no manda un saliente
+idéntico a uno ya guardado desde que empezó la ráfaga (ese día una lista de
+huecos llegó dos veces, la segunda después de reservar, y la familia volvió a
+elegir). El aviso de fiebre (‼️) va sólo en la bienvenida, no pegado a cada
+respuesta. **Respuestas al recordatorio del
 día**: `parseDayOfTextReply` entiende "1. Confirmamos", "2 cambiar" y
 "confirmamos".
 

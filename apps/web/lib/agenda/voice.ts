@@ -44,10 +44,11 @@ import {
   professionals,
   treatments,
 } from '@/lib/db/schema';
+import { samePhoneSql } from '@/lib/patients/registry';
 import { clockArticle, speakClockTime } from '@/lib/retell/time-speech';
 import { addDaysToKey, localDateKey } from '@/lib/tasks/tz';
 import { relativeDayLabel } from '@/lib/whatsapp/agent/slot-mention';
-import { and, asc, eq, gte, inArray, lt, ne } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, lt, ne, sql } from 'drizzle-orm';
 
 /**
  * La agenda interna vista por los agentes virtuales (voz y WhatsApp).
@@ -686,6 +687,38 @@ export async function agendaBookAppointment(
       }
     }
     if (!chosen) {
+      // La hora no está libre porque YA ES SUYA: el 6/11 una familia eligió un
+      // hueco, se reservó, y al repetir la hora (el modelo cambió el formato
+      // de start_time y la clave de idempotencia no coincidió) se le dijo que
+      // "se había ocupado" su propia cita. Se mira antes de hablar de demanda.
+      const ownBusy = await db
+        .select({ startsAt: agendaAppointments.startsAt })
+        .from(agendaAppointments)
+        .where(
+          and(
+            eq(agendaAppointments.tenantId, tenantId),
+            eq(agendaAppointments.professionalId, professional.id),
+            inArray(agendaAppointments.status, BUSY_STATUSES),
+            patientId
+              ? eq(agendaAppointments.patientId, patientId)
+              : args.phone
+                ? samePhoneSql(
+                    agendaAppointments.patientPhone,
+                    args.phone.replace(/\D/g, '').slice(-9),
+                  )
+                : sql`false`,
+          ),
+        );
+      const own = matchRequestedSlot(
+        args.start_time,
+        timezone,
+        ownBusy.map((a) => a.startsAt),
+      ).start;
+      if (own) {
+        return {
+          result: `Esa hora YA ESTÁ RESERVADA para ${patientName}: ${speakDayAndTime(own, timezone)} con ${professional.fullName}. No es que se haya ocupado: es su propia cita, hecha hace un momento. Díselo así ("ya la tienes reservada") y no vuelvas a reservar.`,
+        };
+      }
       // Las más cercanas a las citas del día (como al ofrecer), como mucho 4 y
       // en orden de hora.
       const sameDay = free

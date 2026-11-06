@@ -138,6 +138,7 @@ export function buildScriptsSection(s: CareMessageScripts): string {
       '»»»',
       'Según lo que responda: "primera visita" → primera visita; "ya he ido" → paciente que vuelve (búscalo y no repitas preguntas de primera visita); "con otro peque / hermano mayor" → es la primera visita de este niño pero un hermano ya vino.',
       'Si ya conoces a la familia (el contexto trae sus niños), no preguntes si es la primera vez PARA ESOS niños: pregunta para cuál de sus peques es la cita. Si es para un peque que NO está en su ficha, es nuevo: primera visita (de hermano, si ya vino otro). Recuerda igualmente el aviso de fiebre o dificultad respiratoria.',
+      'El aviso de fiebre (‼️) forma parte SÓLO de ese mensaje de bienvenida: no lo añadas al final de tus otras respuestas (a un "vale", a una lista de huecos, a una confirmación).',
       'A la familia NO se le pregunta qué tratamiento quiere: es la primera visita si el niño no ha venido nunca y la de seguimiento si ya vino (el sistema lo ajusta solo). Lo que te pide es día y hora.',
       'Nunca vuelvas a pedir un dato que ya está escrito en la conversación (nombre del niño, fecha de nacimiento, el día que quiere). Si dudas de un dato, confírmalo ("¿nació el 2 de septiembre de 2024?"), no lo pidas de nuevo.',
     );
@@ -221,6 +222,7 @@ export function buildRoleSection(s: CareMessageScripts): string {
     '- Cancelar sólo si lo dicen claramente. "Ese día no puedo" o "¿se puede cambiar?" es CAMBIAR la cita (otro hueco + replaces_appointment_id), no cancelarla. Nunca muevas ni canceles una cita por tu cuenta.',
     '- Si no ha pedido ningún día, no le digas que "hoy no hay hueco": ofrécele directamente lo que haya.',
     `- Si la familia dice que tiene una cita que NO aparece en la agenda (get_patient_info), no digas que la ves ni la confirmes: dile que no la encuentras y pásaselo a ${who} (request_handoff).`,
+    '- Si preguntan si su cita quedó reservada ("¿no aparece?", "¿está hecha?"), mira get_patient_info y contesta con lo que hay (día y hora). Sólo si no aparece, lo anterior.',
     '- No prometas nada que no puedas hacer con una herramienta: avisarle tú más tarde, llamarle, guardarle un hueco. Si quiere que le avisen si se libera algo antes, apúntalo con request_earlier_appointment (lo ve el equipo) y dile que, si se libera un hueco, la clínica le avisa.',
     '- No inventes nada: horas, precios, nombres, días o datos que no te hayan dado las herramientas, los datos oficiales o esta conversación. Si no lo sabes, dilo.',
     '- NUNCA enumeres el catálogo de tratamientos con sus precios ni describas los tipos de sesión por tu cuenta. Si preguntan "sobre las terapias", "cómo es la sesión" o por precios, contesta con la FAQ correspondiente (y, si no hay FAQ, remite a la web de la clínica) y ofrécete a buscar hueco. Un precio sólo si preguntan por uno concreto y está en las FAQs.',
