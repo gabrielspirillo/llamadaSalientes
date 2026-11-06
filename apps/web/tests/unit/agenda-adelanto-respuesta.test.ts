@@ -22,14 +22,37 @@ describe('respuesta a la oferta de adelanto', () => {
 });
 
 describe('plazo para contestar la oferta', () => {
-  it('dice los 45 minutos o, si el hueco está cerca, la hora límite', async () => {
+  it('dice los 20 minutos con las palabras de la clínica o, si el hueco está cerca, la hora límite', async () => {
     const { validityLine } = await import('@/lib/agenda/advance-offers');
     const now = new Date('2026-11-05T15:00:00Z');
-    expect(validityLine(now, new Date(now.getTime() + 45 * 60_000), 'Europe/Madrid')).toBe(
-      'Esta oferta es válida durante los próximos 45 minutos.',
-    );
     expect(validityLine(now, new Date(now.getTime() + 20 * 60_000), 'Europe/Madrid')).toBe(
-      'Esta oferta es válida hasta las 16:20.',
+      'Si en un plazo de 20 minutos no tenemos respuesta, se ofrecerá a otro peque.',
     );
+    expect(validityLine(now, new Date(now.getTime() + 12 * 60_000), 'Europe/Madrid')).toBe(
+      'Si antes de las 16:12 no tenemos respuesta, se ofrecerá a otro peque.',
+    );
+  });
+});
+
+describe('respuesta citando otro mensaje (6/11)', () => {
+  it('un "sí gracias" a la confirmación de la cita no acepta la oferta', async () => {
+    const { quotedTextFrom, quoteIsForOffer } = await import('@/lib/agenda/advance-offers');
+    const reply = {
+      message: { conversation: 'Si gracias' },
+      contextInfo: { quotedMessage: { conversation: 'Ya tienes la cita reservada para Leo' } },
+    };
+    expect(quoteIsForOffer(quotedTextFrom(reply))).toBe(false);
+    const toOffer = {
+      message: {
+        extendedTextMessage: {
+          text: '1',
+          contextInfo: {
+            quotedMessage: { conversation: 'Hola… Se ha liberado un hueco miércoles a las 18:00' },
+          },
+        },
+      },
+    };
+    expect(quoteIsForOffer(quotedTextFrom(toOffer))).toBe(true);
+    expect(quoteIsForOffer(quotedTextFrom({ message: { conversation: 'Sí' } }))).toBe(true);
   });
 });

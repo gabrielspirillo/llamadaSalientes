@@ -260,6 +260,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
                       tenantId: conn.tenantId,
                       contactPhoneE164: persisted.contact.phoneE164,
                       text: inbound.contentText,
+                      quotedText: m.quotedTextFrom(parsed.data.data),
                     }),
                   )
                   .catch((err) => {

@@ -391,6 +391,21 @@ export async function runWhatsappAgent(
         tc.args = { ...tc.args, first_visit: true };
         guardrailFlags.push('first_visit_forced');
       }
+      // "Es el hermano de…", "ya he acudido con otro peque": hermano de un
+      // paciente, lo pase o no el modelo (6/11: quedó como 1ª visita normal).
+      if (
+        careProfile &&
+        tc.name === 'register_patient' &&
+        tc.args &&
+        tc.args.sibling_of_patient !== true &&
+        conversationSaysSibling([
+          input.userText,
+          ...input.history.filter((h) => h.role === 'user').map((h) => h.content),
+        ])
+      ) {
+        tc.args = { ...tc.args, sibling_of_patient: true };
+        guardrailFlags.push('sibling_forced');
+      }
       const notOffered =
         tc.name === 'book_appointment' && typeof tc.args?.start_time === 'string'
           ? slotNotOffered(
@@ -1142,6 +1157,18 @@ export function conversationSaysFirstVisit(texts: string[]): boolean {
       all,
     );
   return yes && !no;
+}
+
+/**
+ * La familia dijo que el niño nuevo es hermano de uno que ya vino ("es el
+ * hermano de Mario", "ya he acudido con otro peque", "el hermanito"). "Mi
+ * hermana" (la tía) no cuenta: sólo hermano/a del niño.
+ */
+export function conversationSaysSibling(texts: string[]): boolean {
+  const all = texts.map(fold).join('\n');
+  return /\b(su|el|la|es (el|la)|un|una|otro|otra) herman(it)?[oa]s?\b|\bherman(it)?[oa]s? (mayor|menor|pequen[oa]|de)\b|otr[oa] (peque|hij[oa]|nin[oa])|con otro peque/.test(
+    all,
+  );
 }
 
 /**

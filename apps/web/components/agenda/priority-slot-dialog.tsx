@@ -35,7 +35,7 @@ const STEPS = [
   {
     icon: MessageCircle,
     title: 'Le escribimos primero',
-    text: 'Esta familia recibe el WhatsApp antes que nadie y tiene 45 minutos para contestar.',
+    text: 'Esta familia recibe el WhatsApp antes que nadie y tiene 20 minutos para contestar.',
   },
   {
     icon: CalendarCheck2,

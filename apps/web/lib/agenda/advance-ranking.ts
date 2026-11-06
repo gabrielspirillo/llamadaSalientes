@@ -5,16 +5,18 @@
  *
  * El orden lo fijó la clínica y no se cambia a la ligera:
  *
- *  1. Quien tiene cita ESE MISMO DÍA, más tarde, y pidió adelantar (↑).
- *     Primero la cita más cercana al hueco.
- *  2. Si no hay nadie, los tres días siguientes, uno a uno: primero quien
+ *  (Antes había una fase previa: quien tenía cita ESE MISMO DÍA, más tarde,
+ *  con ↑. La clínica la quitó el 6/11: la flecha es "avisadme si se libera
+ *  algo ANTES", en días, no mover horas dentro del mismo día.)
+ *
+ *  1. Los tres días siguientes, uno a uno: primero quien
  *     tiene cita a LA MISMA HORA que el hueco, luego la de justo antes
  *     (una duración por encima), luego la de justo después. Con ↑ o SIN
  *     marca: la clínica lo aclaró el 5/11 ("por norma general la gente
  *     siempre quiere adelantar"); sólo queda fuera "no mover". A igual
  *     hueco, primero quien marcó ↑. A esa familia le cambia el día, no la
  *     hora, y acepta más.
- *  3. Agotado eso, el resto de citas del mismo día que NO dijeron nada
+ *  2. Agotado eso, el resto de citas del mismo día que NO dijeron nada
  *     (sin ↑ ni "no mover"), empezando por la última hora del día.
  *
  * Quien dijo "no mover" no entra nunca. Quien ya recibió este hueco y lo
@@ -36,14 +38,14 @@ export interface RankCandidate {
   advancePriority?: boolean;
 }
 
-export type OfferPhase = 'SAME_DAY_WANTS' | 'NEXT_DAYS_SAME_HOUR' | 'SAME_DAY_REST';
+export type OfferPhase = 'NEXT_DAYS_SAME_HOUR' | 'SAME_DAY_REST';
 
 export interface RankedCandidate<T extends RankCandidate = RankCandidate> {
   candidate: T;
   phase: OfferPhase;
 }
 
-/** Días siguientes que se recorren en la fase 2. */
+/** Días siguientes que se recorren en la fase 1. */
 export const NEXT_DAYS = 3;
 /** "La misma hora": a menos de esto, en minutos. */
 const SAME_HOUR_TOLERANCE = 5;
@@ -88,14 +90,7 @@ export function rankAdvanceCandidates<T extends RankCandidate>(
     out.push({ candidate: c, phase });
   };
 
-  // 1. Mismo día, quieren adelantar, la más cercana primero.
-  for (const c of valid
-    .filter((c) => c.advancePreference === 'ACCEPTS' && localDateKey(c.startsAt, tz) === slotDay)
-    .sort(byTime)) {
-    push(c, 'SAME_DAY_WANTS');
-  }
-
-  // 2. Días siguientes: misma hora, luego una por encima, luego una por debajo.
+  // 1. Días siguientes: misma hora, luego una por encima, luego una por debajo.
   for (let d = 1; d <= NEXT_DAYS; d++) {
     const dayKey = addDaysToKey(slotDay, d);
     const sameDay = valid.filter((c) => localDateKey(c.startsAt, tz) === dayKey);
@@ -121,7 +116,7 @@ export function rankAdvanceCandidates<T extends RankCandidate>(
     for (const { c } of scored) push(c, 'NEXT_DAYS_SAME_HOUR');
   }
 
-  // 3. Resto del mismo día sin preferencia, desde la última hora hacia atrás.
+  // 2. Resto del mismo día sin preferencia, desde la última hora hacia atrás.
   for (const c of valid
     .filter((c) => c.advancePreference === null && localDateKey(c.startsAt, tz) === slotDay)
     .sort((a, b) => b.startsAt.getTime() - a.startsAt.getTime())) {

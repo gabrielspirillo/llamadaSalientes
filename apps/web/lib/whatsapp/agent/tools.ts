@@ -100,6 +100,7 @@ const registerPatientArgs = z.object({
   other_guardian_name: z.string().max(120).optional(),
   other_guardian_phone: z.string().max(40).optional(),
   other_guardian_role: z.string().max(40).optional(),
+  sibling_of_patient: z.boolean().optional(),
 });
 
 const listTreatmentsArgs = z.object({}).strict();
@@ -428,6 +429,11 @@ function allToolDefinitions(): AgentToolDefinition[] {
           other_guardian_role: {
             type: 'string',
             description: 'Qué es del niño el otro tutor: "padre", "madre"…',
+          },
+          sibling_of_patient: {
+            type: 'boolean',
+            description:
+              'true si el tutor dice que es hermano/a de un niño que YA vino a la clínica ("ya he acudido con otro peque", "es el hermano de…"). Queda como primera visita de hermano.',
           },
           only_one_surname: {
             type: 'boolean',

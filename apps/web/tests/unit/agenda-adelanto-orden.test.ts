@@ -21,14 +21,14 @@ const c = (
 const ids = (r: ReturnType<typeof rankAdvanceCandidates>) => r.map((x) => x.candidate.id);
 
 describe('a quién se le ofrece un hueco libre', () => {
-  it('primero quien quiere adelantar ese mismo día, la cita más cercana antes', () => {
+  it('la flecha ↑ es para adelantar DÍAS: nadie del mismo día con ↑ se mueve de hora (clínica, 6/11)', () => {
     const r = rankAdvanceCandidates(
       slot,
       [c('tarde', 4, '19:00'), c('cerca', 4, '17:30'), c('manana', 5, '16:00')],
       tz,
     );
-    expect(ids(r).slice(0, 2)).toEqual(['cerca', 'tarde']);
-    expect(r[0]?.phase).toBe('SAME_DAY_WANTS');
+    expect(ids(r)).toEqual(['manana']);
+    expect(r[0]?.phase).toBe('NEXT_DAYS_SAME_HOUR');
   });
 
   it('sin nadie ese día: al día siguiente misma hora, luego la de antes, luego la de después', () => {
@@ -65,7 +65,7 @@ describe('a quién se le ofrece un hueco libre', () => {
     expect(r[0]?.phase).toBe('SAME_DAY_REST');
   });
 
-  it('el orden completo respeta las tres fases', () => {
+  it('el orden completo respeta las dos fases', () => {
     const r = rankAdvanceCandidates(
       slot,
       [
@@ -76,7 +76,7 @@ describe('a quién se le ofrece un hueco libre', () => {
       ],
       tz,
     );
-    expect(ids(r)).toEqual(['mismo', 'siguiente', 'resto']);
+    expect(ids(r)).toEqual(['siguiente', 'resto']);
   });
 
   it('nunca a quien dijo que no le muevan, ni a citas anteriores al hueco, ni a las que no caben', () => {
@@ -86,7 +86,7 @@ describe('a quién se le ofrece un hueco libre', () => {
         c('antesDelHueco', 4, '15:00'),
         c('nomover', 4, '18:00', 'NO_MOVE'),
         c('larga', 4, '18:00', 'ACCEPTS', 60),
-        c('vale', 4, '18:00', 'ACCEPTS', 30),
+        c('vale', 4, '18:00', null, 30),
       ],
       tz,
     );
@@ -118,12 +118,12 @@ describe('prioridad marcada por la clínica', () => {
     const r = rankAdvanceCandidates(
       slot,
       [
-        c('cerca', 4, '17:00'),
-        { ...c('prioritaria', 4, '19:30'), advancePriority: true },
-        c('siguiente', 5, '16:00'),
+        c('misma', 5, '16:00'),
+        { ...c('prioritaria', 5, '16:45'), advancePriority: true },
+        c('otroDia', 6, '16:00'),
       ],
       tz,
     );
-    expect(ids(r)).toEqual(['prioritaria', 'cerca', 'siguiente']);
+    expect(ids(r)).toEqual(['prioritaria', 'misma', 'otroDia']);
   });
 });

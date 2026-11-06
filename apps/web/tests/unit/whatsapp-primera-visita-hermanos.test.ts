@@ -60,3 +60,24 @@ describe('información sobre las terapias', () => {
     ).toBeNull();
   });
 });
+
+describe('la familia dice que es hermano de un paciente (6/11)', () => {
+  it('reconoce las formas en que lo dicen', async () => {
+    const { conversationSaysSibling } = await import('@/lib/whatsapp/agent');
+    for (const t of [
+      'Es el hermano de Mario',
+      'quería cita para su hermanito',
+      'No, ya he acudido pero con otro peque (hermano mayor)',
+      'es para mi otra hija',
+      'la hermana pequeña de Lucía',
+    ]) {
+      expect(conversationSaysSibling([t]), t).toBe(true);
+    }
+  });
+
+  it('la hermana del tutor (la tía) no es un hermano del niño', async () => {
+    const { conversationSaysSibling } = await import('@/lib/whatsapp/agent');
+    expect(conversationSaysSibling(['Me lo recomendó mi hermana'])).toBe(false);
+    expect(conversationSaysSibling(['Quería pedir cita, es la primera vez'])).toBe(false);
+  });
+});

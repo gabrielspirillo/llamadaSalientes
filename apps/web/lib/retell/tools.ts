@@ -95,6 +95,8 @@ export type RegisterPatientArgs = {
   other_guardian_name?: string;
   other_guardian_phone?: string;
   other_guardian_role?: string;
+  /** Hermano/a de un niño que ya vino a la clínica. */
+  sibling_of_patient?: boolean;
 };
 
 export type AcceptWaitlistOfferArgs = {
@@ -496,6 +498,7 @@ export async function registerPatient(
         otherGuardianName: args.other_guardian_name,
         otherGuardianPhone: args.other_guardian_phone,
         otherGuardianRole: args.other_guardian_role,
+        siblingOfPatient: args.sibling_of_patient === true,
       },
       careProfile,
     );

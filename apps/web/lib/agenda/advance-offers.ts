@@ -47,17 +47,21 @@ import { relativeDayLabel } from '@/lib/whatsapp/agent/slot-mention';
 
 import { HOLD_REASON } from '@/lib/agenda/shared';
 export { HOLD_REASON };
-/** Lo que tiene cada familia para contestar (la clínica pidió 45 min el 5/11). */
-const HOLD_MS = 45 * 60_000;
+/** Lo que tiene cada familia para contestar (la clínica: 45 min el 5/11, 20 min el 6/11). */
+const HOLD_MS = 20 * 60_000;
 
-/** "Esta oferta es válida durante los próximos 45 minutos" (o "hasta las 16:30" si el hueco está cerca). */
+/**
+ * Lo que se le dice a la familia del plazo, con las palabras de la clínica:
+ * "Si en un plazo de 20 minutos no tenemos respuesta, se ofrecerá a otro
+ * peque" (o "si antes de las 16:30…" cuando el hueco está cerca).
+ */
 export function validityLine(now: Date, expiresAt: Date, tz: string): string {
   const mins = Math.round((expiresAt.getTime() - now.getTime()) / 60_000);
   if (mins >= HOLD_MS / 60_000 - 1) {
-    return `Esta oferta es válida durante los próximos ${HOLD_MS / 60_000} minutos.`;
+    return `Si en un plazo de ${HOLD_MS / 60_000} minutos no tenemos respuesta, se ofrecerá a otro peque.`;
   }
   const p = localParts(expiresAt, tz);
-  return `Esta oferta es válida hasta las ${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}.`;
+  return `Si antes de las ${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')} no tenemos respuesta, se ofrecerá a otro peque.`;
 }
 const MIN_LEAD_MS = 45 * 60_000;
 
@@ -212,6 +216,28 @@ export async function offerFreedSlot(
         ...(skip.size ? [notInArray(agendaAppointments.id, [...skip])] : []),
       ),
     );
+  // Nunca a la familia que dejó el hueco: el 6/11 una madre cambió la cita del
+  // miércoles al viernes, el miércoles quedó libre y se le ofreció a ella misma
+  // (su cita del viernes era "misma hora, días siguientes").
+  const [freed] = slot.freedAppointmentId
+    ? await db
+        .select({
+          patientId: agendaAppointments.patientId,
+          patientKey: agendaAppointments.patientKey,
+        })
+        .from(agendaAppointments)
+        .where(
+          and(
+            eq(agendaAppointments.tenantId, tenantId),
+            eq(agendaAppointments.id, slot.freedAppointmentId),
+          ),
+        )
+        .limit(1)
+    : [];
+  const samePatient = (c: (typeof candidates)[number]) =>
+    !!freed &&
+    ((!!freed.patientId && c.patientId === freed.patientId) ||
+      (!!freed.patientKey && c.patientKey === freed.patientKey));
   const pendingIds = new Set(
     (
       await db
@@ -224,7 +250,7 @@ export async function offerFreedSlot(
   );
   const ranked = rankAdvanceCandidates(
     { startsAt: slot.startsAt, endsAt: slot.endsAt },
-    candidates.filter((c) => !pendingIds.has(c.id) && c.patientPhone),
+    candidates.filter((c) => !pendingIds.has(c.id) && c.patientPhone && !samePatient(c)),
     tz0,
   );
   const first = ranked[0];
@@ -291,7 +317,9 @@ export async function offerFreedSlot(
   const ask =
     phase === 'SAME_DAY_REST'
       ? `Tenéis la cita de ${patientName} ese mismo día a las ${cita.time}. ¿Os vendría bien adelantarla a ese hueco?`
-      : `Nos dijisteis que queríais adelantar la cita de ${patientName} del ${cita.day} a las ${cita.time}. ¿Os la cambiamos a ese hueco?`;
+      : target.advancePreference !== 'ACCEPTS'
+        ? `Tenéis la cita de ${patientName} el ${cita.day} a las ${cita.time}. ¿Os vendría bien adelantarla a ese hueco?`
+        : `Nos dijisteis que queríais adelantar la cita de ${patientName} del ${cita.day} a las ${cita.time}. ¿Os la cambiamos a ese hueco?`;
   const withWhom = professional ? ` con ${professional.name}` : '';
   const text = `${hello}, soy el asistente virtual de la agenda de ${clinic}. Se ha liberado un hueco ${hueco.day} a las ${hueco.time}${withWhom}. ${ask}\n\n${validityLine(now, expiresAt, tz)}`;
   const sent = await sendClinicWhatsapp(
@@ -706,12 +734,49 @@ export async function handleAdvanceButton(args: {
   return true;
 }
 
+/**
+ * El texto del mensaje al que la familia responde citándolo (Evolution manda
+ * `contextInfo.quotedMessage`). Null si no cita nada.
+ */
+export function quotedTextFrom(raw: unknown): string | null {
+  const at = (o: unknown, ...path: string[]): unknown =>
+    path.reduce<unknown>(
+      (acc, k) =>
+        acc && typeof acc === 'object' ? (acc as Record<string, unknown>)[k] : undefined,
+      o,
+    );
+  const q =
+    at(raw, 'contextInfo', 'quotedMessage') ??
+    at(raw, 'message', 'extendedTextMessage', 'contextInfo', 'quotedMessage');
+  if (!q) return null;
+  const text =
+    at(q, 'conversation') ??
+    at(q, 'extendedTextMessage', 'text') ??
+    at(q, 'imageMessage', 'caption') ??
+    at(q, 'buttonsMessage', 'contentText');
+  return typeof text === 'string' ? text : '';
+}
+
+/**
+ * ¿Esa respuesta citada es para la oferta? Si la familia cita OTRO mensaje
+ * ("Ya tienes la cita reservada…" → "Sí, gracias"), no lo es. El 6/11 un "sí
+ * gracias" a la confirmación de la cita se tomó como "sí" a la oferta y la
+ * cita volvió a un día al que la familia no podía ir.
+ */
+export function quoteIsForOffer(quoted: string | null): boolean {
+  if (quoted === null) return true;
+  return /se ha liberado un hueco/i.test(quoted);
+}
+
 /** Respuesta escrita ("1", "sí", "no"…) de la familia a una oferta pendiente. */
 export async function handleAdvanceTextReply(args: {
   tenantId: string;
   contactPhoneE164: string;
   text: string | null | undefined;
+  /** Texto del mensaje citado, si la respuesta cita uno (`quotedTextFrom`). */
+  quotedText?: string | null;
 }): Promise<boolean> {
+  if (!quoteIsForOffer(args.quotedText ?? null)) return false;
   const row = await pendingOfferFor(args.tenantId, args.contactPhoneE164);
   if (!row) return false;
   const answer = parseAdvanceReply(args.text);

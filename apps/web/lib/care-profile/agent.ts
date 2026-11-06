@@ -17,7 +17,7 @@ import {
   priorityLevel,
 } from '@/lib/care-profile/policy';
 import { db } from '@/lib/db/client';
-import { agendaAppointments } from '@/lib/db/schema';
+import { agendaAppointments, patients } from '@/lib/db/schema';
 import {
   DuplicatePatientError,
   type PatientPerson,
@@ -74,6 +74,8 @@ export interface RegisterPersonArgs {
   otherGuardianName?: string | null;
   otherGuardianPhone?: string | null;
   otherGuardianRole?: string | null;
+  /** La familia dijo que es hermano/a de un niño que ya vino a la clínica. */
+  siblingOfPatient?: boolean;
 }
 
 /** "mamá", "madre", "la madre" → MADRE. Lo que no se reconoce, OTRO. */
@@ -205,6 +207,19 @@ export async function registerPatientPerson(
         notes: '',
       },
     );
+    // Primera visita de HERMANO ("1ª visita (H)" en la agenda). El cálculo
+    // automático sólo la ve si el hermano tiene citas atadas a su ficha antes
+    // de ese día; con la historia anterior a la plataforma, o con las citas
+    // dadas a nombre libre, salía "1ª visita" a secas (Respinens, 6/11). Si la
+    // familia lo dijo, o el teléfono ya tiene otro niño en ficha, se marca.
+    // Un mellizo (misma fecha) no: ése es G/M y se calcula solo.
+    const twin = siblings.some((s) => s.birthDate === birthDate);
+    if (!twin && (args.siblingOfPatient || siblings.length > 0)) {
+      await db
+        .update(patients)
+        .set({ siblingMark: 'SIBLING', updatedAt: new Date() })
+        .where(and(eq(patients.tenantId, tenantId), eq(patients.id, created.id)));
+    }
     return finishRegistration(tenantId, created, false, args, profile, todayKey);
   } catch (err) {
     // Ya tenía ficha con otro teléfono de la familia: es esa.
