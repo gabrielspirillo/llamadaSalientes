@@ -126,9 +126,17 @@ const evolutionKeySchema = z.object({
   senderPn: z.string().nullish(),
 });
 
+// Lo que cita la familia al responder ("Sí gracias" sobre OTRO mensaje): sin
+// esto zod lo descartaba y `quotedTextFrom` nunca veía nada (6/11).
+const evolutionContextInfoSchema = z
+  .object({ quotedMessage: z.record(z.unknown()).optional() })
+  .passthrough();
+
 const evolutionMessageContentSchema = z.object({
   conversation: z.string().optional(),
-  extendedTextMessage: z.object({ text: z.string() }).optional(),
+  extendedTextMessage: z
+    .object({ text: z.string(), contextInfo: evolutionContextInfoSchema.optional() })
+    .optional(),
   imageMessage: z
     .object({ caption: z.string().optional(), mimetype: z.string().optional() })
     .optional(),
@@ -156,6 +164,7 @@ export const evolutionMessagesUpsertSchema = z.object({
     messageTimestamp: z.union([z.number(), z.string()]).optional(),
     message: evolutionMessageContentSchema.optional(),
     messageType: z.string().optional(),
+    contextInfo: evolutionContextInfoSchema.optional(),
   }),
 });
 

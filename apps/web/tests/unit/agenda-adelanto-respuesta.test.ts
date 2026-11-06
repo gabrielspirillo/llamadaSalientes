@@ -69,3 +69,30 @@ describe('respuesta citando otro mensaje (6/11)', () => {
     expect(quoteIsForOffer(quotedTextFrom({ message: { conversation: 'Sí' } }))).toBe(true);
   });
 });
+
+describe('el mensaje citado sobrevive al esquema de Evolution', () => {
+  it('zod conserva contextInfo.quotedMessage (6/11: se descartaba y la protección no actuaba)', async () => {
+    const { evolutionMessagesUpsertSchema } = await import('@/lib/whatsapp/inbound');
+    const { quotedTextFrom, quoteIsForOffer } = await import('@/lib/agenda/advance-offers');
+    const parsed = evolutionMessagesUpsertSchema.safeParse({
+      event: 'messages.upsert',
+      instance: 'x',
+      data: {
+        key: { remoteJid: '34600000000@s.whatsapp.net', fromMe: false, id: 'ABC' },
+        message: {
+          extendedTextMessage: {
+            text: 'Si gracias',
+            contextInfo: {
+              stanzaId: 'XYZ',
+              quotedMessage: { conversation: 'Ya tienes la cita reservada para Leo' },
+            },
+          },
+        },
+      },
+    });
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(quotedTextFrom(parsed.data.data)).toBe('Ya tienes la cita reservada para Leo');
+    expect(quoteIsForOffer(quotedTextFrom(parsed.data.data))).toBe(false);
+  });
+});
