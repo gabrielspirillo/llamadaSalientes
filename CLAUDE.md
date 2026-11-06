@@ -1064,8 +1064,10 @@ cada 5 min) → siguiente familia; a quien ya rechazó ese hueco no se le vuelve
 a ofrecer (una oferta CANCELADA porque el hueco se ocupó entre medias no
 cuenta: si vuelve a liberarse se le ofrece otra vez). La respuesta a la familia
 sale ANTES de pasar al siguiente. Hay una prueba de extremo a extremo contra el
-entorno de QA en el scratchpad de la sesión (`qa/e2e-adelanto.ts`: cancelación
-real, rechazo, hueco reocupado, aceptación, cancelación solapada, caducidad).
+entorno de QA en el scratchpad de la sesión (`qa/e2e-adelanto-v2.ts`, 13
+comprobaciones: nadie en el mismo día, día siguiente misma hora, texto de los
+20 min, "sí" que cita otro mensaje, aceptación, hoy → confirmada con las
+indicaciones en un solo mensaje).
 Cada paso deja tarjeta en `#agenda`, y el panel cuenta los huecos
 ofrecidos en "Requiere atención". **La reserva (`HOLD_REASON`, en
 `lib/agenda/shared.ts`) frena a los agentes, no a recepción**:
