@@ -346,7 +346,7 @@ export async function agendaCheckAvailability(
     // cualquiera. El agente tiene que decir que no lo hacen y pasar a recepción.
     if (search.reason === 'NO_PROFESSIONAL_FOR_TREATMENT' && search.matchedTreatment) {
       return {
-        result: `Ningún profesional de la clínica realiza ${search.matchedTreatment.name} con la agenda online. NO lo agendes con otro profesional: decile al paciente que ese servicio no está disponible para reserva automática y ofrecele pasar con recepción o elegir otro tratamiento.`,
+        result: `Ningún profesional de la clínica realiza ${search.matchedTreatment.name} con la agenda online. NO lo agendes con otro profesional: decile al paciente que ese servicio no está disponible para reserva automática y ofrécele pasar con recepción o elegir otro tratamiento.`,
       };
     }
 
@@ -355,7 +355,7 @@ export async function agendaCheckAvailability(
         ? `${search.matchedProfessional.fullName} no tiene`
         : 'No hay';
       return {
-        result: `${quien} huecos libres en esos días. Ofrecele al paciente otra fecha o preguntale si le sirve otro profesional.`,
+        result: `${quien} huecos libres en esos días. Ofrécele al paciente otra fecha o pregúntale si le sirve otro profesional.`,
       };
     }
 
@@ -426,14 +426,14 @@ export async function agendaCheckAvailability(
             .map((p) => p.fullName)
             .join(
               ', ',
-            )}. Si el paciente no dijo con quién, preguntale si tiene preferencia; si le da igual, ofrecele el hueco más próximo.`
+            )}. Si el paciente no dijo con quién, pregúntale si tiene preferencia; si le da igual, ofrécele el hueco más próximo.`
         : '';
 
     const relaxNote = search.relaxedConsecutive
       ? 'Aviso: no queda ningún hueco que no vaya pegado a otra primera visita, así que se ofrecen estos (está permitido sólo porque no hay otra opción). '
       : '';
     return {
-      result: `${consulted}${noneOnRequested}${relaxNote}Horas libres${tratamiento} (como mucho estas ${picked.length}, ni una más): ${spoken.join('; ')}. Si ninguna le sirve, llama a check_availability con la misma preferred_date y page ${page + 1} para las siguientes. NUNCA ofrezcas una hora que no esté en la última respuesta de check_availability: las demás pueden estar ocupadas.${varios} Sólo existen los huecos de esta lista: no inventes horas ni ofrezcas otras (ya respetan el horario de la clínica). Para otra fecha, vuelve a llamar a check_availability con preferred_date. Para reservar, el paciente tiene que ELEGIR un hueco concreto (día, hora Y profesional): un "sí" o "dale" ambiguo NO es una elección. Luego pasá a book_appointment el start_time y el professional_id EXACTOS de ESE hueco, copiados tal cual de los corchetes (start_time es la hora de la clínica, NO la conviertas ni le añadas zona). Al paciente decile sólo el día, la hora y el nombre del profesional.`,
+      result: `${consulted}${noneOnRequested}${relaxNote}Horas libres${tratamiento} (como mucho estas ${picked.length}, ni una más): ${spoken.join('; ')}. Si ninguna le sirve, llama a check_availability con la misma preferred_date y page ${page + 1} para las siguientes. NUNCA ofrezcas una hora que no esté en la última respuesta de check_availability: las demás pueden estar ocupadas.${varios} Sólo existen los huecos de esta lista: no inventes horas ni ofrezcas otras (ya respetan el horario de la clínica). Para otra fecha, vuelve a llamar a check_availability con preferred_date. Para reservar, el paciente tiene que ELEGIR un hueco concreto (día, hora Y profesional): un "sí" o "dale" ambiguo NO es una elección. Luego pasa a book_appointment el start_time y el professional_id EXACTOS de ESE hueco, copiados tal cual de los corchetes (start_time es la hora de la clínica, NO la conviertas ni le añadas zona). Al paciente decile sólo el día, la hora y el nombre del profesional.`,
     };
   } catch (err) {
     console.error('[agenda-voice] check_availability', err);
@@ -504,7 +504,7 @@ export async function agendaBookAppointment(
     if (!professional) {
       return {
         result:
-          'Necesito saber con qué profesional. Llamá primero a check_availability y usá el professional_id que te devuelve entre corchetes.',
+          'Necesito saber con qué profesional. Llama primero a check_availability y usa el professional_id que te devuelve entre corchetes.',
       };
     }
     if (!professional.acceptsOnlineBooking) {
@@ -515,7 +515,7 @@ export async function agendaBookAppointment(
     if (!args.start_time) {
       return {
         result:
-          'Falta la hora exacta. Llamá a check_availability y pasá el start_time que te devuelve, sin recalcularlo.',
+          'Falta la hora exacta. Llama a check_availability y pasa el start_time que te devuelve, sin recalcularlo.',
       };
     }
 
@@ -556,7 +556,7 @@ export async function agendaBookAppointment(
     // con quien no lo realiza y solapando la agenda.
     if (args.treatment_name && !treatment && professional.treatments.length > 0) {
       return {
-        result: `${professional.fullName} no realiza "${args.treatment_name}". NO reserves ese tratamiento con ${professional.fullName}. Llamá a check_availability con el tratamiento para ver qué profesional lo hace, o pasá con recepción.`,
+        result: `${professional.fullName} no realiza "${args.treatment_name}". NO reserves ese tratamiento con ${professional.fullName}. Llama a check_availability con el tratamiento para ver qué profesional lo hace, o pasa con recepción.`,
       };
     }
 
@@ -740,7 +740,7 @@ export async function agendaBookAppointment(
   } catch (err) {
     if (err instanceof AgendaValidationError) {
       // El motivo ya viene en español y es accionable ("se pisa con otra cita").
-      return { result: `${err.message} Ofrecele otro hueco con check_availability.` };
+      return { result: `${err.message} Ofrécele otro hueco con check_availability.` };
     }
     console.error('[agenda-voice] book_appointment', err);
     return null;
@@ -1029,7 +1029,7 @@ export async function agendaListProfessionals(tenantId: string): Promise<AgendaT
     });
 
     return {
-      result: `Profesionales de la clínica:\n${lines.join('\n')}\nEse horario es el habitual: para dar una hora concreta usá SIEMPRE check_availability con professional_name, que ya descuenta citas y ausencias.`,
+      result: `Profesionales de la clínica:\n${lines.join('\n')}\nEse horario es el habitual: para dar una hora concreta usa SIEMPRE check_availability con professional_name, que ya descuenta citas y ausencias.`,
     };
   } catch (err) {
     console.error('[agenda-voice] list_professionals', err);

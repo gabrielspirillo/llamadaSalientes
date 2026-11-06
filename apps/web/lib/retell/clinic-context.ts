@@ -33,6 +33,19 @@ function formatWorkingHours(
   return parts.length ? parts.join('; ') : 'sin horarios cargados';
 }
 
+/** "lunes 15:00-20:30; martes 15:00-20:30": para el prompt escrito. */
+function formatWorkingHoursPlain(
+  wh: Record<string, { open: string; close: string } | null> | null | undefined,
+): string {
+  if (!wh) return 'horarios no configurados';
+  const parts: string[] = [];
+  for (const day of Object.keys(DAY_LABEL) as DayKey[]) {
+    const slot = wh[day];
+    if (slot?.open && slot?.close) parts.push(`${DAY_LABEL[day]} ${slot.open}-${slot.close}`);
+  }
+  return parts.length ? parts.join('; ') : 'sin horarios cargados';
+}
+
 function normalizeTenantName(name: string | undefined | null): string {
   if (!name) return 'la clínica';
   if (/['']s organization|^test|^demo/i.test(name)) return 'Futura Solutions';
@@ -71,6 +84,7 @@ export async function buildClinicContextVars(
     clinic_address: clinic?.address?.trim() || 'no especificada',
     clinic_phones: phones.length ? phones.join(', ') : 'no especificados',
     working_hours_text: formatWorkingHours(clinic?.workingHours),
+    working_hours_plain: formatWorkingHoursPlain(clinic?.workingHours),
     // "sábado y domingo": los días que el asistente no puede ofrecer ni mirar.
     closed_days_text: closedDaysLabel(clinic?.workingHours),
     clinic_timezone: clinic?.timezone ?? 'America/Mexico_City',

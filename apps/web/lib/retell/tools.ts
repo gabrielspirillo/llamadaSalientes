@@ -178,7 +178,7 @@ function formatSlots(slots: GhlSlot[]): string {
       return `${weekday} ${clockArticle(time)} ${time} [start_time=${s.startTime}]`;
     })
     .join('; ');
-  return `Horarios disponibles: ${formatted}. Para reservar, pasá a book_appointment el valor exacto de start_time (entre corchetes) del hueco que elija el paciente, sin modificarlo ni recalcular la hora.`;
+  return `Horarios disponibles: ${formatted}. Para reservar, pasa a book_appointment el valor exacto de start_time (entre corchetes) del hueco que elija el paciente, sin modificarlo ni recalcular la hora.`;
 }
 
 // ─── Tool handlers ────────────────────────────────────────────────────────────
@@ -377,7 +377,7 @@ export async function bookAppointment(
     if (!contactId) {
       return {
         result:
-          'Para agendar necesito el contact_id real del paciente. Llamá primero a get_patient_info(phone) para encontrarlo, o si es nuevo a register_patient(first_name, last_name, phone) para crearlo, y usá el id que te devuelva.',
+          'Para agendar necesito el contact_id real del paciente. Llama primero a get_patient_info(phone) para encontrarlo, o si es nuevo a register_patient(first_name, last_name, phone) para crearlo, y usa el id que te devuelva.',
       };
     }
 
@@ -537,7 +537,7 @@ export async function registerPatient(
     // lo necesita. Decírselo explícito evita que el agente se quede esperando
     // un id que no va a llegar.
     return {
-      result: `Paciente ${fullName} dado de alta en la clínica con el teléfono ${phone}. No hace falta contact_id: para reservar llamá a book_appointment con patient_name y el professional_id del hueco elegido.`,
+      result: `Paciente ${fullName} dado de alta en la clínica con el teléfono ${phone}. No hace falta contact_id: para reservar llama a book_appointment con patient_name y el professional_id del hueco elegido.`,
     };
   }
 
@@ -556,7 +556,7 @@ export async function registerPatient(
       );
     }
     return {
-      result: `Ya existe un paciente con ese teléfono: ${name || 'sin nombre'}. contact_id=${existing.id}. Usá ese id para agendar.`,
+      result: `Ya existe un paciente con ese teléfono: ${name || 'sin nombre'}. contact_id=${existing.id}. Usa ese id para agendar.`,
     };
   }
 
@@ -571,7 +571,7 @@ export async function registerPatient(
     // agenda propia no necesita el id: la cita se puede dar igual.
     return {
       result: record
-        ? `Paciente ${fullName} dado de alta en la clínica. No pude crearlo en el CRM, así que reservá con book_appointment usando patient_name y el professional_id del hueco, sin contact_id.`
+        ? `Paciente ${fullName} dado de alta en la clínica. No pude crearlo en el CRM, así que reserva con book_appointment usando patient_name y el professional_id del hueco, sin contact_id.`
         : 'No pude crear al paciente. Tomá nombre y teléfono y decile que recepción le confirma.',
     };
   }
@@ -584,7 +584,7 @@ export async function registerPatient(
   }
 
   return {
-    result: `Paciente creado correctamente. contact_id=${created.id}. Usá ese id para llamar a book_appointment.`,
+    result: `Paciente creado correctamente. contact_id=${created.id}. Usa ese id para llamar a book_appointment.`,
   };
 }
 
@@ -679,11 +679,11 @@ export async function getPatientInfo(
     partes.push(
       record
         ? `Paciente conocido: ${describePatient(record)}.`
-        : 'No tengo ficha de ese teléfono, así que es un paciente nuevo: pedile nombre y apellido y registralo con register_patient.',
+        : 'No tengo ficha de ese teléfono, así que es un paciente nuevo: pídele nombre y apellido y regístralo con register_patient.',
     );
     if (agenda) partes.push(agenda);
     partes.push(
-      'Para reservar NO hace falta contact_id: llamá a book_appointment con patient_name y el professional_id del hueco que elija.',
+      'Para reservar NO hace falta contact_id: llama a book_appointment con patient_name y el professional_id del hueco que elija.',
     );
     return { result: partes.join(' ') };
   }
@@ -693,8 +693,8 @@ export async function getPatientInfo(
     if (!contact) {
       return {
         result: agenda
-          ? `${agenda} No está en el CRM: si hace falta, creálo con register_patient.`
-          : 'No encontré al paciente en el sistema. Es un paciente nuevo: pediles nombre y apellido y luego usá register_patient para crearlo antes de agendar.',
+          ? `${agenda} No está en el CRM: si hace falta, créalo con register_patient.`
+          : 'No encontré al paciente en el sistema. Es un paciente nuevo: pídeles nombre y apellido y luego usa register_patient para crearlo antes de agendar.',
       };
     }
     const name = [contact.firstName, contact.lastName].filter(Boolean).join(' ') || 'Sin nombre';
@@ -718,7 +718,7 @@ export async function getPatientInfo(
     }
 
     return {
-      result: `Paciente encontrado: ${name}. contact_id=${contact.id}. Usá ese contact_id para agendar la cita.${
+      result: `Paciente encontrado: ${name}. contact_id=${contact.id}. Usa ese contact_id para agendar la cita.${
         agenda ? ` ${agenda}` : ''
       }`,
     };
@@ -790,7 +790,7 @@ export async function listTreatments(tenantId: string): Promise<ToolResult> {
   });
 
   const nota = byTreatment
-    ? ' Ofrece cada tratamiento SÓLO con el/los profesional(es) que lo realizan; no atribuyas a un profesional un tratamiento que no está a su nombre. Si un tratamiento no tiene profesional asignado, no lo agendes: pasá con recepción.'
+    ? ' Ofrece cada tratamiento SÓLO con el/los profesional(es) que lo realizan; no atribuyas a un profesional un tratamiento que no está a su nombre. Si un tratamiento no tiene profesional asignado, no lo agendes: pasa con recepción.'
     : '';
 
   return {
@@ -962,8 +962,8 @@ export async function setLeadEmail(
     if (!contact) {
       return {
         result: record
-          ? `Correo ${email} guardado en la ficha del paciente. Todavía no está en el CRM: si hace falta, creálo con register_patient.`
-          : 'No encontré al contacto. Usá register_patient primero con first_name, phone y email.',
+          ? `Correo ${email} guardado en la ficha del paciente. Todavía no está en el CRM: si hace falta, créalo con register_patient.`
+          : 'No encontré al contacto. Usa register_patient primero con first_name, phone y email.',
       };
     }
 

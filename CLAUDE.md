@@ -497,6 +497,30 @@ prompt prohíbe "tienes razón"/"perdona". **Respuestas al recordatorio del
 día**: `parseDayOfTextReply` entiende "1. Confirmamos", "2 cambiar" y
 "confirmamos".
 
+**Auditoría del prompt (6/11/2026)**, lo que se corrigió y hay que mantener:
+- **Todo en tú, nunca en vos.** El prompt y los resultados de las herramientas
+  llevaban voseo ("usá", "tenés", "decí", "Llamá") mientras una regla decía
+  "nunca uses vos": el modelo copia lo que lee. Un texto nuevo para el modelo
+  va en tú (`lib/retell/tools.ts`, `lib/agenda/voice.ts`, `lib/care-profile/agent.ts`).
+- **La sección "TU FUNCIÓN" manda sobre todo lo anterior**
+  (`buildRoleSection`): cualquier regla que importe de verdad tiene que estar
+  AHÍ, no sólo arriba. Por eso ahí viven también: día cerrado = "no abrimos"
+  (no "no me queda nada"), hueco ocupado = explicarlo sin "tienes razón", y
+  cancelar sólo si lo dicen claramente ("ese día no puedo" es cambiar).
+- Regla 10 del prompt base: nunca mover ni cancelar una cita por iniciativa
+  propia; `confirm_appointment` y `request_earlier_appointment` están en la
+  lista "Cuándo usar cada herramienta" (antes sólo en la descripción).
+- El horario de atención va en cifras (`working_hours_plain`, "lunes
+  15:00-20:30"); el de palabras (`working_hours_text`) es para la voz.
+- Las versiones "administrativas" de las reglas 5 y 6 las aplica
+  `stripClinicalTriage` con regex sobre el texto base: si se cambia una frase
+  del prompt base hay que cambiar también su regex, o la clínica pediátrica se
+  queda con la regla dental.
+- ⚠️ Lo que el repo NO controla y puede hacer delirar al asistente: FAQs y
+  tratamientos cargados en la clínica (en QA había FAQs dentales con otra
+  dirección), las enseñanzas de "Entrenar asistente" (van al final y mandan) y
+  el prompt de los agentes de voz, que vive en Retell.
+
 **Dónde entra lo aprendido**: `formatLessonsForPrompt` (puro, en
 `lib/agent-training/model.ts`, con tests) arma una sección que
 `loadGroundingForTenant` carga y `buildSystemPrompt` inyecta en los DOS prompts

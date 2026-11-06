@@ -313,7 +313,7 @@ async function finishRegistration(
     ? ` Es MELLIZO/GEMELO de ${twins.map((t) => t.fullName).join(' y ')}: si su hermano ya tiene cita, busca con check_availability el tratamiento de mellizos (first_visit=false) el mismo día y ofrécele la hora justo después de la de su hermano.`
     : '';
   return {
-    result: `${existing ? 'Ya estaba registrado' : 'Paciente dado de alta'}: ${describeChild(person, todayKey)}. patient_id=${person.id}. Para reservar, llamá a check_availability con first_visit=${firstVisit ? 'true' : 'false'} y después a book_appointment con patient_id=${person.id} y el start_time y professional_id exactos del hueco elegido.${twinHint}${
+    result: `${existing ? 'Ya estaba registrado' : 'Paciente dado de alta'}: ${describeChild(person, todayKey)}. patient_id=${person.id}. Para reservar, llama a check_availability con first_visit=${firstVisit ? 'true' : 'false'} y después a book_appointment con patient_id=${person.id} y el start_time y professional_id exactos del hueco elegido.${twinHint}${
       fasting ? ` Recuérdale al tutor el ayuno de ${fasting} horas antes de la sesión.` : ''
     }`,
   };
@@ -436,7 +436,7 @@ export async function resolvePatientForBooking(
       return {
         ok: false,
         result:
-          'Ese patient_id no existe en esta clínica. Llamá a get_patient_info con el teléfono para ver los niños registrados y usá el patient_id que devuelva.',
+          'Ese patient_id no existe en esta clínica. Llama a get_patient_info con el teléfono para ver los niños registrados y usa el patient_id que devuelva.',
       };
     }
   }
@@ -450,7 +450,7 @@ export async function resolvePatientForBooking(
     return {
       ok: false,
       result:
-        'En esta clínica cada niño tiene su ficha y la cita va a su nombre. Llamá a get_patient_info para ver los niños registrados con este teléfono, o da de alta al niño con register_patient (nombre, apellidos, fecha de nacimiento), y reservá con su patient_id.',
+        'En esta clínica cada niño tiene su ficha y la cita va a su nombre. Llama a get_patient_info para ver los niños registrados con este teléfono, o da de alta al niño con register_patient (nombre, apellidos, fecha de nacimiento), y reserva con su patient_id.',
     };
   }
 
