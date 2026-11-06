@@ -5,9 +5,11 @@
  *
  * El orden lo fijó la clínica y no se cambia a la ligera:
  *
- *  (Antes había una fase previa: quien tenía cita ESE MISMO DÍA, más tarde,
- *  con ↑. La clínica la quitó el 6/11: la flecha es "avisadme si se libera
- *  algo ANTES", en días, no mover horas dentro del mismo día.)
+ *  EN EL MISMO DÍA NO SE MUEVE A NADIE (la clínica, 6/11: "eso ya me encargo
+ *  yo en clínica"). Antes había dos fases del mismo día —quien tenía ↑ y,
+ *  al final, el resto desde la última hora— y le ofrecieron al de las 18:30
+ *  venirse a las 15:00. La flecha es "avisadme si se libera algo ANTES", en
+ *  días.
  *
  *  1. Los tres días siguientes, uno a uno: primero quien
  *     tiene cita a LA MISMA HORA que el hueco, luego la de justo antes
@@ -16,8 +18,8 @@
  *     siempre quiere adelantar"); sólo queda fuera "no mover". A igual
  *     hueco, primero quien marcó ↑. A esa familia le cambia el día, no la
  *     hora, y acepta más.
- *  2. Agotado eso, el resto de citas del mismo día que NO dijeron nada
- *     (sin ↑ ni "no mover"), empezando por la última hora del día.
+ *  2. Sin nadie, el hueco sigue su camino de siempre: lista de espera (eso
+ *     lo decide quien llama).
  *
  * Quien dijo "no mover" no entra nunca. Quien ya recibió este hueco y lo
  * rechazó (o no contestó) tampoco: eso lo filtra quien llama.
@@ -38,7 +40,7 @@ export interface RankCandidate {
   advancePriority?: boolean;
 }
 
-export type OfferPhase = 'NEXT_DAYS_SAME_HOUR' | 'SAME_DAY_REST';
+export type OfferPhase = 'NEXT_DAYS_SAME_HOUR';
 
 export interface RankedCandidate<T extends RankCandidate = RankCandidate> {
   candidate: T;
@@ -114,13 +116,6 @@ export function rankAdvanceCandidates<T extends RankCandidate>(
           byTime(a.c, b.c),
       );
     for (const { c } of scored) push(c, 'NEXT_DAYS_SAME_HOUR');
-  }
-
-  // 2. Resto del mismo día sin preferencia, desde la última hora hacia atrás.
-  for (const c of valid
-    .filter((c) => c.advancePreference === null && localDateKey(c.startsAt, tz) === slotDay)
-    .sort((a, b) => b.startsAt.getTime() - a.startsAt.getTime())) {
-    push(c, 'SAME_DAY_REST');
   }
 
   return out;

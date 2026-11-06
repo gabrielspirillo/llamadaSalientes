@@ -1,5 +1,6 @@
 import 'server-only';
 import { describeAgendaForPrompt } from '@/lib/agenda/agent';
+import { closedDaysLabel } from '@/lib/agenda/clinic-hours';
 import { buildCareProtocolSection } from '@/lib/care-profile/policy';
 import { getCareProfile } from '@/lib/care-profile/queries';
 import { getClinicSettings, getTenant } from '@/lib/data/clinic';
@@ -70,6 +71,8 @@ export async function buildClinicContextVars(
     clinic_address: clinic?.address?.trim() || 'no especificada',
     clinic_phones: phones.length ? phones.join(', ') : 'no especificados',
     working_hours_text: formatWorkingHours(clinic?.workingHours),
+    // "sábado y domingo": los días que el asistente no puede ofrecer ni mirar.
+    closed_days_text: closedDaysLabel(clinic?.workingHours),
     clinic_timezone: clinic?.timezone ?? 'America/Mexico_City',
     after_hours_message: clinic?.afterHoursMessage?.trim() || '',
     recording_consent: clinic?.recordingConsentText?.trim() || '',

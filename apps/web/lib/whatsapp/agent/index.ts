@@ -287,7 +287,10 @@ export async function runWhatsappAgent(
     scriptedText === null &&
     !injection.tripped &&
     infoScript &&
-    asksForGeneralInfo(input.userText) &&
+    // Sólo lo que acaba de escribir: en una ráfaga, el "¿me recuerdas el
+    // precio?" de antes convertía un "¿me avisáis si se libera?" en el guion
+    // de la web (6/11).
+    asksForGeneralInfo(lastUserLine(input.userText)) &&
     !/\b(mocos|tos|catarro|fiebre|edad|meses|bebe|bebé)\b/i.test(input.userText)
   ) {
     guardrailFlags.push('clinic_info_request');
@@ -364,7 +367,19 @@ export async function runWhatsappAgent(
     let terminalHit = false;
     for (const tc of result.toolCalls) {
       // La fecha de nacimiento tiene que estar ENTERA en lo que escribió la
-      // familia: con "nació el 3 de junio" el modelo se inventaba el año.
+      // familia: con "nació el 3 de junio" el modelo se inventaba el año. Y si
+      // la familia la escribió completa, ESA es la fecha, pase lo que pase el
+      // modelo (6/11: "15 de julio de 2026" acabó en "me falta el año").
+      if (careProfile && tc.name === 'register_patient' && tc.args) {
+        const said = birthDateFromTexts([
+          input.userText,
+          ...input.history.filter((h) => h.role === 'user').map((h) => h.content),
+        ]);
+        if (said && said !== tc.args.birth_date) {
+          tc.args = { ...tc.args, birth_date: said };
+          guardrailFlags.push('birth_date_from_text');
+        }
+      }
       const birth = typeof tc.args?.birth_date === 'string' ? tc.args.birth_date : '';
       const missingYear =
         careProfile &&
@@ -1074,6 +1089,46 @@ export function isPureThanks(text: string): boolean {
 }
 
 /** El año de la fecha de nacimiento aparece en lo que escribió la familia ("2025", "3/6/25"). */
+/**
+ * La fecha de nacimiento tal como la escribió la familia, si está completa
+ * ("15 de julio de 2026", "15/07/2026", "15-7-26"). La ÚLTIMA que aparezca
+ * manda (los textos van del más reciente al más antiguo: se mira el primero).
+ */
+export function birthDateFromTexts(texts: string[]): string | null {
+  const months = MONTHS.map(fold);
+  for (const raw of texts) {
+    const t = fold(raw);
+    const words = new RegExp(
+      `\\b(\\d{1,2})\\s*(?:de\\s+)?(${months.join('|')})\\s*(?:de\\s+|del\\s+)?(\\d{4}|\\d{2})\\b`,
+      'g',
+    );
+    const found: string[] = [];
+    for (const m of t.matchAll(words)) {
+      const d = Number(m[1]);
+      const mo = months.indexOf(m[2] ?? '') + 1;
+      const y = yearOf(m[3] ?? '');
+      if (d >= 1 && d <= 31 && mo >= 1 && y) found.push(key(y, mo, d));
+    }
+    for (const m of t.matchAll(/\b(\d{1,2})\s*[/.-]\s*(\d{1,2})\s*[/.-]\s*(\d{4}|\d{2})\b/g)) {
+      const d = Number(m[1]);
+      const mo = Number(m[2]);
+      const y = yearOf(m[3] ?? '');
+      if (d >= 1 && d <= 31 && mo >= 1 && mo <= 12 && y) found.push(key(y, mo, d));
+    }
+    if (found.length) return found[found.length - 1] ?? null;
+  }
+  return null;
+}
+
+function yearOf(s: string): number | null {
+  if (s.length === 4) return Number(s);
+  if (s.length === 2) return 2000 + Number(s);
+  return null;
+}
+function key(y: number, mo: number, d: number): string {
+  return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
 export function birthYearSaid(birthDate: string, texts: string[]): boolean {
   const yyyy = birthDate.slice(0, 4);
   const yy = birthDate.slice(2, 4);
@@ -1159,6 +1214,15 @@ export function conversationSaysFirstVisit(texts: string[]): boolean {
   return yes && !no;
 }
 
+/** La última línea con texto de lo que escribió la familia (una ráfaga llega unida por saltos). */
+export function lastUserLine(text: string): string {
+  const lines = text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
+  return lines[lines.length - 1] ?? text;
+}
+
 /**
  * La familia dijo que el niño nuevo es hermano de uno que ya vino ("es el
  * hermano de Mario", "ya he acudido con otro peque", "el hermanito"). "Mi
@@ -1179,6 +1243,14 @@ export function conversationSaysSibling(texts: string[]): boolean {
 export function asksForGeneralInfo(text: string): boolean {
   const f = fold(text);
   if (asksForAppointment(text)) return false;
+  // Pedir que le avisen, cancelar, cambiar, confirmar o preguntar por SU cita
+  // no es informarse: eso lo atiende el modelo con sus herramientas.
+  if (
+    /\b(avis\w*|cancel\w*|anul\w*|liber\w*|adelant\w*|cambi\w*|confirm\w*|lista de espera|mi cita|la cita de)\b/.test(
+      f,
+    )
+  )
+    return false;
   return /\b(informa(r|rme|cion)|info|precios?|tarifas?|cuanto (cuesta|vale|es)|que (hac[eé]is|ofreceis|terapias)|en que consiste|como (es|son|funciona)n? (la|las|una) (sesion|sesiones|terapia|terapias)|las terapias|tratamientos que)\b/.test(
     f,
   );

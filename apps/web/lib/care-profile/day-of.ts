@@ -112,9 +112,15 @@ export function parseDayOfTextReply(
     .replace(/\s+/g, ' ')
     .trim();
   if (!t || t.length > (natural ? 60 : 20)) return null;
-  if (/^(1|confirmar|confirmo|confirmada|confirmado)$/.test(t)) return 'confirm';
+  if (/^(1|confirmar|confirmo|confirmamos|confirmada|confirmado)$/.test(t)) return 'confirm';
   if (/^(2|modificar|modifico|cambiar)$/.test(t)) return 'modify';
   if (/^(3|cancelar|cancelo|anular)$/.test(t)) return 'cancel';
+  // "1. Confirmamos", "1 confirmar", "2 cambiar": el número con texto detrás
+  // (el 6/11 un "1. Confirmamos" se fue al asistente y contestó otra cosa).
+  const numbered =
+    /^\s*([123])\s*[.)\-:]\s*\S/.exec(raw) ??
+    /^([123]) (confirm|cambi|modific|cancel|anul|si\b|vale)/.exec(t);
+  if (numbered) return numbered[1] === '1' ? 'confirm' : numbered[1] === '2' ? 'modify' : 'cancel';
   if (!natural) return null;
 
   if (
@@ -129,7 +135,7 @@ export function parseDayOfTextReply(
     /^(si|sii+|vale|ok|okey|okay|claro|perfecto|genial|confirm\w*|correcto|de acuerdo|por supuesto|sin problema|hecho|alli estaremos|ahi estaremos|nos vemos|vamos|iremos|contamos con ello|all[i] estaremos)\b/.test(
       t,
     ) ||
-    /\b(nos vemos|alli estaremos|ahi estaremos|confirmad|confirmo|si vamos|si iremos|si podemos|contad con nosotros|estaremos ahi|estaremos alli)\b/.test(
+    /\b(nos vemos|alli estaremos|ahi estaremos|confirmad\w*|confirmo|confirmamos|si vamos|si iremos|si podemos|contad con nosotros|estaremos ahi|estaremos alli)\b/.test(
       t,
     )
   ) {

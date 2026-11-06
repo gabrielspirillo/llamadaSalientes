@@ -656,7 +656,8 @@ export async function countRedFlagsByPatientKey(
     .select({
       patientKey: agendaAppointments.patientKey,
       noShows: sql<number>`count(*) filter (where ${agendaAppointments.status} = 'NO_SHOW')`,
-      cancellations: sql<number>`count(*) filter (where ${agendaAppointments.status} = 'CANCELLED' and coalesce(${agendaAppointments.cancelledBy}, 'PATIENT') <> 'CLINIC')`,
+      // Un cambio de día ("Cambiada por el paciente") no es una anulación.
+      cancellations: sql<number>`count(*) filter (where ${agendaAppointments.status} = 'CANCELLED' and coalesce(${agendaAppointments.cancelledBy}, 'PATIENT') <> 'CLINIC' and coalesce(${agendaAppointments.cancelReason}, '') not ilike 'cambiada por el paciente%')`,
     })
     .from(agendaAppointments)
     .where(

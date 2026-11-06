@@ -42,6 +42,8 @@ export interface ClinicGrounding {
   timezone: string;
   /** Número al que se transfieren las urgencias / handoff humano. */
   transferNumber: string;
+  /** "sábado y domingo": días que no se ofrecen nunca. '' si abre todos o no hay horario. */
+  closedDays?: string;
 }
 
 export interface TreatmentLine {
@@ -232,6 +234,7 @@ export async function loadGroundingForTenant(tenantId: string): Promise<{
     workingHours: ctxVars.working_hours_text ?? 'no especificados',
     timezone: ctxVars.clinic_timezone ?? 'Europe/Madrid',
     transferNumber: ctxVars.clinic_transfer_number ?? '',
+    closedDays: ctxVars.closed_days_text ?? '',
   };
 
   const treatments: TreatmentLine[] = treatmentRows.map((t) => ({
@@ -560,6 +563,11 @@ D. **Urgencia clínica dentro del alcance** — un dolor agudo o una situación 
    calcules: si dice "el 8", busca el 8 aquí y usa el día que pone.
 8. Confidencialidad: no repitas el teléfono completo del paciente ni datos médicos
    sensibles dentro del mensaje. Usa nombres cuando los tengas.
+9. Si una hora que ofreciste ya no está libre cuando la familia contesta, dilo tal
+   cual: "ese hueco se ha ocupado mientras tanto, hay mucha demanda y los huecos se
+   cogen en minutos", y ofrece lo que quede. NUNCA digas "tienes razón", "perdona" ni
+   insinúes que te equivocaste: no te equivocaste, el hueco se ocupó. Una cita sólo
+   existe cuando book_appointment la confirma; hasta entonces no hay nada reservado.
 
 # Cuándo usar cada herramienta
 - check_availability: el paciente PIDE cita y ya sabes para qué tratamiento. No la
@@ -619,8 +627,9 @@ D. **Urgencia clínica dentro del alcance** — un dolor agudo o una situación 
 Clínica: ${clinic.name}
 Dirección: ${clinic.address}
 Teléfonos: ${clinic.phones}
-Horarios:
+Horarios de atención:
 ${clinic.workingHours}
+${clinic.closedDays ? `Días en que la clínica NO ABRE: ${clinic.closedDays}. Nunca ofrezcas, propongas ni "mires" un día cerrado, ni digas que "no queda nada" ese día: si la familia lo pide, di que ese día no abrimos y ofrece el siguiente día que sí abre.` : ''}
 Zona horaria: ${clinic.timezone}
 ${clinic.transferNumber ? `Número de transferencia humana: ${clinic.transferNumber}` : ''}
 
@@ -822,7 +831,6 @@ Cuando lo tengas, llama a "derive_to_professional" con un resumen de 2-4 frases.
    tienes.
 8. Confidencialidad: no repitas el teléfono completo del paciente ni datos médicos
    sensibles dentro del mensaje. Usa nombres cuando los tengas.
-
 # Cuándo usar cada herramienta
 - derive_to_professional: TERMINA la conversación pasando la consulta al profesional.
   Úsala cuando ya entiendes qué necesita. Manda siempre "summary" (2-4 frases, en
@@ -847,6 +855,7 @@ Dirección: ${clinic.address}
 Teléfonos: ${clinic.phones}
 Horarios de atención:
 ${clinic.workingHours}
+${clinic.closedDays ? `Días en que la clínica NO ABRE: ${clinic.closedDays}. Nunca ofrezcas, propongas ni "mires" un día cerrado, ni digas que "no queda nada" ese día: si la familia lo pide, di que ese día no abrimos y ofrece el siguiente día que sí abre.` : ''}
 Zona horaria: ${clinic.timezone}
 ${clinic.transferNumber ? `Número de transferencia humana: ${clinic.transferNumber}` : ''}
 

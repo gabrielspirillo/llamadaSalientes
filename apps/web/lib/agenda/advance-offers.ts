@@ -17,18 +17,21 @@ import {
 import { NEXT_DAYS, rankAdvanceCandidates } from '@/lib/agenda/advance-ranking';
 import { systemAgendaContext } from '@/lib/agenda/agent';
 import { samePhone } from '@/lib/agenda/patients';
-import { createAppointment, rescheduleAppointment } from '@/lib/agenda/service';
+import { createAppointment, rescheduleAppointment, updateAppointment } from '@/lib/agenda/service';
 import { clinicBookingMessages } from '@/lib/care-profile/booking-confirmation';
 import { sendClinicWhatsapp } from '@/lib/care-profile/clinic-whatsapp';
+import { parseMessageScripts } from '@/lib/care-profile/messages';
 import { getTenant } from '@/lib/data/clinic';
 import { db } from '@/lib/db/client';
 import {
   advanceOffers,
   agendaAppointments,
+  appointmentDayOf,
   clinicSettings,
   professionalTimeOff,
   professionals,
   slotPriorityRequests,
+  tenantCareProfile,
   treatments,
 } from '@/lib/db/schema';
 import { postSystemEvent } from '@/lib/messaging/bot';
@@ -194,8 +197,8 @@ export async function offerFreedSlot(
     return true;
   }
 
-  // Ventana: el mismo día del hueco y los tres siguientes (fases 1 a 3 de
-  // `rankAdvanceCandidates`). Quien dijo "no mover" no se trae.
+  // Ventana: los tres días siguientes al hueco (`rankAdvanceCandidates`; en el
+  // mismo día no se mueve a nadie). Quien dijo "no mover" no se trae.
   const windowEnd = dayStart(addDaysToKey(localDateKey(slot.startsAt, tz0), NEXT_DAYS + 1), tz0);
   const candidates = await db
     .select()
@@ -255,7 +258,6 @@ export async function offerFreedSlot(
   );
   const first = ranked[0];
   const target = first?.candidate;
-  const phase = first?.phase;
   if (!target || !target.patientPhone) return false;
 
   const [professional] = await db
@@ -315,11 +317,9 @@ export async function offerFreedSlot(
 
   const clinic = tenant?.name?.trim() || 'la clínica';
   const ask =
-    phase === 'SAME_DAY_REST'
-      ? `Tenéis la cita de ${patientName} ese mismo día a las ${cita.time}. ¿Os vendría bien adelantarla a ese hueco?`
-      : target.advancePreference !== 'ACCEPTS'
-        ? `Tenéis la cita de ${patientName} el ${cita.day} a las ${cita.time}. ¿Os vendría bien adelantarla a ese hueco?`
-        : `Nos dijisteis que queríais adelantar la cita de ${patientName} del ${cita.day} a las ${cita.time}. ¿Os la cambiamos a ese hueco?`;
+    target.advancePreference !== 'ACCEPTS'
+      ? `Tenéis la cita de ${patientName} el ${cita.day} a las ${cita.time}. ¿Os vendría bien adelantarla a ese hueco?`
+      : `Nos dijisteis que queríais adelantar la cita de ${patientName} del ${cita.day} a las ${cita.time}. ¿Os la cambiamos a ese hueco?`;
   const withWhom = professional ? ` con ${professional.name}` : '';
   const text = `${hello}, soy el asistente virtual de la agenda de ${clinic}. Se ha liberado un hueco ${hueco.day} a las ${hueco.time}${withWhom}. ${ask}\n\n${validityLine(now, expiresAt, tz)}`;
   const sent = await sendClinicWhatsapp(
@@ -691,8 +691,29 @@ async function resolveOffer(
     body: `${before?.patientName ?? 'La familia'} aceptó el hueco y su cita se movió.`,
     dedupeKey: `adv:accepted:${row.id}`,
   }).catch(() => undefined);
+  // Adelantada a HOY: acaban de decir que vienen. Queda CONFIRMADA (sin el
+  // recordatorio del día, que salía un minuto después del "¡Hecho!") y el
+  // mensaje lleva las indicaciones de la clínica (ayuno, puntualidad), en uno
+  // solo. Lo pidió la clínica el 6/11.
+  let hecho = `¡Hecho! La cita queda ${when.day} a las ${when.time}. Os esperamos.`;
+  if (localDateKey(row.slotStartsAt, tz) === todayKey) {
+    await updateAppointment(systemAgendaContext(row.tenantId), appointmentId, {
+      status: 'CONFIRMED',
+    }).catch((err) => console.warn('[adelanto] confirmar cita de hoy', (err as Error).message));
+    const at = new Date();
+    await db
+      .insert(appointmentDayOf)
+      .values({ appointmentId, tenantId: row.tenantId, outcome: 'CONFIRMED', outcomeAt: at })
+      .onConflictDoUpdate({
+        target: appointmentDayOf.appointmentId,
+        set: { outcome: 'CONFIRMED', outcomeAt: at, updatedAt: at },
+      })
+      .catch((err) => console.warn('[adelanto] marcar confirmada', (err as Error).message));
+    const reminder = await dayOfReminderTail(row.tenantId);
+    hecho = `¡Hecho! ✨\nLa cita queda ${when.day} a las ${when.time}.${reminder ? `\n\n${reminder}` : ' Os esperamos.'}`;
+  }
   return {
-    messages: [`¡Hecho! La cita queda ${when.day} a las ${when.time}. Os esperamos.`],
+    messages: [hecho],
     // El hueco que deja la cita movida se ofrece al siguiente, ya contestada.
     after: before
       ? async () => {
@@ -705,6 +726,27 @@ async function resolveOffer(
         }
       : undefined,
   };
+}
+
+/**
+ * Lo que la clínica recuerda al confirmar una cita de hoy ("Recuerda: 2 horas
+ * de ayuno, puntualidad. Muchas gracias"): el guion `dayOf.confirmed` sin su
+ * primer párrafo ("Perfecto, nos vemos esta tarde"), que aquí lo pone el "¡Hecho!".
+ */
+export function dayOfReminderTailFromScript(confirmed: string | null | undefined): string {
+  const text = (confirmed ?? '').trim();
+  if (!text) return '';
+  const idx = text.search(/\n\s*\n/);
+  return idx < 0 ? '' : text.slice(idx).trim();
+}
+
+async function dayOfReminderTail(tenantId: string): Promise<string> {
+  const [profile] = await db
+    .select({ scripts: tenantCareProfile.messageScripts })
+    .from(tenantCareProfile)
+    .where(eq(tenantCareProfile.tenantId, tenantId))
+    .limit(1);
+  return dayOfReminderTailFromScript(parseMessageScripts(profile?.scripts)?.dayOf?.confirmed);
 }
 
 /** Botón "adv:yes:<id>" / "adv:no:<id>" (Cloud API) . */

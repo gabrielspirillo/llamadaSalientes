@@ -4,7 +4,7 @@ import { and, asc, desc, eq, gte, inArray, lt, ne, or } from 'drizzle-orm';
 
 import type { AgendaContext } from '@/lib/agenda/auth';
 import { firstVisitFromTreatment } from '@/lib/agenda/availability';
-import { withinClinicHours } from '@/lib/agenda/clinic-hours';
+import { closedWeekdays, withinClinicHours } from '@/lib/agenda/clinic-hours';
 import { describeAbsences, describeWeeklySchedule } from '@/lib/agenda/describe';
 import { normalizePatientPhone, patientKeyFor } from '@/lib/agenda/patients';
 import { type AvailabilityResult, getAvailability, getClinicTimezone } from '@/lib/agenda/queries';
@@ -254,6 +254,8 @@ export interface AgentSlotSearchResult {
    * agendar con el primero que apareció.
    */
   offeredBy: { id: string; fullName: string }[];
+  /** Días ISO (1-7) en que la clínica no abre (Datos de la clínica). */
+  closedWeekdays?: number[];
   /** Por qué no hay opciones, cuando la causa es de configuración. */
   reason: 'OK' | 'NO_AGENDA' | 'NO_PROFESSIONAL_FOR_TREATMENT' | 'NO_SLOTS';
 }
@@ -443,6 +445,7 @@ export async function findAgentSlots(
       ? { id: matchedProfessional.id, fullName: matchedProfessional.fullName }
       : null,
     offeredBy,
+    closedWeekdays: closedWeekdays(settings?.workingHours),
     reason: options.length > 0 ? 'OK' : 'NO_SLOTS',
     firstVisit,
     relaxedConsecutive,

@@ -37,14 +37,26 @@ export const MAX_PRIOR_RED_FLAGS = 99;
 export function isRedFlagAppointment(a: {
   status: string;
   cancelledBy?: CancelledBy | string | null;
+  cancelReason?: string | null;
 }): 'NO_SHOW' | 'CANCELLED' | null {
   if (a.status === 'NO_SHOW') return 'NO_SHOW';
-  if (a.status === 'CANCELLED' && a.cancelledBy !== 'CLINIC') return 'CANCELLED';
+  // Cambiar la cita de día no es anularla: la vieja se anula con
+  // RESCHEDULE_REASON y la nueva sigue en pie.
+  if (a.status === 'CANCELLED' && a.cancelledBy !== 'CLINIC' && !isRescheduleReason(a.cancelReason))
+    return 'CANCELLED';
   return null;
 }
 
+export function isRescheduleReason(reason: string | null | undefined): boolean {
+  return /^cambiada por el paciente/i.test((reason ?? '').trim());
+}
+
 export function countRedFlags(
-  appointments: { status: string; cancelledBy?: CancelledBy | string | null }[],
+  appointments: {
+    status: string;
+    cancelledBy?: CancelledBy | string | null;
+    cancelReason?: string | null;
+  }[],
   prior = 0,
 ): RedFlagCounts {
   const out: RedFlagCounts = { noShows: 0, cancellations: 0, prior: clampPrior(prior) };

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { withinClinicHours } from '@/lib/agenda/clinic-hours';
+import {
+  closedDaysLabel,
+  closedWeekdays,
+  isoWeekdayOfKey,
+  weekdayLabelOfKey,
+  withinClinicHours,
+} from '@/lib/agenda/clinic-hours';
 
 const TZ = 'Europe/Madrid';
 const hours = {
@@ -69,5 +75,29 @@ describe('withinClinicHours', () => {
         hours,
       ),
     ).toBe(true);
+  });
+});
+
+describe('días en que la clínica no abre', () => {
+  it('los saca del horario de atención', () => {
+    const lv = {
+      monday: { open: '15:00', close: '20:30' },
+      tuesday: { open: '15:00', close: '20:30' },
+      wednesday: { open: '15:00', close: '20:30' },
+      thursday: { open: '15:00', close: '20:30' },
+      friday: { open: '15:00', close: '20:30' },
+      saturday: null,
+      sunday: null,
+    };
+    expect(closedWeekdays(lv)).toEqual([6, 7]);
+    expect(closedDaysLabel(lv)).toBe('sábado y domingo');
+    expect(closedDaysLabel({ ...lv, saturday: { open: '10:00', close: '14:00' } })).toBe('domingo');
+    expect(closedDaysLabel(null)).toBe('');
+    expect(closedDaysLabel({})).toBe('');
+  });
+  it('sabe qué día de la semana es una fecha', () => {
+    expect(weekdayLabelOfKey('2026-11-14')).toBe('sábado');
+    expect(isoWeekdayOfKey('2026-11-14')).toBe(6);
+    expect(isoWeekdayOfKey('2026-11-09')).toBe(1);
   });
 });

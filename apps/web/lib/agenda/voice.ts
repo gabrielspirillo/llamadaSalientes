@@ -13,7 +13,7 @@ import {
 import { isUuid } from '@/lib/agenda/appointment-ref';
 import { firstVisitFromTreatment } from '@/lib/agenda/availability';
 import { pickAppointmentsToCancel } from '@/lib/agenda/cancel-match';
-import { withinClinicHours } from '@/lib/agenda/clinic-hours';
+import { isoWeekdayOfKey, weekdayLabelOfKey, withinClinicHours } from '@/lib/agenda/clinic-hours';
 import { compactSlots } from '@/lib/agenda/compact';
 import { decideFirstVisit, patientHasHistory } from '@/lib/agenda/first-visit';
 import { normalizePatientPhone } from '@/lib/agenda/patients';
@@ -29,6 +29,7 @@ import {
   createAppointment,
   setAdvancePreference,
 } from '@/lib/agenda/service';
+import { RESCHEDULE_REASON } from '@/lib/agenda/shared';
 import { BUSY_STATUSES } from '@/lib/agenda/shared';
 import { matchRequestedSlot } from '@/lib/agenda/slot-match';
 import { resolvePatientForBooking } from '@/lib/care-profile/agent';
@@ -402,13 +403,21 @@ export async function agendaCheckAvailability(
           )} (${requested}): si no es el día que pidió el paciente, vuelve a llamar con la fecha correcta antes de contestar. `
         : '';
     const todayKeyNow = localDateKey(new Date(), search.timezone);
+    // Un día en que la clínica no abre no es "no me queda nada": es "no
+    // abrimos" (6/11: "El sábado 14 no me queda nada").
+    const requestedClosed =
+      requested &&
+      /^\d{4}-\d{2}-\d{2}$/.test(requested) &&
+      (search.closedWeekdays ?? []).includes(isoWeekdayOfKey(requested) ?? 0);
     const noneOnRequested =
       requested &&
       /^\d{4}-\d{2}-\d{2}$/.test(requested) &&
       firstDay !== requested &&
       // Desde hoy es lo que pasa el modelo cuando no le dijeron día.
       requested !== todayKeyNow
-        ? `El día que pidió (${requested}) no hay huecos libres (o la clínica no atiende ese día): díselo primero EXACTAMENTE así, "${capitalize(relativeDayLabel(requested, todayKeyNow))} no me queda nada", y después ofrécele lo siguiente. `
+        ? requestedClosed
+          ? `La clínica NO ABRE los ${weekdayLabelOfKey(requested)}s: díselo tal cual ("Los ${weekdayLabelOfKey(requested)}s no abrimos") —nunca "no me queda nada"— y después ofrécele lo siguiente. `
+          : `El día que pidió (${requested}) no hay huecos libres: díselo primero EXACTAMENTE así, "${capitalize(relativeDayLabel(requested, todayKeyNow))} no me queda nada", y después ofrécele lo siguiente. `
         : '';
 
     const varios =
@@ -643,10 +652,14 @@ export async function agendaBookAppointment(
         .slice(0, 4)
         .sort((x, y) => x.start.getTime() - y.start.getTime());
       const lista = sameDay.map((f) => speakClockTime(f.start, timezone)).join(', ');
+      // La hora que la familia eligió se ocupó mientras contestaba (el 6/11
+      // tardó 20 min y el modelo acabó pidiendo perdón). Se le dice la
+      // verdad, sin "tienes razón": no hubo error, hubo demanda.
+      const seOcupo = `Esa hora (${args.start_time}) SE HA OCUPADO MIENTRAS TANTO con ${professional.fullName}: hay mucha demanda y los huecos se cogen en minutos. Díselo así, sin pedir perdón ni darle la razón (nada llegó a reservarse).`;
       return {
         result: sameDay.length
-          ? `Esa hora no está libre con ${professional.fullName}. Ese día (${dayKey}) sí quedan: ${lista}. Ofrécele una de esas (start_time "${dayKey} HH:MM") y no le digas otra.`
-          : `Ese día (${dayKey}) ${professional.fullName} no tiene ningún hueco libre. Llama a check_availability con preferred_date del día siguiente y ofrécele lo que devuelva.`,
+          ? `${seOcupo} Ese día (${dayKey}) sí quedan: ${lista}. Ofrécele una de esas (start_time "${dayKey} HH:MM") y no le digas otra.`
+          : `${seOcupo} Ese día (${dayKey}) ya no queda ningún hueco. Llama a check_availability con preferred_date del día siguiente y ofrécele lo que devuelva.`,
       };
     }
 
@@ -695,7 +708,7 @@ export async function agendaBookAppointment(
       await cancelAppointment(
         systemAgendaContext(tenantId),
         target.id,
-        'Cambiada por el paciente',
+        RESCHEDULE_REASON,
         'PATIENT',
       );
       tail = ` La cita anterior (${localDateKey(target.startsAt, timezone)} ${speakClockTime(target.startsAt, timezone)}) quedó ANULADA: el cambio está hecho, no llames a cancel_appointment.`;

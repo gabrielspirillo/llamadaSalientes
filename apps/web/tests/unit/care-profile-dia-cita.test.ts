@@ -101,6 +101,12 @@ describe('respuestas naturales al recordatorio del día', () => {
       expect(parseDayOfTextReply(t, true), t).toBe('cancel');
     }
     expect(parseDayOfTextReply('No podemos a esa hora, ¿se puede cambiar?', true)).toBe('modify');
+    // El número con texto detrás (6/11: "1. Confirmamos" se fue al asistente).
+    expect(parseDayOfTextReply('1. Confirmamos')).toBe('confirm');
+    expect(parseDayOfTextReply('1 confirmar')).toBe('confirm');
+    expect(parseDayOfTextReply('2. Cambiar')).toBe('modify');
+    expect(parseDayOfTextReply('Confirmamos')).toBe('confirm');
+    expect(parseDayOfTextReply('Sí, confirmamos la cita', true)).toBe('confirm');
     // Algo que no es una respuesta al recordatorio va al asistente.
     expect(parseDayOfTextReply('¿Puedo llevar también a su hermana?', true)).toBeNull();
     // Sin recordatorio pendiente, sólo lo de siempre.

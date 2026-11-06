@@ -242,6 +242,18 @@ describe('fecha de nacimiento completa', () => {
     expect(birthYearSaid('2025-06-03', ['Lucía (03-06-2025)'])).toBe(true);
     expect(birthYearSaid('2025-06-03', ['tiene 25 meses'])).toBe(false);
   });
+
+  it('si la familia la escribió entera, esa fecha manda (6/11: "15 de julio de 2026")', async () => {
+    const { birthDateFromTexts } = await import('@/lib/whatsapp/agent');
+    expect(birthDateFromTexts(['15 de julio de 2026'])).toBe('2026-07-15');
+    expect(birthDateFromTexts(['Nació el 3 de Junio del 2025'])).toBe('2025-06-03');
+    expect(birthDateFromTexts(['03/06/2025'])).toBe('2025-06-03');
+    expect(birthDateFromTexts(['3-6-25'])).toBe('2025-06-03');
+    expect(birthDateFromTexts(['nació el 3 de junio'])).toBeNull();
+    expect(birthDateFromTexts(['tiene 25 meses'])).toBeNull();
+    // Lo más reciente primero: manda el texto más reciente que traiga fecha.
+    expect(birthDateFromTexts(['15 de julio de 2026', '2 de enero de 2024'])).toBe('2026-07-15');
+  });
 });
 
 describe('instrucciones internas y peticiones ignoradas', () => {

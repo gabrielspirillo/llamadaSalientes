@@ -34,6 +34,19 @@ describe('plazo para contestar la oferta', () => {
   });
 });
 
+describe('adelanto aceptado para hoy', () => {
+  it('añade las indicaciones de la clínica sin el "nos vemos" del guion', async () => {
+    const { dayOfReminderTailFromScript } = await import('@/lib/agenda/advance-offers');
+    const script =
+      'Perfecto 😊 Nos vemos {{cuando}}.\n\nRecuerda:\n- 🍼🚫 2 HORAS DE AYUNO\n- 🕑 PUNTUALIDAD\n\nMuchas gracias✨';
+    expect(dayOfReminderTailFromScript(script)).toBe(
+      'Recuerda:\n- 🍼🚫 2 HORAS DE AYUNO\n- 🕑 PUNTUALIDAD\n\nMuchas gracias✨',
+    );
+    expect(dayOfReminderTailFromScript('Sólo una línea')).toBe('');
+    expect(dayOfReminderTailFromScript(null)).toBe('');
+  });
+});
+
 describe('respuesta citando otro mensaje (6/11)', () => {
   it('un "sí gracias" a la confirmación de la cita no acepta la oferta', async () => {
     const { quotedTextFrom, quoteIsForOffer } = await import('@/lib/agenda/advance-offers');

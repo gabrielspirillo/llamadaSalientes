@@ -134,3 +134,10 @@ export interface SlotCandidate {
   start: Date;
   end: Date;
 }
+
+/**
+ * Motivo con el que se anula la cita vieja cuando el paciente la CAMBIA de
+ * día (reserva nueva con `replaces_appointment_id`). No es una cancelación: no
+ * cuenta como bandera roja (el 6/11 una madre que cambió de día amaneció con 🚩).
+ */
+export const RESCHEDULE_REASON = 'Cambiada por el paciente';

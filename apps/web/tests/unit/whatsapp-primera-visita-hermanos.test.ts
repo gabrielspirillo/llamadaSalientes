@@ -4,6 +4,7 @@ import {
   answersFirstVisit,
   asksForGeneralInfo,
   conversationSaysFirstVisit,
+  lastUserLine,
   mentionsRegisteredChild,
   registeredChildNames,
   reviewFinalText,
@@ -45,6 +46,14 @@ describe('información sobre las terapias', () => {
     expect(asksForGeneralInfo('Hola qué tal!! Quería informarme sobre las terapias')).toBe(true);
     expect(asksForGeneralInfo('¿Cuánto cuesta la sesión?')).toBe(true);
     expect(asksForGeneralInfo('Quería cita para mi peque')).toBe(false);
+    // 6/11: pedir aviso si se libera algo no es informarse, aunque antes
+    // preguntara el precio.
+    expect(asksForGeneralInfo('Si cancela alguien hoy o el lunes me avisáis por favor?')).toBe(
+      false,
+    );
+    expect(asksForGeneralInfo('¿Me recuerdas el precio?\nSi cancela alguien me avisáis?')).toBe(
+      false,
+    );
     expect(asksForGeneralInfo('Hola')).toBe(false);
   });
 
@@ -79,5 +88,14 @@ describe('la familia dice que es hermano de un paciente (6/11)', () => {
     const { conversationSaysSibling } = await import('@/lib/whatsapp/agent');
     expect(conversationSaysSibling(['Me lo recomendó mi hermana'])).toBe(false);
     expect(conversationSaysSibling(['Quería pedir cita, es la primera vez'])).toBe(false);
+  });
+});
+
+describe('la última línea de una ráfaga', () => {
+  it('se queda con lo último que escribió', () => {
+    expect(lastUserLine('¿Me recuerdas el precio?\nSi cancela alguien me avisáis?')).toBe(
+      'Si cancela alguien me avisáis?',
+    );
+    expect(lastUserLine('hola')).toBe('hola');
   });
 });

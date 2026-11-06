@@ -68,3 +68,22 @@ describe('banderas rojas', () => {
     expect(redFlagLevel(4)).toBe('HIGH');
   });
 });
+
+describe('cambiar la cita de día no es una cancelación (6/11)', () => {
+  it('la cita vieja anulada por "Cambiada por el paciente" no suma bandera', () => {
+    expect(
+      isRedFlagAppointment({
+        status: 'CANCELLED',
+        cancelledBy: 'PATIENT',
+        cancelReason: 'Cambiada por el paciente',
+      }),
+    ).toBeNull();
+    expect(
+      isRedFlagAppointment({
+        status: 'CANCELLED',
+        cancelledBy: 'PATIENT',
+        cancelReason: 'No puede venir',
+      }),
+    ).toBe('CANCELLED');
+  });
+});

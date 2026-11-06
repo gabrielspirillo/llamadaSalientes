@@ -55,17 +55,16 @@ describe('a quién se le ofrece un hueco libre', () => {
     expect(ids(r)).toEqual(['d1', 'd2', 'd3']);
   });
 
-  it('agotado todo, el resto del mismo día sin preferencia desde la última hora', () => {
+  it('en el mismo día no se mueve a nadie, tengan marca o no (clínica, 6/11)', () => {
     const r = rankAdvanceCandidates(
       slot,
-      [c('r1', 4, '17:00', null), c('r2', 4, '19:30', null), c('r3', 4, '18:15', null)],
+      [c('r1', 4, '17:00', null), c('r2', 4, '19:30', null), c('r3', 4, '18:15')],
       tz,
     );
-    expect(ids(r)).toEqual(['r2', 'r3', 'r1']);
-    expect(r[0]?.phase).toBe('SAME_DAY_REST');
+    expect(ids(r)).toEqual([]);
   });
 
-  it('el orden completo respeta las dos fases', () => {
+  it('el orden completo: sólo los días siguientes', () => {
     const r = rankAdvanceCandidates(
       slot,
       [
@@ -76,17 +75,17 @@ describe('a quién se le ofrece un hueco libre', () => {
       ],
       tz,
     );
-    expect(ids(r)).toEqual(['siguiente', 'resto']);
+    expect(ids(r)).toEqual(['siguiente']);
   });
 
   it('nunca a quien dijo que no le muevan, ni a citas anteriores al hueco, ni a las que no caben', () => {
     const r = rankAdvanceCandidates(
       slot,
       [
-        c('antesDelHueco', 4, '15:00'),
-        c('nomover', 4, '18:00', 'NO_MOVE'),
-        c('larga', 4, '18:00', 'ACCEPTS', 60),
-        c('vale', 4, '18:00', null, 30),
+        c('antesDelHueco', 5, '15:00'),
+        c('nomover', 5, '16:00', 'NO_MOVE'),
+        c('larga', 5, '16:00', 'ACCEPTS', 60),
+        c('vale', 5, '16:00', null, 30),
       ],
       tz,
     );
