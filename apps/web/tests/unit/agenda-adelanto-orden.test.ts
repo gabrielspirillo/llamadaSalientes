@@ -125,4 +125,32 @@ describe('prioridad marcada por la clínica', () => {
     );
     expect(ids(r)).toEqual(['prioritaria', 'misma', 'otroDia']);
   });
+
+  it('la prioridad va primero aunque su cita sea a otra hora o más lejos (Alegría, 9/11)', () => {
+    const r = rankAdvanceCandidates(
+      slot,
+      [c('misma', 5, '16:00'), { ...c('lejos', 12, '18:30'), advancePriority: true }],
+      tz,
+    );
+    expect(ids(r)).toEqual(['lejos', 'misma']);
+    expect(r[0]?.phase).toBe('PRIORITY');
+  });
+
+  it('ni con prioridad se mueve a nadie del mismo día', () => {
+    const r = rankAdvanceCandidates(
+      slot,
+      [{ ...c('hoyMasTarde', 4, '18:00'), advancePriority: true }],
+      tz,
+    );
+    expect(ids(r)).toEqual([]);
+  });
+
+  it('"no mover" no entra ni con prioridad', () => {
+    const r = rankAdvanceCandidates(
+      slot,
+      [{ ...c('quieta', 6, '18:00', 'NO_MOVE'), advancePriority: true }],
+      tz,
+    );
+    expect(ids(r)).toEqual([]);
+  });
 });

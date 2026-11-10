@@ -1,5 +1,6 @@
 'use server';
 
+import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 import { AttendanceError, sendAttendanceWhatsapp } from '@/lib/agenda/attendance';
@@ -54,6 +55,8 @@ import {
   sendConsent,
 } from '@/lib/consents/service';
 import { createTreatment, listTreatmentsForTenant } from '@/lib/data/treatments';
+import { db } from '@/lib/db/client';
+import { agendaAppointments } from '@/lib/db/schema';
 import {
   type InvoiceBillTo,
   type InvoiceItemInput,
@@ -487,7 +490,37 @@ export async function updateAppointmentAction(
       appointmentId,
       ctx.scope === 'OWN' ? ctx.professional?.id : undefined,
     );
+    const before = patch.status
+      ? (
+          await db
+            .select({
+              status: agendaAppointments.status,
+              patientKey: agendaAppointments.patientKey,
+            })
+            .from(agendaAppointments)
+            .where(
+              and(
+                eq(agendaAppointments.tenantId, ctx.tenantId),
+                eq(agendaAppointments.id, appointmentId),
+              ),
+            )
+            .limit(1)
+        )[0]
+      : undefined;
     await updateAppointment(ctx, appointmentId, patch);
+    // Quién cambia el estado y desde dónde: el 9/11 las 11 citas del día
+    // volvieron a "Agendada" tras la sesión y no quedaba rastro de quién.
+    if (patch.status && before && before.status !== patch.status) {
+      await recordAudit({
+        tenantId: ctx.tenantId,
+        actorUserId: ctx.userId ?? null,
+        action: 'update',
+        entity: 'agenda_appointment',
+        entityId: appointmentId,
+        before: { status: before.status },
+        after: { status: patch.status, patientKey: before.patientKey, via: 'panel' },
+      }).catch(() => undefined);
+    }
     revalidateAgenda();
     revalidatePath('/dashboard/agenda/pacientes');
     return { ok: true };

@@ -1,12 +1,13 @@
 import 'server-only';
 import { and, eq, gt } from 'drizzle-orm';
 
-import { phoneFromPatientKey } from '@/lib/agenda/patients';
+import { patientIdFromKey, phoneFromPatientKey } from '@/lib/agenda/patients';
 import { db } from '@/lib/db/client';
 import {
   appointmentReminders,
   appointmentsCache,
   calls,
+  patients,
   patientsCache,
   phoneNumbers,
   treatments,
@@ -46,6 +47,33 @@ export async function resolvePatient(
   tenantId: string,
   args: { ghlContactId?: string | null; phone?: string | null },
 ): Promise<PatientInfo> {
+  // `pat:<uuid>`: el paciente como persona (clínicas con perfil de atención).
+  // Sin esto, las tareas de sus citas anuladas salían "Paciente sin
+  // identificar" (Respinens, 9/11).
+  const personId = patientIdFromKey(args.ghlContactId ?? '');
+  if (personId) {
+    const [p] = await db
+      .select({
+        firstName: patients.firstName,
+        lastName: patients.lastName,
+        phone: whatsappContacts.phoneE164,
+      })
+      .from(patients)
+      .leftJoin(
+        whatsappContacts,
+        and(eq(whatsappContacts.id, patients.contactId), eq(whatsappContacts.tenantId, tenantId)),
+      )
+      .where(and(eq(patients.tenantId, tenantId), eq(patients.id, personId)))
+      .limit(1);
+    if (p) {
+      return {
+        name: fullName(p.firstName, p.lastName),
+        phone: p.phone ?? args.phone ?? null,
+        ghlContactId: args.ghlContactId ?? null,
+      };
+    }
+  }
+
   const phoneFromKey = phoneFromPatientKey(args.ghlContactId ?? '');
   if (phoneFromKey) {
     return resolvePatient(tenantId, { ghlContactId: null, phone: args.phone ?? phoneFromKey });

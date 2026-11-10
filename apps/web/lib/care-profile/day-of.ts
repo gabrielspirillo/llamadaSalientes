@@ -6,8 +6,8 @@
  *
  *   08:00  recordatorio con botones Confirmar / Modificar / Cancelar
  *   09:00  sin respuesta: segundo aviso
- *   11:00  sin respuesta: aviso al equipo para llamar
- *   12:00  sin respuesta: segundo aviso para llamar
+ *   10:00, 11:00, 12:00  sin respuesta: el aviso otra vez por WhatsApp
+ *          (`callVia = 'whatsapp'`; sin eso, tarea al equipo para llamar)
  *   12:30  sin respuesta: la cita queda anulada y se le avisa
  *
  * Las horas son de pared, en la zona de la clínica. Nada sale para una cita

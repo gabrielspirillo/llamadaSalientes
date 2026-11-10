@@ -514,6 +514,15 @@ y sus signos; antes se comía hasta 20 caracteres: "Uedo ayudar?"). El guion
 día**: `parseDayOfTextReply` entiende "1. Confirmamos", "2 cambiar" y
 "confirmamos".
 
+**Autorrevisión añadida el 10/11** (`reviewFinalText`): `apology` ("tienes
+razón", "perdona", "disculpa", "me he equivocado"), `search_not_done` (dijeron
+"sí" a "¿te miro huecos?" y no se llamó a `check_availability`) y
+`repeated_question` (la misma pregunta que en uno de los tres últimos
+mensajes). **Nombre completo**: si la familia escribió tres palabras o más y
+el modelo las partió dejando un solo apellido ("Lucas Andreev" +
+"Petrov"), `fullNameWrittenByFamily` pasa `only_one_surname` y no se vuelve
+a pedir el "segundo apellido".
+
 **Auditoría del prompt (6/11/2026)**, lo que se corrigió y hay que mantener:
 - **Todo en tú, nunca en vos.** El prompt y los resultados de las herramientas
   llevaban voseo ("usá", "tenés", "decí", "Llamá") mientras una regla decía
@@ -967,6 +976,15 @@ duplicadas, la IA podía agendar en la que no tiene la historia clínica.
   (`components/ui/rich-text-editor.tsx`) recoge las herramientas tras un botón
   de pincel (se despliegan al pulsarlo) y pega siempre como texto plano. Sin
   selector de tipografía: la ficha usa la del panel.
+- **Tareas con nombre**: `resolvePatient` (`lib/tasks/hooks.ts`) entiende
+  `pat:<uuid>`; antes las tareas de citas anuladas de un paciente-persona
+  salían "Paciente sin identificar". Con perfil de atención el barrido no crea
+  "Perseguir presupuesto" (el "próximo paso" de la nota es clínico); la `0068`
+  archivó las abiertas y puso nombre a las otras.
+- **Cambiar el estado de una cita desde el panel deja auditoría**
+  (`updateAppointmentAction`: estado anterior y nuevo, `via: 'panel'`): el
+  9/11 los estados de varias citas volvían a "Agendada" segundos después de
+  guardar la nota y no había forma de saber quién lo hacía.
 - **Calendario por colores**: cada estado tiene su color (Agendada teal,
   Confirmada verde, En sala índigo, En gabinete violeta, Atendida gris, No se
   presentó coral; `STATUS_COLORS` en `calendar-view.tsx`) y la leyenda los
@@ -1082,6 +1100,21 @@ se ofreció a tres familias un hueco de las 18:00 que seguía ocupado: la
 cancelación que disparó la oferta era de una cita solapada con otra que seguía
 en pie. Una cancelación ya no equivale a "hueco libre".
 
+**Horario de ofertas: de 08:00 a 23:00** (Raquel, 10/11). Un hueco que se
+libera de noche, o una oferta que caduca a deshoras, va a `advance_offer_queue`
+(migración `0066`) y lo ofrece el tick a partir de las 08:00
+(`flushNightOfferQueue`; sin nadie, lista de espera). Una oferta sólo sale si
+sus 20 minutos terminan antes de las 23:00 (`isOfferHour`).
+**"Ofrecerle el primer hueco que se libere"** (`advance_priority`) vale para
+cualquier día posterior, no sólo los tres siguientes ni la misma hora, y va
+antes que la fase de "misma hora" (el 9/11 una cita marcada se quedó sin
+oferta por estar a otra hora). **La marca de adelantar sobrevive al cambio de
+cita**: `book_appointment` con `replaces_appointment_id` copia
+`advance_preference`/nota/prioridad a la nueva, y si la familia pidió aviso
+antes de reservar (`conversationWantsEarlier`) la cita nace con
+`wants_earlier`. Sin cita, `request_earlier_appointment` ya no deja prometer
+"te avisamos": el asistente reserva y la marca va en la reserva.
+
 **Cómo va la oferta**: el hueco queda **reservado con un bloqueo** de la
 agenda (`professional_time_off`, motivo "Hueco reservado…") mientras la
 familia contesta: **20 minutos** (la clínica: 2 h → 45 min el 5/11 → 20 min
@@ -1126,8 +1159,10 @@ está siempre visible (antes sólo con el ratón encima, y en tablet no salía).
 ## Confirmación obligatoria del día (Respinens)
 
 `lib/care-profile/day-of-run.ts` + `day-of.ts` (puro, con tests). Secuencia del
-día de la cita: recordatorio 08:00 → segundo aviso 09:00 → tareas de llamar
-11:00/12:00 → anulación 12:30 sin respuesta. Estado en `appointment_day_of`.
+día de la cita: recordatorio 08:00 → aviso 09:00 → el mismo aviso otra vez por
+WhatsApp a las 10:00, 11:00 y 12:00 (`dayOf.callVia = 'whatsapp'`, migración
+`0067`; sin esa clave los pasos de `callAt` son tareas de llamar) → anulación
+12:30 sin respuesta. Estado en `appointment_day_of`.
 
 ⚠️ **La confirmación que vale es la del MISMO día** (lo pidió la clínica: "es
 sólo el recordatorio; el martes lo volverás a recibir y ése sí hay que
@@ -1724,4 +1759,4 @@ LLM por llamada telefónica, una bloqueando. Ese trabajo va a la cola.
 
 ---
 
-**Última actualización**: 2026-09-25 (auditoría de rendimiento con agentes: señal de navegación, caché del router, camino crítico del layout, topes de espera en los diez clientes externos, consultas encadenadas, índices de la migración 0044 y CI en verde).
+**Última actualización**: 2026-11-10 (bloque 2 de Respinens: ofertas 8-23 h, avisos 10/11/12, autorrevisión). Anterior: 2026-09-25 (auditoría de rendimiento con agentes: señal de navegación, caché del router, camino crítico del layout, topes de espera en los diez clientes externos, consultas encadenadas, índices de la migración 0044 y CI en verde).

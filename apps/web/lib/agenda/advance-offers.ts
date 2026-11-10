@@ -25,6 +25,7 @@ import { parseMessageScripts } from '@/lib/care-profile/messages';
 import { getTenant } from '@/lib/data/clinic';
 import { db } from '@/lib/db/client';
 import {
+  advanceOfferQueue,
   advanceOffers,
   agendaAppointments,
   appointmentDayOf,
@@ -109,6 +110,60 @@ export async function slotIsFree(tenantId: string, slot: FreedSlot): Promise<boo
   return blocks.every((b) => b.reason === HOLD_REASON);
 }
 
+/**
+ * Las ofertas salen de 08:00 a 23:00 (la clínica, 9/11). La última sale a
+ * tiempo de que su plazo de respuesta termine antes de las 23:00: a las 22:50
+ * una familia tendría que contestar casi a medianoche.
+ */
+export const OFFER_FROM_MINUTE = 8 * 60;
+export const OFFER_UNTIL_MINUTE = 23 * 60;
+export function isOfferHour(now: Date, tz: string): boolean {
+  const p = localParts(now, tz);
+  const m = p.hour * 60 + p.minute;
+  return m >= OFFER_FROM_MINUTE && m + HOLD_MS / 60_000 <= OFFER_UNTIL_MINUTE;
+}
+
+/** Ofrece por la mañana los huecos que se liberaron de noche. Lo llama el tick. */
+export async function flushNightOfferQueue(now = new Date()): Promise<number> {
+  const rows = await db
+    .select()
+    .from(advanceOfferQueue)
+    .where(isNull(advanceOfferQueue.processedAt))
+    .orderBy(advanceOfferQueue.createdAt)
+    .limit(50);
+  let done = 0;
+  for (const row of rows) {
+    const tz = await tenantTimezone(row.tenantId);
+    if (!isOfferHour(now, tz)) continue;
+    const [claimed] = await db
+      .update(advanceOfferQueue)
+      .set({ processedAt: now })
+      .where(and(eq(advanceOfferQueue.id, row.id), isNull(advanceOfferQueue.processedAt)))
+      .returning({ id: advanceOfferQueue.id });
+    if (!claimed) continue;
+    done++;
+    if (row.slotStartsAt.getTime() <= now.getTime()) continue;
+    const offered = await offerFreedSlot(
+      row.tenantId,
+      {
+        professionalId: row.professionalId,
+        startsAt: row.slotStartsAt,
+        endsAt: row.slotEndsAt,
+        freedAppointmentId: row.freedAppointmentId,
+        cancelledSlotId: row.cancelledSlotId,
+      },
+      now,
+    ).catch((err) => {
+      console.warn('[adelanto] cola de noche', (err as Error).message);
+      return false;
+    });
+    if (offered || !row.cancelledSlotId) continue;
+    const { enqueueOfferForCancelledSlot } = await import('@/lib/waitlist/engine');
+    await enqueueOfferForCancelledSlot(row.tenantId, row.cancelledSlotId).catch(() => undefined);
+  }
+  return done;
+}
+
 function dayStart(key: string, tz: string): Date {
   const p = parseDateKey(key);
   return p ? zonedToUtc(p.year, p.month, p.day, 0, 0, tz) : new Date();
@@ -150,6 +205,23 @@ export async function offerFreedSlot(
   if (slotMs <= 0 || slot.startsAt.getTime() - now.getTime() < MIN_LEAD_MS) return false;
   const { isTenantArchived } = await import('@/lib/tenants/archive');
   if (await isTenantArchived(tenantId)) return false;
+  // De noche no se ofrece: el hueco espera en la cola a las 08:00 (y vale
+  // también para pasar al siguiente cuando una oferta caduca a deshoras).
+  const tzNow = await tenantTimezone(tenantId);
+  if (!isOfferHour(now, tzNow)) {
+    await db
+      .insert(advanceOfferQueue)
+      .values({
+        tenantId,
+        professionalId: slot.professionalId,
+        slotStartsAt: slot.startsAt,
+        slotEndsAt: slot.endsAt,
+        freedAppointmentId: slot.freedAppointmentId ?? null,
+        cancelledSlotId: slot.cancelledSlotId ?? null,
+      })
+      .onConflictDoNothing();
+    return true;
+  }
   const expiresAt = new Date(
     Math.min(now.getTime() + HOLD_MS, slot.startsAt.getTime() - 30 * 60_000),
   );
@@ -215,7 +287,12 @@ export async function offerFreedSlot(
         ),
         isNotNull(agendaAppointments.patientPhone),
         gte(agendaAppointments.startsAt, slot.endsAt),
-        lt(agendaAppointments.startsAt, windowEnd),
+        // La prioridad ámbar ("el primer hueco que se libere") entra sea cual
+        // sea su día; el resto, sólo los tres días siguientes.
+        or(
+          lt(agendaAppointments.startsAt, windowEnd),
+          eq(agendaAppointments.advancePriority, true),
+        ),
         ...(slot.freedAppointmentId ? [ne(agendaAppointments.id, slot.freedAppointmentId)] : []),
         ...(skip.size ? [notInArray(agendaAppointments.id, [...skip])] : []),
       ),

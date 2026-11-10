@@ -40,7 +40,7 @@ export interface RankCandidate {
   advancePriority?: boolean;
 }
 
-export type OfferPhase = 'NEXT_DAYS_SAME_HOUR';
+export type OfferPhase = 'PRIORITY' | 'NEXT_DAYS_SAME_HOUR';
 
 export interface RankedCandidate<T extends RankCandidate = RankCandidate> {
   candidate: T;
@@ -91,6 +91,17 @@ export function rankAdvanceCandidates<T extends RankCandidate>(
     used.add(c.id);
     out.push({ candidate: c, phase });
   };
+
+  // 0. "Ofrecerle el primer hueco que se libere" (↑ ámbar): va la primera sea
+  // cual sea su día y su hora. Hasta el 10/11 sólo contaba dentro de los
+  // días siguientes a la misma hora, y una niña marcada así vio cómo el hueco
+  // se le ofrecía a otra familia. Entre varias, la cita más lejana primero
+  // (es la que más gana adelantando).
+  for (const p of valid
+    // En el mismo día no se mueve a nadie (la clínica, 6/11), tampoco con prioridad.
+    .filter((x) => x.advancePriority && localDateKey(x.startsAt, tz) !== slotDay)
+    .sort((a, b) => b.startsAt.getTime() - a.startsAt.getTime()))
+    push(p, 'PRIORITY');
 
   // 1. Días siguientes: misma hora, luego una por encima, luego una por debajo.
   for (let d = 1; d <= NEXT_DAYS; d++) {

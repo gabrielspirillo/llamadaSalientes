@@ -37,6 +37,8 @@ const scripts = z
         reminderAt: z.string(),
         nudgeAt: z.string().optional(),
         callAt: z.array(z.string()).default([]),
+        /** 'whatsapp': cada paso de `callAt` repite el aviso a la familia en vez de pedir llamar. */
+        callVia: z.enum(['team', 'whatsapp']).optional(),
         cancelAt: z.string().optional(),
         reminder: z.string(),
         nudge: z.string().optional(),

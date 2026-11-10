@@ -169,10 +169,16 @@ export async function runDailySweepsForTenant(
   // profesional dejó anotado como siguiente paso en la historia clínica. Es la
   // única fuente para una clínica sin CRM, y en la práctica también para las
   // que lo tienen: `patients_cache` no la rellena nadie.
-  const pendingOwn = await patientsWithPendingFollowUp(tenantId).catch((err) => {
-    console.warn('[tasks-sweep] seguimientos pendientes de la agenda', err);
-    return [];
-  });
+  // Con perfil de atención (Respinens) el "próximo paso" de la nota es
+  // clínico ("revisar en 15 días"), no un presupuesto: la tarea "Perseguir
+  // presupuesto" sólo hacía ruido (9/11).
+  const { getCareProfileSafe } = await import('@/lib/care-profile/queries');
+  const pendingOwn = (await getCareProfileSafe(tenantId))
+    ? []
+    : await patientsWithPendingFollowUp(tenantId).catch((err) => {
+        console.warn('[tasks-sweep] seguimientos pendientes de la agenda', err);
+        return [];
+      });
 
   let pendingCreated = 0;
   for (const p of pending) {

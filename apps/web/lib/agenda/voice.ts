@@ -114,6 +114,8 @@ export interface AgendaBookArgs {
    * y sólo si es del mismo paciente.
    */
   replaces_appointment_id?: string;
+  /** La familia pidió que le avisen si se libera algo antes ("avisadme"). */
+  wants_earlier?: boolean;
 }
 
 async function usesInternalAgenda(tenantId: string): Promise<boolean> {
@@ -778,6 +780,36 @@ export async function agendaBookAppointment(
     let tail = '';
     const replaces = args.replaces_appointment_id?.trim();
     const target = replaces ? others.find((o) => o.id === replaces) : undefined;
+    // Lo que la familia o la clínica dijeron de adelantar viaja con la cita: el
+    // 9/11 la cita de una niña marcada "el primer hueco que se libere" se
+    // cambió de hora y la nueva salió sin la marca.
+    const [prev] = target
+      ? await db
+          .select({
+            advancePreference: agendaAppointments.advancePreference,
+            advanceNote: agendaAppointments.advanceNote,
+            advancePriority: agendaAppointments.advancePriority,
+          })
+          .from(agendaAppointments)
+          .where(
+            and(eq(agendaAppointments.tenantId, tenantId), eq(agendaAppointments.id, target.id)),
+          )
+          .limit(1)
+      : [];
+    const wantsEarlier = args.wants_earlier === true || prev?.advancePreference === 'ACCEPTS';
+    if (!deduped && (wantsEarlier || prev?.advancePreference === 'NO_MOVE')) {
+      await db
+        .update(agendaAppointments)
+        .set({
+          advancePreference: wantsEarlier ? 'ACCEPTS' : 'NO_MOVE',
+          advanceNote: prev?.advanceNote ?? null,
+          advancePriority: wantsEarlier && Boolean(prev?.advancePriority),
+          updatedAt: new Date(),
+        })
+        .where(
+          and(eq(agendaAppointments.tenantId, tenantId), eq(agendaAppointments.id, appointment.id)),
+        );
+    }
     if (target) {
       await cancelAppointment(
         systemAgendaContext(tenantId),
@@ -1003,7 +1035,7 @@ export async function agendaRequestEarlier(
   if (rows.length === 0) {
     return {
       result:
-        'Este teléfono no tiene ninguna cita próxima que adelantar. Si quiere cita, ofrécele los huecos que haya con check_availability; no le prometas avisarle.',
+        'NO QUEDA APUNTADO: este teléfono no tiene ninguna cita próxima que adelantar. No le digas que la clínica le avisará (no es verdad todavía). Dile que en cuanto reserve una de las horas queda apuntado para avisarle si se libera algo antes, y ofrécele los huecos con check_availability; al reservar, pasa wants_earlier=true.',
     };
   }
   // El día que dice el modelo suele ser el que QUIERE ("mañana"), no el de su

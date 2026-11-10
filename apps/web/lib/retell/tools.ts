@@ -65,6 +65,8 @@ export type BookAppointmentArgs = {
   email?: string;
   /** Cambio de cita: la que se anula una vez creada la nueva. */
   replaces_appointment_id?: string;
+  /** Pidió que le avisen si se libera algo antes. */
+  wants_earlier?: boolean;
 };
 
 export type CancelAppointmentArgs = {
@@ -317,6 +319,7 @@ export async function bookAppointment(
     email: args.email,
     contact_id: crmContactId,
     replaces_appointment_id: args.replaces_appointment_id?.trim() || undefined,
+    wants_earlier: args.wants_earlier === true,
     source: ctx.channel === 'WHATSAPP' ? 'WHATSAPP_AGENT' : 'VOICE_AGENT',
     // La clave lleva al paciente: con la misma hora y la misma conversación,
     // la reserva del hermano devolvía la del primero como "ya estaba

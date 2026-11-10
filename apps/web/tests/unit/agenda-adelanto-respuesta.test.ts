@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseAdvanceReply } from '@/lib/agenda/advance-offers';
+import { isOfferHour, parseAdvanceReply } from '@/lib/agenda/advance-offers';
 
 describe('respuesta a la oferta de adelanto', () => {
   it('lee el número o el sí/no de la familia', () => {
@@ -94,5 +94,19 @@ describe('el mensaje citado sobrevive al esquema de Evolution', () => {
     if (!parsed.success) return;
     expect(quotedTextFrom(parsed.data.data)).toBe('Ya tienes la cita reservada para Leo');
     expect(quoteIsForOffer(quotedTextFrom(parsed.data.data))).toBe(false);
+  });
+});
+
+describe('horario de las ofertas: de 08:00 a 23:00 (clínica, 9/11)', () => {
+  const madrid = (hh: number, mm = 0) => new Date(Date.UTC(2026, 10, 10, hh - 1, mm));
+  it('de noche no; desde las 8 sí', () => {
+    expect(isOfferHour(madrid(7, 59), 'Europe/Madrid')).toBe(false);
+    expect(isOfferHour(madrid(8, 0), 'Europe/Madrid')).toBe(true);
+    expect(isOfferHour(madrid(15, 30), 'Europe/Madrid')).toBe(true);
+  });
+  it('la última sale con el plazo de 20 minutos terminando antes de las 23:00', () => {
+    expect(isOfferHour(madrid(22, 40), 'Europe/Madrid')).toBe(true);
+    expect(isOfferHour(madrid(22, 41), 'Europe/Madrid')).toBe(false);
+    expect(isOfferHour(madrid(23, 30), 'Europe/Madrid')).toBe(false);
   });
 });

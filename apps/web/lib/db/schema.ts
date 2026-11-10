@@ -2768,6 +2768,31 @@ export const advanceOffers = pgTable(
   }),
 );
 
+// Huecos liberados de noche, a la espera de las 08:00 (migración 0066).
+export const advanceOfferQueue = pgTable(
+  'advance_offer_queue',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    professionalId: uuid('professional_id')
+      .references(() => professionals.id, { onDelete: 'cascade' })
+      .notNull(),
+    slotStartsAt: timestamp('slot_starts_at', { withTimezone: true }).notNull(),
+    slotEndsAt: timestamp('slot_ends_at', { withTimezone: true }).notNull(),
+    freedAppointmentId: uuid('freed_appointment_id').references(() => agendaAppointments.id, {
+      onDelete: 'set null',
+    }),
+    cancelledSlotId: uuid('cancelled_slot_id'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    processedAt: timestamp('processed_at', { withTimezone: true }),
+  },
+  (t) => ({
+    pendingIdx: index('advance_offer_queue_pending_idx').on(t.tenantId, t.createdAt),
+  }),
+);
+
 // Un paso por fila: qué se mandó ya de la secuencia 08:00 → 12:30 y cómo
 // acabó. Ver `lib/care-profile/day-of.ts` y migración 0055.
 export const appointmentDayOf = pgTable(

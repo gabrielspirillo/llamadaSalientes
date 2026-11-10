@@ -380,6 +380,23 @@ export async function runWhatsappAgent(
           guardrailFlags.push('birth_date_from_text');
         }
       }
+      if (
+        careProfile &&
+        tc.name === 'register_patient' &&
+        tc.args &&
+        tc.args.only_one_surname !== true &&
+        String(tc.args.last_name ?? '')
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean).length === 1 &&
+        fullNameWrittenByFamily(String(tc.args.first_name ?? ''), String(tc.args.last_name ?? ''), [
+          input.userText,
+          ...input.history.filter((h) => h.role === 'user').map((h) => h.content),
+        ])
+      ) {
+        tc.args = { ...tc.args, only_one_surname: true };
+        guardrailFlags.push('full_name_from_text');
+      }
       const birth = typeof tc.args?.birth_date === 'string' ? tc.args.birth_date : '';
       const missingYear =
         careProfile &&
@@ -421,6 +438,21 @@ export async function runWhatsappAgent(
         tc.args = { ...tc.args, sibling_of_patient: true };
         guardrailFlags.push('sibling_forced');
       }
+      // "Si hay algún hueco antes, ¿podríais avisarnos?" dicho ANTES de reservar:
+      // la cita nace apuntada para adelantar. El 10/11 el asistente lo
+      // prometió, no había cita que apuntar y luego reservó sin la marca.
+      if (
+        tc.name === 'book_appointment' &&
+        tc.args &&
+        tc.args.wants_earlier !== true &&
+        conversationWantsEarlier([
+          input.userText,
+          ...input.history.filter((h) => h.role === 'user').map((h) => h.content),
+        ])
+      ) {
+        tc.args = { ...tc.args, wants_earlier: true };
+        guardrailFlags.push('wants_earlier_forced');
+      }
       const notOffered =
         tc.name === 'book_appointment' && typeof tc.args?.start_time === 'string'
           ? slotNotOffered(
@@ -452,14 +484,14 @@ export async function runWhatsappAgent(
                 String(tc.args?.last_name ?? '')
                   .trim()
                   .split(/\s+/)
-                  .filter(Boolean).length < 2
+                  .filter(Boolean).length < 2 && tc.args?.only_one_surname !== true
                   ? ', y falta el segundo apellido'
                   : ''
               }. Pídele en un solo mensaje lo que falte (fecha completa con día, mes y año${
                 String(tc.args?.last_name ?? '')
                   .trim()
                   .split(/\s+/)
-                  .filter(Boolean).length < 2
+                  .filter(Boolean).length < 2 && tc.args?.only_one_surname !== true
                   ? ', y los dos apellidos'
                   : ''
               }) y vuelve a llamar con lo que te diga.`,
@@ -1004,7 +1036,63 @@ export function reviewFinalText(
       };
     }
   }
+  // Regla 9: ni "tienes razón" ni "perdona". El 9/11 se le dio la razón a una
+  // familia sobre un hueco que nunca existió.
+  if (APOLOGY.test(text)) {
+    return {
+      code: 'apology',
+      note: '[Revisión interna, no la menciones] No digas "tienes razón", "perdona", "disculpa" ni "me he equivocado". Explica lo que pasa con los datos de las herramientas (por ejemplo, que el hueco se ha ocupado) y sigue: ofrece la alternativa.',
+    };
+  }
+  // "Sí" a "¿quieres que te mire huecos?": se buscan, no se vuelve a preguntar.
+  const lastAssistant = historyAssistant[historyAssistant.length - 1] ?? '';
+  if (
+    isShortYes(userText) &&
+    OFFERED_TO_SEARCH.test(lastAssistant) &&
+    !toolsCalled.some((t) => t.name === 'check_availability')
+  ) {
+    return {
+      code: 'search_not_done',
+      note: '[Revisión interna, no la menciones] La familia ha dicho que sí a que le busques hueco: llama ahora a check_availability y enséñale las horas. No le vuelvas a preguntar.',
+    };
+  }
+  // La misma pregunta otra vez (el 9/11 "¿es la primera vez?" tres veces).
+  const asked = new Set(historyAssistant.slice(-3).flatMap(questionsOf));
+  const repeated = questionsOf(text).find((q) => asked.has(q));
+  if (repeated) {
+    return {
+      code: 'repeated_question',
+      note: '[Revisión interna, no la menciones] Ya le hiciste esa misma pregunta y la familia ha contestado: usa lo que te dijo y sigue con el siguiente paso, sin volver a preguntarlo.',
+    };
+  }
   return null;
+}
+
+const APOLOGY =
+  /\b(tienes (toda la )?raz[oó]n|perd[oó]n(a|ame)?|disculpa(me|s)?|me he equivocado|me equivoqu[eé])\b/i;
+const OFFERED_TO_SEARCH =
+  /\b(te (miro|busco|digo)|quieres que (te )?(mire|busque|diga)|te puedo (mirar|buscar))\b[^?]{0,80}(hueco|cita|opci|m[aá]s cercano|disponib)/i;
+
+function isShortYes(text: string): boolean {
+  const t = fold(text)
+    .replace(/[^a-z ]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return /^(si|sii+|vale|ok|claro|perfecto|venga|genial|si por favor|si porfa|si gracias|por favor)$/.test(
+    t,
+  );
+}
+
+/** Preguntas de un texto, normalizadas, para detectar repeticiones. */
+function questionsOf(text: string): string[] {
+  return (text.match(/[^.!?\n¿]*\?/g) ?? [])
+    .map((q) =>
+      fold(q)
+        .replace(/[^a-z0-9 ]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim(),
+    )
+    .filter((q) => q.length >= 15);
 }
 
 const WEEKDAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
@@ -1256,6 +1344,32 @@ export function lastUserLine(text: string): string {
     .map((l) => l.trim())
     .filter(Boolean);
   return lines[lines.length - 1] ?? text;
+}
+
+/** La familia pidió que le avisen si se libera algo antes. */
+export function conversationWantsEarlier(texts: string[]): boolean {
+  const all = texts.map(fold).join('\n');
+  return /\b(avis\w*|aviseis|llam\w*)\b[^\n]{0,60}\b(antes|libera\w*|anula\w*|cancela\w*|hueco)\b|\b(si|cuando) (se )?(libera|queda|hay|sale|anula|cancela)\w*[^\n]{0,60}\b(avis\w*)|\blista de espera\b|\badelantar\w*\b/.test(
+    all,
+  );
+}
+
+/**
+ * La familia escribió el nombre completo del niño tal cual (tres palabras o
+ * más) y el modelo lo partió mal: "Lucas Andreev" + "Petrov" (10/11). Lo
+ * que escribió la familia es el nombre completo; no se le vuelve a pedir el
+ * "segundo apellido".
+ */
+export function fullNameWrittenByFamily(
+  firstName: string,
+  lastName: string,
+  texts: string[],
+): boolean {
+  const words = `${firstName} ${lastName}`.trim().split(/\s+/).filter(Boolean).map(fold);
+  if (words.length < 3) return false;
+  const seq = words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[\\s,]+');
+  const re = new RegExp(`(^|[^\\p{L}])${seq}($|[^\\p{L}])`, 'u');
+  return texts.some((t) => re.test(fold(t)));
 }
 
 /**

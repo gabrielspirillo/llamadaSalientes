@@ -64,6 +64,7 @@ const bookAppointmentArgs = z.object({
   patient_id: z.string().optional(),
   email: z.string().optional(),
   replaces_appointment_id: z.string().optional(),
+  wants_earlier: z.boolean().optional(),
 });
 
 const confirmAppointmentArgs = z.object({
@@ -310,6 +311,11 @@ function allToolDefinitions(): AgentToolDefinition[] {
             type: 'string',
             description:
               'Sólo si el paciente CAMBIA una cita que ya tenía: el appointment_id de esa cita vieja (te lo da get_patient_info). Se anula sola en cuanto la nueva queda reservada; no llames después a cancel_appointment.',
+          },
+          wants_earlier: {
+            type: 'boolean',
+            description:
+              'true si la familia pidió que le avisen si se libera un hueco antes ("si hay algo antes avisadme"). La cita queda apuntada para adelantar; no hace falta llamar después a request_earlier_appointment.',
           },
         },
         required: ['start_time', 'treatment_name'],

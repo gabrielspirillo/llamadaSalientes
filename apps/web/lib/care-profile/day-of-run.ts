@@ -72,9 +72,13 @@ function vars(appt: Appointment, timezone: string, paciente: string | null) {
 export async function runDayOfTick(now = new Date()): Promise<{ steps: number }> {
   let steps = 0;
   // Ofertas de adelanto vencidas (todas las clínicas, tengan o no guiones).
-  const { expireAdvanceOffers } = await import('@/lib/agenda/advance-offers');
+  const { expireAdvanceOffers, flushNightOfferQueue } = await import('@/lib/agenda/advance-offers');
   steps += await expireAdvanceOffers(now).catch((err) => {
     console.warn('[adelanto] caducar ofertas', (err as Error).message);
+    return 0;
+  });
+  steps += await flushNightOfferQueue(now).catch((err) => {
+    console.warn('[adelanto] cola de noche', (err as Error).message);
     return 0;
   });
   const profiles = await db
@@ -314,7 +318,11 @@ async function runStep(
       .where(and(scope, eq(appointmentDayOf.callsDone, step.index)))
       .returning({ id: appointmentDayOf.appointmentId });
     if (!claimed.length) return false;
-    await askTeamToCall(appt, tz, step.index);
+    if (dayOf.callVia === 'whatsapp' && dayOf.nudge) {
+      await sendToRecipients(appt, [fillScript(dayOf.nudge, v)]);
+    } else {
+      await askTeamToCall(appt, tz, step.index);
+    }
     return true;
   }
 
