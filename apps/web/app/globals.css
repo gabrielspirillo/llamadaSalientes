@@ -864,30 +864,17 @@ html [data-instant-reveal] [data-reveal] {
     inset 0 -1px 1px rgba(255, 255, 255, 0.35);
   --lg-drop: 0 1px 2px rgba(20, 33, 29, 0.04), 0 22px 50px -26px rgba(20, 33, 29, 0.32);
   --lg-spring: cubic-bezier(0.34, 1.45, 0.5, 1);
-  background: #edf2f0;
-}
-
-/* El vidrio necesita algo detrás: auroras suaves fijas que se mueven despacio. */
-.liquid::before {
-  content: "";
-  position: fixed;
-  inset: -10%;
-  z-index: -1;
-  pointer-events: none;
-  background: radial-gradient(38% 46% at 6% 2%, rgba(84, 190, 156, 0.6), transparent 70%),
-    radial-gradient(34% 42% at 96% 8%, rgba(150, 214, 190, 0.55), transparent 70%),
-    radial-gradient(42% 50% at 76% 98%, rgba(63, 165, 140, 0.42), transparent 70%),
-    radial-gradient(32% 40% at 34% 62%, rgba(176, 226, 206, 0.5), transparent 70%),
-    radial-gradient(26% 34% at 58% 28%, rgba(120, 206, 184, 0.32), transparent 70%);
-  animation: lg-drift 48s ease-in-out infinite alternate;
-}
-@keyframes lg-drift {
-  0% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  100% {
-    transform: translate3d(2%, -3%, 0) scale(1.06);
-  }
+  /* Auroras suaves pintadas en el propio fondo del panel, repartidas a lo
+     largo de toda la página (posiciones en %, tamaños fijos): nunca se cortan
+     al hacer scroll ni en páginas largas. Sin capa fija ni animación: una capa
+     fija del alto de la pantalla dejaba un corte visible en páginas largas. */
+  background-color: #eef3f1;
+  background-image: radial-gradient(760px 520px at 4% 0%, rgba(84, 190, 156, 0.26), transparent 70%),
+    radial-gradient(680px 480px at 98% 6%, rgba(150, 214, 190, 0.28), transparent 70%),
+    radial-gradient(720px 520px at 40% 38%, rgba(176, 226, 206, 0.22), transparent 70%),
+    radial-gradient(700px 520px at 92% 62%, rgba(120, 206, 184, 0.2), transparent 70%),
+    radial-gradient(760px 540px at 10% 82%, rgba(150, 214, 190, 0.22), transparent 70%),
+    radial-gradient(680px 480px at 70% 100%, rgba(84, 190, 156, 0.18), transparent 70%);
 }
 
 /* Superficie de vidrio común */
@@ -975,8 +962,11 @@ html:has(.liquid) [data-slot="dialog"] {
 /* Barras fijas bajo la cápsula superior: la cápsula flota 12 px más abajo,
    así que bajan lo mismo y pasan a vidrio. */
 .liquid .sticky.top-\[68px\] {
-  top: 92px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.5));
+  top: 80px;
+  /* Pegada a la cápsula superior (sin hueco por donde asome el contenido) y
+     casi opaca: con más transparencia el texto de debajo se mezclaba con el
+     de las pestañas al hacer scroll. */
+  background: linear-gradient(180deg, rgba(248, 251, 250, 0.95), rgba(244, 249, 247, 0.9));
   backdrop-filter: var(--lg-blur);
   -webkit-backdrop-filter: var(--lg-blur);
   border-color: rgba(255, 255, 255, 0.7);
@@ -1030,6 +1020,20 @@ html:has(.liquid) [data-slot="dialog"] {
     0 20px 44px -22px rgba(18, 70, 56, 0.8);
 }
 
+/* Franja entre el borde de la ventana y la cápsula superior: tapa lo que
+   pasa por debajo al hacer scroll, para que no asome contenido cortado. */
+.liquid [data-slot="topbar"]::before {
+  content: "";
+  position: absolute;
+  left: -16px;
+  right: -16px;
+  bottom: 100%;
+  height: 13px;
+  background: linear-gradient(180deg, rgba(238, 243, 241, 0.96), rgba(238, 243, 241, 0.8));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  pointer-events: none;
+}
 /* Tarjetas: un poco de vida al pasar el ratón */
 .liquid [data-slot="card"][data-tone="default"] {
   transition: transform 0.5s var(--lg-spring), box-shadow 0.4s;
@@ -1140,9 +1144,6 @@ html:has(.liquid) [data-slot="dialog"] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .liquid::before {
-    animation: none;
-  }
   .liquid [data-slot] {
     transition: none !important;
   }
