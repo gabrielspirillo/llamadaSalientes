@@ -19,6 +19,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/zadarma/(.*)', // NOTIFY_* webhooks de Zadarma — el handler valida firma md5
   '/api/public/(.*)', // Endpoints invocados desde la landing pública (CORS + rate-limit propios)
   '/api/leads/intake', // alta de leads desde la landing: valida su propia intake-key por clínica
+  '/api/internal/diagnostico', // consulta de solo lectura: valida su propia DIAGNOSTIC_TOKEN
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

@@ -48,3 +48,4 @@ drizzle/
 
 # Estado local de las herramientas de agentes (ruflo/claude-flow).
 .claude-flow/
+.claude/settings.local.json

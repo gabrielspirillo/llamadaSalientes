@@ -1524,6 +1524,19 @@ enlace al chat sólo funciona gestionando esa clínica. Las consultas SQL de
 diagnóstico ya no hacen falta para esto; para lo demás, Dokploy →
 cliniq-postgres → Terminal → `psql -U cliniq cliniq`.
 
+## Consulta de diagnóstico de solo lectura (`/api/internal/diagnostico`)
+
+Para diagnosticar producción sin abrir el puerto de Postgres ni SSH (desde las
+sesiones en la nube sólo llegan los puertos 80/443). `POST` con cabecera
+`x-diagnostic-token` y `{ "query": "select …" }`. Se activa SÓLO si el
+servicio `cliniq-web` tiene `DIAGNOSTIC_TOKEN` (32+ caracteres) en su entorno
+de Dokploy; sin ella responde 404. Una sola sentencia `SELECT`/`WITH`
+(`guardDiagnosticQuery`, `lib/diagnostics/sql-guard.ts`, con tests), dentro de
+una transacción `READ ONLY` con tope de 15 s y 500 filas. El log guarda la
+huella de la consulta, nunca el texto ni las filas. Para cerrarla: borrar la
+variable y reiniciar el servicio. Devuelve datos de pacientes: no pegar sus
+resultados en el repo.
+
 ## Módulo Mensajes (core, sin gate de `enabled_modules`)
 
 Sección `/dashboard/messages` (label "Mensajes"). Chat interno del equipo. Transversal, como Tareas.
