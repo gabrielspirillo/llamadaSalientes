@@ -50,6 +50,14 @@ describe('confirmación el día de la cita', () => {
     expect(step(12, 30, { ...nudged, callsDone: 2 })).toEqual({ kind: 'cancel' });
   });
 
+  it('pasadas las 12:30 ya no empieza la secuencia (si no, anularía enseguida)', () => {
+    expect(step(12, 30)).toBeNull();
+    expect(step(16, 0)).toBeNull();
+    expect(step(12, 29)).toEqual({ kind: 'reminder' });
+    // Una cita de la mañana (antes de las 12:30) no tiene anulación: sí se avisa.
+    expect(step(9, 0, fresh, at(11, 0))).toEqual({ kind: 'reminder' });
+  });
+
   it('a las 12:30 anula aunque falte algún aviso intermedio', () => {
     const sent = { ...fresh, reminderSentAt: today(8, 0) };
     expect(step(12, 35, sent)).toEqual({ kind: 'cancel' });

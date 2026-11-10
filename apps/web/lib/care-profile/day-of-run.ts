@@ -2,7 +2,7 @@ import 'server-only';
 import { and, desc, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm';
 
 import { systemAgendaContext } from '@/lib/agenda/agent';
-import { samePhone } from '@/lib/agenda/patients';
+import { normalizePatientPhone, samePhone } from '@/lib/agenda/patients';
 import { updateAppointment } from '@/lib/agenda/service';
 import { sendClinicWhatsapp } from '@/lib/care-profile/clinic-whatsapp';
 import {
@@ -18,11 +18,13 @@ import {
   fillScript,
   parseMessageScripts,
 } from '@/lib/care-profile/messages';
+import { activeGuardians, parseGuardians } from '@/lib/care-profile/policy';
 import { db } from '@/lib/db/client';
 import {
   agendaAppointments,
   appointmentDayOf,
   clinicSettings,
+  patients,
   tenantCareProfile,
   whatsappConversations,
   whatsappMessages,
@@ -119,7 +121,7 @@ async function tickTenant(tenantId: string, dayOf: DayOfScripts, now: Date): Pro
     .where(
       and(
         eq(agendaAppointments.tenantId, tenantId),
-        eq(agendaAppointments.status, 'SCHEDULED'),
+        inArray(agendaAppointments.status, ['SCHEDULED', 'CONFIRMED']),
         gte(agendaAppointments.startsAt, now),
         lt(agendaAppointments.startsAt, dayEnd),
         lt(agendaAppointments.createdAt, dayStart),
@@ -128,8 +130,28 @@ async function tickTenant(tenantId: string, dayOf: DayOfScripts, now: Date): Pro
     );
 
   let done = 0;
-  for (const { appt, state } of rows) {
+  for (const row of rows) {
+    const { appt } = row;
     if (localDateKey(appt.startsAt, tz) !== localDateKey(now, tz)) continue;
+    // La confirmación que vale es la del MISMO DÍA. Un estado que no se tocó
+    // hoy es de antes: una confirmación anticipada ("1" días antes), un
+    // recordatorio mandado a mano el viernes o la respuesta del día que tenía
+    // la cita antes de moverla. Hasta el 10/11 cualquiera de esos tapaba el
+    // recordatorio obligatorio y la cita se quedaba sin confirmar.
+    let state = row.state;
+    if (state && state.updatedAt < dayStart) {
+      // Pasada la hora de anular ya no empieza la secuencia (ver
+      // `nextDayOfStep`): entonces tampoco se toca lo que había.
+      const p0 = localParts(appt.startsAt, tz);
+      const cancelAt = clockMinutes(dayOf.cancelAt);
+      const tooLate =
+        cancelAt !== null && cancelAt < p0.hour * 60 + p0.minute && nowMinute >= cancelAt;
+      if (tooLate) continue;
+      await resetDayOfState(appt);
+      state = null;
+    }
+    // Confirmada hoy desde el panel (una llamada, en persona): ya está.
+    if (!state && appt.status === 'CONFIRMED' && appt.updatedAt >= dayStart) continue;
     if (state?.outcome) continue;
     const p = localParts(appt.startsAt, tz);
     // Un recordatorio mandado a mano otro día ("Enviar ahora" la víspera) no
@@ -155,6 +177,79 @@ async function tickTenant(tenantId: string, dayOf: DayOfScripts, now: Date): Pro
     }
   }
   return done;
+}
+
+/**
+ * Deja la cita sin respuesta del día: borra lo de un día anterior y, si se
+ * había confirmado antes del día, la devuelve a "Agendada" para que el
+ * calendario no la pinte confirmada mientras no conteste el recordatorio.
+ */
+async function resetDayOfState(appt: Appointment): Promise<void> {
+  const at = new Date();
+  await db
+    .update(appointmentDayOf)
+    .set({
+      reminderSentAt: null,
+      nudgeSentAt: null,
+      callsDone: 0,
+      outcome: null,
+      outcomeAt: null,
+      updatedAt: at,
+    })
+    .where(
+      and(
+        eq(appointmentDayOf.appointmentId, appt.id),
+        eq(appointmentDayOf.tenantId, appt.tenantId),
+      ),
+    );
+  if (appt.status === 'CONFIRMED') {
+    await db
+      .update(agendaAppointments)
+      .set({ status: 'SCHEDULED', updatedAt: at })
+      .where(
+        and(eq(agendaAppointments.tenantId, appt.tenantId), eq(agendaAppointments.id, appt.id)),
+      );
+  }
+}
+
+/**
+ * A quién va el recordatorio del día: el teléfono de la cita y, en clínicas
+ * con ficha por niño, también los demás tutores con móvil (el padre de un
+ * paciente no recibía nunca el aviso porque la cita estaba al de la madre).
+ */
+export async function dayOfRecipients(appt: Appointment): Promise<string[]> {
+  const out: string[] = [];
+  const add = (raw: string | null | undefined) => {
+    const p = raw ? normalizePatientPhone(raw) : null;
+    if (p && /^\+\d{8,15}$/.test(p) && !out.some((x) => samePhone(x, p))) out.push(p);
+  };
+  add(appt.patientPhone);
+  if (appt.patientId) {
+    const [person] = await db
+      .select({ guardians: patients.guardians })
+      .from(patients)
+      .where(and(eq(patients.tenantId, appt.tenantId), eq(patients.id, appt.patientId)))
+      .limit(1);
+    for (const g of activeGuardians(parseGuardians(person?.guardians))) add(g.phone);
+  }
+  return out;
+}
+
+/** Al primero se le manda sí o sí (si falla, se reintenta); a los demás, best-effort. */
+async function sendToRecipients(
+  appt: Appointment,
+  texts: string[],
+  buttons?: Parameters<typeof sendClinicWhatsapp>[3],
+): Promise<boolean> {
+  const [first, ...rest] = await dayOfRecipients(appt);
+  if (!first) return false;
+  const sent = await sendClinicWhatsapp(appt.tenantId, first, texts, buttons);
+  for (const phone of rest) {
+    await sendClinicWhatsapp(appt.tenantId, phone, texts, buttons).catch((err) =>
+      console.warn('[day-of] otro tutor', (err as Error).message),
+    );
+  }
+  return sent;
 }
 
 async function runStep(
@@ -184,9 +279,8 @@ async function runStep(
       .returning({ id: appointmentDayOf.appointmentId });
     if (!claimed.length) return false;
     try {
-      const sent = await sendClinicWhatsapp(
-        appt.tenantId,
-        phone,
+      const sent = await sendToRecipients(
+        appt,
         [fillScript(dayOf.reminder, v)],
         dayOfButtons(appt.id),
       );
@@ -209,7 +303,7 @@ async function runStep(
       .where(and(scope, isNull(appointmentDayOf.nudgeSentAt)))
       .returning({ id: appointmentDayOf.appointmentId });
     if (!claimed.length) return false;
-    if (dayOf.nudge) await sendClinicWhatsapp(appt.tenantId, phone, [fillScript(dayOf.nudge, v)]);
+    if (dayOf.nudge) await sendToRecipients(appt, [fillScript(dayOf.nudge, v)]);
     return true;
   }
 
@@ -280,8 +374,12 @@ async function loadForPatient(
     .where(and(eq(agendaAppointments.tenantId, tenantId), eq(agendaAppointments.id, appointmentId)))
     .limit(1);
   if (!appt) return null;
-  // Sólo quien recibe los avisos de esa cita puede contestar por ella.
-  if (phone && appt.patientPhone && !samePhone(phone, appt.patientPhone)) return null;
+  // Sólo quien recibe los avisos de esa cita (su teléfono o el de otro tutor
+  // del niño) puede contestar por ella.
+  if (phone && appt.patientPhone && !samePhone(phone, appt.patientPhone)) {
+    const recipients = await dayOfRecipients(appt);
+    if (!recipients.some((r) => samePhone(r, phone))) return null;
+  }
   return appt;
 }
 
@@ -307,7 +405,7 @@ export async function answerDayOf(args: {
   appointmentId: string;
   phone: string | null;
   action: 'confirm' | 'cancel';
-}): Promise<{ messages: string[]; appointment: Appointment } | null> {
+}): Promise<{ messages: string[]; appointment: Appointment; early?: boolean } | null> {
   const appt = await loadForPatient(args.tenantId, args.appointmentId, args.phone);
   if (!appt || !['SCHEDULED', 'CONFIRMED'].includes(appt.status)) return null;
 
@@ -327,20 +425,35 @@ export async function answerDayOf(args: {
   const ctx = systemAgendaContext(args.tenantId);
 
   if (args.action === 'confirm') {
+    // Antes del día no se confirma nada: la confirmación obligatoria es la del
+    // recordatorio del MISMO día (lo pidió la clínica: "es sólo el
+    // recordatorio, no hace falta que me confirmes ahora; el martes lo
+    // volverás a recibir"). Marcarla aquí tapaba ese recordatorio.
+    const isTodayAppt = localDateKey(appt.startsAt, tz) === localDateKey(new Date(), tz);
+    if (!isTodayAppt) {
+      const day = appt.startsAt.toLocaleDateString('es-ES', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        timeZone: tz,
+      });
+      const at = scripts?.dayOf?.reminderAt ? ` a las ${scripts.dayOf.reminderAt}` : '';
+      const cancelAt = scripts?.dayOf?.cancelAt ? ` antes de las ${scripts.dayOf.cancelAt}` : '';
+      return {
+        early: true,
+        appointment: appt,
+        messages: [
+          `Perfecto 😊 Tomamos nota. La cita de ${v.paciente ?? 'tu peque'} sigue el ${day} a las ${v.hora}.\n\nEse mismo día${at} te llegará el recordatorio: ese sí hay que contestarlo${cancelAt} para confirmar la cita. Muchas gracias✨`,
+        ],
+      };
+    }
     if (appt.status === 'SCHEDULED') {
       await updateAppointment(ctx, appt.id, { status: 'CONFIRMED' });
     }
     await markOutcome(appt, 'CONFIRMED');
     const dayOf = scripts?.dayOf;
-    const isToday = localDateKey(appt.startsAt, tz) === localDateKey(new Date(), tz);
     const messages: string[] = [];
-    if (dayOf?.confirmed) {
-      messages.push(
-        isToday
-          ? fillScript(dayOf.confirmed, v)
-          : `Perfecto 😊 Queda confirmada la cita de ${v.paciente ?? 'tu peque'} a las ${v.hora}. Muchas gracias✨`,
-      );
-    }
+    if (dayOf?.confirmed) messages.push(fillScript(dayOf.confirmed, v));
     return { messages, appointment: appt };
   }
 
@@ -526,7 +639,24 @@ export async function handleDayOfTextReply(args: {
         gte(appointmentDayOf.reminderSentAt, new Date(now.getTime() - 18 * 3_600_000)),
       ),
     );
-  const mine = pending.filter((a) => samePhone(a.phone, args.contactPhoneE164));
+  const mine: typeof pending = [];
+  for (const a of pending) {
+    if (samePhone(a.phone, args.contactPhoneE164)) {
+      mine.push(a);
+      continue;
+    }
+    // El recordatorio también va a los otros tutores: su "1" vale igual.
+    const [full] = await db
+      .select()
+      .from(agendaAppointments)
+      .where(and(eq(agendaAppointments.tenantId, args.tenantId), eq(agendaAppointments.id, a.id)))
+      .limit(1);
+    if (
+      full?.patientId &&
+      (await dayOfRecipients(full)).some((r) => samePhone(r, args.contactPhoneE164))
+    )
+      mine.push(a);
+  }
   if (mine.length !== 1) return false;
 
   const action = parseDayOfTextReply(args.text, true);

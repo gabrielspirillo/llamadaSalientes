@@ -689,9 +689,11 @@ export async function executeAgentTool(input: ExecuteToolInput): Promise<ToolCal
       ok: !!answer,
       result: !answer
         ? 'No encuentro esa cita pendiente entre las de este teléfono. Revisa el appointment_id con get_patient_info.'
-        : answer.messages.length
-          ? 'Cita confirmada. La respuesta de la clínica se la envía el sistema: NO la escribas. Si no tienes nada más que añadir, responde sólo "OK".'
-          : 'Cita confirmada. Díselo en una frase.',
+        : answer.early
+          ? 'NO se confirma todavía: la cita no es hoy y la confirmación obligatoria es la del recordatorio del mismo día. La respuesta a la familia (con el día de la cita) la envía el sistema: NO la escribas; responde sólo "OK".'
+          : answer.messages.length
+            ? 'Cita confirmada. La respuesta de la clínica se la envía el sistema: NO la escribas. Si no tienes nada más que añadir, responde sólo "OK".'
+            : 'Cita confirmada. Díselo en una frase.',
       latencyMs: Date.now() - started,
       ...(answer?.messages.length ? { data: { confirmationMessages: answer.messages } } : {}),
     };

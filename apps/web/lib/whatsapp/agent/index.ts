@@ -619,8 +619,7 @@ export async function runWhatsappAgent(
     clinicMessages.length === 0 &&
     !/asistente virtual/i.test(finalText)
   ) {
-    const rest = finalText.replace(/^\s*hola[^\n.!?,]{0,20}[,.!]?\s*/i, '').trim();
-    finalText = `Hola😊, soy ${assistantName}.\n\n${rest.charAt(0).toUpperCase()}${rest.slice(1)}`;
+    finalText = `Hola😊, soy ${assistantName}.\n\n${dropLeadingGreeting(finalText)}`;
   }
 
   if (finalText) finalText = toWhatsappFormatting(finalText);
@@ -1153,7 +1152,43 @@ function keyFromDayMonth(day: number, month: string, todayKey: string): string |
 
 /** "quiero cita", "tenéis hueco", "pedir hora"…: pide cita. */
 export function asksForAppointment(text: string): boolean {
+  // Quien escribe por una cita que YA tiene (anularla, cambiarla, confirmarla,
+  // "la cita que tengo") no está pidiendo una nueva: el 10/11 a una madre que
+  // quería anular le salió "¿es la primera vez que acudes?".
+  if (
+    /\b(anul\w*|cancel\w*|cambi\w*|mover|modific\w*|confirm\w*|retras\w*|no (podemos|puedo|vamos|voy|llegamos)|la cita (que tengo|de (hoy|mañana|manana|el)|del)|mi cita|nuestra cita|tengo (una )?cita|tenemos (una )?cita|ten[ií]amos cita)\b/i.test(
+      text,
+    )
+  )
+    return false;
   return /\b(cita|hueco|turno|hora para|pedir hora|reservar|agendar|consulta para)\b/i.test(text);
+}
+
+/**
+ * Quita el saludo con que el modelo abre su respuesta cuando la app ya pone
+ * la presentación ("Hola😊, soy …"). Antes se borraban hasta 20 caracteres
+ * detrás de "Hola" y se comía el principio de la frase: "¿Te puedo ayudar?"
+ * salía "Uedo ayudar?" y "Gracias por tu mensaje", "Acias por tu mensaje".
+ * Ahora sólo cae la palabra del saludo, un nombre que vaya justo detrás y los
+ * signos o emojis que los acompañan.
+ */
+export function dropLeadingGreeting(text: string): string {
+  const greeting =
+    /^\s*(?:hola|buen[oa]s(?:\s+(?:d[ií]as|tardes|noches))?)(?![\p{L}])[^\p{L}\p{N}\n¿¡]*/iu;
+  let rest = text.replace(greeting, '');
+  if (rest === text) return text.trim();
+  // "Hola Laura 😊 ¿…": el nombre también sobra. Sólo un nombre propio suelto
+  // seguido de coma, emoji o salto (no el principio de una frase).
+  rest = rest.replace(
+    /^[A-ZÁÉÍÓÚÑ][\p{Ll}]+(?=\s*(?:[,!.]|\p{Extended_Pictographic}|\n))[^\p{L}\p{N}\n¿¡]*/u,
+    '',
+  );
+  rest = rest.trim();
+  if (!rest) return text.trim();
+  return rest.replace(
+    /^([¿¡]?)(\p{Ll})/u,
+    (_, sign: string, ch: string) => sign + ch.toUpperCase(),
+  );
 }
 
 /** Ya dijo si es la primera vez o no (o da los datos de un niño conocido). */

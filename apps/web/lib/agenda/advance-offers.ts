@@ -1,6 +1,7 @@
 import 'server-only';
 import {
   and,
+  desc,
   eq,
   gt,
   gte,
@@ -613,12 +614,78 @@ async function pendingOfferFor(tenantId: string, phone: string) {
     .where(
       and(
         eq(advanceOffers.tenantId, tenantId),
+        // Sin mirar `expiresAt`: mientras la oferta siga SENT el hueco sigue
+        // reservado para esta familia. El plazo vence a los 20 minutos pero la
+        // oferta se cierra en la revisión siguiente (cada 5); el 7/11 un "Sí,
+        // cambiarla" llegó 5 segundos tarde, fue al asistente y le dijo que el
+        // hueco "se había ocupado" (lo tenía bloqueado su propia oferta).
         eq(advanceOffers.status, 'SENT'),
-        gte(advanceOffers.expiresAt, new Date()),
       ),
     );
   const mine = rows.filter((r) => samePhone(r.phoneE164, phone));
   return mine.length === 1 ? (mine[0] as (typeof rows)[number]) : null;
+}
+
+/** Margen para contestar a una oferta que acaba de caducar. */
+const LATE_REPLY_MS = 30 * 60_000;
+
+/** La oferta de esta familia que caducó hace poco (para contestarle a un "sí" tardío). */
+async function recentlyExpiredOfferFor(tenantId: string, phone: string) {
+  const rows = await db
+    .select()
+    .from(advanceOffers)
+    .where(
+      and(
+        eq(advanceOffers.tenantId, tenantId),
+        eq(advanceOffers.status, 'EXPIRED'),
+        gte(advanceOffers.answeredAt, new Date(Date.now() - LATE_REPLY_MS)),
+      ),
+    )
+    .orderBy(desc(advanceOffers.answeredAt));
+  return rows.find((r) => samePhone(r.phoneE164, phone)) ?? null;
+}
+
+/**
+ * "Sí" o "no" a una oferta ya caducada. Antes iba al asistente, que no sabía
+ * nada de la oferta: a una familia le confirmó su cita de siempre con un
+ * "Queda confirmada" que leyó como el cambio hecho. Ahora se le dice la verdad
+ * y, si quería el cambio, queda apuntada para el próximo hueco.
+ */
+async function answerLateReply(
+  row: typeof advanceOffers.$inferSelect,
+  answer: 'yes' | 'no',
+): Promise<string> {
+  const tz = await tenantTimezone(row.tenantId);
+  const [appt] = row.appointmentId
+    ? await db
+        .select({
+          id: agendaAppointments.id,
+          startsAt: agendaAppointments.startsAt,
+          status: agendaAppointments.status,
+          advancePreference: agendaAppointments.advancePreference,
+        })
+        .from(agendaAppointments)
+        .where(
+          and(
+            eq(agendaAppointments.tenantId, row.tenantId),
+            eq(agendaAppointments.id, row.appointmentId),
+          ),
+        )
+        .limit(1)
+    : [];
+  const live = appt && !['CANCELLED', 'NO_SHOW', 'COMPLETED'].includes(appt.status);
+  const when = live ? describe(appt.startsAt, tz, localDateKey(new Date(), tz)) : null;
+  const yours = when ? ` Vuestra cita sigue ${when.day} a las ${when.time}.` : '';
+  if (answer === 'no') return `Vale, sin cambios 😊${yours}`;
+  if (live && appt.advancePreference !== 'NO_MOVE') {
+    await db
+      .update(agendaAppointments)
+      .set({ advancePreference: 'ACCEPTS', updatedAt: new Date() })
+      .where(
+        and(eq(agendaAppointments.tenantId, row.tenantId), eq(agendaAppointments.id, appt.id)),
+      );
+  }
+  return `Lo sentimos, el plazo de 20 minutos para ese hueco ya terminó y se ha ofrecido a otra familia.${yours} Os dejamos apuntados para avisaros si se libera otro 😊`;
 }
 
 async function resolveOffer(
@@ -820,14 +887,58 @@ export async function handleAdvanceTextReply(args: {
 }): Promise<boolean> {
   if (!quoteIsForOffer(args.quotedText ?? null)) return false;
   const row = await pendingOfferFor(args.tenantId, args.contactPhoneE164);
-  if (!row) return false;
   const answer = parseAdvanceReply(args.text);
   if (!answer) return false;
+  if (!row) {
+    const late = await recentlyExpiredOfferFor(args.tenantId, args.contactPhoneE164);
+    if (!late) return false;
+    const text = await answerLateReply(late, answer);
+    await sendClinicWhatsapp(args.tenantId, args.contactPhoneE164, [text]).catch(() => false);
+    return true;
+  }
   const { messages, after } = await resolveOffer(row, answer);
   if (messages.length)
     await sendClinicWhatsapp(args.tenantId, args.contactPhoneE164, messages).catch(() => false);
   if (after) await after();
   return true;
+}
+
+/**
+ * ¿Algo cambió la cita de esta familia mientras la oferta estaba abierta?
+ * Su cita ya no está donde estaba (movida o anulada) o ya tiene otra cita a la
+ * hora del hueco.
+ */
+async function familyAlreadyHandled(row: typeof advanceOffers.$inferSelect): Promise<boolean> {
+  if (!row.appointmentId) return false;
+  const [appt] = await db
+    .select({
+      startsAt: agendaAppointments.startsAt,
+      status: agendaAppointments.status,
+      patientKey: agendaAppointments.patientKey,
+    })
+    .from(agendaAppointments)
+    .where(
+      and(
+        eq(agendaAppointments.tenantId, row.tenantId),
+        eq(agendaAppointments.id, row.appointmentId),
+      ),
+    )
+    .limit(1);
+  if (!appt) return true;
+  if (['CANCELLED', 'NO_SHOW', 'COMPLETED'].includes(appt.status)) return true;
+  const [atSlot] = await db
+    .select({ id: agendaAppointments.id })
+    .from(agendaAppointments)
+    .where(
+      and(
+        eq(agendaAppointments.tenantId, row.tenantId),
+        eq(agendaAppointments.patientKey, appt.patientKey),
+        eq(agendaAppointments.startsAt, row.slotStartsAt),
+        notInArray(agendaAppointments.status, ['CANCELLED', 'NO_SHOW']),
+      ),
+    )
+    .limit(1);
+  return Boolean(atSlot);
 }
 
 /** Plazos vencidos: se libera el hueco y pasa al siguiente. Lo llama el tick del worker. */
@@ -839,6 +950,12 @@ export async function expireAdvanceOffers(now = new Date()): Promise<number> {
   for (const row of rows) {
     const closed = await closeOffer(row.id, 'EXPIRED');
     if (!closed) continue;
+    // La clínica ya le dio el hueco a mano (o le movió o anuló la cita):
+    // "dejamos vuestra cita como estaba" sería mentira. Pasó el 10/11.
+    if (await familyAlreadyHandled(row)) {
+      await passToNext(row);
+      continue;
+    }
     await sendClinicWhatsapp(row.tenantId, row.phoneE164, [
       'No hemos recibido respuesta, así que dejamos vuestra cita como estaba. Si se libera otro hueco os avisamos.',
     ]).catch(() => false);

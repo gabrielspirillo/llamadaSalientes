@@ -61,7 +61,14 @@ export function nextDayOfStep(args: {
 
   const reminderAt = clockMinutes(times.reminderAt);
   if (reminderAt === null) return null;
-  if (!state.reminderSentAt) return nowMinute >= reminderAt ? { kind: 'reminder' } : null;
+  if (!state.reminderSentAt) {
+    // Pasada la hora de anular ya no se empieza la secuencia: un recordatorio
+    // que saliera a las 16:00 acabaría anulando la cita cinco minutos después.
+    const cancelAtMinute = clockMinutes(times.cancelAt);
+    if (cancelAtMinute !== null && cancelAtMinute < startMinute && nowMinute >= cancelAtMinute)
+      return null;
+    return nowMinute >= reminderAt ? { kind: 'reminder' } : null;
+  }
 
   const waited = now.getTime() - state.reminderSentAt.getTime() >= MIN_GAP_MS;
   if (!waited) return null;

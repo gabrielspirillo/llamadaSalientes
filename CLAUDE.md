@@ -506,7 +506,11 @@ no coincidió y le dijo a la familia que su propia cita "se había ocupado".
 idéntico a uno ya guardado desde que empezó la ráfaga (ese día una lista de
 huecos llegó dos veces, la segunda después de reservar, y la familia volvió a
 elegir). El aviso de fiebre (‼️) va sólo en la bienvenida, no pegado a cada
-respuesta. **Respuestas al recordatorio del
+respuesta. **Presentación**: al primer mensaje la app pone "Hola😊, soy …" y quita el
+saludo del modelo con `dropLeadingGreeting` (sólo la palabra, un nombre detrás
+y sus signos; antes se comía hasta 20 caracteres: "Uedo ayudar?"). El guion
+"¿es la primera vez?" no sale si el mensaje habla de una cita que ya tiene
+(anular, cambiar, confirmar, "la cita que tengo"). **Respuestas al recordatorio del
 día**: `parseDayOfTextReply` entiende "1. Confirmamos", "2 cambiar" y
 "confirmamos".
 
@@ -1100,7 +1104,13 @@ la misma regla. **No** o sin respuesta (`expireAdvanceOffers`, en el tick de
 cada 5 min) → siguiente familia; a quien ya rechazó ese hueco no se le vuelve
 a ofrecer (una oferta CANCELADA porque el hueco se ocupó entre medias no
 cuenta: si vuelve a liberarse se le ofrece otra vez). La respuesta a la familia
-sale ANTES de pasar al siguiente. Hay una prueba de extremo a extremo contra el
+sale ANTES de pasar al siguiente. **Respuestas que llegan tarde**: mientras la
+oferta siga SENT (el plazo venció pero la revisión de cada 5 min aún no pasó)
+su "sí" vale; hasta 30 min después de caducar se le contesta que el plazo
+terminó, con su cita, y queda con "quiere adelantar" (antes iba al asistente,
+que no sabía nada de la oferta). Si la clínica le dio el hueco a mano o le
+movió la cita mientras tanto, no le llega "dejamos vuestra cita como estaba"
+(`familyAlreadyHandled`). Hay una prueba de extremo a extremo contra el
 entorno de QA en el scratchpad de la sesión (`qa/e2e-adelanto-v2.ts`, 13
 comprobaciones: nadie en el mismo día, día siguiente misma hora, texto de los
 20 min, "sí" que cita otro mensaje, aceptación, hoy → confirmada con las
@@ -1112,6 +1122,35 @@ ofrecidos en "Requiere atención". **La reserva (`HOLD_REASON`, en
 (el 5/11 no se pudo meter a una familia por ella). En el calendario sale en
 ámbar como "Reservado: oferta enviada" y la X para quitar cualquier bloqueo
 está siempre visible (antes sólo con el ratón encima, y en tablet no salía).
+
+## Confirmación obligatoria del día (Respinens)
+
+`lib/care-profile/day-of-run.ts` + `day-of.ts` (puro, con tests). Secuencia del
+día de la cita: recordatorio 08:00 → segundo aviso 09:00 → tareas de llamar
+11:00/12:00 → anulación 12:30 sin respuesta. Estado en `appointment_day_of`.
+
+⚠️ **La confirmación que vale es la del MISMO día** (lo pidió la clínica: "es
+sólo el recordatorio; el martes lo volverás a recibir y ése sí hay que
+confirmarlo"). Hasta el 10/11 tres cosas de antes del día tapaban el
+recordatorio y la cita se quedaba sin confirmar: un "1" al asistente días antes
+(`answerDayOf` marcaba la respuesta y la cita Confirmada), un "Enviar
+recordatorio ahora" el viernes (dejaba `reminder_sent_at` y el del día no se
+reclamaba) y la respuesta del día anterior de una cita movida. Ahora:
+- **Estado que no se tocó hoy = de otro día**: el tick lo reinicia
+  (`resetDayOfState`) antes de mandar, y una cita Confirmada antes del día
+  vuelve a Agendada hasta que conteste.
+- **Confirmar antes del día no confirma**: `answerDayOf` contesta "tomamos
+  nota, ese mismo día te llegará el recordatorio" y no toca nada; la tool
+  `confirm_appointment` lo dice como `early`.
+- Confirmada HOY desde el panel (status CONFIRMED tocado hoy) no recibe nada.
+- **Pasada la hora de anular no empieza la secuencia** (`nextDayOfStep`): un
+  recordatorio a las 16:00 anularía la cita cinco minutos después.
+- **Va a todos los tutores con móvil** (`dayOfRecipients`: el de la cita + los
+  `guardians` de la ficha), y el "1" de cualquiera vale. Al primero se le manda
+  sí o sí; a los demás, best-effort.
+
+Prueba de extremo a extremo contra QA en el scratchpad de la sesión
+(`qa/e2e-dia-cita.ts`, 9 casos, con hora simulada de las 09:00).
 
 ## Señales de conducta del paciente (Respinens): duda y banderas rojas
 
