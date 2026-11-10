@@ -210,6 +210,36 @@ Todo el front comparte un único lenguaje visual. **No inventes estilos nuevos: 
 - La app es **light-only** a propósito: no hay toggle de tema ni variantes `dark:`.
 - Toda página del panel usa `PageHeader` (con `eyebrow` + `icon`) y envuelve su contenido en `Card`/`CardTopbar`.
 
+## Liquid Glass (capa de vidrio sobre Aurora, 10/11/2026)
+
+El panel es de vidrio: todo cuelga de la clase **`liquid`** en la raíz del
+layout (`app/(dashboard)/layout.tsx`) y de un bloque propio al final de
+`globals.css`. **Quitar esa clase devuelve el diseño anterior entero.** No
+cambia la distribución: vuelve de vidrio las superficies que ya existían.
+
+- **Ganchos `data-slot`**, no clases nuevas en cada página: `sidebar` (isla
+  flotante), `topbar` (cápsula verde intensa), `card` + `data-tone`, `stat`,
+  `hero` / `hero-slot` / `hero-side` (bloque «Hoy»), `dialog`; `data-variant`
+  en `Button` (botones de cristal: el principal vidrio verde, el resto vidrio
+  claro); clases `lg-track` (pestañas) y `lg-field` (campos). Los paneles
+  blancos hechos a mano se cogen con una regla general (`bg-white` + borde +
+  esquinas grandes dentro de `main`).
+- ⚠️ **El fondo de auroras va en el fondo de `.liquid`, repartido en % por toda
+  la página, nunca en una capa `position: fixed`.** La primera versión era una
+  capa fija del alto de la pantalla: en páginas largas se cortaba y el vidrio
+  de las tarjetas enseñaba la línea. Intensidad baja a propósito.
+- La cápsula superior flota 12 px más abajo, así que las barras fijas que iban
+  a `top-[68px]` bajan a 80 px y son casi opacas: con más transparencia el
+  texto de debajo se mezclaba con el de las pestañas al hacer scroll.
+- Los modales se pintan fuera del panel: se alcanzan con
+  `html:has(.liquid) [data-slot="dialog"]`.
+- **Líneas del bloque «Hoy»** (`components/dashboard/hero-lines.tsx`): curvas
+  finas con pulsos de luz menta y deriva lenta, el mismo efecto que el fondo
+  del portfolio en los verdes de la marca. Sólo SVG + CSS.
+- Todo se apaga con «reducir movimiento» y, la transparencia, con «reducir
+  transparencia». Reservar el desenfoque a superficies grandes: nunca a cada
+  fila de una tabla.
+
 ## Módulo Tareas (core, sin gate de `enabled_modules`)
 
 Sección `/dashboard/tasks` (label "Tareas"). Es transversal: no se contrata, viene con todas las clínicas.
