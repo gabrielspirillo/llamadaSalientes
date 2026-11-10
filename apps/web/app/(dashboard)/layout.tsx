@@ -1,3 +1,4 @@
+import { AnnouncementCenter } from '@/components/dashboard/announcement-center';
 import { ArchivedClinicNotice } from '@/components/dashboard/archived-clinic-notice';
 import { DashboardOverlays } from '@/components/dashboard/dashboard-overlays';
 import { NavProgressBar } from '@/components/dashboard/nav-progress';
@@ -166,6 +167,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <DashboardOverlays tourAutoStart={!isSuperAdmin && !tenantCtx?.impersonating} />
         {/* Tiempo de uso por sección para el panel de Futura. Futura no cuenta. */}
         {!isSuperAdmin && <UsageBeacon />}
+        {/* Novedades: pop-up de una función nueva, una vez por persona. */}
+        {!isSuperAdmin && !tenantCtx?.impersonating && <AnnouncementCenter />}
       </div>
     </MessagingProvider>
   );

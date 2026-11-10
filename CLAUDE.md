@@ -1554,6 +1554,33 @@ puro, con tests), igual que el consentimiento.
   `candidates` nuevos, y con un efecto que dependía de ellos la pantalla de
   "factura emitida" se borraba sola. Hay test de regresión.
 
+## Novedades del panel (pop-up de funciones nuevas)
+
+Para contarle a la clínica una función nueva o un cambio de costumbre sin
+depender de una llamada. Migración `0069_novedades_y_atendida.sql`.
+
+- **El catálogo vive en el código** (`lib/announcements/catalog.ts`, puro, con
+  tests en `tests/unit/novedades.test.ts`): id, fechas de publicación y
+  caducidad, público (`all` | `care_profile`), rutas donde sale, textos y una
+  ilustración opcional (`visual`, dibujada en
+  `components/dashboard/announcement-center.tsx`). **Un id nunca se reutiliza**:
+  es la memoria de quién ya lo vio.
+- **Lo que hizo cada persona** va en `announcement_views` (tenant, usuario,
+  aviso): «Entendido» = `DISMISSED`, no vuelve; «Recordar más tarde» o cerrarlo
+  = `SNOOZED` durante `SNOOZE_HOURS` (3 h).
+- `AnnouncementCenter` (montado en el layout, nunca para Futura ni
+  impersonando) pide `GET /api/announcements` 2,5 s después de cargar, fuera
+  del camino crítico, y enseña uno cada vez, sólo en su ruta, nunca encima de
+  otro diálogo. La API devuelve lista vacía si algo falla: un aviso no puede
+  estorbar el trabajo.
+- Primer aviso (10/11/2026, Respinens): **«Marca cada sesión como Atendida»**.
+  La `0069` añade `COMPLETED` a los `visibleStatuses` de las clínicas con
+  estados propios: sin ese botón, Raquel pulsaba «Agendada» al terminar cada
+  sesión (lo destapó la auditoría de `updateAppointmentAction`) y la cita
+  confirmada volvía a Agendada. `inactivePatients` sigue contando como visita
+  toda cita pasada no anulada ni faltada en esas clínicas: su historia
+  anterior no lleva COMPLETED.
+
 ## Uso de la plataforma (sólo Futura)
 
 `/dashboard/futura/uso` (botón **Uso de la plataforma** en Panel Futura, gate

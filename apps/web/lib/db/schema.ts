@@ -2817,3 +2817,29 @@ export const appointmentDayOf = pgTable(
     tenantIdx: index('appointment_day_of_tenant_idx').on(t.tenantId),
   }),
 );
+
+/**
+ * Novedades del panel: qué hizo cada persona con cada aviso (migración 0069).
+ * El catálogo de avisos está en `lib/announcements/catalog.ts`.
+ */
+export const announcementViews = pgTable(
+  'announcement_views',
+  {
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    announcementId: text('announcement_id').notNull(),
+    /** DISMISSED (entendido) | SNOOZED (recordar más tarde). */
+    status: text('status').notNull(),
+    snoozeUntil: timestamp('snooze_until', { withTimezone: true }),
+    timesShown: integer('times_shown').notNull().default(1),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.tenantId, t.userId, t.announcementId] }),
+  }),
+);

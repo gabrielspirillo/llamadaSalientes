@@ -87,12 +87,12 @@ export async function inactivePatients(
   cutoff: Date,
   limit = 200,
 ): Promise<SweepPatient[]> {
-  // Una clínica que no usa "Atendida" (la oculta en su perfil) nunca marca
-  // COMPLETED: para ella, visita es toda cita pasada que no se anuló ni faltó.
-  // Si no, el barrido no vería ninguna visita y no avisaría de nadie.
+  // Una clínica con sus propios estados (perfil) no ha marcado siempre
+  // COMPLETED: Respinens lo tuvo oculto hasta el 10/11/2026 y su historia
+  // anterior no lo lleva. Para ella, visita es también toda cita pasada que no
+  // se anuló ni faltó. Si no, el barrido no vería esas visitas.
   const profile = await getCareProfile(tenantId).catch(() => null);
-  const visible = profile?.bookingPolicy.visibleStatuses;
-  const completedHidden = Boolean(visible && !visible.includes('COMPLETED'));
+  const completedHidden = Boolean(profile?.bookingPolicy.visibleStatuses);
   const visited = completedHidden
     ? sql`(${agendaAppointments.status} = 'COMPLETED' or (${agendaAppointments.startsAt} < now() and ${agendaAppointments.status} not in ('CANCELLED', 'NO_SHOW')))`
     : eq(agendaAppointments.status, 'COMPLETED');
