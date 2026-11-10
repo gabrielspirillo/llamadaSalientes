@@ -174,9 +174,11 @@ export default async function AgendaPacientesPage({
           </Card>
         ) : (
           <Card className="overflow-hidden">
-            <TableWrap>
-              <Table>
-                <THead>
+            {/* En móvil cada fila es una tarjeta (sólo CSS, sin duplicar la lista):
+                nombre y edad · contacto · próxima cita y acciones. */}
+            <TableWrap className="max-md:overflow-visible">
+              <Table className="max-md:block max-md:min-w-0">
+                <THead className="max-md:hidden">
                   <HeadRow>
                     <TH>Paciente</TH>
                     {careProfile && <TH>Edad</TH>}
@@ -188,11 +190,19 @@ export default async function AgendaPacientesPage({
                     <TH />
                   </HeadRow>
                 </THead>
-                <tbody>
+                <tbody className="max-md:block">
                   {patients.map((p) => (
-                    <TR key={p.patientKey}>
-                      <TD>
-                        <span className="text-[15px] font-bold text-zinc-900">{p.patientName}</span>
+                    <TR
+                      key={p.patientKey}
+                      className="max-md:grid max-md:grid-cols-[minmax(0,1fr)_auto] max-md:items-center max-md:gap-x-3 max-md:gap-y-1.5 max-md:px-4 max-md:py-3.5"
+                    >
+                      <TD className="max-md:p-0">
+                        <Link
+                          href={`/dashboard/agenda/pacientes/${encodeURIComponent(p.patientKey)}`}
+                          className="text-[15px] font-bold text-zinc-900 hover:text-brand-700"
+                        >
+                          {p.patientName}
+                        </Link>
                         {duplicates.has(p.patientKey) && (
                           <Badge tone="warn" size="sm" className="ml-2">
                             Posible duplicado
@@ -217,34 +227,38 @@ export default async function AgendaPacientesPage({
                         )}
                       </TD>
                       {careProfile && (
-                        <TD className="whitespace-nowrap text-[13px] text-zinc-600">
+                        <TD className="whitespace-nowrap text-[13px] text-zinc-600 max-md:p-0 max-md:text-right">
                           {p.birthDate ? (describeAge(p.birthDate, todayKey) ?? '—') : '—'}
                         </TD>
                       )}
-                      <TD className="text-[13px] text-zinc-600">
+                      <TD className="text-[13px] text-zinc-600 max-md:col-span-2 max-md:p-0">
                         {/* El titular encima del número: "Mamá: Vanesa" / +34 646 55 66 19. */}
                         {p.phoneOwner && (
                           <span className="block font-semibold text-zinc-800">{p.phoneOwner}</span>
                         )}
-                        {p.patientPhone
-                          ? formatPhoneDisplay(p.patientPhone)
-                          : (p.patientEmail ?? '—')}
+                        <span className="whitespace-nowrap">
+                          {p.patientPhone
+                            ? formatPhoneDisplay(p.patientPhone)
+                            : (p.patientEmail ?? '—')}
+                        </span>
                       </TD>
-                      <TD className="tabular-nums text-zinc-600">{p.totalAppointments}</TD>
-                      <TD className="text-[13px] text-zinc-600">
+                      <TD className="tabular-nums text-zinc-600 max-md:hidden">
+                        {p.totalAppointments}
+                      </TD>
+                      <TD className="text-[13px] text-zinc-600 max-md:hidden">
                         {p.lastVisitAt ? fmt.format(p.lastVisitAt) : '—'}
                       </TD>
-                      <TD className="text-[13px]">
+                      <TD className="whitespace-nowrap text-[13px] max-md:p-0">
                         {p.nextVisitAt ? (
                           <Badge tone="success">{fmt.format(p.nextVisitAt)}</Badge>
                         ) : (
                           <span className="text-zinc-500">Sin próxima cita</span>
                         )}
                       </TD>
-                      <TD className="tabular-nums text-zinc-600">
+                      <TD className="tabular-nums text-zinc-600 max-md:hidden">
                         {p.noteCount > 0 ? `${p.noteCount} nota(s)` : '—'}
                       </TD>
-                      <TD className="text-right">
+                      <TD className="text-right max-md:p-0">
                         <div className="inline-flex items-center gap-1">
                           <Button asChild variant="ghost" size="sm">
                             <Link

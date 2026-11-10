@@ -347,7 +347,7 @@ export function SettingsForm({
       </div>
 
       {dirty && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center px-4">
+        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(92px+env(safe-area-inset-bottom))] z-40 lg:bottom-6 flex justify-center px-4">
           <div className="pointer-events-auto flex animate-fade-up flex-wrap items-center gap-3 rounded-full bg-zinc-900 py-2 pl-5 pr-2 text-[14px] text-white shadow-[0_18px_40px_-12px_rgba(0,0,0,0.45)]">
             <span>Tienes cambios sin guardar en los datos de la clínica</span>
             <Button type="submit" size="sm" disabled={isPending}>

@@ -871,6 +871,12 @@ html [data-instant-reveal] [data-reveal] {
     radial-gradient(720px 520px at 88% 92%, rgba(120, 206, 184, 0.18), transparent 70%);
 }
 
+/* Fondo bajo páginas cortas y en el rebote del scroll de iOS: el del panel, no blanco. */
+html:has(.liquid),
+html:has(.liquid) body {
+  background-color: #eef3f1;
+}
+
 /* Superficie de vidrio común */
 .liquid [data-slot="card"][data-tone="default"],
 .liquid [data-slot="card"][data-tone="glass"],
@@ -1022,6 +1028,34 @@ html:has(.liquid) [data-slot="dialog"] {
     rgba(238, 243, 241, 0)
   );
   pointer-events: none;
+}
+/* En móvil, las barras de guardar pegadas abajo quedan por encima de la barra
+   de pestañas (MobileTabBar), no tapadas por ella. */
+@media (max-width: 1023.98px) {
+  .liquid main .sticky.bottom-0 {
+    bottom: calc(80px + env(safe-area-inset-bottom));
+    border-radius: 18px;
+  }
+}
+/* Pestañas que se deslizan en móvil: difuminado al final mientras queda algo
+   por ver. Va con una línea de tiempo de scroll del propio carril, así que sólo
+   actúa si de verdad hay scroll; sin soporte, no se pinta nada. */
+@supports (animation-timeline: scroll()) {
+  @media (max-width: 1023.98px) {
+    .liquid .lg-track {
+      animation: lg-track-fade linear both;
+      animation-timeline: scroll(self inline);
+    }
+  }
+}
+@keyframes lg-track-fade {
+  0%,
+  98% {
+    mask-image: linear-gradient(90deg, #000 calc(100% - 36px), transparent);
+  }
+  100% {
+    mask-image: none;
+  }
 }
 /* Tarjetas: un poco de vida al pasar el ratón */
 .liquid [data-slot="card"][data-tone="default"] {

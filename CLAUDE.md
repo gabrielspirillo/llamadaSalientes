@@ -261,6 +261,27 @@ cambia la distribución: vuelve de vidrio las superficies que ya existían.
 - **Los botones necesitan su `:hover` en el bloque de vidrio**: esas reglas van
   fuera de capa y pisan los `hover:` de Tailwind de cada variante.
 
+## Móvil (10/11/2026)
+
+- **Barra de pestañas abajo** (`components/dashboard/mobile-tab-bar.tsx`,
+  montada en `topbar.tsx`, `lg:hidden`): Inicio · Agenda · WhatsApp (o Mensajes
+  sin el módulo) · Tareas · Más (abre el cajón del menú). Futura en su propia
+  organización ve Clínicas · Uso · Asistente · Mensajes · Más. No se pinta para
+  el profesional `AGENDA_ONLY`. El `<main>` reserva su alto
+  (`pb-[calc(104px+env(safe-area-inset-bottom))]`), y lo que va fijo abajo
+  (barra de «cambios sin guardar», avisos del chat, barras `sticky bottom-0`)
+  sube por encima en móvil. Un elemento fijo abajo nuevo tiene que hacer lo
+  mismo o queda tapado.
+- **Tablas en móvil = tarjetas con CSS, sin duplicar la lista** (Agenda →
+  Pacientes): `max-md:block` en tabla y cuerpo, cada `TR` en rejilla y las
+  columnas secundarias `max-md:hidden`. Duplicar el listado para móvil
+  doblaría el HTML de cientos de filas.
+- `PageHeader` en móvil: título más bajo, descripción en dos líneas y las
+  acciones en una fila que se desliza. Las pestañas que se deslizan se
+  difuminan al final sólo si hay scroll (línea de tiempo de scroll en CSS).
+- La tira de datos de la ficha no deja celdas grises vacías en móvil
+  (`fullWidthOnMobile`, con test).
+
 ## Módulo Tareas (core, sin gate de `enabled_modules`)
 
 Sección `/dashboard/tasks` (label "Tareas"). Es transversal: no se contrata, viene con todas las clínicas.

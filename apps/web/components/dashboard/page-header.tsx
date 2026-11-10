@@ -28,7 +28,7 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        'mb-6 flex animate-fade-down flex-col gap-4 sm:mb-8 md:flex-row md:items-center md:justify-between',
+        'mb-5 flex animate-fade-down flex-col gap-3 sm:mb-8 sm:gap-4 md:flex-row md:items-center md:justify-between',
         className,
       )}
     >
@@ -45,7 +45,7 @@ export function PageHeader({
             </p>
           )}
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <h1 className="text-[28px] font-extrabold leading-tight tracking-tight text-zinc-900 sm:text-[34px]">
+            <h1 className="text-[26px] font-extrabold leading-tight tracking-tight text-zinc-900 sm:text-[34px]">
               {title}
             </h1>
             {demoBadge && (
@@ -55,13 +55,18 @@ export function PageHeader({
             )}
           </div>
           {description && (
-            <p className="mt-1.5 max-w-2xl text-[14px] leading-relaxed text-zinc-500">
+            <p className="mt-1 line-clamp-2 max-w-2xl text-[13px] leading-relaxed text-zinc-500 sm:mt-1.5 sm:line-clamp-none sm:text-[14px]">
               {description}
             </p>
           )}
         </div>
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {actions && (
+        // En móvil, una sola fila que se desliza en vez de botones apilados.
+        <div className="scrollbar-none -mx-4 flex items-center gap-2 overflow-x-auto px-4 py-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:py-0 [&>*]:shrink-0">
+          {actions}
+        </div>
+      )}
     </div>
   );
 }

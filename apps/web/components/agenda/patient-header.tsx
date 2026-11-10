@@ -50,6 +50,7 @@ export function PatientHeader({
   /** Ancla para la barra compacta de las pestañas. */
   id?: string;
 }) {
+  const mobileFull = fullWidthOnMobile(facts);
   return (
     <section
       id={id}
@@ -127,12 +128,12 @@ export function PatientHeader({
             } as CSSProperties
           }
         >
-          {facts.map((f) => (
+          {facts.map((f, i) => (
             <div
               key={f.label}
               className={cn(
                 'flex min-w-0 flex-col gap-[3px] bg-[#fbfcfc] px-4 py-3 md:px-5',
-                f.wide && 'col-span-2 md:col-span-1',
+                mobileFull[i] && 'col-span-2 md:col-span-1',
               )}
             >
               <dt className="text-[12px] font-semibold text-zinc-600">{f.label}</dt>
@@ -165,4 +166,24 @@ export function PatientHeader({
       )}
     </section>
   );
+}
+
+/**
+ * En móvil la tira va a dos columnas. Lo ancho (tutores) y la cifra grande
+ * (edad) ocupan la fila entera, y un dato que se quedaría solo en su fila se
+ * estira: si no, queda una celda gris vacía al lado.
+ */
+export function fullWidthOnMobile(facts: PatientFact[]): boolean[] {
+  const full = facts.map((f) => Boolean(f.wide || f.emphasis));
+  let col = 0;
+  for (let i = 0; i < facts.length; i++) {
+    if (full[i]) {
+      if (col === 1) full[i - 1] = true;
+      col = 0;
+    } else {
+      col = col === 0 ? 1 : 0;
+    }
+  }
+  if (col === 1) full[facts.length - 1] = true;
+  return full;
 }

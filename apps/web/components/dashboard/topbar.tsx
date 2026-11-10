@@ -1,6 +1,7 @@
 'use client';
 
 import { ImpersonationChip } from '@/components/dashboard/impersonation-chip';
+import { MobileTabBar } from '@/components/dashboard/mobile-tab-bar';
 import { DashboardSidebarMobile } from '@/components/dashboard/sidebar';
 import { TeamMenu } from '@/components/dashboard/team-menu';
 import { useMessaging } from '@/components/messaging/MessagingProvider';
@@ -203,6 +204,15 @@ export function DashboardTopbar({
         </div>
       </header>
 
+      {!agendaOnly && (
+        <MobileTabBar
+          enabledModules={enabledModules}
+          futuraHome={isSuperAdmin && !impersonatingClinic}
+          tasksBadge={tasksBadge}
+          messagesBadge={messagesBadge}
+          onMore={() => setMobileNavOpen(true)}
+        />
+      )}
       <DashboardSidebarMobile
         open={mobileNavOpen}
         onClose={() => setMobileNavOpen(false)}
