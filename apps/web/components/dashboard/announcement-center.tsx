@@ -117,7 +117,7 @@ function StatusCompletedVisual() {
   return (
     <div
       aria-hidden
-      className="relative overflow-hidden bg-[linear-gradient(135deg,#e7f3ef_0%,#f1f7f4_55%,#f6f5fb_100%)] px-6 pb-6 pt-7"
+      className="relative overflow-hidden bg-[linear-gradient(135deg,#e7f3ef_0%,#f1f7f4_55%,#f6f5fb_100%)] px-6 pb-6 pt-12 sm:pt-7"
     >
       <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(95,168,150,0.28),transparent_70%)] animate-float-slow" />
       <div className="relative mx-auto max-w-[320px] animate-pop rounded-[18px] border border-white/80 bg-white p-4 shadow-[0_18px_40px_-22px_rgba(20,33,29,0.45)]">
