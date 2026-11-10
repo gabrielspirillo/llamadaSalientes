@@ -39,7 +39,13 @@ export interface CardProps
 
 export const Card = React.forwardRef<HTMLDivElement, CardProps>(
   ({ className, tone, interactive, ...props }, ref) => (
-    <div ref={ref} className={cn(cardVariants({ tone, interactive }), className)} {...props} />
+    <div
+      ref={ref}
+      data-slot="card"
+      data-tone={tone ?? 'default'}
+      className={cn(cardVariants({ tone, interactive }), className)}
+      {...props}
+    />
   ),
 );
 Card.displayName = 'Card';

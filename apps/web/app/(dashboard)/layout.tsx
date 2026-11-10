@@ -140,7 +140,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           `force-dynamic`: sin esto, entre el clic y el primer byte del servidor
           la pantalla se quedaba idéntica y parecía colgada. */}
       <NavProgressBar />
-      <div data-instant-reveal className="aurora-canvas flex min-h-screen text-zinc-900">
+      <div data-instant-reveal className="aurora-canvas liquid flex min-h-screen text-zinc-900">
         <DashboardSidebar
           enabledModules={enabledModules}
           isSuperAdmin={isSuperAdmin}

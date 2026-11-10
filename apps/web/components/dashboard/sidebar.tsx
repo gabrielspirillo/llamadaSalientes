@@ -842,6 +842,7 @@ export function DashboardSidebar({
   return (
     <aside
       data-sidebar-rail
+      data-slot="sidebar"
       className={cn(
         'sticky top-0 z-30 hidden h-dvh w-[268px] shrink-0 flex-col lg:flex',
         SIDEBAR_SURFACE,

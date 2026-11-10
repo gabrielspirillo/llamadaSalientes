@@ -93,7 +93,10 @@ export function TodayBoardCard({ board, demo }: { board: TodayBoard; demo?: bool
     <Card className="mb-6 overflow-hidden border-0 p-0 shadow-[var(--shadow-float)]">
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px]">
         {/* Hoy: bloque oscuro, el mismo lenguaje que el resumen del caso */}
-        <div className="relative min-w-0 overflow-hidden bg-[linear-gradient(140deg,#14211d_0%,#1d3a33_55%,#2b5a4d_100%)] p-5 text-white sm:p-6">
+        <div
+          data-slot="hero"
+          className="relative min-w-0 overflow-hidden bg-[linear-gradient(140deg,#14211d_0%,#1d3a33_55%,#2b5a4d_100%)] p-5 text-white sm:p-6"
+        >
           <div
             aria-hidden
             className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-emerald-300/20 blur-3xl animate-drift"
@@ -158,6 +161,8 @@ export function TodayBoardCard({ board, demo }: { board: TodayBoard; demo?: bool
                   return (
                     <li key={it.id} style={{ ['--i' as string]: i }} className="shrink-0">
                       <Link
+                        data-slot="hero-slot"
+                        data-next={isNext ? '' : undefined}
                         href={demo ? '/dashboard?demo=1' : `/dashboard/agenda?cita=${it.id}`}
                         className={cn(
                           'group block w-[156px] rounded-[16px] p-3.5 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
@@ -216,7 +221,10 @@ export function TodayBoardCard({ board, demo }: { board: TodayBoard; demo?: bool
         </div>
 
         {/* Requiere atención */}
-        <div className="border-t border-(--color-border-subtle) bg-white p-5 lg:border-t-0 lg:border-l">
+        <div
+          data-slot="hero-side"
+          className="border-t border-(--color-border-subtle) bg-white p-5 lg:border-t-0 lg:border-l"
+        >
           <div className="flex items-baseline justify-between">
             <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500">
               Requiere atención
