@@ -239,6 +239,19 @@ cambia la distribución: vuelve de vidrio las superficies que ya existían.
 - Todo se apaga con «reducir movimiento» y, la transparencia, con «reducir
   transparencia». Reservar el desenfoque a superficies grandes: nunca a cada
   fila de una tabla.
+- ⚠️ **Nunca escribir `-webkit-backdrop-filter` junto a `backdrop-filter`.** El
+  minificador de Tailwind 4 (Lightning CSS) se quedaba sólo con la prefijada y
+  Chrome no desenfocaba NADA (ni el vidrio ni la vieja `.glass`) hasta el
+  10/11/2026. Se escribe sólo la estándar; el prefijo lo pone él.
+- **El desenfoque, sólo en lo que flota sobre contenido**: cápsula, franja de
+  arriba, sidebar, pestañas y barras pegadas, modales y bloque «Hoy». Tarjetas,
+  filas, botones y campos van sobre el fondo liso: no se nota y cuesta GPU.
+- **La franja sobre la cápsula es un elemento propio** (`data-slot="topbar-veil"`
+  en `topbar.tsx`), no un `::before` de la cápsula: un hijo de algo con
+  `backdrop-filter` sólo «ve» a su padre y no desenfoca la página. Sin color:
+  un color plano no casa con el degradado y se leía como un corte.
+- **Los botones necesitan su `:hover` en el bloque de vidrio**: esas reglas van
+  fuera de capa y pisan los `hover:` de Tailwind de cada variante.
 
 ## Módulo Tareas (core, sin gate de `enabled_modules`)
 

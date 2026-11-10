@@ -113,6 +113,8 @@ export function DashboardTopbar({
 
   return (
     <>
+      {/* Sólo se pinta con el vidrio (.liquid): tapa el hueco sobre la cápsula */}
+      <div data-slot="topbar-veil" aria-hidden className="hidden" />
       <header
         data-slot="topbar"
         className="sticky top-0 z-40 flex h-[68px] items-center justify-between gap-3 border-b border-black/10 bg-[linear-gradient(180deg,#3f7061,#315e52)] px-4 shadow-[0_10px_30px_-24px_rgba(20,33,29,0.9)] sm:px-6"

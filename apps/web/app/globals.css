@@ -403,14 +403,12 @@ body {
 .glass {
   background: rgba(255, 255, 255, 0.72);
   backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.6);
 }
 
 .glass-dark {
   background: rgba(22, 26, 25, 0.62);
   backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -883,17 +881,22 @@ html [data-instant-reveal] [data-reveal] {
 .liquid .lg-track,
 .liquid [data-slot="sidebar"] {
   background: var(--lg-fill);
-  backdrop-filter: var(--lg-blur);
-  -webkit-backdrop-filter: var(--lg-blur);
   border-color: rgba(255, 255, 255, 0.7);
   box-shadow: var(--lg-edge), var(--lg-drop);
+}
+/* El desenfoque, sólo en lo que flota sobre contenido (menú, cápsula, barras
+   pegadas, modales, bloque «Hoy»). Tarjetas, filas, botones y campos van sobre
+   el fondo liso: ahí no se nota y en una lista larga cuesta GPU en cada scroll.
+   Ojo: no repetir la propiedad con -webkit-: el minificador se queda sólo con la
+   prefijada y Chrome deja de desenfocar (pasó hasta el 10/11/2026). */
+.liquid [data-slot="sidebar"] {
+  backdrop-filter: var(--lg-blur);
 }
 
 /* Panel «Requiere atención» junto al bloque Hoy */
 .liquid [data-slot="hero-side"] {
   background: var(--lg-fill-strong);
   backdrop-filter: var(--lg-blur);
-  -webkit-backdrop-filter: var(--lg-blur);
 }
 
 /* Indicadores y paneles hechos a mano con fondo blanco: también vidrio.
@@ -909,8 +912,6 @@ html [data-instant-reveal] [data-reveal] {
     [class*="rounded-3xl"]
   ):not([data-slot]) {
   background: var(--lg-fill-panel);
-  backdrop-filter: var(--lg-blur);
-  -webkit-backdrop-filter: var(--lg-blur);
   border-color: rgba(255, 255, 255, 0.72);
   box-shadow: var(--lg-edge), var(--lg-drop);
 }
@@ -919,7 +920,6 @@ html [data-instant-reveal] [data-reveal] {
 .liquid [data-slot="card"][data-tone="night"] {
   background: linear-gradient(140deg, rgba(20, 28, 26, 0.9), rgba(36, 66, 58, 0.86));
   backdrop-filter: blur(22px) saturate(160%);
-  -webkit-backdrop-filter: blur(22px) saturate(160%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), var(--lg-drop);
 }
 
@@ -941,8 +941,6 @@ html [data-instant-reveal] [data-reveal] {
 .liquid .lg-field,
 html:has(.liquid) [data-slot="dialog"] .lg-field {
   background-color: rgba(255, 255, 255, 0.66);
-  backdrop-filter: blur(12px) saturate(170%);
-  -webkit-backdrop-filter: blur(12px) saturate(170%);
   box-shadow: inset 0 1px 2px rgba(20, 60, 50, 0.06), inset 0 -1px 0 rgba(255, 255, 255, 0.7);
 }
 .liquid .lg-field:focus-visible,
@@ -954,7 +952,6 @@ html:has(.liquid) [data-slot="dialog"] .lg-field {
 html:has(.liquid) [data-slot="dialog"] {
   background: linear-gradient(160deg, rgba(255, 255, 255, 0.9), rgba(246, 252, 249, 0.8));
   backdrop-filter: blur(30px) saturate(190%);
-  -webkit-backdrop-filter: blur(30px) saturate(190%);
   border-color: rgba(255, 255, 255, 0.85);
   box-shadow: inset 0 1px 0 #fff, 0 40px 90px -30px rgba(20, 60, 50, 0.5);
 }
@@ -968,7 +965,6 @@ html:has(.liquid) [data-slot="dialog"] {
      de las pestañas al hacer scroll. */
   background: linear-gradient(180deg, rgba(248, 251, 250, 0.95), rgba(244, 249, 247, 0.9));
   backdrop-filter: var(--lg-blur);
-  -webkit-backdrop-filter: var(--lg-blur);
   border-color: rgba(255, 255, 255, 0.7);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 12px 30px -24px rgba(20, 60, 50, 0.5);
 }
@@ -977,7 +973,6 @@ html:has(.liquid) [data-slot="dialog"] {
 .liquid main .sticky.bottom-0 {
   background: linear-gradient(0deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.56));
   backdrop-filter: var(--lg-blur);
-  -webkit-backdrop-filter: var(--lg-blur);
   border-color: rgba(255, 255, 255, 0.75);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 -12px 30px -24px rgba(20, 60, 50, 0.45);
 }
@@ -1012,7 +1007,6 @@ html:has(.liquid) [data-slot="dialog"] {
   background: radial-gradient(70% 140% at 12% -40%, rgba(255, 255, 255, 0.22), transparent 60%),
     linear-gradient(180deg, rgba(50, 128, 106, 0.96), rgba(29, 96, 78, 0.95));
   backdrop-filter: blur(22px) saturate(180%);
-  -webkit-backdrop-filter: blur(22px) saturate(180%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.5),
     inset 0 0 0 1px rgba(255, 255, 255, 0.08),
@@ -1020,18 +1014,21 @@ html:has(.liquid) [data-slot="dialog"] {
     0 20px 44px -22px rgba(18, 70, 56, 0.8);
 }
 
-/* Franja entre el borde de la ventana y la cápsula superior: tapa lo que
-   pasa por debajo al hacer scroll, para que no asome contenido cortado. */
-.liquid [data-slot="topbar"]::before {
-  content: "";
-  position: absolute;
-  left: -16px;
-  right: -16px;
-  bottom: 100%;
-  height: 13px;
-  background: linear-gradient(180deg, rgba(238, 243, 241, 0.96), rgba(238, 243, 241, 0.8));
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+/* Franja entre el borde de la ventana y la cápsula superior. Es un elemento
+   propio y no un ::before de la cápsula: la cápsula tiene backdrop-filter, así
+   que sus hijos sólo «ven» la cápsula y no desenfocarían nada. Sin color: sólo
+   desenfoca lo que pasa por debajo al hacer scroll y se funde hacia abajo. */
+.liquid [data-slot="topbar-veil"] {
+  display: block;
+  position: sticky;
+  top: 0;
+  z-index: 39;
+  /* Baja por detrás de la cápsula (que la tapa en el centro) para que el
+     desenfoque tenga de dónde tomar y se apague poco a poco a los lados. */
+  height: 84px;
+  margin-bottom: -84px;
+  backdrop-filter: blur(12px) saturate(140%);
+  mask-image: linear-gradient(180deg, #000 16px, transparent 84px);
   pointer-events: none;
 }
 /* Tarjetas: un poco de vida al pasar el ratón */
@@ -1053,7 +1050,6 @@ html:has(.liquid) [data-slot="dialog"] {
     rgba(38, 96, 80, 0.88) 100%
   );
   backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
 }
 .liquid [data-slot="hero"]::after {
   content: "";
@@ -1063,8 +1059,6 @@ html:has(.liquid) [data-slot="dialog"] {
   background: radial-gradient(90% 60% at 15% 0%, rgba(255, 255, 255, 0.12), transparent 55%);
 }
 .liquid [data-slot="hero-slot"] {
-  backdrop-filter: blur(14px) saturate(180%);
-  -webkit-backdrop-filter: blur(14px) saturate(180%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), inset 0 0 0 1px rgba(255, 255, 255, 0.12);
   transition: transform 0.5s var(--lg-spring), background 0.3s, box-shadow 0.3s;
 }
@@ -1083,8 +1077,6 @@ html:has(.liquid) [data-slot="dialog"] {
 /* Botones de cristal: el principal es vidrio verde, el resto vidrio claro.
    Todos con brillo especular arriba y pulsación de gel. */
 .liquid [data-variant] {
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
   transition: transform 0.45s var(--lg-spring), box-shadow 0.3s, background 0.3s;
 }
 .liquid [data-variant]:active {
@@ -1131,6 +1123,44 @@ html:has(.liquid) [data-slot="dialog"] {
   box-shadow: inset 0 1px 0 #fff, inset 0 0 0 1px rgba(255, 255, 255, 0.6);
 }
 
+/* Hover: estas reglas pisan los hover:… de Tailwind (van fuera de capa), así
+   que cada variante necesita el suyo o el botón no responde al ratón. */
+.liquid
+  :is(
+    [data-variant="primary"],
+    [data-variant="secondary"],
+    [data-variant="outline"],
+    [data-variant="glass"],
+    [data-variant="soft"],
+    [data-variant="danger"],
+    [data-variant="success"]
+  ):hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.liquid [data-variant="primary"]:hover:not(:disabled) {
+  background: radial-gradient(120% 90% at 30% -20%, rgba(255, 255, 255, 0.5), transparent 55%),
+    linear-gradient(165deg, rgba(86, 176, 150, 0.88), rgba(38, 116, 96, 0.94));
+}
+.liquid
+  :is([data-variant="secondary"], [data-variant="outline"], [data-variant="glass"]):hover:not(
+    :disabled
+  ) {
+  color: var(--color-brand-700);
+  background: radial-gradient(120% 90% at 30% -20%, #fff, transparent 60%),
+    linear-gradient(165deg, rgba(255, 255, 255, 0.86), rgba(226, 245, 237, 0.66));
+  border-color: rgba(95, 168, 150, 0.45);
+  box-shadow: inset 0 1px 0 #fff, inset 0 -6px 12px -8px rgba(55, 118, 106, 0.28), 0 12px 26px -14px
+    rgba(20, 60, 50, 0.55);
+}
+.liquid [data-variant="soft"]:hover:not(:disabled) {
+  background: radial-gradient(120% 90% at 30% -20%, rgba(255, 255, 255, 0.7), transparent 55%),
+    linear-gradient(165deg, rgba(150, 214, 190, 0.62), rgba(95, 168, 150, 0.42));
+  box-shadow: inset 0 1px 0 #fff, 0 12px 24px -14px rgba(34, 104, 86, 0.6);
+}
+.liquid [data-variant]:active:not(:disabled) {
+  transform: scale(1.03, 0.94);
+}
+
 /* Sobre el bloque oscuro «Hoy», el cristal claro se vuelve vidrio verde claro */
 .liquid
   [data-slot="hero"]
@@ -1141,6 +1171,16 @@ html:has(.liquid) [data-slot="dialog"] {
   border: 1px solid rgba(255, 255, 255, 0.32);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 -6px 12px -8px rgba(0, 30, 22, 0.35),
     0 10px 24px -14px rgba(0, 0, 0, 0.55);
+}
+.liquid
+  [data-slot="hero"]
+  :is([data-variant="glass"], [data-variant="secondary"], [data-variant="outline"]):hover:not(
+    :disabled
+  ) {
+  color: #fff;
+  background: radial-gradient(120% 90% at 30% -20%, rgba(255, 255, 255, 0.46), transparent 55%),
+    linear-gradient(165deg, rgba(170, 232, 208, 0.44), rgba(105, 178, 160, 0.3));
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1155,7 +1195,6 @@ html:has(.liquid) [data-slot="dialog"] {
   .liquid [data-slot="sidebar"] {
     background: rgba(255, 255, 255, 0.96);
     backdrop-filter: none;
-    -webkit-backdrop-filter: none;
   }
 }
 
