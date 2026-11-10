@@ -402,13 +402,11 @@ body {
 
 .glass {
   background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: saturate(180%) blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.6);
 }
 
 .glass-dark {
   background: rgba(22, 26, 25, 0.62);
-  backdrop-filter: saturate(180%) blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -860,7 +858,7 @@ html [data-instant-reveal] [data-reveal] {
   --lg-blur: blur(28px) saturate(210%);
   --lg-edge: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.5),
     inset 0 -1px 1px rgba(255, 255, 255, 0.35);
-  --lg-drop: 0 1px 2px rgba(20, 33, 29, 0.04), 0 22px 50px -26px rgba(20, 33, 29, 0.32);
+  --lg-drop: 0 1px 2px rgba(20, 33, 29, 0.04), 0 14px 30px -20px rgba(20, 33, 29, 0.3);
   --lg-spring: cubic-bezier(0.34, 1.45, 0.5, 1);
   /* Auroras suaves pintadas en el propio fondo del panel, repartidas a lo
      largo de toda la página (posiciones en %, tamaños fijos): nunca se cortan
@@ -869,10 +867,8 @@ html [data-instant-reveal] [data-reveal] {
   background-color: #eef3f1;
   background-image: radial-gradient(760px 520px at 4% 0%, rgba(84, 190, 156, 0.26), transparent 70%),
     radial-gradient(680px 480px at 98% 6%, rgba(150, 214, 190, 0.28), transparent 70%),
-    radial-gradient(720px 520px at 40% 38%, rgba(176, 226, 206, 0.22), transparent 70%),
-    radial-gradient(700px 520px at 92% 62%, rgba(120, 206, 184, 0.2), transparent 70%),
-    radial-gradient(760px 540px at 10% 82%, rgba(150, 214, 190, 0.22), transparent 70%),
-    radial-gradient(680px 480px at 70% 100%, rgba(84, 190, 156, 0.18), transparent 70%);
+    radial-gradient(760px 540px at 30% 55%, rgba(176, 226, 206, 0.2), transparent 70%),
+    radial-gradient(720px 520px at 88% 92%, rgba(120, 206, 184, 0.18), transparent 70%);
 }
 
 /* Superficie de vidrio común */
@@ -884,19 +880,16 @@ html [data-instant-reveal] [data-reveal] {
   border-color: rgba(255, 255, 255, 0.7);
   box-shadow: var(--lg-edge), var(--lg-drop);
 }
-/* El desenfoque, sólo en lo que flota sobre contenido (menú, cápsula, barras
-   pegadas, modales, bloque «Hoy»). Tarjetas, filas, botones y campos van sobre
-   el fondo liso: ahí no se nota y en una lista larga cuesta GPU en cada scroll.
-   Ojo: no repetir la propiedad con -webkit-: el minificador se queda sólo con la
-   prefijada y Chrome deja de desenfocar (pasó hasta el 10/11/2026). */
-.liquid [data-slot="sidebar"] {
-  backdrop-filter: var(--lg-blur);
-}
+/* Sin desenfoque (backdrop-filter) salvo en los modales: medido el 10/11/2026
+   con la CPU a 4x, el desenfoque de la cápsula, el sidebar y las barras pegadas
+   bajaba el scroll de ~50 a ~20 fotogramas por segundo (sobre todo en Panel,
+   Pacientes y Tareas). Las superficies llevan relleno casi opaco y no lo
+   necesitan. Si vuelve, nunca con -webkit-backdrop-filter al lado: el
+   minificador se queda sólo con la prefijada y Chrome lo ignora. */
 
 /* Panel «Requiere atención» junto al bloque Hoy */
 .liquid [data-slot="hero-side"] {
   background: var(--lg-fill-strong);
-  backdrop-filter: var(--lg-blur);
 }
 
 /* Indicadores y paneles hechos a mano con fondo blanco: también vidrio.
@@ -919,7 +912,6 @@ html [data-instant-reveal] [data-reveal] {
 /* Tarjeta oscura (tono night): vidrio oscuro */
 .liquid [data-slot="card"][data-tone="night"] {
   background: linear-gradient(140deg, rgba(20, 28, 26, 0.9), rgba(36, 66, 58, 0.86));
-  backdrop-filter: blur(22px) saturate(160%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), var(--lg-drop);
 }
 
@@ -963,16 +955,14 @@ html:has(.liquid) [data-slot="dialog"] {
   /* Pegada a la cápsula superior (sin hueco por donde asome el contenido) y
      casi opaca: con más transparencia el texto de debajo se mezclaba con el
      de las pestañas al hacer scroll. */
-  background: linear-gradient(180deg, rgba(248, 251, 250, 0.95), rgba(244, 249, 247, 0.9));
-  backdrop-filter: var(--lg-blur);
+  background: linear-gradient(180deg, rgba(248, 251, 250, 0.98), rgba(244, 249, 247, 0.96));
   border-color: rgba(255, 255, 255, 0.7);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 12px 30px -24px rgba(20, 60, 50, 0.5);
 }
 
 /* Barras de guardar fijas abajo (nota clínica, anamnesis): vidrio */
 .liquid main .sticky.bottom-0 {
-  background: linear-gradient(0deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.56));
-  backdrop-filter: var(--lg-blur);
+  background: linear-gradient(0deg, rgba(255, 255, 255, 0.97), rgba(250, 253, 252, 0.94));
   border-color: rgba(255, 255, 255, 0.75);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 -12px 30px -24px rgba(20, 60, 50, 0.45);
 }
@@ -1005,8 +995,7 @@ html:has(.liquid) [data-slot="dialog"] {
   border: 1px solid rgba(255, 255, 255, 0.24);
   border-radius: 24px;
   background: radial-gradient(70% 140% at 12% -40%, rgba(255, 255, 255, 0.22), transparent 60%),
-    linear-gradient(180deg, rgba(50, 128, 106, 0.96), rgba(29, 96, 78, 0.95));
-  backdrop-filter: blur(22px) saturate(180%);
+    linear-gradient(180deg, rgb(50, 128, 106), rgb(29, 96, 78));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.5),
     inset 0 0 0 1px rgba(255, 255, 255, 0.08),
@@ -1014,21 +1003,24 @@ html:has(.liquid) [data-slot="dialog"] {
     0 20px 44px -22px rgba(18, 70, 56, 0.8);
 }
 
-/* Franja entre el borde de la ventana y la cápsula superior. Es un elemento
-   propio y no un ::before de la cápsula: la cápsula tiene backdrop-filter, así
-   que sus hijos sólo «ven» la cápsula y no desenfocarían nada. Sin color: sólo
-   desenfoca lo que pasa por debajo al hacer scroll y se funde hacia abajo. */
+/* Franja entre el borde de la ventana y la cápsula superior: un velo del color
+   del fondo que se desvanece hacia abajo, para que lo que pasa por encima de la
+   cápsula al hacer scroll no se lea nítido. Es un elemento propio
+   (`topbar-veil`), no un ::before, y sin borde duro: un color plano que acababa
+   de golpe se leía como un corte. Sin backdrop-filter (ver arriba). */
 .liquid [data-slot="topbar-veil"] {
   display: block;
   position: sticky;
   top: 0;
   z-index: 39;
-  /* Baja por detrás de la cápsula (que la tapa en el centro) para que el
-     desenfoque tenga de dónde tomar y se apague poco a poco a los lados. */
-  height: 84px;
-  margin-bottom: -84px;
-  backdrop-filter: blur(12px) saturate(140%);
-  mask-image: linear-gradient(180deg, #000 16px, transparent 84px);
+  height: 28px;
+  margin-bottom: -28px;
+  background: linear-gradient(
+    180deg,
+    rgba(238, 243, 241, 0.9),
+    rgba(238, 243, 241, 0.55) 12px,
+    rgba(238, 243, 241, 0)
+  );
   pointer-events: none;
 }
 /* Tarjetas: un poco de vida al pasar el ratón */
@@ -1049,7 +1041,6 @@ html:has(.liquid) [data-slot="dialog"] {
     rgba(24, 60, 51, 0.92) 55%,
     rgba(38, 96, 80, 0.88) 100%
   );
-  backdrop-filter: blur(20px) saturate(160%);
 }
 .liquid [data-slot="hero"]::after {
   content: "";
@@ -1201,17 +1192,33 @@ html:has(.liquid) [data-slot="dialog"] {
 /* Líneas del bloque «Hoy»: un pulso de luz recorre cada curva (pathLength=100)
    y toda la capa deriva despacio. Mismo efecto que el fondo del portfolio,
    en los verdes de la marca. */
-.hero-line-flow {
-  stroke-dasharray: 12 188;
-  filter: drop-shadow(0 0 4px rgba(110, 231, 183, 0.85));
-  animation: hero-line-flow var(--dur, 9s) cubic-bezier(0.45, 0, 0.25, 1) infinite var(--d, 0s);
+/* Destello que recorre las líneas: sólo transform (lo compone la GPU). */
+.hero-line-glow {
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
 }
-@keyframes hero-line-flow {
+.hero-line-sweep {
+  position: absolute;
+  inset: -10% auto -10% 0;
+  width: 26%;
+  background: linear-gradient(90deg, transparent, rgba(110, 231, 183, 0.95) 50%, transparent);
+  transform: translate3d(-120%, 0, 0) skewX(-18deg);
+  animation: hero-line-sweep 9s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+  will-change: transform;
+}
+.hero-line-sweep-2 {
+  width: 18%;
+  animation-duration: 13s;
+  animation-delay: -6s;
+  opacity: 0.8;
+}
+@keyframes hero-line-sweep {
   0% {
-    stroke-dashoffset: 12;
+    transform: translate3d(-120%, 0, 0) skewX(-18deg);
   }
+  70%,
   100% {
-    stroke-dashoffset: -100;
+    transform: translate3d(520%, 0, 0) skewX(-18deg);
   }
 }
 .hero-line-drift {
@@ -1227,11 +1234,11 @@ html:has(.liquid) [data-slot="dialog"] {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .hero-line-flow,
+  .hero-line-sweep,
   .hero-line-drift {
     animation: none !important;
   }
-  .hero-line-flow {
+  .hero-line-sweep {
     opacity: 0;
   }
 }

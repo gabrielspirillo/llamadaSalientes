@@ -234,7 +234,7 @@ cambia la distribución: vuelve de vidrio las superficies que ya existían.
 - Los modales se pintan fuera del panel: se alcanzan con
   `html:has(.liquid) [data-slot="dialog"]`.
 - **Líneas del bloque «Hoy»** (`components/dashboard/hero-lines.tsx`): curvas
-  finas con pulsos de luz menta y deriva lenta, el mismo efecto que el fondo
+  finas con un destello menta que las recorre y deriva lenta, el mismo efecto que el fondo
   del portfolio en los verdes de la marca. Sólo SVG + CSS.
 - Todo se apaga con «reducir movimiento» y, la transparencia, con «reducir
   transparencia». Reservar el desenfoque a superficies grandes: nunca a cada
@@ -243,13 +243,21 @@ cambia la distribución: vuelve de vidrio las superficies que ya existían.
   minificador de Tailwind 4 (Lightning CSS) se quedaba sólo con la prefijada y
   Chrome no desenfocaba NADA (ni el vidrio ni la vieja `.glass`) hasta el
   10/11/2026. Se escribe sólo la estándar; el prefijo lo pone él.
-- **El desenfoque, sólo en lo que flota sobre contenido**: cápsula, franja de
-  arriba, sidebar, pestañas y barras pegadas, modales y bloque «Hoy». Tarjetas,
-  filas, botones y campos van sobre el fondo liso: no se nota y cuesta GPU.
+- ⚠️ **Sin `backdrop-filter` salvo en los modales.** Medido el 10/11/2026 con
+  la CPU a 4x: el desenfoque de la cápsula, el sidebar y las barras pegadas
+  bajaba el scroll de ~50 a ~20 fotogramas por segundo (Panel, Pacientes,
+  Tareas). Sin él, el vidrio rinde igual que el diseño anterior. Lo que flota
+  sobre contenido va con relleno opaco o casi (la cápsula, opaca del todo: con
+  un 4 % de transparencia se leía el texto de debajo).
 - **La franja sobre la cápsula es un elemento propio** (`data-slot="topbar-veil"`
-  en `topbar.tsx`), no un `::before` de la cápsula: un hijo de algo con
-  `backdrop-filter` sólo «ve» a su padre y no desenfoca la página. Sin color:
-  un color plano no casa con el degradado y se leía como un corte.
+  en `topbar.tsx`): un velo del color del fondo que se desvanece hacia abajo,
+  sin borde duro (un color plano que acababa de golpe se leía como un corte).
+- **Nada se anima redibujando.** Los pulsos de las líneas del bloque «Hoy»
+  animaban `stroke-dashoffset` y costaban ~11 % de CPU en reposo (40 % a 4x)
+  sólo por estar en pantalla; ahora son una banda que se mueve con `transform`
+  detrás de una máscara con la forma de las líneas (0,5 %). Una animación nueva
+  que no sea `transform`/`opacity` hay que medirla (`document.getAnimations()`
+  + `Performance.getMetrics` con y sin ella).
 - **Los botones necesitan su `:hover` en el bloque de vidrio**: esas reglas van
   fuera de capa y pisan los `hover:` de Tailwind de cada variante.
 
