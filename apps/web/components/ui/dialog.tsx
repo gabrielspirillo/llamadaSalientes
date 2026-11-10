@@ -37,6 +37,7 @@ export const DialogContent = React.forwardRef<
       <DialogOverlay />
       <DialogPrimitive.Content
         ref={ref}
+        data-slot="dialog"
         className={cn(
           'fixed left-1/2 top-1/2 z-50 max-h-[calc(100vh-2rem)] w-[calc(100vw-1rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto',
           'rounded-[26px] border border-white/60 bg-white p-5 shadow-[0_40px_90px_-30px_rgba(20,33,29,0.5)] sm:p-7',

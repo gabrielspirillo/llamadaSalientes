@@ -94,6 +94,7 @@ export function StatTile({
 
   return (
     <div
+      data-slot="stat"
       className={cn(
         'group relative overflow-hidden rounded-[22px] border border-(--color-border) bg-white p-5',
         'shadow-[var(--shadow-soft)] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]',

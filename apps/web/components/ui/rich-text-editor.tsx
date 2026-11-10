@@ -120,7 +120,7 @@ export function RichTextEditor({
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-[14px] border bg-white transition-shadow',
+        'lg-field relative overflow-hidden rounded-[14px] border bg-white transition-shadow',
         focused
           ? 'border-brand-400 ring-4 ring-brand-100'
           : 'border-(--color-border) hover:border-zinc-300',
