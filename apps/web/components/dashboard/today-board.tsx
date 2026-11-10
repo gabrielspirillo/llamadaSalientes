@@ -1,3 +1,4 @@
+import { HeroLines } from '@/components/dashboard/hero-lines';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -105,6 +106,7 @@ export function TodayBoardCard({ board, demo }: { board: TodayBoard; demo?: bool
             aria-hidden
             className="pointer-events-none absolute -bottom-28 left-1/3 h-56 w-56 rounded-full bg-teal-200/10 blur-3xl animate-float-slow"
           />
+          <HeroLines />
           <div className="relative flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-200/90">

@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
+import { parseWhatsappFormatting } from '@/lib/whatsapp/format';
 import type { SerializedWhatsappMessage } from '@/lib/whatsapp/realtime/events';
 
 // Render del thread de mensajes con suscripción SSE para refrescar en vivo.
@@ -225,7 +226,27 @@ function MessageBubble({
         </a>
       )}
       <div className="whitespace-pre-wrap">
-        {m.contentText ?? (m.mediaUrl ? '' : `[${m.type}]`)}
+        {m.contentText
+          ? parseWhatsappFormatting(m.contentText).map((seg, i) => (
+              <span
+                // biome-ignore lint/suspicious/noArrayIndexKey: los trozos de un texto fijo no cambian de orden
+                key={i}
+                className={
+                  [
+                    seg.bold && 'font-semibold',
+                    seg.italic && 'italic',
+                    seg.strike && 'line-through',
+                  ]
+                    .filter(Boolean)
+                    .join(' ') || undefined
+                }
+              >
+                {seg.text}
+              </span>
+            ))
+          : m.mediaUrl
+            ? ''
+            : `[${m.type}]`}
       </div>
       <div
         className={`mt-1 flex items-center gap-2 text-[11px] ${

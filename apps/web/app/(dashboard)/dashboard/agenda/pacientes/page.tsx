@@ -217,7 +217,7 @@ export default async function AgendaPacientesPage({
                         )}
                       </TD>
                       {careProfile && (
-                        <TD className="text-[13px] text-zinc-600">
+                        <TD className="whitespace-nowrap text-[13px] text-zinc-600">
                           {p.birthDate ? (describeAge(p.birthDate, todayKey) ?? '—') : '—'}
                         </TD>
                       )}

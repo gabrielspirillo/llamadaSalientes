@@ -248,8 +248,12 @@ export default async function AgendaPage({
 
   // La ventana la marcan el horario y las citas. Los bloqueos NO entran: un
   // "no vengo el jueves" ocupa el día entero y estiraría la rejilla a las 00:00,
-  // dejando la franja útil fuera de la pantalla.
-  const window = computeDayWindow(shiftRows, items);
+  // dejando la franja útil fuera de la pantalla. Las citas anuladas tampoco:
+  // una cancelada a las 00:25 abría la agenda a medianoche.
+  const window = computeDayWindow(
+    shiftRows,
+    items.filter((i) => i.status !== 'CANCELLED'),
+  );
 
   return (
     <>

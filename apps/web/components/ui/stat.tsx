@@ -387,12 +387,15 @@ export function Avatar({
 }) {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  const initials = name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase() ?? '')
-    .join('');
+  // Sin letras (un contacto que sólo es un teléfono): los dos últimos dígitos,
+  // no un «+» suelto.
+  const words = name.split(/\s+/).filter((w) => /\p{L}/u.test(w));
+  const initials = words.length
+    ? words
+        .slice(0, 2)
+        .map((p) => p.match(/\p{L}/u)?.[0]?.toUpperCase() ?? '')
+        .join('')
+    : name.replace(/\D/g, '').slice(-2);
 
   if (src) {
     return (

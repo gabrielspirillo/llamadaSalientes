@@ -983,6 +983,15 @@ html:has(.liquid) [data-slot="dialog"] {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 12px 30px -24px rgba(20, 60, 50, 0.5);
 }
 
+/* Barras de guardar fijas abajo (nota clínica, anamnesis): vidrio */
+.liquid main .sticky.bottom-0 {
+  background: linear-gradient(0deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.56));
+  backdrop-filter: var(--lg-blur);
+  -webkit-backdrop-filter: var(--lg-blur);
+  border-color: rgba(255, 255, 255, 0.75);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 -12px 30px -24px rgba(20, 60, 50, 0.45);
+}
+
 /* Barra lateral: isla flotante */
 .liquid [data-slot="sidebar"] {
   top: 12px;
@@ -1146,5 +1155,43 @@ html:has(.liquid) [data-slot="dialog"] {
     background: rgba(255, 255, 255, 0.96);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
+  }
+}
+
+/* Líneas del bloque «Hoy»: un pulso de luz recorre cada curva (pathLength=100)
+   y toda la capa deriva despacio. Mismo efecto que el fondo del portfolio,
+   en los verdes de la marca. */
+.hero-line-flow {
+  stroke-dasharray: 12 188;
+  filter: drop-shadow(0 0 4px rgba(110, 231, 183, 0.85));
+  animation: hero-line-flow var(--dur, 9s) cubic-bezier(0.45, 0, 0.25, 1) infinite var(--d, 0s);
+}
+@keyframes hero-line-flow {
+  0% {
+    stroke-dashoffset: 12;
+  }
+  100% {
+    stroke-dashoffset: -100;
+  }
+}
+.hero-line-drift {
+  animation: hero-line-drift 26s ease-in-out infinite alternate;
+  will-change: transform;
+}
+@keyframes hero-line-drift {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  100% {
+    transform: translate3d(-2.5%, 2%, 0) rotate(-2deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-line-flow,
+  .hero-line-drift {
+    animation: none !important;
+  }
+  .hero-line-flow {
+    opacity: 0;
   }
 }
