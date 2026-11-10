@@ -281,6 +281,20 @@ cambia la distribución: vuelve de vidrio las superficies que ya existían.
   difuminan al final sólo si hay scroll (línea de tiempo de scroll en CSS).
 - La tira de datos de la ficha no deja celdas grises vacías en móvil
   (`fullWidthOnMobile`, con test).
+- La barra de pestañas lleva **Pacientes** (`/dashboard/agenda/pacientes`) en
+  lugar de Tareas; Agenda no se enciende dentro de Pacientes (`except`).
+- **Chat de WhatsApp en móvil = pantalla completa** (`max-lg:fixed inset-0
+  z-50` en `whatsapp/[conversationId]/page.tsx`): sólo se desplazan los
+  mensajes, abre en el último, la caja de escribir va fija (una línea, 16 px
+  para que iOS no amplíe, envío redondo) y la columna del contacto se abre con
+  el botón «i» como hoja (`chat-info.tsx`, hablan por un evento de ventana).
+  Urgente y Eliminar pasan a esa hoja; en la cabecera, Atender y Cerrar.
+- ⚠️ **`.enter-page` va con `backwards`, no `both`**: con `both` la animación
+  seguía aplicada y `<main>` quedaba como capa de apilamiento, así que nada de
+  dentro podía ponerse por encima de la barra superior (el chat a pantalla
+  completa quedaba debajo).
+- **Gestionando una clínica**: el chip es de cristal con el ojo en ámbar
+  (antes amarillo macizo sobre el verde) y en móvil ocupa el sitio del logo.
 
 ## Módulo Tareas (core, sin gate de `enabled_modules`)
 

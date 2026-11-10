@@ -23,14 +23,20 @@ export function ImpersonationChip({ clinicName }: { clinicName: string }) {
     });
   }
 
+  // Cristal sobre la cápsula verde con un punto ámbar de aviso (el chip
+  // amarillo macizo chocaba con el verde y en móvil pisaba el logo). En móvil
+  // ocupa el sitio del logo (topbar.tsx), con el nombre de la clínica.
   return (
     <output
-      className="inline-flex min-w-0 max-w-[360px] items-center gap-1.5 rounded-full bg-amber-100/90 py-1 pl-3 pr-1 text-[12px] font-semibold text-amber-900 ring-1 ring-amber-300/70"
+      className="inline-flex min-w-0 max-w-[340px] items-center gap-1.5 rounded-full bg-white/12 py-1 pl-1 pr-1 text-[12px] font-semibold text-white ring-1 ring-white/30 sm:pl-1.5"
       title={`Estás gestionando ${clinicName} como Futura`}
     >
-      <Eye className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      <span className="relative inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-300 text-amber-950">
+        <Eye className="h-3.5 w-3.5" aria-hidden />
+      </span>
       <span className="min-w-0 truncate">
-        <span className="hidden sm:inline">Gestionando </span>
+        <span className="hidden font-medium text-white/75 sm:inline">Gestionando </span>
+        <span className="sr-only sm:hidden">Gestionando </span>
         {clinicName}
       </span>
       <button
@@ -39,7 +45,7 @@ export function ImpersonationChip({ clinicName }: { clinicName: string }) {
         disabled={pending}
         aria-label="Salir de la cuenta del cliente"
         title="Volver al panel de Futura (no cierra tu sesión)"
-        className="ml-1 inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-white/80 px-2.5 text-[12px] font-semibold text-amber-900 ring-1 ring-amber-300/70 transition-colors hover:bg-white disabled:opacity-60"
+        className="inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-white px-2 text-[12px] font-semibold text-brand-800 transition-colors hover:bg-white/90 disabled:opacity-60 sm:px-2.5"
       >
         {pending ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />

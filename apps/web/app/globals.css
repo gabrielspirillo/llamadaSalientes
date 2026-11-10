@@ -673,8 +673,11 @@ html [data-instant-reveal] [data-reveal] {
    (p. ej. el modal de Recordatorios), que dejaba de anclarse a la ventana y
    quedaba descolocado con el scroll bloqueado. `fade-up` terminaba en
    translate3d(0,0,0) —que NO es `none`— y mantenía ese transform para siempre. */
+/* `backwards`, no `both`: con `both` la animación sigue aplicada al acabar y
+   <main> queda como capa de apilamiento propia, así que nada de dentro (el chat
+   a pantalla completa del móvil) puede ponerse encima de la barra superior. */
 .enter-page {
-  animation: fade-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: fade-in 260ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 /* ============================================================================

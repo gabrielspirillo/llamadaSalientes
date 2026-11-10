@@ -17,9 +17,14 @@ interface Props {
   conversationId: string;
   status: 'ACTIVE' | 'HANDOFF' | 'CLOSED';
   urgentFlag: boolean;
+  /**
+   * En móvil la cabecera sólo lleva lo del día a día (atender y cerrar);
+   * urgente y eliminar pasan a la hoja de datos del contacto, con su texto.
+   */
+  only?: 'primary' | 'secondary';
 }
 
-export function ConversationActions({ conversationId, status, urgentFlag }: Props) {
+export function ConversationActions({ conversationId, status, urgentFlag, only }: Props) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -46,18 +51,39 @@ export function ConversationActions({ conversationId, status, urgentFlag }: Prop
   // Una sola acción destacada (atender). Urgente y eliminar son iconos: con
   // cuatro botones de colores la cabecera saltaba a dos líneas y cortaba el
   // nombre del paciente.
+  if (only === 'secondary') {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant={urgentFlag ? 'danger' : 'secondary'}
+          onClick={run(() => toggleUrgent({ conversationId }))}
+          disabled={pending}
+        >
+          <Flag className="h-4 w-4" fill={urgentFlag ? 'currentColor' : 'none'} />
+          {urgentFlag ? 'Quitar urgente' : 'Marcar urgente'}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onDelete} disabled={pending}>
+          <Trash2 className="h-4 w-4" /> Eliminar conversación
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex shrink-0 items-center gap-1.5">
-      <IconButton
-        label={urgentFlag ? 'Quitar urgente' : 'Marcar urgente'}
-        onClick={run(() => toggleUrgent({ conversationId }))}
-        disabled={pending}
-        className={
-          urgentFlag ? 'bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700' : ''
-        }
-      >
-        <Flag className="h-4 w-4" fill={urgentFlag ? 'currentColor' : 'none'} />
-      </IconButton>
+      {only !== 'primary' && (
+        <IconButton
+          label={urgentFlag ? 'Quitar urgente' : 'Marcar urgente'}
+          onClick={run(() => toggleUrgent({ conversationId }))}
+          disabled={pending}
+          className={
+            urgentFlag ? 'bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700' : ''
+          }
+        >
+          <Flag className="h-4 w-4" fill={urgentFlag ? 'currentColor' : 'none'} />
+        </IconButton>
+      )}
 
       {status !== 'HANDOFF' && status !== 'CLOSED' && (
         <Button
@@ -85,14 +111,16 @@ export function ConversationActions({ conversationId, status, urgentFlag }: Prop
         </Button>
       )}
 
-      <IconButton
-        label="Eliminar conversación"
-        onClick={onDelete}
-        disabled={pending}
-        className="hover:bg-rose-50 hover:text-rose-600"
-      >
-        <Trash2 className="h-4 w-4" />
-      </IconButton>
+      {only !== 'primary' && (
+        <IconButton
+          label="Eliminar conversación"
+          onClick={onDelete}
+          disabled={pending}
+          className="hover:bg-rose-50 hover:text-rose-600"
+        >
+          <Trash2 className="h-4 w-4" />
+        </IconButton>
+      )}
     </div>
   );
 }

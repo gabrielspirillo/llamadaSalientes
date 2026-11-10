@@ -277,13 +277,13 @@ export function MessageComposer({ conversationId, disabled }: Props) {
 
   const isNote = mode === 'note';
   const placeholderBase = disabled
-    ? 'Conversación cerrada — no se pueden enviar mensajes'
+    ? 'Conversación cerrada'
     : isNote
-      ? 'Escribe una nota interna (no se envía al contacto)…'
-      : 'Escribe un mensaje. Usa "/" para respuestas rápidas.';
+      ? 'Nota interna (no se envía)…'
+      : 'Escribe un mensaje…';
 
   return (
-    <div className="relative rounded-[22px] border border-(--color-border) bg-white shadow-[var(--shadow-soft)]">
+    <div className="relative rounded-[22px] bg-white sm:border sm:border-(--color-border) sm:shadow-[var(--shadow-soft)]">
       {error && (
         <div className="animate-fade-down border-b border-rose-100 bg-rose-50 px-3 py-2 text-[13px] text-rose-700">
           {error}
@@ -291,7 +291,7 @@ export function MessageComposer({ conversationId, disabled }: Props) {
       )}
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 border-b border-(--color-border-subtle) px-2 pt-2">
+      <div className="flex items-center gap-1 border-b border-(--color-border-subtle) px-1 sm:px-2 sm:pt-2">
         <button
           type="button"
           onClick={() => setMode('reply')}
@@ -365,23 +365,40 @@ export function MessageComposer({ conversationId, disabled }: Props) {
       )}
 
       {/* Textarea + controls */}
-      <div className={`px-3 py-2 ${isNote ? 'bg-amber-50/40' : ''}`}>
-        <textarea
-          ref={textareaRef}
-          value={text}
-          onChange={(e) => handleTextChange(e.target.value)}
-          placeholder={placeholderBase}
-          disabled={disabled || pending}
-          rows={2}
-          onKeyDown={onKeyDown}
-          className={`w-full resize-none rounded-lg border px-3 py-2 text-sm focus:outline-none disabled:bg-zinc-50 ${
-            isNote
-              ? 'border-amber-200 bg-amber-50 focus:border-amber-400'
-              : 'border-(--color-border) bg-white focus:border-zinc-400'
-          }`}
-        />
+      <div className={`px-1 py-2 sm:px-3 ${isNote ? 'bg-amber-50/40' : ''}`}>
+        {/* En móvil, textarea y enviar en una fila, como en WhatsApp. */}
+        <div className="flex items-end gap-2 sm:block">
+          <textarea
+            ref={textareaRef}
+            value={text}
+            onChange={(e) => handleTextChange(e.target.value)}
+            placeholder={placeholderBase}
+            disabled={disabled || pending}
+            rows={1}
+            onKeyDown={onKeyDown}
+            // 16 px en móvil: con menos, iOS amplía la página al tocar el campo.
+            className={`max-h-40 min-h-[44px] w-full resize-none rounded-[22px] border px-4 py-2.5 text-[16px] [field-sizing:content] focus:outline-none disabled:bg-zinc-50 sm:min-h-[64px] sm:rounded-lg sm:px-3 sm:py-2 sm:text-sm ${
+              isNote
+                ? 'border-amber-200 bg-amber-50 focus:border-amber-400'
+                : 'border-(--color-border) bg-white focus:border-zinc-400'
+            }`}
+          />
+          <button
+            type="button"
+            onClick={submitText}
+            disabled={disabled || pending || !text.trim()}
+            aria-label={isNote ? 'Guardar nota' : 'Enviar'}
+            className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white transition-transform active:scale-95 disabled:bg-zinc-300 sm:hidden ${
+              isNote ? 'bg-amber-500' : 'bg-emerald-600'
+            }`}
+          >
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3.4 20.4 21 12 3.4 3.6l-.01 6.5L15 12 3.39 13.9z" />
+            </svg>
+          </button>
+        </div>
 
-        <div className="mt-2 flex items-center gap-1">
+        <div className="mt-1 flex items-center gap-1 sm:mt-2">
           {/* Emoji */}
           <button
             type="button"
@@ -478,13 +495,17 @@ export function MessageComposer({ conversationId, disabled }: Props) {
 
           <div className="ml-auto flex items-center gap-2">
             <span className="text-[11px] text-zinc-500">
-              {isNote ? 'Solo visible para tu equipo' : 'Ctrl+Enter para enviar'}
+              {isNote ? (
+                'Solo visible para tu equipo'
+              ) : (
+                <span className="hidden sm:inline">«/» respuestas rápidas · Ctrl+Enter envía</span>
+              )}
             </span>
             <button
               type="button"
               onClick={submitText}
               disabled={disabled || pending || !text.trim()}
-              className={`rounded-lg px-4 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-zinc-300 ${
+              className={`hidden rounded-lg px-4 py-1.5 sm:inline-block text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-zinc-300 ${
                 isNote
                   ? 'bg-[linear-gradient(120deg,#d97706,#f59e0b)] hover:opacity-95'
                   : 'bg-emerald-600 hover:opacity-95'

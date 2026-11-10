@@ -132,7 +132,11 @@ export function DashboardTopbar({
 
           <Link
             href="/dashboard"
-            className="flex shrink-0 items-center gap-1.5 lg:hidden"
+            className={cn(
+              'flex min-w-0 shrink items-center gap-1.5 lg:hidden',
+              // Gestionando una clínica, en móvil el chip ocupa el sitio del logo.
+              impersonatingClinic && 'max-sm:hidden',
+            )}
             aria-label={branding?.name ?? 'FUTURA'}
           >
             {branding?.logoUrl ? (
@@ -142,7 +146,7 @@ export function DashboardTopbar({
               <img
                 src={branding.logoUrl}
                 alt={branding.name}
-                className="h-8 w-auto max-w-[132px] rounded-lg bg-white/95 object-contain px-1.5 py-1"
+                className="h-8 w-auto max-w-full rounded-lg bg-white/95 object-contain px-1.5 py-1 sm:max-w-[132px]"
               />
             ) : (
               <>
@@ -153,6 +157,12 @@ export function DashboardTopbar({
               </>
             )}
           </Link>
+
+          {impersonatingClinic && (
+            <div className="min-w-0 sm:hidden">
+              <ImpersonationChip clinicName={impersonatingClinic} />
+            </div>
+          )}
 
           {/* Buscador — pastilla ancha como en el tablero de referencia */}
           <button
@@ -172,7 +182,11 @@ export function DashboardTopbar({
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
-          {impersonatingClinic && <ImpersonationChip clinicName={impersonatingClinic} />}
+          {impersonatingClinic && (
+            <div className="hidden min-w-0 sm:block">
+              <ImpersonationChip clinicName={impersonatingClinic} />
+            </div>
+          )}
 
           <button
             type="button"
@@ -208,7 +222,6 @@ export function DashboardTopbar({
         <MobileTabBar
           enabledModules={enabledModules}
           futuraHome={isSuperAdmin && !impersonatingClinic}
-          tasksBadge={tasksBadge}
           messagesBadge={messagesBadge}
           onMore={() => setMobileNavOpen(true)}
         />

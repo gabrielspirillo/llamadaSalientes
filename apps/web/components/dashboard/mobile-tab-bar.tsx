@@ -6,7 +6,6 @@ import { type EnabledModules, isModuleEnabled } from '@/lib/modules';
 import {
   Bot,
   CalendarDays,
-  ClipboardCheck,
   Gauge,
   Home,
   LayoutGrid,
@@ -14,10 +13,19 @@ import {
   MessageCircle,
   MessageSquare,
   ShieldCheck,
+  Users,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
-type Tab = { href: string; label: string; icon: LucideIcon; exact?: boolean; badge?: number };
+type Tab = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  exact?: boolean;
+  /** Subruta que tiene su propia pestaña (Agenda no se enciende en Pacientes). */
+  except?: string;
+  badge?: number;
+};
 
 /**
  * Barra de pestañas del móvil, abajo y al alcance del pulgar, como en una app
@@ -27,14 +35,12 @@ type Tab = { href: string; label: string; icon: LucideIcon; exact?: boolean; bad
 export function MobileTabBar({
   enabledModules,
   futuraHome,
-  tasksBadge = 0,
   messagesBadge = 0,
   onMore,
 }: {
   enabledModules: EnabledModules;
   /** Super-admin en la organización de Futura (no gestionando una clínica). */
   futuraHome: boolean;
-  tasksBadge?: number;
   messagesBadge?: number;
   onMore: () => void;
 }) {
@@ -55,7 +61,12 @@ export function MobileTabBar({
       ]
     : [
         { href: '/dashboard', label: 'Inicio', icon: Home, exact: true },
-        { href: '/dashboard/agenda', label: 'Agenda', icon: CalendarDays },
+        {
+          href: '/dashboard/agenda',
+          label: 'Agenda',
+          icon: CalendarDays,
+          except: '/dashboard/agenda/pacientes',
+        },
         whatsapp
           ? { href: '/dashboard/whatsapp', label: 'WhatsApp', icon: MessageCircle }
           : {
@@ -64,11 +75,13 @@ export function MobileTabBar({
               icon: MessageSquare,
               badge: messagesBadge,
             },
-        { href: '/dashboard/tasks', label: 'Tareas', icon: ClipboardCheck, badge: tasksBadge },
+        { href: '/dashboard/agenda/pacientes', label: 'Pacientes', icon: Users },
       ];
 
-  const isActive = (t: Tab) =>
-    t.exact ? pathname === t.href : pathname === t.href || pathname.startsWith(`${t.href}/`);
+  const isActive = (t: Tab) => {
+    if (t.except && (pathname === t.except || pathname.startsWith(`${t.except}/`))) return false;
+    return t.exact ? pathname === t.href : pathname === t.href || pathname.startsWith(`${t.href}/`);
+  };
   const anyActive = tabs.some(isActive);
   // Con WhatsApp en la barra, los mensajes del equipo se avisan en «Más».
   const moreBadge = !futuraHome && whatsapp ? messagesBadge : 0;

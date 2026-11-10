@@ -28,6 +28,7 @@ import { tenantHasEsign } from '@/lib/consents/service';
 import { contactDisplayNames } from '@/lib/patients/display-names';
 import { formatPhoneDisplay } from '@/lib/patients/names';
 import { getTenantTimezone } from '@/lib/tasks/materialize';
+import { ChatInfoButton, ChatInfoPanel } from '../_components/chat-info';
 import { ContactSidebar } from '../_components/contact-sidebar';
 import { ConversationActions } from '../_components/conversation-actions';
 import { MessageComposer } from '../_components/message-composer';
@@ -175,19 +176,26 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
   }
 
   return (
-    <div className="-mx-4 flex flex-col overflow-hidden rounded-none border-(--color-border) bg-white sm:mx-0 sm:rounded-[22px] sm:border sm:shadow-[var(--shadow-soft)] lg:h-[calc(100dvh-8.75rem)] lg:flex-row">
+    // En móvil el chat ocupa la pantalla entera, por encima de la barra
+    // superior y de la de pestañas, como una app de mensajería: sólo se
+    // desplazan los mensajes y la caja de escribir queda siempre a mano. Antes
+    // se desplazaba la página entera, el chat abría por el mensaje más antiguo
+    // y para escribir había que bajar hasta el final.
+    <div className="flex flex-col overflow-hidden bg-white max-lg:fixed max-lg:inset-0 max-lg:z-50 max-lg:h-[100dvh] lg:h-[calc(100dvh-8.75rem)] lg:flex-row lg:rounded-[22px] lg:border lg:border-(--color-border) lg:shadow-[var(--shadow-soft)]">
       {/* Centro: cabecera + thread + composer */}
-      <div className="flex h-[calc(100dvh-8.75rem)] min-h-0 min-w-0 flex-1 flex-col lg:h-auto">
-        <div className="flex items-center justify-between gap-3 border-b border-(--color-border-subtle) bg-white/80 px-4 py-3 backdrop-blur-xl">
-          <div className="flex min-w-0 items-center gap-3">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="flex items-center justify-between gap-2 border-b border-(--color-border-subtle) bg-white px-2 pb-2 pt-[max(8px,env(safe-area-inset-top))] sm:gap-3 sm:px-4 lg:py-3">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <Link
               href="/dashboard/whatsapp"
               aria-label="Volver a conversaciones"
-              className="group inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-500 transition-all duration-300 hover:bg-zinc-100 hover:text-brand-700"
+              className="group inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-zinc-500 transition-all duration-300 hover:bg-zinc-100 hover:text-brand-700"
             >
               <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
             </Link>
-            <Avatar name={displayName} size={40} />
+            <span className="hidden sm:inline-flex">
+              <Avatar name={displayName} size={40} />
+            </span>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="truncate text-[17px] font-bold tracking-tight text-zinc-900">
@@ -211,11 +219,24 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
               </p>
             </div>
           </div>
-          <ConversationActions
-            conversationId={row.conv.id}
-            status={row.conv.status}
-            urgentFlag={row.conv.urgentFlag}
-          />
+          <div className="flex shrink-0 items-center gap-1">
+            <div className="hidden lg:block">
+              <ConversationActions
+                conversationId={row.conv.id}
+                status={row.conv.status}
+                urgentFlag={row.conv.urgentFlag}
+              />
+            </div>
+            <div className="lg:hidden">
+              <ConversationActions
+                conversationId={row.conv.id}
+                status={row.conv.status}
+                urgentFlag={row.conv.urgentFlag}
+                only="primary"
+              />
+            </div>
+            <ChatInfoButton />
+          </div>
         </div>
 
         <MessagesStream
@@ -238,59 +259,70 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
           senderUserEmails={Object.fromEntries(senderUserMap)}
         />
 
-        <div className="border-t border-(--color-border-subtle) bg-white p-3">
+        <div className="border-t border-(--color-border-subtle) bg-white p-2 pb-[max(8px,env(safe-area-inset-bottom))] sm:p-3">
           <MessageComposer conversationId={row.conv.id} disabled={row.conv.status === 'CLOSED'} />
         </div>
       </div>
 
-      <ContactSidebar
-        conversationId={row.conv.id}
-        fichaHref={fichaHref}
-        brief={
-          <CaseSummaryCards
-            tenantId={tenant.id}
-            patientIds={patientIds}
-            profile={careProfile}
-            timezone={timezone}
-            hasEsign={hasEsign}
+      <ChatInfoPanel
+        actions={
+          <ConversationActions
+            conversationId={row.conv.id}
+            status={row.conv.status}
+            urgentFlag={row.conv.urgentFlag}
+            only="secondary"
           />
         }
-        contact={{
-          id: row.contact.id,
-          name: displayName,
-          whatsappName: display?.whatsappName ?? null,
-          phoneE164: row.contact.phoneE164,
-          ghlContactId: row.contact.ghlContactId,
-          avatarUrl: row.contact.avatarUrl,
-          createdAt: row.contact.createdAt,
-        }}
-        conversation={{
-          channel: row.conv.channel,
-          status: row.conv.status,
-          aiEnabled: row.conv.aiEnabled,
-          assignedUserId: row.conv.assignedUserId,
-          lastMsgAt: row.conv.lastMsgAt,
-          humanTakeoverUntil: row.conv.humanTakeoverUntil,
-        }}
-        appointments={apptRows.map((r) => ({
-          id: r.appt.ghlAppointmentId,
-          startTime: r.appt.startTime ? r.appt.startTime.toISOString() : null,
-          status: r.appt.status,
-          treatment: r.treatmentName,
-        }))}
-        tagsAll={allTags}
-        tagsOnConversation={tagsOnConversation}
-        members={membersRows}
-        leadMemory={
-          leadMem
-            ? {
-                profileSummary: leadMem.profileSummary,
-                facts: leadMem.facts,
-                updatedAt: leadMem.updatedAt.toISOString(),
-              }
-            : null
-        }
-      />
+      >
+        <ContactSidebar
+          conversationId={row.conv.id}
+          fichaHref={fichaHref}
+          brief={
+            <CaseSummaryCards
+              tenantId={tenant.id}
+              patientIds={patientIds}
+              profile={careProfile}
+              timezone={timezone}
+              hasEsign={hasEsign}
+            />
+          }
+          contact={{
+            id: row.contact.id,
+            name: displayName,
+            whatsappName: display?.whatsappName ?? null,
+            phoneE164: row.contact.phoneE164,
+            ghlContactId: row.contact.ghlContactId,
+            avatarUrl: row.contact.avatarUrl,
+            createdAt: row.contact.createdAt,
+          }}
+          conversation={{
+            channel: row.conv.channel,
+            status: row.conv.status,
+            aiEnabled: row.conv.aiEnabled,
+            assignedUserId: row.conv.assignedUserId,
+            lastMsgAt: row.conv.lastMsgAt,
+            humanTakeoverUntil: row.conv.humanTakeoverUntil,
+          }}
+          appointments={apptRows.map((r) => ({
+            id: r.appt.ghlAppointmentId,
+            startTime: r.appt.startTime ? r.appt.startTime.toISOString() : null,
+            status: r.appt.status,
+            treatment: r.treatmentName,
+          }))}
+          tagsAll={allTags}
+          tagsOnConversation={tagsOnConversation}
+          members={membersRows}
+          leadMemory={
+            leadMem
+              ? {
+                  profileSummary: leadMem.profileSummary,
+                  facts: leadMem.facts,
+                  updatedAt: leadMem.updatedAt.toISOString(),
+                }
+              : null
+          }
+        />
+      </ChatInfoPanel>
     </div>
   );
 }
