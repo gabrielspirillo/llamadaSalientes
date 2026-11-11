@@ -682,3 +682,60 @@ function readRemindersResume(context: Record<string, unknown>): AgentInput['remi
     expiresAt: r.expiresAt,
   };
 }
+
+/**
+ * El asistente falló en todos los intentos (el modelo, una herramienta, un
+ * corte de red…). Hasta el 11/11 eso sólo quedaba en el log del worker: una
+ * familia contestó a la pregunta de la fiebre y nadie le respondió en más de
+ * una hora sin que el equipo se enterase. Ahora queda el run con el error (lo
+ * marca «Revisión del asistente») y se avisa al equipo como en un traspaso:
+ * tarea + tarjeta en el chat. Al paciente no se le manda nada automático.
+ * Nunca lanza.
+ */
+export async function onWhatsappJobGaveUp(
+  data: QueueJobs['wa-process'],
+  err: Error | undefined,
+): Promise<void> {
+  try {
+    await writeAgentRun({
+      tenantId: data.tenantId,
+      conversationId: data.conversationId,
+      triggerMessageId: data.messageId,
+      responseMessageId: null,
+      agent: 'main',
+      model: 'none',
+      intent: null,
+      intentConfidence: null,
+      intentReasoning: 'guardrail: job_failed',
+      handoff: true,
+      urgent: false,
+      tokensIn: 0,
+      tokensOut: 0,
+      latencyMs: 0,
+      fallbackUsed: false,
+      toolsCalled: [],
+      errorText: `El asistente no pudo contestar: ${(err?.message ?? 'error desconocido').slice(0, 500)}`,
+      traceId: null,
+    });
+  } catch (e) {
+    console.warn('[wa-process] no se pudo guardar el run fallido', (e as Error).message);
+  }
+  try {
+    const { onWhatsappHandoff } = await import('@/lib/tasks/hooks');
+    await onWhatsappHandoff({ tenantId: data.tenantId, conversationId: data.conversationId });
+  } catch (e) {
+    console.warn('[wa-process] tarea de fallo', (e as Error).message);
+  }
+  try {
+    const { postWhatsappHandoff } = await import('@/lib/messaging/bot');
+    await postWhatsappHandoff({
+      tenantId: data.tenantId,
+      conversationId: data.conversationId,
+      patientName: `Contacto ${data.contactPhoneE164}`,
+      phone: data.contactPhoneE164,
+      lastLines: ['⚠️ El asistente no pudo contestar este mensaje: respóndele desde el chat.'],
+    });
+  } catch (e) {
+    console.warn('[wa-process] aviso de fallo', (e as Error).message);
+  }
+}

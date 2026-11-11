@@ -1839,6 +1839,14 @@ Escrito después de una auditoría que encontró varias de estas rotas. Antes de
 
 ## Colas: invariantes
 
+- **Un `wa-process` que falla en todos los intentos no puede quedar en
+  silencio** (`onWhatsappJobGaveUp`, enganchado al `failed` del worker en el
+  último intento): guarda el run con el error (sale en «Revisión del
+  asistente») y avisa al equipo como un traspaso (tarea + tarjeta). El 11/11
+  una familia contestó a la pregunta de la fiebre y nadie le respondió en más
+  de una hora: el job falló sin run y sólo quedó en el log. Al paciente no se
+  le manda nada automático.
+
 - **La clave del caché de pasos incluye `job.timestamp`** (`stepScope()`). Varios jobIds son estables por entidad (`rem-send-<reminderId>`), así que sin el timestamp una corrida nueva lee los pasos de la anterior. Ese bug hacía que un recordatorio reagendado no se enviara nunca.
 - **Un envío externo y su marca en BD no comparten `step.run`.** Si falla la escritura, el reintento le vuelve a mandar el mensaje al paciente.
 - **Un guard de "ya procesado" que lee y después actúa necesita lock** (`acquireLock()` de `lib/queue/lock.ts`) si el efecto ocurre antes de escribir la marca.

@@ -28,7 +28,7 @@ import { processTaskRoutinesTickJob } from '@/worker/jobs/task-routines-tick';
 import { processWaitlistOfferExpireJob } from '@/worker/jobs/waitlist-offer-expire';
 import { processWaitlistOfferSendJob } from '@/worker/jobs/waitlist-offer-send';
 import { processWhatsappEchoJob } from '@/worker/jobs/whatsapp-echo';
-import { processWhatsappJob } from '@/worker/jobs/whatsapp-process';
+import { onWhatsappJobGaveUp, processWhatsappJob } from '@/worker/jobs/whatsapp-process';
 
 function num(name: string, def: number): number {
   const v = process.env[name];
@@ -77,6 +77,10 @@ function buildWaWorker(): Worker<QueueJobs['wa-process']> {
       attemptsMade: job?.attemptsMade,
       err: err?.message,
     });
+    // Último intento: que la familia no se quede sin respuesta en silencio.
+    if (job && job.attemptsMade >= (job.opts.attempts ?? 1)) {
+      void onWhatsappJobGaveUp(job.data, err);
+    }
   });
 
   return worker;
