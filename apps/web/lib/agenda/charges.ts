@@ -311,6 +311,24 @@ export async function registerPayment(
     throw new AgendaValidationError('Falta la cita que se cobra.');
   }
 
+  // Corregir un pago es volver a registrarlo (mismo cargo). Lo único que no se
+  // puede es cambiar el importe de un cobro que ya está en una factura emitida:
+  // la factura es inmutable y quedarían diciendo cosas distintas.
+  const [current] = await db
+    .select({ amountCents: patientCharges.amountCents, invoiceId: patientCharges.invoiceId })
+    .from(patientCharges)
+    .where(and(eq(patientCharges.tenantId, scope.tenantId), eq(patientCharges.id, chargeId)))
+    .limit(1);
+  if (
+    current?.invoiceId &&
+    current.amountCents !== null &&
+    current.amountCents !== input.amountCents
+  ) {
+    throw new AgendaValidationError(
+      'Este cobro ya está en una factura emitida: para cambiar el importe, anula la factura y vuelve a emitirla.',
+    );
+  }
+
   const [row] = await db
     .update(patientCharges)
     .set({
@@ -362,11 +380,24 @@ export async function paymentsForAppointments(
   tenantId: string,
   appointmentIds: string[],
 ): Promise<
-  Map<string, { paid: boolean; method: PaymentMethod | null; amountCents: number | null }>
+  Map<
+    string,
+    {
+      paid: boolean;
+      method: PaymentMethod | null;
+      amountCents: number | null;
+      paidOn: string | null;
+    }
+  >
 > {
   const out = new Map<
     string,
-    { paid: boolean; method: PaymentMethod | null; amountCents: number | null }
+    {
+      paid: boolean;
+      method: PaymentMethod | null;
+      amountCents: number | null;
+      paidOn: string | null;
+    }
   >();
   if (appointmentIds.length === 0) return out;
   const rows = await db
@@ -375,6 +406,7 @@ export async function paymentsForAppointments(
       status: patientCharges.status,
       method: patientCharges.paymentMethod,
       amountCents: patientCharges.amountCents,
+      paidOn: patientCharges.paidOn,
     })
     .from(patientCharges)
     .where(
@@ -389,6 +421,7 @@ export async function paymentsForAppointments(
       paid: r.status === 'PAID',
       method: isPaymentMethod(r.method) ? r.method : null,
       amountCents: r.amountCents,
+      paidOn: r.paidOn ?? null,
     });
   }
   return out;

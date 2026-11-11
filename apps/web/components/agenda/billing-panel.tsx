@@ -25,6 +25,7 @@ import {
   FileText,
   Loader2,
   Paperclip,
+  Pencil,
   Plus,
   Receipt,
   Upload,
@@ -47,6 +48,8 @@ export interface BillingLineView {
   paymentMethod: PaymentMethod | null;
   /** "14 mar 2026" */
   paidOnLabel: string | null;
+  /** 'YYYY-MM-DD', para editar el pago con su fecha. */
+  paidOn?: string | null;
   files: { id: string; name: string; kind: ChargeFileKind }[];
   /** La factura emitida por esta cita, si la hay. */
   invoice?: { id: string; number: string } | null;
@@ -112,7 +115,7 @@ export function BillingPanel({
     setForm({
       lineKey: line.key,
       amount: centsToInput(line.amountCents),
-      paidOn: todayKey,
+      paidOn: line.paidOn ?? todayKey,
       method: line.paymentMethod ?? 'CARD',
       file: null,
     });
@@ -169,7 +172,10 @@ export function BillingPanel({
           });
         }
       } else {
-        setNotice({ tone: 'ok', text: 'Pago registrado.' });
+        setNotice({
+          tone: 'ok',
+          text: line.status === 'PAID' ? 'Pago corregido.' : 'Pago registrado.',
+        });
       }
       setForm(null);
       router.refresh();
@@ -251,7 +257,9 @@ export function BillingPanel({
         <div className="flex flex-col gap-3.5 rounded-[18px] border border-brand-100 bg-brand-50 p-4">
           <div className="flex items-start gap-2.5">
             <div className="min-w-0 flex-1">
-              <p className="text-[15px] font-bold text-zinc-900">Registrar pago</p>
+              <p className="text-[15px] font-bold text-zinc-900">
+                {formLine.status === 'PAID' ? 'Editar pago' : 'Registrar pago'}
+              </p>
               <p className="mt-0.5 text-[13px] text-brand-800">
                 {formLine.when} · {formLine.concept}
               </p>
@@ -422,6 +430,18 @@ export function BillingPanel({
                     {!paid && (
                       <Button size="sm" onClick={() => openPay(line)} disabled={pending}>
                         Registrar pago
+                      </Button>
+                    )}
+                    {/* Corregir un pago (importe, forma o fecha): mismo formulario. Un
+                        cobro ya facturado no cambia de importe (lo dice el servidor). */}
+                    {paid && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => openPay(line)}
+                        disabled={pending}
+                      >
+                        <Pencil className="h-3.5 w-3.5" /> Editar pago
                       </Button>
                     )}
                     <label

@@ -253,6 +253,7 @@ export default async function PacienteDossierPage({
     status: l.status,
     paymentMethod: l.paymentMethod,
     paidOnLabel: l.paidOn ? fmtDay.format(dateFromKey(l.paidOn)) : null,
+    paidOn: l.paidOn,
     files: l.files,
   }));
 

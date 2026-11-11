@@ -20,7 +20,7 @@ import {
   primaryGuardian,
 } from '@/lib/care-profile/policy';
 import type { FamilyPatient } from '@/lib/care-profile/siblings';
-import { MAX_PRIOR_RED_FLAGS } from '@/lib/care-profile/signals';
+import { MAX_PRIOR_RED_FLAGS, MIN_PRIOR_RED_FLAGS } from '@/lib/care-profile/signals';
 import { db } from '@/lib/db/client';
 import {
   agendaAppointments,
@@ -104,7 +104,7 @@ export const patientMarksSchema = z.object({
   hesitant: z.boolean().optional(),
   hesitantNote: z.string().trim().max(300).optional().or(z.literal('')),
   /** Banderas rojas de antes de la plataforma. Si no se manda, se deja como estaba. */
-  priorRedFlags: z.number().int().min(0).max(MAX_PRIOR_RED_FLAGS).optional(),
+  priorRedFlags: z.number().int().min(MIN_PRIOR_RED_FLAGS).max(MAX_PRIOR_RED_FLAGS).optional(),
   /** Hermanos en la agenda: null = calcularlo. Si no se manda, se deja como estaba. */
   siblingMark: z.enum(['TWIN', 'SIBLING', 'NONE']).nullable().optional(),
 });

@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { isOfferHour, parseAdvanceReply } from '@/lib/agenda/advance-offers';
+import {
+  asksAboutSlots,
+  isOfferHour,
+  parseAdvanceReply,
+  withArticle,
+} from '@/lib/agenda/advance-offers';
 
 describe('respuesta a la oferta de adelanto', () => {
   it('lee el número o el sí/no de la familia', () => {
@@ -108,5 +113,31 @@ describe('horario de las ofertas: de 08:00 a 23:00 (clínica, 9/11)', () => {
     expect(isOfferHour(madrid(22, 40), 'Europe/Madrid')).toBe(true);
     expect(isOfferHour(madrid(22, 41), 'Europe/Madrid')).toBe(false);
     expect(isOfferHour(madrid(23, 30), 'Europe/Madrid')).toBe(false);
+  });
+});
+
+describe('oferta de adelanto: texto y respuestas (11/11)', () => {
+  it('sin "el" delante de hoy/mañana', () => {
+    expect(withArticle('mañana (jueves, 12 de noviembre)', 'el')).toBe(
+      'mañana (jueves, 12 de noviembre)',
+    );
+    expect(withArticle('mañana (jueves, 12 de noviembre)', 'del')).toBe(
+      'de mañana (jueves, 12 de noviembre)',
+    );
+    expect(withArticle('viernes, 13 de noviembre', 'el')).toBe('el viernes, 13 de noviembre');
+  });
+
+  it('"hola" o "¿hay algo más pronto?" con la oferta abierta recuerdan la oferta', () => {
+    expect(asksAboutSlots('Hola')).toBe(true);
+    expect(asksAboutSlots('Hay alguna cita disponible más pronto?')).toBe(true);
+    expect(
+      asksAboutSlots(
+        'Mi hijo ha pasado mala noche con tos y algo de fiebre, ¿vamos igualmente a la sesión del viernes o mejor la movemos?',
+      ),
+    ).toBe(false);
+  });
+
+  it('"No, gracias. Si se desocupara un hueco antes avisarme" es un no si va a la oferta', () => {
+    expect(parseAdvanceReply('No, gracias. Si se desocupara un hueco antes avisarme')).toBe('no');
   });
 });

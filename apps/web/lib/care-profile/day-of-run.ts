@@ -18,7 +18,7 @@ import {
   fillScript,
   parseMessageScripts,
 } from '@/lib/care-profile/messages';
-import { activeGuardians, parseGuardians } from '@/lib/care-profile/policy';
+import { parseGuardians, primaryGuardian } from '@/lib/care-profile/policy';
 import { db } from '@/lib/db/client';
 import {
   agendaAppointments,
@@ -217,29 +217,30 @@ async function resetDayOfState(appt: Appointment): Promise<void> {
 }
 
 /**
- * A quién va el recordatorio del día: el teléfono de la cita y, en clínicas
- * con ficha por niño, también los demás tutores con móvil (el padre de un
- * paciente no recibía nunca el aviso porque la cita estaba al de la madre).
+ * A quién va el recordatorio del día: SÓLO al teléfono que dio la cita.
+ * Del 10 al 11/11 se mandó también a los demás tutores de la ficha y la
+ * clínica lo pidió fuera («que sólo le llegue al que agendó, como antes»).
+ * Sin teléfono en la cita (una cita del panel sin móvil), el titular de la
+ * ficha.
  */
 export async function dayOfRecipients(appt: Appointment): Promise<string[]> {
-  const out: string[] = [];
-  const add = (raw: string | null | undefined) => {
+  const valid = (raw: string | null | undefined) => {
     const p = raw ? normalizePatientPhone(raw) : null;
-    if (p && /^\+\d{8,15}$/.test(p) && !out.some((x) => samePhone(x, p))) out.push(p);
+    return p && /^\+\d{8,15}$/.test(p) ? p : null;
   };
-  add(appt.patientPhone);
-  if (appt.patientId) {
-    const [person] = await db
-      .select({ guardians: patients.guardians })
-      .from(patients)
-      .where(and(eq(patients.tenantId, appt.tenantId), eq(patients.id, appt.patientId)))
-      .limit(1);
-    for (const g of activeGuardians(parseGuardians(person?.guardians))) add(g.phone);
-  }
-  return out;
+  const own = valid(appt.patientPhone);
+  if (own) return [own];
+  if (!appt.patientId) return [];
+  const [person] = await db
+    .select({ guardians: patients.guardians })
+    .from(patients)
+    .where(and(eq(patients.tenantId, appt.tenantId), eq(patients.id, appt.patientId)))
+    .limit(1);
+  const holder = valid(primaryGuardian(parseGuardians(person?.guardians))?.phone);
+  return holder ? [holder] : [];
 }
 
-/** Al primero se le manda sí o sí (si falla, se reintenta); a los demás, best-effort. */
+/** Hoy es un solo destinatario; el bucle queda por si vuelve a haber más. */
 async function sendToRecipients(
   appt: Appointment,
   texts: string[],
@@ -653,7 +654,7 @@ export async function handleDayOfTextReply(args: {
       mine.push(a);
       continue;
     }
-    // El recordatorio también va a los otros tutores: su "1" vale igual.
+    // Una cita sin teléfono propio avisa al titular de la ficha: su "1" vale.
     const [full] = await db
       .select()
       .from(agendaAppointments)

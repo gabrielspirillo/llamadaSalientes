@@ -60,6 +60,8 @@ export interface CalendarPayment {
   paid: boolean;
   method: 'CARD' | 'CASH' | 'BIZUM' | 'TRANSFER' | null;
   amountCents: number | null;
+  /** 'YYYY-MM-DD': corregir el importe no cambia la fecha del cobro. */
+  paidOn?: string | null;
 }
 
 export interface CalendarSignals {

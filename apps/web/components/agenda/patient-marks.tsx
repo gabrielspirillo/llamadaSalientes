@@ -8,8 +8,8 @@ import { PRIORITY_LABELS, type PriorityDescription } from '@/lib/care-profile/po
 import {
   MAX_PRIOR_RED_FLAGS,
   type RedFlagCounts,
-  clampPrior,
   describeRedFlags,
+  priorForTotal,
   totalRedFlags,
 } from '@/lib/care-profile/signals';
 import { AlertTriangle, Check, CircleHelp, Flag, Loader2 } from 'lucide-react';
@@ -65,12 +65,14 @@ export function PatientMarks({
   const [review, setReview] = React.useState(googleReview);
   const [doubt, setDoubt] = React.useState(hesitant);
   const [doubtNote, setDoubtNote] = React.useState(hesitantNote ?? '');
-  const [prior, setPrior] = React.useState(String(redFlags.prior));
+  // El campo es el TOTAL (lo que la clínica ve y quiere): poner 0 las quita
+  // todas, también las contadas de la agenda. Se guarda como ajuste.
+  const [total, setTotal] = React.useState(String(totalRedFlags(redFlags)));
   const [sibling, setSibling] = React.useState<string>(siblingMark ?? 'AUTO');
   const siblingId = React.useId();
   const priorId = React.useId();
 
-  const priorValue = clampPrior(Number(prior || 0));
+  const priorValue = priorForTotal(redFlags, Number(total || 0));
   const dirty =
     flag !== priorityFlag ||
     review !== googleReview ||
@@ -213,14 +215,14 @@ export function PatientMarks({
               Banderas rojas: {flagsTotal}
             </span>
             <span className="block text-[12px] text-zinc-600">
-              {flagsTotal > 0 ? describeRedFlags(liveFlags) : 'Ni faltas ni cancelaciones.'} Se
-              suman solas con cada falta o cancelación de la familia.
+              {flagsTotal > 0 ? describeRedFlags(liveFlags) : 'Sin banderas.'} Se suman solas con
+              cada falta o cancelación de la familia; pon 0 para quitarlas.
             </span>
           </span>
         </div>
         <div className="flex items-center justify-between gap-3 text-[12px] text-zinc-700">
           <label htmlFor={priorId}>
-            Anteriores a este panel (las que ya teníais en los contactos)
+            Banderas en total (súmale las que ya teníais en los contactos, o pon 0 para quitarlas)
           </label>
           <Input
             type="number"
@@ -228,10 +230,10 @@ export function PatientMarks({
             min={0}
             max={MAX_PRIOR_RED_FLAGS}
             id={priorId}
-            value={prior}
+            value={total}
             disabled={!canEdit}
             onChange={(e) => {
-              setPrior(e.target.value);
+              setTotal(e.target.value);
               setSaved(false);
             }}
             className="w-20 text-right"

@@ -353,6 +353,31 @@ export function AppointmentSheet({
                     </button>
                   );
                 })}
+                {/* Pagada con otro importe (45 en vez de 40): se corrige aquí, con la
+                    misma forma de pago y fecha. Antes había que adivinar que pulsar
+                    otra vez el método lo sobrescribía. */}
+                {item.payment?.paid &&
+                  item.payment.method &&
+                  amount.trim() !== '' &&
+                  amount.trim() !== centsToInput(item.payment.amountCents) && (
+                    <button
+                      type="button"
+                      disabled={pending}
+                      onClick={() =>
+                        runStay(() =>
+                          registerPaymentAction({
+                            appointmentId: item.id,
+                            amount,
+                            paidOn: item.payment?.paidOn ?? todayKey,
+                            paymentMethod: item.payment?.method ?? 'CARD',
+                          }),
+                        )
+                      }
+                      className="rounded-full bg-emerald-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                    >
+                      Guardar importe
+                    </button>
+                  )}
                 {item.payment?.paid && (
                   <button
                     type="button"

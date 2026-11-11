@@ -1211,6 +1211,21 @@ antes de reservar (`conversationWantsEarlier`) la cita nace con
 `wants_earlier`. Sin cita, `request_earlier_appointment` ya no deja prometer
 "te avisamos": el asistente reserva y la marca va en la reserva.
 
+**Respuestas ambiguas (11/11)**: un «sí»/«no» suelto sólo contesta a la
+oferta si después de ella nadie más les escribió (`talkedAfterOffer`; no
+cuentan la oferta, su recordatorio ni los mensajes que nombran la hora del
+hueco) o si citan la oferta. Ese día la familia preguntó «¿hay algo más
+pronto?», el asistente le dio el lunes, contestó «No, gracias» a esa lista y
+el sistema cerró la oferta de hoy como rechazada. Y si con la oferta abierta
+escriben «hola» o «¿hay algo antes?» (`asksAboutSlots`), se les recuerda la
+oferta (`remindOffer`) en vez de pasar al asistente, que no la conoce. El
+texto ya no dice «la cita … el mañana» (`withArticle`).
+**Mientras el hueco está reservado para la cadena de ofertas, el asistente no
+lo ofrece a nadie** («hoy no me queda nada»): es a propósito, para no darlo
+dos veces. Si la clínica lo ofrece a mano en paralelo, puede acabar con dos
+familias en el mismo hueco (pasó el 11/11: dos citas a las 19:30 en nueve
+minutos).
+
 **Cómo va la oferta**: el hueco queda **reservado con un bloqueo** de la
 agenda (`professional_time_off`, motivo "Hueco reservado…") mientras la
 familia contesta: **20 minutos** (la clínica: 2 h → 45 min el 5/11 → 20 min
@@ -1276,9 +1291,9 @@ reclamaba) y la respuesta del día anterior de una cita movida. Ahora:
 - Confirmada HOY desde el panel (status CONFIRMED tocado hoy) no recibe nada.
 - **Pasada la hora de anular no empieza la secuencia** (`nextDayOfStep`): un
   recordatorio a las 16:00 anularía la cita cinco minutos después.
-- **Va a todos los tutores con móvil** (`dayOfRecipients`: el de la cita + los
-  `guardians` de la ficha), y el "1" de cualquiera vale. Al primero se le manda
-  sí o sí; a los demás, best-effort.
+- **Va SÓLO al teléfono que dio la cita** (`dayOfRecipients`; sin teléfono en
+  la cita, el titular de la ficha). Del 10 al 11/11 iba a todos los tutores y
+  Raquel lo pidió fuera: «que sólo le llegue al que agendó, como antes».
 
 Prueba de extremo a extremo contra QA en el scratchpad de la sesión
 (`qa/e2e-dia-cita.ts`, 9 casos, con hora simulada de las 09:00).
@@ -1294,7 +1309,11 @@ familias que dudan, una 🚩 por cada falta o cancelación). Migración
 - **Las banderas rojas se CUENTAN, no se guardan**: citas `NO_SHOW` y
   `CANCELLED` de la agenda (`countRedFlagsByPatientKey`, una consulta
   agrupada; regla pura en `lib/care-profile/signals.ts`, con tests).
-  `patients.prior_red_flags` sólo trae las de antes de la plataforma.
+  `patients.prior_red_flags` es un **ajuste a mano con signo** (migración
+  `0070`): positivo = las de antes de la plataforma, negativo = quitadas. En la
+  ficha el campo es el TOTAL (`priorForTotal`): poner 0 las quita todas,
+  también las contadas, y una falta nueva vuelve a sumar desde ahí. El total
+  nunca baja de 0 (`totalRedFlags`).
 - **Cambiar la cita de día no es bandera**: la vieja se anula con
   `RESCHEDULE_REASON` ("Cambiada por el paciente", `lib/agenda/shared.ts`) y
   se excluye del conteo (`isRescheduleReason`, también en el SQL de
@@ -1498,6 +1517,12 @@ pago (importe, método, fecha) y sus comprobantes.
   DNI del tutor. `GET /api/agenda/charges/files/[id]` firma la URL en cada
   lectura (10 min) y redirige; la fila se busca por (clínica, id) y, para un
   profesional que sólo ve su agenda, por su cita.
+- **Corregir un pago** (11/11, Raquel cobró 45 en una sesión de 40): en
+  Contable, **Editar pago** abre el mismo formulario con importe, forma y fecha;
+  en la hoja de la cita, cambiar el importe de una cita pagada muestra
+  **Guardar importe** (misma forma y fecha). Es volver a registrar el pago
+  sobre el mismo cargo. Lo único que se rechaza en el servidor es cambiar el
+  importe de un cobro que ya está en una factura emitida (`registerPayment`).
 - **Quién**: quien puede dar citas puede cobrarlas (`requireAgendaWriter`); un
   profesional restringido sólo sus citas (`assertChargeAppointmentInScope`,
   `assertChargeInScope`; un cargo suelto no es de nadie y se le niega). Los

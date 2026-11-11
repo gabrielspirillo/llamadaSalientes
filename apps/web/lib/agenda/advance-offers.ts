@@ -35,9 +35,13 @@ import {
   slotPriorityRequests,
   tenantCareProfile,
   treatments,
+  whatsappContacts,
+  whatsappConversations,
+  whatsappMessages,
 } from '@/lib/db/schema';
 import { postSystemEvent } from '@/lib/messaging/bot';
 import { getPatientPerson } from '@/lib/patients/persons';
+import { samePhoneSql } from '@/lib/patients/registry';
 import { addDaysToKey, localDateKey, localParts, parseDateKey, zonedToUtc } from '@/lib/tasks/tz';
 import { relativeDayLabel } from '@/lib/whatsapp/agent/slot-mention';
 
@@ -190,6 +194,15 @@ function describe(d: Date, tz: string, todayKey: string): { day: string; time: s
   });
   const day = rel === 'hoy' || rel === 'mañana' ? `${rel} (${long})` : long;
   return { day, time: `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}` };
+}
+
+/**
+ * "el viernes…" pero "mañana (jueves…)", no "el mañana": así salió la oferta
+ * del 11/11. Con un día relativo no va artículo ("del" → "de").
+ */
+export function withArticle(day: string, article: 'el' | 'del'): string {
+  if (/^(hoy|mañana)\b/.test(day)) return article === 'del' ? `de ${day}` : day;
+  return `${article} ${day}`;
 }
 
 /**
@@ -396,8 +409,8 @@ export async function offerFreedSlot(
   const clinic = tenant?.name?.trim() || 'la clínica';
   const ask =
     target.advancePreference !== 'ACCEPTS'
-      ? `Tenéis la cita de ${patientName} el ${cita.day} a las ${cita.time}. ¿Os vendría bien adelantarla a ese hueco?`
-      : `Nos dijisteis que queríais adelantar la cita de ${patientName} del ${cita.day} a las ${cita.time}. ¿Os la cambiamos a ese hueco?`;
+      ? `Tenéis la cita de ${patientName} ${withArticle(cita.day, 'el')} a las ${cita.time}. ¿Os vendría bien adelantarla a ese hueco?`
+      : `Nos dijisteis que queríais adelantar la cita de ${patientName} ${withArticle(cita.day, 'del')} a las ${cita.time}. ¿Os la cambiamos a ese hueco?`;
   const withWhom = professional ? ` con ${professional.name}` : '';
   const text = `${hello}, soy el asistente virtual de la agenda de ${clinic}. Se ha liberado un hueco ${hueco.day} a las ${hueco.time}${withWhom}. ${ask}\n\n${validityLine(now, expiresAt, tz)}`;
   const sent = await sendClinicWhatsapp(
@@ -954,6 +967,66 @@ export function quoteIsForOffer(quoted: string | null): boolean {
   return /se ha liberado un hueco/i.test(quoted);
 }
 
+/** Mensajes que SON la oferta (o su recordatorio): no cuentan como "otra conversación". */
+const OFFER_TEXT = /se ha liberado un hueco|os tenemos guardado el hueco/i;
+
+/**
+ * ¿Les escribió alguien algo distinto de la oferta después de mandarla (el
+ * asistente o la clínica)? Entonces un "no, gracias" suelto contesta a ESO,
+ * no a la oferta. El 11/11 la familia preguntó "¿hay algo más pronto?", el
+ * asistente le dio huecos del lunes, contestó "No, gracias" a esa lista y el
+ * sistema cerró la oferta de hoy a las 19:30 como rechazada.
+ */
+async function talkedAfterOffer(row: typeof advanceOffers.$inferSelect): Promise<boolean> {
+  if (!row.sentAt) return false;
+  const digits = row.phoneE164.replace(/\D/g, '');
+  if (!digits) return false;
+  const rows = await db
+    .select({ text: whatsappMessages.contentText })
+    .from(whatsappMessages)
+    .innerJoin(whatsappConversations, eq(whatsappConversations.id, whatsappMessages.conversationId))
+    .innerJoin(whatsappContacts, eq(whatsappContacts.id, whatsappConversations.contactId))
+    .where(
+      and(
+        eq(whatsappConversations.tenantId, row.tenantId),
+        samePhoneSql(whatsappContacts.phoneE164, digits),
+        eq(whatsappMessages.direction, 'OUTBOUND'),
+        eq(whatsappMessages.internalNote, false),
+        gt(whatsappMessages.createdAt, new Date(row.sentAt.getTime() + 1000)),
+      ),
+    )
+    .limit(20);
+  // Lo que habla del MISMO hueco (la clínica insistiendo: "¿podrías hoy a las
+  // 19:30?") sigue siendo la oferta: su "sí" la acepta.
+  const tz = await tenantTimezone(row.tenantId);
+  const p = localParts(row.slotStartsAt, tz);
+  const sameSlot = new RegExp(`\\b${p.hour}\\s*[:.,h ]\\s*${String(p.minute).padStart(2, '0')}\\b`);
+  return rows.some((r) => !OFFER_TEXT.test(r.text ?? '') && !sameSlot.test(r.text ?? ''));
+}
+
+/**
+ * Un mensaje que no es sí/no pero va de lo mismo ("hola", "¿hay algo antes?")
+ * mientras la oferta está abierta: se le recuerda la oferta en vez de dejar
+ * que el asistente, que no sabe nada de ella, le ofrezca otros días.
+ */
+export function asksAboutSlots(text: string | null | undefined): boolean {
+  const t = (text ?? '').toLowerCase().normalize('NFD').replace(/\p{M}/gu, '').trim();
+  if (!t || t.length > 90) return false;
+  return /^(hola|buenas|buenos dias|buenas tardes)\b|\b(antes|pronto|hueco|disponib|adelant|hoy|esta tarde)\b/.test(
+    t,
+  );
+}
+
+async function remindOffer(row: typeof advanceOffers.$inferSelect): Promise<string> {
+  const tz = await tenantTimezone(row.tenantId);
+  const now = new Date();
+  const todayKey = localDateKey(now, tz);
+  const hueco = describe(row.slotStartsAt, tz, todayKey);
+  const until = localParts(row.expiresAt, tz);
+  const hhmm = `${String(until.hour).padStart(2, '0')}:${String(until.minute).padStart(2, '0')}`;
+  return `Os tenemos guardado el hueco de ${hueco.day} a las ${hueco.time} hasta las ${hhmm}. ¿Os cambiamos la cita a ese hueco? Responde 1️⃣ Sí o 2️⃣ No.`;
+}
+
 /** Respuesta escrita ("1", "sí", "no"…) de la familia a una oferta pendiente. */
 export async function handleAdvanceTextReply(args: {
   tenantId: string;
@@ -963,9 +1036,17 @@ export async function handleAdvanceTextReply(args: {
   quotedText?: string | null;
 }): Promise<boolean> {
   if (!quoteIsForOffer(args.quotedText ?? null)) return false;
+  const quotesOffer = args.quotedText != null;
   const row = await pendingOfferFor(args.tenantId, args.contactPhoneE164);
   const answer = parseAdvanceReply(args.text);
-  if (!answer) return false;
+  if (!answer) {
+    if (row && asksAboutSlots(args.text)) {
+      const reminder = await remindOffer(row);
+      await sendClinicWhatsapp(args.tenantId, args.contactPhoneE164, [reminder]).catch(() => false);
+      return true;
+    }
+    return false;
+  }
   if (!row) {
     const late = await recentlyExpiredOfferFor(args.tenantId, args.contactPhoneE164);
     if (!late) return false;
@@ -973,6 +1054,10 @@ export async function handleAdvanceTextReply(args: {
     await sendClinicWhatsapp(args.tenantId, args.contactPhoneE164, [text]).catch(() => false);
     return true;
   }
+  // Si después de la oferta les escribió el asistente o la clínica, el "sí" o
+  // el "no" suelto contesta a ese otro mensaje: lo lleva el asistente y la
+  // oferta sigue abierta hasta que la contesten (o citen la oferta).
+  if (!quotesOffer && (await talkedAfterOffer(row))) return false;
   const { messages, after } = await resolveOffer(row, answer);
   if (messages.length)
     await sendClinicWhatsapp(args.tenantId, args.contactPhoneE164, messages).catch(() => false);

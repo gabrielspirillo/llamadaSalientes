@@ -14,7 +14,10 @@ export interface RedFlagCounts {
   noShows: number;
   /** Citas anuladas por la familia (o sin dato de quién). */
   cancellations: number;
-  /** Las que la clínica traía de antes de la plataforma. */
+  /**
+   * Ajuste a mano sobre lo contado: positivo = las de antes de la plataforma,
+   * negativo = quitadas por la clínica (poner el total a 0 las borra todas).
+   */
   prior: number;
 }
 
@@ -26,8 +29,9 @@ export interface PatientSignals {
 
 export const EMPTY_RED_FLAGS: RedFlagCounts = { noShows: 0, cancellations: 0, prior: 0 };
 
-/** Tope de banderas previas que se aceptan a mano (lo mismo que el CHECK). */
+/** Topes del ajuste a mano (los mismos que el CHECK de la migración 0070). */
 export const MAX_PRIOR_RED_FLAGS = 99;
+export const MIN_PRIOR_RED_FLAGS = -999;
 
 /**
  * ¿Esta cita es una bandera roja? Una falta siempre; una cancelación, salvo
@@ -69,12 +73,22 @@ export function countRedFlags(
 }
 
 export function totalRedFlags(c: RedFlagCounts): number {
-  return c.noShows + c.cancellations + c.prior;
+  return Math.max(0, c.noShows + c.cancellations + c.prior);
 }
 
 export function clampPrior(n: number): number {
   if (!Number.isFinite(n)) return 0;
-  return Math.min(MAX_PRIOR_RED_FLAGS, Math.max(0, Math.trunc(n)));
+  return Math.min(MAX_PRIOR_RED_FLAGS, Math.max(MIN_PRIOR_RED_FLAGS, Math.trunc(n)));
+}
+
+/**
+ * El ajuste que hay que guardar para que el total quede en `desired` (lo que
+ * la clínica escribe en la ficha). Con 0 se quitan todas, también las que
+ * vienen de la agenda; una falta nueva vuelve a sumar desde ahí.
+ */
+export function priorForTotal(c: RedFlagCounts, desired: number): number {
+  const target = Math.min(MAX_PRIOR_RED_FLAGS, Math.max(0, Math.trunc(desired) || 0));
+  return clampPrior(target - (c.noShows + c.cancellations));
 }
 
 function plural(n: number, one: string, many: string): string {
@@ -86,10 +100,12 @@ function plural(n: number, one: string, many: string): string {
  * "2 faltas · 1 cancelación · 3 anteriores". Vacío si no hay ninguna.
  */
 export function describeRedFlags(c: RedFlagCounts): string {
+  if (totalRedFlags(c) === 0) return '';
   const parts: string[] = [];
   if (c.noShows > 0) parts.push(plural(c.noShows, 'falta', 'faltas'));
   if (c.cancellations > 0) parts.push(plural(c.cancellations, 'cancelación', 'cancelaciones'));
   if (c.prior > 0) parts.push(plural(c.prior, 'anterior', 'anteriores'));
+  if (c.prior < 0) parts.push(plural(-c.prior, 'quitada a mano', 'quitadas a mano'));
   return parts.join(' · ');
 }
 

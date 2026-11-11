@@ -3,6 +3,7 @@ import {
   countRedFlags,
   describeRedFlags,
   isRedFlagAppointment,
+  priorForTotal,
   redFlagLevel,
   totalRedFlags,
 } from '@/lib/care-profile/signals';
@@ -44,8 +45,9 @@ describe('banderas rojas', () => {
     expect(totalRedFlags(c)).toBe(6);
   });
 
-  it('las anteriores se recortan a 0–99 y a entero', () => {
-    expect(clampPrior(-2)).toBe(0);
+  it('el ajuste a mano se recorta a -999–99 y a entero', () => {
+    expect(clampPrior(-2)).toBe(-2);
+    expect(clampPrior(-5000)).toBe(-999);
     expect(clampPrior(2.7)).toBe(2);
     expect(clampPrior(500)).toBe(99);
     expect(clampPrior(Number.NaN)).toBe(0);
@@ -85,5 +87,30 @@ describe('cambiar la cita de día no es una cancelación (6/11)', () => {
         cancelReason: 'No puede venir',
       }),
     ).toBe('CANCELLED');
+  });
+});
+
+describe('banderas rojas: el total lo pone la clínica (11/11)', () => {
+  const contadas = { noShows: 1, cancellations: 2, prior: 0 };
+
+  it('poner 0 quita también las contadas de la agenda', () => {
+    const prior = priorForTotal(contadas, 0);
+    expect(prior).toBe(-3);
+    expect(totalRedFlags({ ...contadas, prior })).toBe(0);
+    expect(describeRedFlags({ ...contadas, prior })).toBe('');
+  });
+
+  it('una falta nueva vuelve a sumar desde ahí', () => {
+    const prior = priorForTotal(contadas, 0);
+    expect(totalRedFlags({ ...contadas, noShows: 2, prior })).toBe(1);
+  });
+
+  it('subir el total suma las de antes de la plataforma', () => {
+    expect(priorForTotal(contadas, 5)).toBe(2);
+    expect(describeRedFlags({ ...contadas, prior: 2 })).toContain('2 anteriores');
+  });
+
+  it('el total nunca baja de 0', () => {
+    expect(totalRedFlags({ noShows: 0, cancellations: 0, prior: -4 })).toBe(0);
   });
 });
