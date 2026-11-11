@@ -356,10 +356,32 @@ export function CalendarView(props: CalendarViewProps) {
 
   return (
     <>
+      {/* En móvil, «Nueva cita» es un botón flotante encima de la barra de
+          pestañas. Va fuera de la Card: su animación de entrada (transform)
+          haría de contenedor del fixed y lo dejaba arriba, dentro de la tarjeta. */}
+      {canWrite && hasAgenda && (
+        <button
+          type="button"
+          aria-label="Nueva cita"
+          onClick={() =>
+            setSeed({
+              professionalId:
+                selectedProfessionalId !== 'all'
+                  ? selectedProfessionalId
+                  : (visibleProfessionals[0]?.id ?? ''),
+              dateKey,
+              startMinute: Math.max(dayWindow.startMinute, 9 * 60),
+            })
+          }
+          className="press fixed bottom-[calc(92px+env(safe-area-inset-bottom))] right-4 z-30 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[linear-gradient(165deg,#4ca088,#226856)] text-white shadow-[0_14px_30px_-10px_rgba(34,104,86,0.75),inset_0_1px_0_rgba(255,255,255,0.5)] sm:hidden"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      )}
       <Card className="overflow-hidden">
         {/* Barra de control */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-(--color-border-subtle) p-4 sm:p-5">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-(--color-border-subtle) p-3 sm:p-5">
+          <div className="flex min-w-0 max-w-full items-center gap-1.5 sm:gap-2">
             <IconButton label="Anterior" onClick={() => shiftDays(view === 'week' ? -7 : -1)}>
               <ChevronLeft className="h-4 w-4" />
             </IconButton>
@@ -370,17 +392,17 @@ export function CalendarView(props: CalendarViewProps) {
               <ChevronRight className="h-4 w-4" />
             </IconButton>
             <div className="ml-1 min-w-0">
-              <p className="text-[15px] font-bold text-zinc-900 first-letter:uppercase sm:truncate">
+              <p className="truncate text-[14px] font-bold text-zinc-900 first-letter:uppercase sm:text-[15px]">
                 {view === 'week'
                   ? `Semana del ${formatDateKeyLong(dateKeys[0] ?? dateKey)}`
                   : formatDateKeyLong(dateKey)}
               </p>
-              <p className="text-[12px] text-zinc-500">{timezone}</p>
+              <p className="hidden text-[12px] text-zinc-500 sm:block">{timezone}</p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex rounded-full bg-zinc-100 p-1">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <div className="inline-flex shrink-0 rounded-full bg-zinc-100 p-1">
               <button
                 type="button"
                 onClick={() => navigate({ view: 'day' })}
@@ -406,7 +428,7 @@ export function CalendarView(props: CalendarViewProps) {
             {!lockedToProfessional && (
               <Select
                 aria-label="Profesional"
-                className="h-9 w-auto min-w-[190px] text-[13px]"
+                className="h-9 w-auto min-w-0 flex-1 text-[13px] sm:min-w-[190px] sm:flex-none"
                 value={selectedProfessionalId}
                 onChange={(e) => navigate({ prof: e.target.value })}
               >
@@ -423,6 +445,7 @@ export function CalendarView(props: CalendarViewProps) {
             {canWrite && (
               <Button
                 size="sm"
+                className="max-sm:hidden"
                 onClick={() =>
                   setSeed({
                     professionalId:

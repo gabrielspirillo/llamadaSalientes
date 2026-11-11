@@ -61,7 +61,7 @@ export function HistoryTable({
       ) : (
         <div className="overflow-hidden rounded-[22px] border border-(--color-border) bg-white shadow-[var(--shadow-soft)]">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[560px] text-sm">
+            <table className="mobile-cards w-full min-w-[560px] text-sm">
               <thead className="border-b border-(--color-border) bg-[#fafbfb] text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">
                 <tr>
                   <th className="text-left px-4 py-2.5">Paciente</th>
@@ -89,13 +89,15 @@ export function HistoryTable({
                   return (
                     <tr key={r.id} className="transition-colors duration-200 hover:bg-zinc-50">
                       <td className="px-4 py-3 font-medium text-zinc-900">{r.patientName}</td>
-                      <td className="px-4 py-3">
+                      <td data-label="Cita original → Cita nueva" className="px-4 py-3">
                         <div className="text-xs text-zinc-500">{fmt(oldT)}</div>
                         <div className="font-medium">↓</div>
                         <div className="text-zinc-900">{newT ? fmt(newT) : '—'}</div>
                       </td>
-                      <td className="px-4 py-3">{r.treatmentName ?? '—'}</td>
-                      <td className="px-4 py-3">
+                      <td data-label="Tratamiento" className="px-4 py-3">
+                        {r.treatmentName ?? '—'}
+                      </td>
+                      <td data-label="Canal" className="px-4 py-3">
                         <Badge tone="neutral">
                           {r.channel === 'VOICE' ? 'Llamada' : 'WhatsApp'}
                         </Badge>
@@ -103,14 +105,17 @@ export function HistoryTable({
                           <div className="text-xs text-zinc-500 mt-1">por {r.source}</div>
                         ) : null}
                       </td>
-                      <td className="px-4 py-3 text-zinc-500">
+                      <td data-label="Aceptada el" className="px-4 py-3 text-zinc-500">
                         {closed.toLocaleDateString('es-ES', {
                           day: 'numeric',
                           month: 'short',
                           timeZone: tz,
                         })}
                       </td>
-                      <td className="px-4 py-3 text-right font-medium text-emerald-700">
+                      <td
+                        data-label="Ingresos"
+                        className="px-4 py-3 text-right font-medium text-emerald-700"
+                      >
                         {money(r.revenueCents, r.currency)}
                       </td>
                     </tr>

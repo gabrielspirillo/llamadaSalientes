@@ -81,7 +81,7 @@ export function OffersTable({ rows, tz }: { rows: OfferRow[]; tz: string }) {
   return (
     <div className="overflow-hidden rounded-[22px] border border-(--color-border) bg-white shadow-[var(--shadow-soft)]">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[560px] text-sm">
+        <table className="mobile-cards w-full min-w-[560px] text-sm">
           <thead className="border-b border-(--color-border) bg-[#fafbfb] text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">
             <tr>
               <th className="text-left px-4 py-2.5">Paciente</th>
@@ -118,23 +118,25 @@ export function OffersTable({ rows, tz }: { rows: OfferRow[]; tz: string }) {
                       <div className="text-xs text-zinc-500">{r.contactPhone}</div>
                     ) : null}
                   </td>
-                  <td className="px-4 py-3">
+                  <td data-label="Cita actual → Hueco ofrecido" className="px-4 py-3">
                     <div className="text-xs text-zinc-500">{fmt(oldT)}</div>
                     <div className="font-medium">↓</div>
                     <div className="text-zinc-900">{fmt(newT)}</div>
                   </td>
-                  <td className="px-4 py-3">{r.treatmentName ?? '—'}</td>
-                  <td className="px-4 py-3">
+                  <td data-label="Tratamiento" className="px-4 py-3">
+                    {r.treatmentName ?? '—'}
+                  </td>
+                  <td data-label="Canal" className="px-4 py-3">
                     <Badge tone="neutral">{CHANNEL_LABEL[r.channel]}</Badge>
                     <div className="text-xs text-zinc-500 mt-1">{r.driverScope}</div>
                   </td>
-                  <td className="px-4 py-3">
+                  <td data-label="Estado" className="px-4 py-3">
                     <Badge tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Badge>
                     {r.errorMessage ? (
                       <div className="text-xs text-rose-600 mt-1">{r.errorMessage}</div>
                     ) : null}
                   </td>
-                  <td className="px-4 py-3 text-zinc-500">
+                  <td data-label="Vence" className="px-4 py-3 text-zinc-500">
                     {isActive ? (mins > 0 ? `${mins} min` : 'caducada') : '—'}
                   </td>
                   <td className="px-4 py-3 text-right">

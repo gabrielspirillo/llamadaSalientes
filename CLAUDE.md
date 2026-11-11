@@ -295,6 +295,16 @@ cambia la distribución: vuelve de vidrio las superficies que ya existían.
   completa quedaba debajo).
 - **Gestionando una clínica**: el chip es de cristal con el ojo en ámbar
   (antes amarillo macizo sobre el verde) y en móvil ocupa el sitio del logo.
+- **Mensajes (chat interno) en móvil**: con un canal abierto, el espacio de
+  trabajo pasa a pantalla completa (`MessagesWorkspace`, según `mobilePane`).
+- **Agenda en móvil**: barra de control compacta y «Nueva cita» como botón
+  flotante. Va FUERA de la `Card`: la animación de entrada de la tarjeta usa
+  `transform`, que hace de contenedor de un `fixed` y lo dejaba dentro.
+- **Tablas genéricas en móvil**: clase `mobile-cards` en la `<table>` +
+  `data-label` en cada celda (primera = quién, sin etiqueta; acciones, sin
+  etiqueta). Lista de espera (cola, ofertas, histórico) y Uso por clínica.
+- Campos dentro de una caja que ya marca el foco: `data-bare-input` (sin el
+  anillo global de `:focus-visible`).
 
 ## Módulo Tareas (core, sin gate de `enabled_modules`)
 

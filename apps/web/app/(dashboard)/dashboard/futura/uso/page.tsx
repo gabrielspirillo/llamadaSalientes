@@ -168,7 +168,7 @@ export default async function UsoPlataformaPage({
           subtitle="Ordenadas por tiempo de uso"
         />
         <TableWrap>
-          <Table className="min-w-[900px]">
+          <Table className="mobile-cards min-w-[900px]">
             <THead>
               <HeadRow>
                 <TH>Clínica</TH>
@@ -193,7 +193,10 @@ export default async function UsoPlataformaPage({
                         {risk && <Badge tone={risk.tone}>{risk.label}</Badge>}
                       </div>
                     </TD>
-                    <TD className="whitespace-nowrap text-right font-semibold tabular-nums text-zinc-900">
+                    <TD
+                      data-label="Tiempo"
+                      className="whitespace-nowrap text-right font-semibold tabular-nums text-zinc-900"
+                    >
                       {formatMinutes(c.minutes)}
                       {delta != null && (
                         <span
@@ -203,18 +206,25 @@ export default async function UsoPlataformaPage({
                         </span>
                       )}
                     </TD>
-                    <TD className="whitespace-nowrap text-right tabular-nums">
+                    <TD
+                      data-label="Por día activo"
+                      className="whitespace-nowrap text-right tabular-nums"
+                    >
                       {c.activeDays ? formatMinutes(c.avgMinutesPerActiveDay) : '—'}
                     </TD>
-                    <TD className="text-right tabular-nums">
+                    <TD data-label="Días activos" className="text-right tabular-nums">
                       {c.activeDays} / {days}
                     </TD>
-                    <TD className="text-right tabular-nums">{c.activeUsers}</TD>
-                    <TD className="whitespace-nowrap">
+                    <TD data-label="Usuarios" className="text-right tabular-nums">
+                      {c.activeUsers}
+                    </TD>
+                    <TD data-label="Lo que más usa" className="whitespace-nowrap">
                       {c.topSection ? sectionLabel(c.topSection) : '—'}
                     </TD>
-                    <TD className="whitespace-nowrap">{fmtDay(c.lastSeenDay)}</TD>
-                    <TD>
+                    <TD data-label="Último uso" className="whitespace-nowrap">
+                      {fmtDay(c.lastSeenDay)}
+                    </TD>
+                    <TD data-label="Tendencia">
                       {c.daily.some((v) => v > 0) ? (
                         <Sparkline data={c.daily} height={28} />
                       ) : (

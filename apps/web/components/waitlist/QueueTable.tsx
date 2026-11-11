@@ -62,7 +62,7 @@ export function QueueTable({ rows, tz }: { rows: QueueRow[]; tz: string }) {
   return (
     <div className="overflow-hidden rounded-[22px] border border-(--color-border) bg-white shadow-[var(--shadow-soft)]">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[560px] text-sm">
+        <table className="mobile-cards w-full min-w-[560px] text-sm">
           <thead className="border-b border-(--color-border) bg-[#fafbfb] text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">
             <tr>
               <th className="text-left px-4 py-2.5">Paciente</th>
@@ -92,8 +92,10 @@ export function QueueTable({ rows, tz }: { rows: QueueRow[]; tz: string }) {
                       </Badge>
                     ) : null}
                   </td>
-                  <td className="px-4 py-3">{r.treatmentName ?? '—'}</td>
-                  <td className="px-4 py-3">
+                  <td data-label="Tratamiento" className="px-4 py-3">
+                    {r.treatmentName ?? '—'}
+                  </td>
+                  <td data-label="Cita actual" className="px-4 py-3">
                     {orig.toLocaleString('es-ES', {
                       weekday: 'short',
                       day: 'numeric',
@@ -103,19 +105,19 @@ export function QueueTable({ rows, tz }: { rows: QueueRow[]; tz: string }) {
                       timeZone: tz,
                     })}
                   </td>
-                  <td className="px-4 py-3 text-zinc-500">
+                  <td data-label="En la lista desde" className="px-4 py-3 text-zinc-500">
                     {created.toLocaleDateString('es-ES', {
                       day: 'numeric',
                       month: 'short',
                       timeZone: tz,
                     })}
                   </td>
-                  <td className="px-4 py-3 text-zinc-500">
+                  <td data-label="Franja horaria" className="px-4 py-3 text-zinc-500">
                     {r.preferredWindow.start && r.preferredWindow.end
                       ? `${r.preferredWindow.start}–${r.preferredWindow.end}`
                       : '—'}
                   </td>
-                  <td className="px-4 py-3">
+                  <td data-label="Estado" className="px-4 py-3">
                     <Badge tone={r.status === 'ACTIVE' ? 'success' : 'neutral'}>
                       {STATUS_LABEL[r.status]}
                     </Badge>

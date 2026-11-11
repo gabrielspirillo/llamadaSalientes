@@ -378,6 +378,11 @@ body {
   outline: 2px solid rgba(71, 145, 131, 0.6);
   outline-offset: 2px;
 }
+/* Campos «desnudos» dentro de una caja que ya marca el foco (el chat): sin el
+   anillo global, que dibujaba un recuadro dentro de la caja. */
+[data-bare-input]:focus-visible {
+  outline: none;
+}
 
 /* ============================================================================
    Lienzo de la app — gris neutro plano, sin tintes de color
@@ -1060,6 +1065,52 @@ html:has(.liquid) [data-slot="dialog"] {
     mask-image: none;
   }
 }
+/* Tablas en móvil: cada fila es una tarjeta y cada dato lleva su etiqueta
+   (`data-label` en la celda). La primera celda (quién) va sola y en negrita;
+   la de acciones, sin etiqueta. En escritorio la tabla no cambia. */
+@media (max-width: 767.98px) {
+  table.mobile-cards {
+    display: block;
+    min-width: 0 !important;
+  }
+  table.mobile-cards thead {
+    display: none;
+  }
+  table.mobile-cards tbody {
+    display: block;
+  }
+  table.mobile-cards tr {
+    display: block;
+    padding: 14px 16px;
+  }
+  table.mobile-cards td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 3px 0 !important;
+    text-align: right;
+    white-space: normal;
+  }
+  table.mobile-cards td:first-child {
+    display: block;
+    padding-bottom: 6px !important;
+    text-align: left;
+  }
+  table.mobile-cards td[data-label]::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #71717a;
+    text-align: left;
+  }
+  table.mobile-cards td:last-child:not([data-label]) {
+    justify-content: flex-start;
+    padding-top: 8px !important;
+  }
+}
+
 /* Tarjetas: un poco de vida al pasar el ratón */
 .liquid [data-slot="card"][data-tone="default"] {
   transition: transform 0.5s var(--lg-spring), box-shadow 0.4s;

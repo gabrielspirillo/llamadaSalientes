@@ -987,7 +987,16 @@ export function MessagesWorkspace({
   }, []);
 
   return (
-    <div className="flex h-[calc(100dvh-14rem)] min-h-0 flex-col gap-3">
+    <div
+      className={cn(
+        // En móvil la lista de canales deja sitio a la barra de pestañas; un
+        // canal abierto (o su panel) ocupa la pantalla entera, como el chat de
+        // WhatsApp: si no, la caja de escribir quedaba tapada por la barra.
+        'flex h-[calc(100dvh-14rem-84px)] min-h-0 flex-col gap-3 lg:h-[calc(100dvh-14rem)]',
+        mobilePane !== 'rail' &&
+          'max-lg:fixed max-lg:inset-0 max-lg:z-50 max-lg:h-[100dvh] max-lg:gap-0 max-lg:bg-[#f6faf8] max-lg:pb-[env(safe-area-inset-bottom)] max-lg:pt-[env(safe-area-inset-top)]',
+      )}
+    >
       {error && (
         <Callout tone="danger" icon={<TriangleAlert className="h-4 w-4" />} className="shrink-0">
           {error}{' '}

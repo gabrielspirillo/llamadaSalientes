@@ -526,8 +526,9 @@ export function Composer({
           onKeyDown={handleKeyDown}
           onClick={(e) => detectMenu(value, e.currentTarget.selectionStart ?? 0)}
           rows={1}
-          placeholder={placeholder ?? `Escribe en ${channelName}…  (/ comandos · @ menciones)`}
+          placeholder={placeholder ?? `Escribe en ${channelName}…`}
           aria-label={`Mensaje para ${channelName}`}
+          data-bare-input
           className="scrollbar-none max-h-[200px] min-h-[36px] flex-1 resize-none border-0 bg-transparent px-1 py-2 text-[14px] leading-relaxed text-zinc-900 outline-none ring-0 placeholder:text-zinc-500 focus:outline-none focus:ring-0 focus-visible:outline-none"
         />
 
@@ -602,9 +603,12 @@ export function Composer({
       </div>
 
       <p className="mt-1.5 px-2 text-[12px] text-zinc-500">
-        <kbd className="rounded bg-zinc-100 px-1 font-sans font-semibold">Enter</kbd> envía ·{' '}
-        <kbd className="rounded bg-zinc-100 px-1 font-sans font-semibold">Shift+Enter</kbd> salta de
-        línea
+        {/* Pista de teclado: en móvil no hay Shift. */}
+        <span className="hidden sm:inline">
+          <kbd className="rounded bg-zinc-100 px-1 font-sans font-semibold">Enter</kbd> envía ·{' '}
+          <kbd className="rounded bg-zinc-100 px-1 font-sans font-semibold">Shift+Enter</kbd> salta
+          de línea
+        </span>
         {value.length > MAX_BODY_LENGTH - 500 && (
           <span className="ml-2 font-semibold text-amber-600">
             {MAX_BODY_LENGTH - value.length} caracteres restantes
