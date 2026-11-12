@@ -674,6 +674,13 @@ export const whatsappConnections = pgTable(
     twilioAccountSid: text('twilio_account_sid'),
     twilioAuthTokenEnc: text('twilio_auth_token_enc'),
     twilioFromNumber: text('twilio_from_number'),
+    /** Último entrante que llegó a tiempo: prueba de que el canal recibe (0071). */
+    lastFreshInboundAt: timestamp('last_fresh_inbound_at', { withTimezone: true }),
+    /** Último entrante que llegó con más de 10 min de retraso (0071). */
+    lastLaggedInboundAt: timestamp('last_lagged_inbound_at', { withTimezone: true }),
+    lastInboundLagSeconds: integer('last_inbound_lag_seconds'),
+    /** Último aviso al equipo por un problema del canal (0071). */
+    healthAlertedAt: timestamp('health_alerted_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },

@@ -84,6 +84,8 @@ export const IM_EVENTS = [
   'patient.birthday',
   // Clínicas con firma digital: el tutor firmó el consentimiento.
   'consent.signed',
+  // El WhatsApp de la clínica se desconectó, recibe con retraso o reconecta sin parar.
+  'wa.channel_problem',
 ] as const;
 export type ImEvent = (typeof IM_EVENTS)[number];
 
@@ -103,6 +105,7 @@ export const IM_EVENT_ROUTING: Record<ImEvent, { slug: string; tone: ImTone }> =
   'analytics.threshold_alert': { slug: 'general', tone: 'sky' },
   'patient.birthday': { slug: 'agenda', tone: 'blossom' },
   'consent.signed': { slug: 'agenda', tone: 'mint' },
+  'wa.channel_problem': { slug: 'urgencias', tone: 'coral' },
 };
 
 /** Cuántos mensajes trae cada página del hilo (paginación keyset). */

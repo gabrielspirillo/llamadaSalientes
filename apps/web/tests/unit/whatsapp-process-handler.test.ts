@@ -35,9 +35,15 @@ vi.mock('@/lib/db/client', () => {
   const makeChain = (resolver: () => Promise<unknown[]>) => {
     const chain = {
       from: () => chain,
+      leftJoin: () => chain,
+      innerJoin: () => chain,
       where: () => chain,
       orderBy: () => chain,
       limit: () => resolver(),
+      // Consultas que se esperan sin .limit() (un agregado).
+      // biome-ignore lint/suspicious/noThenProperty: el mock imita la query awaitable de drizzle
+      then: (ok: (v: unknown[]) => unknown, ko?: (e: unknown) => unknown) =>
+        resolver().then(ok, ko),
     };
     return chain;
   };
@@ -63,7 +69,11 @@ vi.mock('@/lib/db/client', () => {
 });
 
 vi.mock('@/lib/db/schema', () => ({
-  whatsappAgentRuns: { conversationId: 'conv', createdAt: 'createdAt' },
+  whatsappAgentRuns: {
+    conversationId: 'conv',
+    createdAt: 'createdAt',
+    triggerMessageId: 'triggerMessageId',
+  },
   // El handler arrastra (vía la agenda) la libreta de contactos y los
   // pacientes-persona, cuyas columnas se leen al importar el módulo.
   whatsappContacts: {
@@ -80,6 +90,7 @@ vi.mock('@/lib/db/schema', () => ({
   patients: { id: 'id', tenantId: 'tenantId', contactId: 'contactId' },
   whatsappConnections: { tenantId: 'tenantId', status: 'status', updatedAt: 'updatedAt' },
   whatsappConversations: { id: 'id' },
+  clinicSettings: { tenantId: 'tenantId', timezone: 'timezone' },
   whatsappMessages: {
     tenantId: 'tenantId',
     conversationId: 'conversationId',
@@ -138,6 +149,8 @@ function baseEvent() {
 }
 
 function runHandler() {
+  // Primera consulta: el mensaje disparador, para ver si llega tarde de noche.
+  mocks.selectQueue.unshift([]);
   return processWhatsappJob(baseEvent(), {
     run: async <T>(_id: string, fn: () => Promise<T>): Promise<T> => fn(),
   });
@@ -196,7 +209,6 @@ describe('whatsappProcess handler', () => {
   // porque el skip ocurre antes): gate, lastRun, messages, existing, connector.
   function pushUntilGateSkip(conv: Record<string, unknown>) {
     pushSelect([conv]); // gate-check
-    pushSelect([]); // loadInboundBatch.lastRun
     pushSelect([inboundMsg()]); // loadInboundBatch.messages (no vacío)
     pushSelect([]); // loadInboundBatch.existing run
     pushSelect([]); // resolveConnector (sin conexión → null, da igual: salimos)
@@ -230,7 +242,6 @@ describe('whatsappProcess handler', () => {
         channel: 'WHATSAPP_CLOUD',
       },
     ]);
-    pushSelect([]); // lastRun
     pushSelect([inboundMsg()]); // messages
     pushSelect([]); // existing run
     pushSelect([
@@ -300,8 +311,6 @@ describe('whatsappProcess handler', () => {
         channel: 'WHATSAPP_CLOUD',
       },
     ]);
-    // 2) loadInboundBatch → lastRun query (sin runs previos)
-    pushSelect([]);
     // 3) loadInboundBatch → mensajes inbound
     const msg = {
       id: 'msg-1',
@@ -392,7 +401,6 @@ describe('whatsappProcess handler', () => {
         channel: 'WHATSAPP_CLOUD',
       },
     ]);
-    pushSelect([]);
     pushSelect([
       {
         id: 'msg-1',
@@ -470,7 +478,6 @@ describe('whatsappProcess handler', () => {
         channel: 'WHATSAPP_CLOUD',
       },
     ]);
-    pushSelect([]); // lastRun
     pushSelect([
       {
         id: 'msg-1',

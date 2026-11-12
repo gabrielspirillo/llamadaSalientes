@@ -253,6 +253,31 @@ export async function offerFreedSlot(
     return false;
   }
 
+  // Con el WhatsApp sin recibir bien no se ofrece nada: la familia contestaría
+  // y no nos llegaría, el hueco quedaría reservado 20 minutos para nadie y la
+  // oferta pasaría a la siguiente (12/11: la oferta de las 19:00 caducó así
+  // mientras recepción daba el hueco a mano). Se avisa al equipo y el hueco
+  // queda libre; tampoco va a la lista de espera, que también escribe.
+  {
+    const { getChannelProblem } = await import('@/lib/whatsapp/health');
+    const problem = await getChannelProblem(tenantId);
+    if (problem) {
+      const hueco = describe(slot.startsAt, tzNow, localDateKey(now, tzNow));
+      await postSystemEvent({
+        tenantId,
+        event: 'waitlist.slot_open',
+        title: `Hueco libre sin ofrecer — ${hueco.day} ${hueco.time}`,
+        body: 'El WhatsApp no está funcionando bien, así que no se ha ofrecido a nadie. Ofrécelo por teléfono si quieres llenarlo.',
+        dedupeKey: `adv:nochannel:${slot.professionalId}:${slot.startsAt.toISOString()}`,
+      }).catch(() => undefined);
+      console.warn('[adelanto] canal de WhatsApp con problemas, no se ofrece', {
+        tenantId,
+        problem,
+      });
+      return true;
+    }
+  }
+
   // Ya ofrecido para este hueco a alguien que dijo que no (o no contestó).
   const already = await db
     .select({

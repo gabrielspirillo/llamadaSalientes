@@ -1,8 +1,9 @@
 import 'server-only';
-import { and, asc, desc, eq, gt } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import {
+  clinicSettings,
   tenants,
   whatsappAgentRuns,
   whatsappConnections,
@@ -13,6 +14,7 @@ import { updateLeadMemory } from '@/lib/memory/lead-memory';
 import { acquireLock } from '@/lib/queue/lock';
 import type { QueueJobs } from '@/lib/queue/queues';
 import type { StepRunner } from '@/lib/queue/step';
+import { localDateKey, localParts, parseDateKey, zonedToUtc } from '@/lib/tasks/tz';
 import { runWhatsappAgent } from '@/lib/whatsapp/agent';
 import { processInboundMessages } from '@/lib/whatsapp/agent/multimodal';
 import { writeAgentRun } from '@/lib/whatsapp/agent/persist-run';
@@ -20,6 +22,13 @@ import type { AgentInput, AgentOutput, HistoryTurn } from '@/lib/whatsapp/agent/
 import { syncWhatsappContactAvatar } from '@/lib/whatsapp/contacts/sync-avatar';
 import { syncWhatsappContactWithGhl } from '@/lib/whatsapp/contacts/sync-ghl';
 import { buildConnector } from '@/lib/whatsapp/factory';
+import {
+  LAG_THRESHOLD_MS,
+  NIGHT_DEFER_LAG_MS,
+  inboundLagMs,
+  isQuietMinute,
+  lateMessageNote,
+} from '@/lib/whatsapp/health-model';
 import { notifyProfessionalOfDerivation } from '@/lib/whatsapp/notify-professional';
 import { sendAgentResponse } from '@/lib/whatsapp/outbound/send-response';
 import { publishTypingStart, publishTypingStop } from '@/lib/whatsapp/realtime/publisher';
@@ -70,14 +79,91 @@ const CONVERSATION_LOCK_TTL_MS = 120_000;
  * limpio. El batch del primer job ya incluye los mensajes de la ráfaga, así
  * que no se pierde nada.
  */
+/**
+ * Otro job está contestando esta conversación. No es un fallo: el worker
+ * aplaza el job unos segundos SIN gastar intentos (`DelayedError`). Antes se
+ * lanzaba un Error normal, se agotaban los 3 intentos en ~6 s mientras el otro
+ * job seguía con el LLM, y el aviso de "no pudo contestar" saltaba en falso.
+ */
+export class ConversationBusyError extends Error {
+  constructor(conversationId: string) {
+    super(`Conversación ${conversationId} en proceso por otro job; reintentar`);
+    this.name = 'ConversationBusyError';
+  }
+}
+
+/** El job se aplaza hasta `until` (mensaje atrasado que llega de noche). */
+export class DeferJobError extends Error {
+  constructor(readonly until: Date) {
+    super(`Aplazado hasta ${until.toISOString()}`);
+    this.name = 'DeferJobError';
+  }
+}
+
+/** Más viejo que esto, el asistente no contesta solo: lo ve el equipo. */
+const STALE_NO_REPLY_MS = 12 * 3_600_000;
+
+/** Hora de inicio de las respuestas y fin de la noche, en hora local de la clínica. */
+const DAY_START_MINUTE = 8 * 60;
+
+/** Cuándo se escribió un entrante (Evolution trae `messageTimestamp`). */
+export function writtenAtOf(row: { rawJson: unknown; createdAt: Date }): Date | null {
+  const raw = row.rawJson as { messageTimestamp?: unknown } | null;
+  const ts = Number(raw?.messageTimestamp);
+  if (!Number.isFinite(ts) || ts <= 0) return null;
+  return new Date(ts * 1000);
+}
+
+async function tenantTimezone(tenantId: string): Promise<string> {
+  const [row] = await db
+    .select({ timezone: clinicSettings.timezone })
+    .from(clinicSettings)
+    .where(eq(clinicSettings.tenantId, tenantId))
+    .limit(1);
+  return row?.timezone || 'Europe/Madrid';
+}
+
+/**
+ * Un mensaje que llega muy tarde (el canal estuvo caído) y de noche no se
+ * contesta en el acto: del 11 al 12/11 el asistente escribió a familias a las
+ * 04:00 contestando lo que habían preguntado a las 19:00. Se aplaza a las
+ * 08:00. Lo que se escribe de noche y llega a tiempo se contesta como siempre:
+ * la familia está despierta esperando.
+ */
+async function nightDeferral(data: QueueJobs['wa-process'], now: Date): Promise<Date | null> {
+  const [msg] = await db
+    .select({ rawJson: whatsappMessages.rawJson, createdAt: whatsappMessages.createdAt })
+    .from(whatsappMessages)
+    .where(
+      and(eq(whatsappMessages.tenantId, data.tenantId), eq(whatsappMessages.id, data.messageId)),
+    )
+    .limit(1);
+  if (!msg) return null;
+  const lag = inboundLagMs(writtenAtOf(msg), now);
+  if (lag === null || lag < NIGHT_DEFER_LAG_MS) return null;
+  const tz = await tenantTimezone(data.tenantId);
+  const p = localParts(now, tz);
+  if (!isQuietMinute(p.hour * 60 + p.minute)) return null;
+  // Las 08:00 de hoy si aún no han llegado; si no (23:xx), las de mañana.
+  const today = parseDateKey(localDateKey(now, tz));
+  if (!today) return null;
+  let until = zonedToUtc(today.year, today.month, today.day, DAY_START_MINUTE / 60, 0, tz);
+  if (until <= now) {
+    const tomorrow = parseDateKey(localDateKey(new Date(now.getTime() + 20 * 3_600_000), tz));
+    if (!tomorrow) return null;
+    until = zonedToUtc(tomorrow.year, tomorrow.month, tomorrow.day, DAY_START_MINUTE / 60, 0, tz);
+  }
+  return until;
+}
+
 export async function processWhatsappJob(
   data: QueueJobs['wa-process'],
   step: StepRunner,
 ): Promise<WhatsappJobResult> {
+  const deferUntil = await nightDeferral(data, new Date()).catch(() => null);
+  if (deferUntil) throw new DeferJobError(deferUntil);
   const lock = await acquireLock(`wa-conv:${data.conversationId}`, CONVERSATION_LOCK_TTL_MS);
-  if (!lock) {
-    throw new Error(`Conversación ${data.conversationId} en proceso por otro job; reintentar`);
-  }
+  if (!lock) throw new ConversationBusyError(data.conversationId);
   try {
     return await runWhatsappJob(data, step);
   } finally {
@@ -179,6 +265,31 @@ async function runWhatsappJob(
     return { ok: false, reason: 'already_processed' };
   }
 
+  // Lo más reciente de la ráfaga se escribió hace más de 12 h: llega por una
+  // resincronización de WhatsApp (al volver a vincular, o tras una caída
+  // larga). Contestar ahora a "¿tenéis hueco mañana?" de hace dos días haría
+  // más daño que bien: se pasa al equipo, que ve el chat entero.
+  const stale = await step.run('stale-check', async () => {
+    const last = batch.messages[batch.messages.length - 1];
+    if (!last) return false;
+    const lag = inboundLagMs(
+      writtenAtOf({ rawJson: last.rawJson, createdAt: new Date(last.createdAt) }),
+      new Date(),
+    );
+    return lag !== null && lag > STALE_NO_REPLY_MS;
+  });
+  if (stale) {
+    await step.run('stale-handoff', async () => {
+      await onWhatsappJobGaveUp(
+        { ...data, messageId: batch.lastMessageId },
+        new Error('mensaje de hace más de 12 h (WhatsApp lo entregó tarde): contestar a mano'),
+        { reason: 'guardrail: stale_message' },
+      );
+      return { ok: true };
+    });
+    return { ok: false, reason: 'stale_message' };
+  }
+
   // 3. Resolver connector. NO envolver en step.run: el caché de step.run
   //    serializa a JSON y destruye los métodos de la instancia.
   const connector = await resolveConnector(tenantId);
@@ -238,6 +349,28 @@ async function runWhatsappJob(
 
   const triggerMessageId = batch.lastMessageId;
   const remindersResume = readRemindersResume(gate.context);
+  // ¿La ráfaga se escribió hace rato? (canal con retraso). Se le dice al
+  // asistente cuándo, para que "hoy a las 19:00" no se lea como el día de hoy.
+  const lateNotice = await step.run('late-notice', async () => {
+    const first = batch.messages[0];
+    if (!first) return null;
+    const writtenAt = writtenAtOf({
+      rawJson: first.rawJson,
+      createdAt: new Date(first.createdAt),
+    });
+    const lag = inboundLagMs(writtenAt, new Date());
+    if (!writtenAt || lag === null || lag < LAG_THRESHOLD_MS) return null;
+    const tz = await tenantTimezone(tenantId);
+    const label = writtenAt.toLocaleString('es-ES', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: tz,
+    });
+    return lateMessageNote(`el ${label}`);
+  });
   const agentInput: AgentInput = {
     tenantId,
     conversationId,
@@ -248,6 +381,7 @@ async function runWhatsappJob(
     triggerMessageId,
     newSession,
     remindersResume,
+    lateNotice,
   };
 
   // Indicador "escribiendo…" para el inbox del operador: emitimos desde el
@@ -516,13 +650,20 @@ async function loadInboundBatch(
   firstMessageCreatedAt: Date;
   alreadyProcessed: boolean;
 }> {
-  const lastRun = await db
-    .select({ createdAt: whatsappAgentRuns.createdAt })
-    .from(whatsappAgentRuns)
-    .where(eq(whatsappAgentRuns.conversationId, conversationId))
-    .orderBy(desc(whatsappAgentRuns.createdAt))
-    .limit(1);
-  const cutoff = lastRun[0]?.createdAt ?? new Date(Date.now() - 30 * 60 * 1000);
+  // Lo pendiente es lo que llegó DESPUÉS del último mensaje ya contestado (el
+  // disparador del último run), no después de la hora en que terminó ese run.
+  // Con la hora del run, un mensaje que entraba mientras el asistente pensaba
+  // la respuesta anterior (~4 al día en Respinens) quedaba fuera de todos los
+  // lotes y nadie lo contestaba.
+  // La comparación va en SQL: en JS la hora se redondea a milisegundos y el
+  // propio disparador (con microsegundos) volvería a entrar en el lote.
+  const cutoff = sql`coalesce(
+    (select max(coalesce(tm.created_at, ar.created_at))
+       from whatsapp_agent_runs ar
+       left join whatsapp_messages tm on tm.id = ar.trigger_message_id
+      where ar.conversation_id = ${conversationId}),
+    now() - interval '30 minutes'
+  )`;
 
   const messages = await db
     .select()
@@ -695,7 +836,38 @@ function readRemindersResume(context: Record<string, unknown>): AgentInput['remi
 export async function onWhatsappJobGaveUp(
   data: QueueJobs['wa-process'],
   err: Error | undefined,
+  opts: { reason?: string } = {},
 ): Promise<void> {
+  // La espera por otro job no es un fallo (ver ConversationBusyError).
+  if (err instanceof ConversationBusyError || /en proceso por otro job/.test(err?.message ?? '')) {
+    return;
+  }
+  // Si otro job ya contestó un lote que incluía este mensaje, no hay nada que avisar.
+  try {
+    const [msg] = await db
+      .select({ createdAt: whatsappMessages.createdAt })
+      .from(whatsappMessages)
+      .where(
+        and(eq(whatsappMessages.tenantId, data.tenantId), eq(whatsappMessages.id, data.messageId)),
+      )
+      .limit(1);
+    if (msg) {
+      const [covered] = await db
+        .select({ id: whatsappAgentRuns.id })
+        .from(whatsappAgentRuns)
+        .innerJoin(whatsappMessages, eq(whatsappMessages.id, whatsappAgentRuns.triggerMessageId))
+        .where(
+          and(
+            eq(whatsappAgentRuns.conversationId, data.conversationId),
+            gte(whatsappMessages.createdAt, msg.createdAt),
+          ),
+        )
+        .limit(1);
+      if (covered) return;
+    }
+  } catch (e) {
+    console.warn('[wa-process] no se pudo comprobar si ya estaba contestado', (e as Error).message);
+  }
   try {
     await writeAgentRun({
       tenantId: data.tenantId,
@@ -706,7 +878,7 @@ export async function onWhatsappJobGaveUp(
       model: 'none',
       intent: null,
       intentConfidence: null,
-      intentReasoning: 'guardrail: job_failed',
+      intentReasoning: opts.reason ?? 'guardrail: job_failed',
       handoff: true,
       urgent: false,
       tokensIn: 0,

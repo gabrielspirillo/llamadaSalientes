@@ -158,6 +158,11 @@ export interface AgentInput {
     ghlAppointmentId: string;
     expiresAt: string;
   } | null;
+  /**
+   * El mensaje se escribió hace rato y llega tarde (fallo de conexión de
+   * WhatsApp): cuándo se escribió, para que "hoy" o "esta tarde" se lean bien.
+   */
+  lateNotice?: string | null;
 }
 
 /**

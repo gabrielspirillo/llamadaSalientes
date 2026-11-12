@@ -165,7 +165,7 @@ export async function runWhatsappAgent(
   // Sin fila de ajustes, el asistente es el de siempre: una clínica que nunca
   // pasó por el panel de Futura no puede quedarse sin agendar.
   const mode = agentSettings?.mode ?? 'BOOKING';
-  const system = buildSystemPrompt({
+  const basePrompt = buildSystemPrompt({
     clinic: grounding.clinic,
     treatments: grounding.treatments,
     faqs: grounding.faqs,
@@ -193,6 +193,10 @@ export async function runWhatsappAgent(
       : null,
     knownContact,
   });
+  // Va lo último: es un hecho de ESTE mensaje y manda sobre la hora de arriba.
+  const system = input.lateNotice?.trim()
+    ? `${basePrompt}\n\n# Mensaje que llega tarde\n${input.lateNotice.trim()}`
+    : basePrompt;
 
   // Asistente administrativo: sin flag_urgent (su descripción le manda
   // preguntar por el síntoma); lo médico va a request_handoff.

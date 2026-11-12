@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, desc, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 
 import { systemAgendaContext } from '@/lib/agenda/agent';
 import { normalizePatientPhone, samePhone } from '@/lib/agenda/patients';
@@ -143,7 +143,11 @@ async function tickTenant(tenantId: string, dayOf: DayOfScripts, now: Date): Pro
     // la cita antes de moverla. Hasta el 10/11 cualquiera de esos tapaba el
     // recordatorio obligatorio y la cita se quedaba sin confirmar.
     let state = row.state;
-    if (state && state.updatedAt < dayStart) {
+    let status = appt.status;
+    // Confirmada ANTES de hoy sin estado del día (por el panel días atrás):
+    // tampoco vale, igual que una respuesta de otro día.
+    const confirmedBeforeToday = status === 'CONFIRMED' && appt.updatedAt < dayStart;
+    if ((state && state.updatedAt < dayStart) || (!state && confirmedBeforeToday)) {
       // Pasada la hora de anular ya no empieza la secuencia (ver
       // `nextDayOfStep`): entonces tampoco se toca lo que había.
       const p0 = localParts(appt.startsAt, tz);
@@ -153,9 +157,17 @@ async function tickTenant(tenantId: string, dayOf: DayOfScripts, now: Date): Pro
       if (tooLate) continue;
       await resetDayOfState(appt);
       state = null;
+      status = 'SCHEDULED';
     }
-    // Confirmada hoy desde el panel (una llamada, en persona): ya está.
-    if (!state && appt.status === 'CONFIRMED' && appt.updatedAt >= dayStart) continue;
+    if (state?.outcome && state.outcome !== 'NEEDS_CALL') continue;
+    // Confirmada HOY (botón, "1", panel, llamada, en persona): ya está, con o
+    // sin recordatorio mandado. El 12/11 tres citas que Raquel confirmó a mano
+    // después del recordatorio de las 08:00 se anularon a las 12:30: esta
+    // excepción sólo miraba las citas que aún no tenían recordatorio.
+    if (status === 'CONFIRMED') {
+      if (!state?.outcome) await markOutcome(appt, 'CONFIRMED');
+      continue;
+    }
     if (state?.outcome) continue;
     const p = localParts(appt.startsAt, tz);
     // Un recordatorio mandado a mano otro día ("Enviar ahora" la víspera) no
@@ -327,7 +339,25 @@ async function runStep(
     return true;
   }
 
-  // cancel
+  // cancel. Anular es lo único irreversible de la secuencia: antes se
+  // comprueba que la falta de respuesta signifique de verdad que no
+  // contestaron. Si no se puede asegurar, NO se anula: se pide al equipo que
+  // llame (12/11: siete citas anuladas porque los "1" no llegaron).
+  const doubt = await cancelDoubt(appt, dayOf, tz);
+  if (doubt) {
+    const parked = await db
+      .update(appointmentDayOf)
+      .set({ outcome: 'NEEDS_CALL', outcomeAt: at, updatedAt: at })
+      .where(scope)
+      .returning({ id: appointmentDayOf.appointmentId });
+    if (!parked.length) return false;
+    console.warn('[day-of] no se anula por falta de confirmación', {
+      appointmentId: appt.id,
+      doubt,
+    });
+    await askTeamToConfirm(appt, tz, doubt);
+    return true;
+  }
   const claimed = await db
     .update(appointmentDayOf)
     .set({ outcome: 'AUTO_CANCELLED', outcomeAt: at, updatedAt: at })
@@ -343,6 +373,105 @@ async function runStep(
     await sendClinicWhatsapp(appt.tenantId, phone, [fillScript(dayOf.autoCancelled, v)]);
   }
   return true;
+}
+
+/** Antelación mínima entre el recordatorio y la anulación automática. */
+const MIN_REMINDER_TO_CANCEL_MS = 90 * 60_000;
+
+/**
+ * Motivo para NO anular, o null si la anulación es segura:
+ * - la cita ya no está "Agendada" (la confirmaron, la movieron, llegó);
+ * - el recordatorio no salió o salió tarde (sin margen para contestar);
+ * - el WhatsApp no da prueba de que recibe desde que salió el recordatorio
+ *   (desconectado, o entrando mensajes con retraso).
+ */
+async function cancelDoubt(
+  appt: Appointment,
+  dayOf: DayOfScripts,
+  tz: string,
+): Promise<'STATUS' | 'NO_REMINDER' | 'LATE_REMINDER' | 'CHANNEL' | null> {
+  const [fresh] = await db
+    .select({ status: agendaAppointments.status })
+    .from(agendaAppointments)
+    .where(and(eq(agendaAppointments.tenantId, appt.tenantId), eq(agendaAppointments.id, appt.id)))
+    .limit(1);
+  if (!fresh || fresh.status !== 'SCHEDULED') return 'STATUS';
+  const [state] = await db
+    .select({ reminderSentAt: appointmentDayOf.reminderSentAt })
+    .from(appointmentDayOf)
+    .where(
+      and(
+        eq(appointmentDayOf.appointmentId, appt.id),
+        eq(appointmentDayOf.tenantId, appt.tenantId),
+      ),
+    )
+    .limit(1);
+  const sentAt = state?.reminderSentAt ?? null;
+  if (!sentAt) return 'NO_REMINDER';
+  const cancelMinute = clockMinutes(dayOf.cancelAt);
+  if (cancelMinute !== null) {
+    const today = parseDateKey(localDateKey(new Date(), tz));
+    if (today) {
+      const cancelAt = zonedToUtc(
+        today.year,
+        today.month,
+        today.day,
+        Math.floor(cancelMinute / 60),
+        cancelMinute % 60,
+        tz,
+      );
+      if (cancelAt.getTime() - sentAt.getTime() < MIN_REMINDER_TO_CANCEL_MS) {
+        return 'LATE_REMINDER';
+      }
+    }
+  }
+  const { isReceivingSince } = await import('@/lib/whatsapp/health');
+  if (!(await isReceivingSince(appt.tenantId, sentAt))) return 'CHANNEL';
+  return null;
+}
+
+/** La cita no se anuló por una duda: tarea de llamar + tarjeta que explica por qué. */
+async function askTeamToConfirm(
+  appt: Appointment,
+  tz: string,
+  doubt: 'STATUS' | 'NO_REMINDER' | 'LATE_REMINDER' | 'CHANNEL',
+): Promise<void> {
+  if (doubt === 'STATUS') return;
+  const { runTaskAutomation } = await import('@/lib/tasks/automation');
+  await runTaskAutomation({
+    tenantId: appt.tenantId,
+    trigger: 'REMINDER_NO_RESPONSE',
+    context: {
+      patientName: appt.patientName,
+      phone: appt.patientPhone,
+      date: formatDateTime(appt.startsAt, tz),
+      ghlAppointmentId: appt.id,
+      dedupeSuffix: `dayof:${appt.id}:needs-call`,
+    },
+  }).catch((err) => console.warn('[day-of] tarea de confirmar', err));
+  const why =
+    doubt === 'CHANNEL'
+      ? 'El WhatsApp no está recibiendo bien los mensajes, así que puede que la familia sí contestara. NO se ha anulado: confirmad por teléfono.'
+      : 'El recordatorio no salió a tiempo, así que no se ha anulado: confirmad por teléfono.';
+  const { postSystemEvent } = await import('@/lib/messaging/bot');
+  await postSystemEvent({
+    tenantId: appt.tenantId,
+    event: 'reminder.no_response',
+    title: `Sin confirmar, NO anulada — ${appt.patientName}`,
+    body: `Cita: ${formatDateTime(appt.startsAt, tz)}\n${why}`,
+    context: { type: 'APPOINTMENT', id: appt.id, payload: { patientName: appt.patientName } },
+    actions: appt.patientPhone
+      ? [
+          {
+            id: 'call',
+            label: `Llamar a ${appt.patientName}`,
+            tone: 'primary',
+            href: `tel:${appt.patientPhone}`,
+          },
+        ]
+      : [],
+    dedupeKey: `evt:dayof.needs_call:${appt.id}`,
+  }).catch((err) => console.warn('[day-of] aviso de no anulada', err));
 }
 
 /** Tarea "llamar" + tarjeta en #agenda con botón de llamar. Best-effort. */
@@ -623,6 +752,8 @@ export async function handleDayOfTextReply(args: {
   contactPhoneE164: string;
   text: string | null | undefined;
   inboundMessageId: string;
+  /** Cuándo lo escribió la familia (puede llegar tarde si el canal falla). */
+  writtenAt?: Date | null;
 }): Promise<boolean> {
   // ¿Hay un recordatorio del día de HOY mandado a este teléfono y sin
   // respuesta? Antes se miraba si el último mensaje llevaba los botones, y el
@@ -644,12 +775,16 @@ export async function handleDayOfTextReply(args: {
         inArray(agendaAppointments.status, ['SCHEDULED', 'CONFIRMED']),
         gte(agendaAppointments.startsAt, now),
         lt(agendaAppointments.startsAt, new Date(now.getTime() + 36 * 3_600_000)),
-        isNull(appointmentDayOf.outcome),
+        // NEEDS_CALL: no se anuló por dudas del canal; su "1" tardío sigue valiendo.
+        or(isNull(appointmentDayOf.outcome), eq(appointmentDayOf.outcome, 'NEEDS_CALL')),
         gte(appointmentDayOf.reminderSentAt, new Date(now.getTime() - 18 * 3_600_000)),
       ),
     );
   const mine: typeof pending = [];
   for (const a of pending) {
+    // Un "1" escrito ANTES del recordatorio de hoy (contestaba a otro mensaje y
+    // llega tarde) no confirma la cita de hoy.
+    if (args.writtenAt && a.reminderSentAt && args.writtenAt < a.reminderSentAt) continue;
     if (samePhone(a.phone, args.contactPhoneE164)) {
       mine.push(a);
       continue;

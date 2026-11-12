@@ -26,6 +26,7 @@ import {
   TrendingUp,
   UserX,
   Users,
+  WifiOff,
 } from 'lucide-react';
 import type * as React from 'react';
 
@@ -162,6 +163,7 @@ const EVENT_ICONS: Record<ImEvent, LucideIcon> = {
   'analytics.threshold_alert': TrendingUp,
   'patient.birthday': Cake,
   'consent.signed': FileSignature,
+  'wa.channel_problem': WifiOff,
 };
 
 export function eventIcon(eventKey: string | null | undefined): LucideIcon {
@@ -193,6 +195,7 @@ const EVENT_LABELS: Record<ImEvent, string> = {
   'analytics.threshold_alert': 'Alerta de umbral',
   'patient.birthday': 'Cumpleaños',
   'consent.signed': 'Consentimiento firmado',
+  'wa.channel_problem': 'WhatsApp con problemas',
 };
 
 export function eventLabel(eventKey: string | null | undefined): string {

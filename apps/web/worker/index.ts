@@ -8,7 +8,7 @@
 // I/O bound (LLM + DB). Ajustable vía WORKER_CONCURRENCY_* env vars.
 
 import 'server-only';
-import { type Job, Worker } from 'bullmq';
+import { DelayedError, type Job, Worker } from 'bullmq';
 
 import { closeDb } from '@/lib/db/client';
 import { runPendingMigrations } from '@/lib/db/migrate';
@@ -28,7 +28,12 @@ import { processTaskRoutinesTickJob } from '@/worker/jobs/task-routines-tick';
 import { processWaitlistOfferExpireJob } from '@/worker/jobs/waitlist-offer-expire';
 import { processWaitlistOfferSendJob } from '@/worker/jobs/waitlist-offer-send';
 import { processWhatsappEchoJob } from '@/worker/jobs/whatsapp-echo';
-import { onWhatsappJobGaveUp, processWhatsappJob } from '@/worker/jobs/whatsapp-process';
+import {
+  ConversationBusyError,
+  DeferJobError,
+  onWhatsappJobGaveUp,
+  processWhatsappJob,
+} from '@/worker/jobs/whatsapp-process';
 
 function num(name: string, def: number): number {
   const v = process.env[name];
@@ -53,9 +58,24 @@ function logStart(): void {
 function buildWaWorker(): Worker<QueueJobs['wa-process']> {
   const worker = new Worker<QueueJobs['wa-process']>(
     'wa-process',
-    async (job: Job<QueueJobs['wa-process']>) => {
+    async (job: Job<QueueJobs['wa-process']>, token?: string) => {
       const step = createStepRunner(stepScope(job.id, job.timestamp, 'wa'));
-      return processWhatsappJob(job.data, step);
+      try {
+        return await processWhatsappJob(job.data, step);
+      } catch (err) {
+        // Esperar a otro job o a la mañana no gasta intentos: se aplaza el
+        // mismo job. Con tope por si algo se queda bloqueado (el lock de la
+        // conversación caduca a los 2 min, así que 40 esperas son de sobra).
+        if (err instanceof DeferJobError && token) {
+          await job.moveToDelayed(err.until.getTime(), token);
+          throw new DelayedError();
+        }
+        if (err instanceof ConversationBusyError && token && (job.attemptsStarted ?? 0) < 40) {
+          await job.moveToDelayed(Date.now() + 6_000 + Math.floor(Math.random() * 4_000), token);
+          throw new DelayedError();
+        }
+        throw err;
+      }
     },
     {
       connection: getRedis(),

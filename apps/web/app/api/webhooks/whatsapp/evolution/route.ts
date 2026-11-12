@@ -121,6 +121,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         } catch (auditErr) {
           console.error('audit_failed', auditErr);
         }
+        // Desconexión → aviso al equipo; muchas reconexiones → sesión inestable.
+        const { noteConnectionState } = await import('@/lib/whatsapp/health');
+        await noteConnectionState({ tenantId: conn.tenantId, connectionId: conn.id, state: next });
         break;
       }
       case 'messages.upsert':
@@ -173,6 +176,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         // eventos de WhatsApp sin contenido. Se guardaban como "[SYSTEM]" y
         // despertaban al asistente, que repetía su última respuesta.
         if (normalizeEvolutionMessage(parsed.data, conn.tenantId).type === 'SYSTEM') break;
+        // ¿Llegó a tiempo? Un mensaje escrito hace más de 10 min es la señal de
+        // que la sesión no recibe en tiempo real (11-12/11: 2-4 h de retraso
+        // sin que nadie lo viera). Cuenta también lo que escribe la clínica
+        // desde su teléfono, que sufre el mismo retraso.
+        const writtenAt = normalizeEvolutionMessage(parsed.data, conn.tenantId).timestamp;
+        {
+          const { noteInboundTiming } = await import('@/lib/whatsapp/health');
+          await noteInboundTiming({ tenantId: conn.tenantId, connectionId: conn.id, writtenAt });
+        }
         // Enviado desde el teléfono de la clínica (o eco de lo que mandó la
         // app): se refleja en el chat como del equipo, sin pasar por el agente.
         // El job decide si ya estaba guardado.
@@ -246,6 +258,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
                       contactPhoneE164: persisted.contact.phoneE164,
                       text: inbound.contentText,
                       inboundMessageId: inbound.id,
+                      writtenAt,
                     }),
                   )
                   .catch((err) => {

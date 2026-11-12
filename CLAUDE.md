@@ -1298,6 +1298,59 @@ reclamaba) y la respuesta del día anterior de una cita movida. Ahora:
 Prueba de extremo a extremo contra QA en el scratchpad de la sesión
 (`qa/e2e-dia-cita.ts`, 9 casos, con hora simulada de las 09:00).
 
+## Salud del canal de WhatsApp (incidente del 11-12/11/2026)
+
+Del 11/11 a las 18:15 al 12/11 a las 08:20 la sesión de Evolution de Respinens
+recibía los mensajes con 2-4 h de retraso: sólo los entregaba al reconectarse,
+cada ~50 min. Causa (logs de Evolution v2.3.7): sesión cifrada (Signal)
+corrupta, `Bad MAC` y `jidDecode` en los reintentos, WhatsApp cortando el
+stream; a las 08:20 la desvinculó (401). **Los envíos seguían funcionando**, así
+que desde la app no se notaba nada. Consecuencias: los "1" del recordatorio no
+llegaron, el asistente contestó a las 04:00 lo preguntado a las 19:00 y a las
+12:30 se anularon siete citas (tres confirmadas a mano: ver abajo). El ciclo de
+reconexiones cada 50 min empezó el 6/11, cinco días antes, sin que nadie lo
+viera. Lo que quedó (migración `0071`, `lib/whatsapp/health.ts` +
+`health-model.ts` puro con tests):
+
+- **Se mide el retraso de cada entrante** (webhook de Evolution:
+  `messageTimestamp` contra la hora de llegada, también los ecos del teléfono de
+  la clínica). Más de 10 min → `last_lagged_inbound_at` y el canal cuenta como
+  no fiable 3 h; a tiempo → `last_fresh_inbound_at`.
+- **Avisos al equipo** (tarjeta `wa.channel_problem` en #urgencias, una cada
+  3 h): recibe con retraso, desconectado (siempre) y **inestable** (12 o más
+  reconexiones en 24 h: la señal previa a la caída).
+- ⚠️ **Nunca se anula una cita por falta de respuesta sin prueba de que el
+  canal recibe** (`cancelDoubt` en `day-of-run.ts`): la cita sigue "Agendada",
+  el recordatorio salió con al menos 90 min de margen y entró algún mensaje a
+  tiempo desde entonces sin ninguno con retraso. Si no, `outcome = NEEDS_CALL`:
+  no se anula, tarea de llamar y tarjeta "Sin confirmar, NO anulada". Su "1"
+  tardío sigue valiendo.
+- **Confirmada hoy = confirmada**, haya salido o no el recordatorio. La
+  excepción del panel sólo miraba citas sin recordatorio (fallo del 10/11): una
+  confirmación a mano a las 08:31 se anulaba a las 12:30. Un "1" escrito ANTES
+  del recordatorio de hoy (que llega tarde) no confirma.
+- **Sin canal fiable no se ofrecen huecos** (`offerFreedSlot`): ni adelantos ni
+  lista de espera; tarjeta "Hueco libre sin ofrecer" para hacerlo por teléfono.
+- **Mensajes que llegan tarde**: el asistente recibe cuándo se escribieron
+  (`lateNotice`, al final del prompt) para leer bien "hoy a las 19:00"; de
+  noche (23-08) y con más de 30 min de retraso se contestan a las 08:00
+  (`DeferJobError`); con más de 12 h (resincronización al volver a vincular) no
+  se contestan solos: pasan al equipo.
+- ⚠️ **El lote de una conversación empieza después del último mensaje ya
+  contestado** (el disparador del último run), no después de la hora del run.
+  Con la hora del run, lo que entraba mientras el asistente pensaba (~4 al día)
+  no lo contestaba nadie.
+- **Esperar a otro job no gasta intentos**: `ConversationBusyError` → el worker
+  aplaza el mismo job (`moveToDelayed` + `DelayedError`, tope 40). Antes se
+  agotaban los 3 intentos en 6 s y saltaba en falso el aviso de "no pudo
+  contestar" (que además ya no avisa si otro lote cubrió el mensaje).
+- Operativa pendiente tras el incidente: actualizar Evolution (bug de Baileys
+  con contactos LID), recrear la instancia limpia y volver a vincular
+  (borrando antes los dispositivos vinculados del teléfono), rotar el apikey de
+  la instancia y el token del webhook (salen en claro en los logs VERBOSE),
+  bajar el log a ERROR,WARN y dar acceso SSH para leer logs antiguos (Dokploy
+  sólo guarda las últimas 10.000 líneas).
+
 ## Señales de conducta del paciente (Respinens): duda y banderas rojas
 
 La clínica las llevaba con emojis en el nombre de cada contacto de Google (🤔
@@ -1915,4 +1968,4 @@ LLM por llamada telefónica, una bloqueando. Ese trabajo va a la cola.
 
 ---
 
-**Última actualización**: 2026-11-10 (bloque 2 de Respinens: ofertas 8-23 h, avisos 10/11/12, autorrevisión). Anterior: 2026-09-25 (auditoría de rendimiento con agentes: señal de navegación, caché del router, camino crítico del layout, topes de espera en los diez clientes externos, consultas encadenadas, índices de la migración 0044 y CI en verde).
+**Última actualización**: 2026-11-12 (salud del canal de WhatsApp tras la caída de Evolution: no anular sin canal fiable, mensajes tardíos, lote por disparador, avisos). Anterior: 2026-11-10 (bloque 2 de Respinens). Anterior: 2026-09-25 (auditoría de rendimiento con agentes: señal de navegación, caché del router, camino crítico del layout, topes de espera en los diez clientes externos, consultas encadenadas, índices de la migración 0044 y CI en verde).
