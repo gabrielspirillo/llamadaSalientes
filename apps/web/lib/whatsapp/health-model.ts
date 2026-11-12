@@ -6,16 +6,24 @@
 // desde la app todo parecía normal mientras las respuestas de las familias no
 // llegaban. Estas reglas son las que deciden si el canal es fiable.
 
-/** Un entrante escrito hace más de esto llegó tarde: el canal no es fiable. */
+/** Hasta esto, un entrante llegó a tiempo: es prueba de que el canal recibe. */
 export const LAG_THRESHOLD_MS = 10 * 60_000;
-/** Tras un entrante con retraso, el canal se trata como no fiable este rato. */
-export const DEGRADED_WINDOW_MS = 3 * 3_600_000;
+/**
+ * Retraso que cuenta como fallo del canal. Alto a propósito: un retraso de
+ * minutos (cobertura, WhatsApp lento un rato) no puede cambiar cómo funciona
+ * la clínica. El 11/11 los retrasos eran de 100 a 220 minutos.
+ */
+export const DEGRADE_LAG_MS = 30 * 60_000;
+/** Conversaciones DISTINTAS con ese retraso en la última hora para darlo por caído. */
+export const DEGRADE_MIN_CONVERSATIONS = 3;
+/** Tras confirmarse el fallo, el canal se trata como no fiable este rato. */
+export const DEGRADED_WINDOW_MS = 90 * 60_000;
 /** Reconexiones en 24 h a partir de las cuales la sesión se considera inestable. */
 export const UNSTABLE_RECONNECTS_24H = 12;
 /** Entre dos avisos al equipo por el mismo canal. */
 export const ALERT_COOLDOWN_MS = 3 * 3_600_000;
 /** Un mensaje que llega con más retraso que esto, de noche, se contesta por la mañana. */
-export const NIGHT_DEFER_LAG_MS = 30 * 60_000;
+export const NIGHT_DEFER_LAG_MS = DEGRADE_LAG_MS;
 
 export type ChannelProblem = 'NO_CONNECTION' | 'DISCONNECTED' | 'DELAYED';
 
@@ -76,17 +84,17 @@ export function receivingSince(row: ChannelRow | null, since: Date, now: Date): 
   return true;
 }
 
-/** Texto para el equipo según el problema. */
+/** Texto para Futura según el problema (la clínica no lo ve). */
 export function channelProblemText(problem: ChannelProblem, lagMinutes?: number | null): string {
   switch (problem) {
     case 'NO_CONNECTION':
       return 'La clínica no tiene WhatsApp conectado.';
     case 'DISCONNECTED':
-      return 'El WhatsApp de la clínica está desconectado: no entra ni sale ningún mensaje. Hay que volver a vincularlo (escanear el QR) en WhatsApp → Integraciones.';
+      return 'No entra ni sale ningún mensaje. Hay que volver a vincular el número (QR) en WhatsApp → Integraciones de la clínica.';
     case 'DELAYED':
-      return `El WhatsApp de la clínica está recibiendo los mensajes con retraso${
+      return `Los mensajes entrantes llegan con retraso${
         lagMinutes ? ` (hasta ${lagMinutes} min)` : ''
-      }. Las familias pueden haber escrito y no haber recibido respuesta. Mientras dure no se anulan citas por falta de confirmación ni se ofrecen huecos por WhatsApp: confirmad por teléfono. Si sigue así, desvinculad y volved a vincular el WhatsApp.`;
+      } en varias conversaciones. Mientras dure, no se anulan citas por falta de confirmación (quedan para llamar) y los huecos que se liberen esperan a que el canal se recupere para ofrecerse. Revisar la instancia de Evolution; si sigue, desvincular y volver a vincular.`;
   }
 }
 

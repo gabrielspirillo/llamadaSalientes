@@ -136,9 +136,16 @@ export async function flushNightOfferQueue(now = new Date()): Promise<number> {
     .orderBy(advanceOfferQueue.createdAt)
     .limit(50);
   let done = 0;
+  const { getChannelProblem } = await import('@/lib/whatsapp/health');
+  const channelOk = new Map<string, boolean>();
   for (const row of rows) {
     const tz = await tenantTimezone(row.tenantId);
     if (!isOfferHour(now, tz)) continue;
+    // Con el WhatsApp de la clínica sin funcionar, el hueco sigue esperando.
+    if (!channelOk.has(row.tenantId)) {
+      channelOk.set(row.tenantId, !(await getChannelProblem(row.tenantId)));
+    }
+    if (!channelOk.get(row.tenantId)) continue;
     const [claimed] = await db
       .update(advanceOfferQueue)
       .set({ processedAt: now })
@@ -253,24 +260,28 @@ export async function offerFreedSlot(
     return false;
   }
 
-  // Con el WhatsApp sin recibir bien no se ofrece nada: la familia contestaría
-  // y no nos llegaría, el hueco quedaría reservado 20 minutos para nadie y la
-  // oferta pasaría a la siguiente (12/11: la oferta de las 19:00 caducó así
-  // mientras recepción daba el hueco a mano). Se avisa al equipo y el hueco
-  // queda libre; tampoco va a la lista de espera, que también escribe.
+  // Con el WhatsApp sin recibir bien no se ofrece todavía: la familia
+  // contestaría y no nos llegaría, el hueco quedaría reservado para nadie y la
+  // oferta pasaría a la siguiente (12/11: la de las 19:00 caducó así). El hueco
+  // espera en la misma cola que de noche y se ofrece solo en cuanto el canal
+  // se recupera (`flushNightOfferQueue`). Sin reserva: recepción puede darlo a
+  // mano mientras tanto, y antes de ofrecerlo se vuelve a comprobar libre.
   {
     const { getChannelProblem } = await import('@/lib/whatsapp/health');
     const problem = await getChannelProblem(tenantId);
     if (problem) {
-      const hueco = describe(slot.startsAt, tzNow, localDateKey(now, tzNow));
-      await postSystemEvent({
-        tenantId,
-        event: 'waitlist.slot_open',
-        title: `Hueco libre sin ofrecer — ${hueco.day} ${hueco.time}`,
-        body: 'El WhatsApp no está funcionando bien, así que no se ha ofrecido a nadie. Ofrécelo por teléfono si quieres llenarlo.',
-        dedupeKey: `adv:nochannel:${slot.professionalId}:${slot.startsAt.toISOString()}`,
-      }).catch(() => undefined);
-      console.warn('[adelanto] canal de WhatsApp con problemas, no se ofrece', {
+      await db
+        .insert(advanceOfferQueue)
+        .values({
+          tenantId,
+          professionalId: slot.professionalId,
+          slotStartsAt: slot.startsAt,
+          slotEndsAt: slot.endsAt,
+          freedAppointmentId: slot.freedAppointmentId ?? null,
+          cancelledSlotId: slot.cancelledSlotId ?? null,
+        })
+        .onConflictDoNothing();
+      console.warn('[adelanto] canal de WhatsApp con problemas, el hueco espera', {
         tenantId,
         problem,
       });

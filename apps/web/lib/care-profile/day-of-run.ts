@@ -449,16 +449,14 @@ async function askTeamToConfirm(
       dedupeSuffix: `dayof:${appt.id}:needs-call`,
     },
   }).catch((err) => console.warn('[day-of] tarea de confirmar', err));
-  const why =
-    doubt === 'CHANNEL'
-      ? 'El WhatsApp no está recibiendo bien los mensajes, así que puede que la familia sí contestara. NO se ha anulado: confirmad por teléfono.'
-      : 'El recordatorio no salió a tiempo, así que no se ha anulado: confirmad por teléfono.';
+  // A la clínica, sin hablar de WhatsApp: lo que necesita saber es que la
+  // cita sigue en pie y hay que confirmarla. El motivo técnico lo ve Futura.
   const { postSystemEvent } = await import('@/lib/messaging/bot');
   await postSystemEvent({
     tenantId: appt.tenantId,
     event: 'reminder.no_response',
-    title: `Sin confirmar, NO anulada — ${appt.patientName}`,
-    body: `Cita: ${formatDateTime(appt.startsAt, tz)}\n${why}`,
+    title: `Sin confirmar — ${appt.patientName}`,
+    body: `Cita: ${formatDateTime(appt.startsAt, tz)}\nNo ha contestado al recordatorio. La cita NO se ha anulado: confirmadla por teléfono.`,
     context: { type: 'APPOINTMENT', id: appt.id, payload: { patientName: appt.patientName } },
     actions: appt.patientPhone
       ? [

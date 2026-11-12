@@ -2,12 +2,13 @@ import 'server-only';
 import { and, desc, eq, gte, isNull, lt, or, sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
-import { auditLogs, whatsappConnections } from '@/lib/db/schema';
+import { auditLogs, tenants, whatsappConnections } from '@/lib/db/schema';
 import {
   ALERT_COOLDOWN_MS,
   type ChannelProblem,
   type ChannelRow,
-  LAG_THRESHOLD_MS,
+  DEGRADE_LAG_MS,
+  DEGRADE_MIN_CONVERSATIONS,
   UNSTABLE_RECONNECTS_24H,
   channelProblem,
   channelProblemText,
@@ -84,12 +85,14 @@ export async function isReceivingSince(tenantId: string, since: Date): Promise<b
  * teléfono de la clínica, que sufren el mismo retraso). Marca la conexión como
  * sana o con retraso y, si es lo segundo, avisa al equipo.
  *
- * ⚠️ Un solo mensaje con retraso NO marca el canal: una familia que escribe sin
+ * ⚠️ Un retraso suelto NO marca el canal: una familia que escribe sin
  * cobertura (el mensaje sale cuando recupera señal) o con el reloj del móvil
- * mal llegaría "tarde" sin que el canal tenga nada. Hace falta retraso en al
- * menos DOS conversaciones distintas en media hora, que es lo que pasa cuando
- * la sesión de WhatsApp deja de recibir (el 11/11 llegaban en tandas de varias
- * familias a la vez). Devuelve si el canal está ahora con retraso.
+ * mal llegaría "tarde" sin que el canal tenga nada, y marcarlo cambiaría cómo
+ * funciona la clínica (no anular, no ofrecer huecos). Hace falta más de 30 min
+ * de retraso en TRES conversaciones distintas en una hora, que es lo que pasa
+ * cuando la sesión de WhatsApp deja de recibir (el 11/11 llegaban tandas de
+ * varias familias a la vez con 2-4 h de retraso). Devuelve si el canal está
+ * ahora con retraso.
  */
 export async function noteInboundTiming(args: {
   tenantId: string;
@@ -118,7 +121,7 @@ export async function noteInboundTiming(args: {
           ),
         );
     }
-    if (lag !== null && isLagged(lag)) {
+    if (lag !== null && lag > DEGRADE_LAG_MS) {
       const others = await db.execute<{ n: number }>(sql`
         select count(distinct m.conversation_id)::int as n
           from whatsapp_messages m
@@ -126,10 +129,10 @@ export async function noteInboundTiming(args: {
           join whatsapp_contacts ct on ct.id = c.contact_id
          where m.tenant_id = ${args.tenantId}
            and m.direction = 'INBOUND'
-           and m.created_at > now() - interval '30 minutes'
+           and m.created_at > now() - interval '60 minutes'
            and (m.raw_json->>'messageTimestamp') ~ '^[0-9]+$'
            and extract(epoch from m.created_at) - (m.raw_json->>'messageTimestamp')::bigint > ${Math.round(
-             LAG_THRESHOLD_MS / 1000,
+             DEGRADE_LAG_MS / 1000,
            )}
            and ct.phone_e164 <> ${args.contactPhoneE164 ?? ''}
       `);
@@ -140,7 +143,8 @@ export async function noteInboundTiming(args: {
         lagMinutes,
         otherConversations,
       });
-      if (otherConversations >= 1) {
+      // Ésta más otras dos: tres familias distintas con más de 30 min de retraso.
+      if (otherConversations >= DEGRADE_MIN_CONVERSATIONS - 1) {
         await db
           .update(whatsappConnections)
           .set({ lastLaggedInboundAt: now, lastInboundLagSeconds: Math.round(lag / 1000) })
@@ -216,9 +220,11 @@ export async function noteConnectionState(args: {
 }
 
 /**
- * Tarjeta en #urgencias (y log). Un aviso por canal cada `ALERT_COOLDOWN_MS`,
- * salvo `force` (una desconexión se avisa siempre, con su propia clave de
- * deduplicación por hora).
+ * Aviso SÓLO para Futura (super-admin): tarjeta en #urgencias del espacio de
+ * Futura con el nombre de la clínica. La clínica no ve nada de esto: los
+ * fallos del proveedor de WhatsApp los gestiona Futura. Un aviso por clínica
+ * cada `ALERT_COOLDOWN_MS` para el retraso; la desconexión, una por hora; la
+ * inestabilidad, una al día.
  */
 async function alertChannelProblem(args: {
   tenantId: string;
@@ -246,30 +252,32 @@ async function alertChannelProblem(args: {
       .returning({ id: whatsappConnections.id });
     if (!claimed.length) return;
   }
+  const { FUTURA_TENANT_ID } = await import('@/lib/modules');
+  const [clinic] = await db
+    .select({ name: tenants.name })
+    .from(tenants)
+    .where(eq(tenants.id, args.tenantId))
+    .limit(1);
+  const clinicName = clinic?.name ?? 'Clínica';
   const body =
     args.problem === 'UNSTABLE'
-      ? `La conexión de WhatsApp se ha reiniciado ${args.reconnects} veces en las últimas 24 h. Suele ser la señal previa a que deje de recibir mensajes. Conviene desvincular y volver a vincular el WhatsApp (escanear el QR) en un momento tranquilo.`
+      ? `La conexión de WhatsApp se ha reiniciado ${args.reconnects} veces en las últimas 24 h. Suele ser la señal previa a que deje de recibir mensajes: revisar la instancia de Evolution.`
       : channelProblemText(args.problem, args.lagMinutes);
   const title =
     args.problem === 'DISCONNECTED'
-      ? 'WhatsApp desconectado'
+      ? `${clinicName}: WhatsApp desconectado`
       : args.problem === 'DELAYED'
-        ? 'WhatsApp recibe con retraso'
-        : 'WhatsApp inestable';
+        ? `${clinicName}: WhatsApp recibe con retraso`
+        : `${clinicName}: WhatsApp inestable`;
+  console.warn('[wa-health] aviso de canal', { tenantId: args.tenantId, problem: args.problem });
+  // Sin espacio de Futura configurado (FUTURA_TENANT_ID), sólo queda el log.
+  if (!FUTURA_TENANT_ID || FUTURA_TENANT_ID === args.tenantId) return;
   const { postSystemEvent } = await import('@/lib/messaging/bot');
   await postSystemEvent({
-    tenantId: args.tenantId,
+    tenantId: FUTURA_TENANT_ID,
     event: 'wa.channel_problem',
     title,
     body,
-    actions: [
-      {
-        id: 'open-wa-integrations',
-        label: 'Abrir integraciones',
-        tone: 'primary',
-        href: '/dashboard/whatsapp/integrations',
-      },
-    ],
     // Desconexión: una por hora. Inestable: una por día.
     dedupeKey: `evt:wa.channel_problem:${args.tenantId}:${args.problem}:${now
       .toISOString()

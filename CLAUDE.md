@@ -1314,33 +1314,38 @@ viera. Lo que quedó (migración `0071`, `lib/whatsapp/health.ts` +
 
 - **Se mide el retraso de cada entrante** (webhook de Evolution:
   `messageTimestamp` contra la hora de llegada, también los ecos del teléfono de
-  la clínica). A tiempo → `last_fresh_inbound_at`. ⚠️ **Un mensaje suelto con
-  retraso NO marca el canal**: una familia sin cobertura o con el reloj del
-  móvil mal llegaría "tarde" sin que el canal falle, y eso apagaría 3 h las
-  anulaciones y las ofertas. Hace falta retraso (más de 10 min) en **dos
-  conversaciones distintas en media hora** → `last_lagged_inbound_at` y el
-  canal cuenta como no fiable 3 h. `PENDING` (el segundo de cada reconexión)
-  no cuenta como caída; sólo `DISCONNECTED`/`ERROR`.
+  la clínica). A tiempo (≤ 10 min) → `last_fresh_inbound_at`. ⚠️ **Un retraso
+  pequeño o suelto NO cambia nada**: una familia sin cobertura o con el reloj
+  del móvil mal llegaría "tarde" sin que el canal falle, y marcarlo apagaría
+  las anulaciones y las ofertas, que es justo lo que la clínica quiere que
+  funcione. Sólo cuenta como caída **más de 30 min de retraso en TRES
+  conversaciones distintas en una hora** (el 11/11 eran 100-220 min en tandas
+  de varias familias) → `last_lagged_inbound_at`, no fiable 90 min. `PENDING`
+  (el segundo de cada reconexión) no cuenta; sólo `DISCONNECTED`/`ERROR`.
 - Lo que depende de la hora en que se escribió un mensaje (aplazar a las 08:00,
   avisar al asistente del retraso, pasar al equipo lo de más de 12 h, ignorar
-  un "1" escrito antes del recordatorio) **sólo se aplica con el canal en
-  retraso**, por la misma razón: un reloj mal no puede dejar a una familia sin
-  respuesta.
-- **Avisos al equipo** (tarjeta `wa.channel_problem` en #urgencias): recibe
-  con retraso (una cada 3 h), desconectado (una por hora) e **inestable** (12 o
-  más reconexiones en 24 h, la señal previa a la caída; una al día).
+  un "1" escrito antes del recordatorio) **sólo se aplica con el canal caído**:
+  un reloj mal no puede dejar a una familia sin respuesta.
+- ⚠️ **Los avisos del canal son SÓLO para Futura** (tarjeta
+  `wa.channel_problem` en #urgencias del tenant `FUTURA_TENANT_ID`, con el
+  nombre de la clínica): retraso (una cada 3 h), desconexión (una por hora) e
+  **inestable** (12 o más reconexiones en 24 h, la señal previa a la caída; una
+  al día). La clínica no ve nada de fallos del proveedor; lo gestiona Futura.
 - ⚠️ **Nunca se anula una cita por falta de respuesta sin prueba de que el
   canal recibe** (`cancelDoubt` en `day-of-run.ts`): la cita sigue "Agendada",
   el recordatorio salió con al menos 90 min de margen y entró algún mensaje a
   tiempo desde entonces sin ninguno con retraso. Si no, `outcome = NEEDS_CALL`:
-  no se anula, tarea de llamar y tarjeta "Sin confirmar, NO anulada". Su "1"
+  no se anula, tarea de llamar y tarjeta neutra para la clínica ("No ha
+  contestado. La cita NO se ha anulado", sin mencionar WhatsApp). Su "1"
   tardío sigue valiendo.
 - **Confirmada hoy = confirmada**, haya salido o no el recordatorio. La
   excepción del panel sólo miraba citas sin recordatorio (fallo del 10/11): una
   confirmación a mano a las 08:31 se anulaba a las 12:30. Un "1" escrito ANTES
   del recordatorio de hoy (que llega tarde) no confirma.
-- **Sin canal fiable no se ofrecen huecos** (`offerFreedSlot`): ni adelantos ni
-  lista de espera; tarjeta "Hueco libre sin ofrecer" para hacerlo por teléfono.
+- **Sin canal fiable los huecos esperan** (`offerFreedSlot`): van a
+  `advance_offer_queue` (la misma cola de la noche), sin reserva, y
+  `flushNightOfferQueue` los ofrece solos en cuanto el canal se recupera
+  (dentro de 08-23 h, comprobando antes que sigan libres). Nada a la clínica.
 - **Mensajes que llegan tarde**: el asistente recibe cuándo se escribieron
   (`lateNotice`, al final del prompt) para leer bien "hoy a las 19:00"; de
   noche (23-08) y con más de 30 min de retraso se contestan a las 08:00
