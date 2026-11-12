@@ -180,11 +180,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         // que la sesión no recibe en tiempo real (11-12/11: 2-4 h de retraso
         // sin que nadie lo viera). Cuenta también lo que escribe la clínica
         // desde su teléfono, que sufre el mismo retraso.
-        const writtenAt = normalizeEvolutionMessage(parsed.data, conn.tenantId).timestamp;
-        {
-          const { noteInboundTiming } = await import('@/lib/whatsapp/health');
-          await noteInboundTiming({ tenantId: conn.tenantId, connectionId: conn.id, writtenAt });
-        }
+        const normalizedForTiming = normalizeEvolutionMessage(parsed.data, conn.tenantId);
+        const { noteInboundTiming } = await import('@/lib/whatsapp/health');
+        const timing = await noteInboundTiming({
+          tenantId: conn.tenantId,
+          connectionId: conn.id,
+          writtenAt: normalizedForTiming.timestamp,
+          contactPhoneE164: normalizedForTiming.fromPhoneE164,
+        });
+        // La hora en que lo escribió la familia sólo se usa con el canal en
+        // retraso: un móvil con el reloj mal no puede dejar sin efecto su "1".
+        const writtenAt = timing.delayed ? normalizedForTiming.timestamp : null;
         // Enviado desde el teléfono de la clínica (o eco de lo que mandó la
         // app): se refleja en el chat como del equipo, sin pasar por el agente.
         // El job decide si ya estaba guardado.

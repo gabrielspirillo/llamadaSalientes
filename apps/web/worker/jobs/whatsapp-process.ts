@@ -114,6 +114,11 @@ export function writtenAtOf(row: { rawJson: unknown; createdAt: Date }): Date | 
   return new Date(ts * 1000);
 }
 
+async function channelDelayed(tenantId: string): Promise<boolean> {
+  const { getChannelProblem } = await import('@/lib/whatsapp/health');
+  return (await getChannelProblem(tenantId)) === 'DELAYED';
+}
+
 async function tenantTimezone(tenantId: string): Promise<string> {
   const [row] = await db
     .select({ timezone: clinicSettings.timezone })
@@ -144,6 +149,10 @@ async function nightDeferral(data: QueueJobs['wa-process'], now: Date): Promise<
   const tz = await tenantTimezone(data.tenantId);
   const p = localParts(now, tz);
   if (!isQuietMinute(p.hour * 60 + p.minute)) return null;
+  // Sólo si el CANAL va con retraso (varias familias a la vez). Un mensaje
+  // suelto que llega tarde (sin cobertura, reloj del móvil mal) se contesta
+  // como siempre.
+  if (!(await channelDelayed(data.tenantId))) return null;
   // Las 08:00 de hoy si aún no han llegado; si no (23:xx), las de mañana.
   const today = parseDateKey(localDateKey(now, tz));
   if (!today) return null;
@@ -276,7 +285,7 @@ async function runWhatsappJob(
       writtenAtOf({ rawJson: last.rawJson, createdAt: new Date(last.createdAt) }),
       new Date(),
     );
-    return lag !== null && lag > STALE_NO_REPLY_MS;
+    return lag !== null && lag > STALE_NO_REPLY_MS && (await channelDelayed(tenantId));
   });
   if (stale) {
     await step.run('stale-handoff', async () => {
@@ -360,6 +369,7 @@ async function runWhatsappJob(
     });
     const lag = inboundLagMs(writtenAt, new Date());
     if (!writtenAt || lag === null || lag < LAG_THRESHOLD_MS) return null;
+    if (!(await channelDelayed(tenantId))) return null;
     const tz = await tenantTimezone(tenantId);
     const label = writtenAt.toLocaleString('es-ES', {
       weekday: 'long',

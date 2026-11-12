@@ -46,7 +46,10 @@ export function isLagged(lagMs: number | null): boolean {
  */
 export function channelProblem(row: ChannelRow | null, now: Date): ChannelProblem | null {
   if (!row) return 'NO_CONNECTION';
-  if (row.status !== 'CONNECTED') return 'DISCONNECTED';
+  // PENDING es el segundo que dura cada reconexión (o el emparejamiento por
+  // QR): no cuenta. Si de verdad no conecta, los envíos fallan y cada flujo ya
+  // lo trata como fallo de envío.
+  if (row.status === 'DISCONNECTED' || row.status === 'ERROR') return 'DISCONNECTED';
   if (row.mode !== 'EVOLUTION') return null;
   if (
     row.lastLaggedInboundAt &&

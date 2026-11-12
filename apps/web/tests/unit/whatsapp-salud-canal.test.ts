@@ -41,7 +41,9 @@ describe('estado del canal', () => {
   it('sin conexión o desconectado no es fiable', () => {
     expect(channelProblem(null, now)).toBe('NO_CONNECTION');
     expect(channelProblem(evo({ status: 'DISCONNECTED' }), now)).toBe('DISCONNECTED');
-    expect(channelProblem(evo({ status: 'PENDING' }), now)).toBe('DISCONNECTED');
+    expect(channelProblem(evo({ status: 'ERROR' }), now)).toBe('DISCONNECTED');
+    // El segundo de cada reconexión no cuenta como caída.
+    expect(channelProblem(evo({ status: 'PENDING' }), now)).toBeNull();
   });
 
   it('un entrante con retraso lo marca durante 3 h', () => {

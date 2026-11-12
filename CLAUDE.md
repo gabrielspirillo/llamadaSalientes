@@ -1314,11 +1314,21 @@ viera. Lo que quedó (migración `0071`, `lib/whatsapp/health.ts` +
 
 - **Se mide el retraso de cada entrante** (webhook de Evolution:
   `messageTimestamp` contra la hora de llegada, también los ecos del teléfono de
-  la clínica). Más de 10 min → `last_lagged_inbound_at` y el canal cuenta como
-  no fiable 3 h; a tiempo → `last_fresh_inbound_at`.
-- **Avisos al equipo** (tarjeta `wa.channel_problem` en #urgencias, una cada
-  3 h): recibe con retraso, desconectado (siempre) y **inestable** (12 o más
-  reconexiones en 24 h: la señal previa a la caída).
+  la clínica). A tiempo → `last_fresh_inbound_at`. ⚠️ **Un mensaje suelto con
+  retraso NO marca el canal**: una familia sin cobertura o con el reloj del
+  móvil mal llegaría "tarde" sin que el canal falle, y eso apagaría 3 h las
+  anulaciones y las ofertas. Hace falta retraso (más de 10 min) en **dos
+  conversaciones distintas en media hora** → `last_lagged_inbound_at` y el
+  canal cuenta como no fiable 3 h. `PENDING` (el segundo de cada reconexión)
+  no cuenta como caída; sólo `DISCONNECTED`/`ERROR`.
+- Lo que depende de la hora en que se escribió un mensaje (aplazar a las 08:00,
+  avisar al asistente del retraso, pasar al equipo lo de más de 12 h, ignorar
+  un "1" escrito antes del recordatorio) **sólo se aplica con el canal en
+  retraso**, por la misma razón: un reloj mal no puede dejar a una familia sin
+  respuesta.
+- **Avisos al equipo** (tarjeta `wa.channel_problem` en #urgencias): recibe
+  con retraso (una cada 3 h), desconectado (una por hora) e **inestable** (12 o
+  más reconexiones en 24 h, la señal previa a la caída; una al día).
 - ⚠️ **Nunca se anula una cita por falta de respuesta sin prueba de que el
   canal recibe** (`cancelDoubt` en `day-of-run.ts`): la cita sigue "Agendada",
   el recordatorio salió con al menos 90 min de margen y entró algún mensaje a
