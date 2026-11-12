@@ -346,15 +346,23 @@ async function runWhatsappJob(
   }
 
   // 5. Historial breve para contexto del LLM.
-  const { turns: history, lastAt } = await step.run('load-history', async () => {
+  const {
+    turns: history,
+    lastAt,
+    lastFromClinic,
+  } = await step.run('load-history', async () => {
     return loadHistory(conversationId, batch.firstMessageCreatedAt);
   });
   // Sin mensajes en las últimas horas es una conversación nueva: el asistente
   // se vuelve a presentar.
+  // Pero si lo último fue un mensaje de la clínica de hoy (el recordatorio,
+  // una oferta), la familia está contestando: presentarse otra vez sobra
+  // ("Hola😊, soy el asistente…" a un "perfecto, gracias", 12/11).
+  const gapMs = lastAt
+    ? new Date(batch.firstMessageCreatedAt).getTime() - new Date(lastAt).getTime()
+    : Number.POSITIVE_INFINITY;
   const newSession =
-    !lastAt ||
-    new Date(batch.firstMessageCreatedAt).getTime() - new Date(lastAt).getTime() >
-      NEW_SESSION_GAP_MS;
+    gapMs > NEW_SESSION_GAP_MS && !(lastFromClinic && gapMs < REPLY_TO_CLINIC_WINDOW_MS);
 
   const triggerMessageId = batch.lastMessageId;
   const remindersResume = readRemindersResume(gate.context);
@@ -721,11 +729,13 @@ async function loadInboundBatch(
 }
 
 const NEW_SESSION_GAP_MS = 6 * 60 * 60 * 1000;
+/** Contestar a un mensaje de la clínica de hace menos de esto no es conversación nueva. */
+const REPLY_TO_CLINIC_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 async function loadHistory(
   conversationId: string,
   beforeOrEqual: Date,
-): Promise<{ turns: HistoryTurn[]; lastAt: string | null }> {
+): Promise<{ turns: HistoryTurn[]; lastAt: string | null; lastFromClinic: boolean }> {
   const rows = await db
     .select({
       direction: whatsappMessages.direction,
@@ -758,6 +768,7 @@ async function loadHistory(
   return {
     turns,
     lastAt: before[0]?.createdAt ? new Date(before[0].createdAt).toISOString() : null,
+    lastFromClinic: before[0]?.direction === 'OUTBOUND',
   };
 }
 

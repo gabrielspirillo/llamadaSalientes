@@ -49,3 +49,23 @@ describe('el saludo de "¿es la primera vez?" no sale para una cita que ya exist
     expect(asksForAppointment('¿Tenéis algún hueco esta semana?')).toBe(true);
   });
 });
+
+describe('12/11: cita que ya tiene y agradecimientos', () => {
+  it('"mi bebé tiene cita mañana" no es pedir cita nueva', () => {
+    expect(
+      asksForAppointment(
+        'Hola buenas tardes mi bebé tiene cita mañana y quería hacer una pregunta, anda malito con fiebre',
+      ),
+    ).toBe(false);
+    expect(asksForAppointment('Los niños tienen cita hoy, ¿pueden ir con mocos?')).toBe(false);
+    expect(asksForAppointment('Quería pedir cita para mi hijo')).toBe(true);
+  });
+
+  it('"Perfecto muchas gracias" es sólo agradecer', async () => {
+    const { isPureThanks } = await import('@/lib/whatsapp/agent');
+    for (const t of ['Perfecto muchas gracias 🤗🤗', 'Vale, gracias', 'Genial gracias!']) {
+      expect(isPureThanks(t)).toBe(true);
+    }
+    expect(isPureThanks('Perfecto, ¿y a qué hora es?')).toBe(false);
+  });
+});

@@ -1174,7 +1174,8 @@ export function isPureThanks(text: string): boolean {
     .replace(/\p{Extended_Pictographic}|\u200d|\ufe0f/gu, '')
     .replace(/[!¡.,\s]+/g, ' ')
     .trim();
-  return /^(muchas |mil |muchisimas )?gracia+s+( a ti| a vosotras| guapa| de nuevo| por todo)?$/.test(
+  // "Perfecto, muchas gracias", "vale gracias": también es sólo agradecer (12/11).
+  return /^((perfecto|perfect|vale|genial|ok|okey|okay|estupendo|de acuerdo|super|fenomenal|entendido) )?(muchas |mil |muchisimas )?gracia+s+( a ti| a vosotras| guapa| de nuevo| por todo)?$/.test(
     t,
   );
 }
@@ -1248,7 +1249,7 @@ export function asksForAppointment(text: string): boolean {
   // "la cita que tengo") no está pidiendo una nueva: el 10/11 a una madre que
   // quería anular le salió "¿es la primera vez que acudes?".
   if (
-    /\b(anul\w*|cancel\w*|cambi\w*|mover|modific\w*|confirm\w*|retras\w*|no (podemos|puedo|vamos|voy|llegamos)|la cita (que tengo|de (hoy|mañana|manana|el)|del)|mi cita|nuestra cita|tengo (una )?cita|tenemos (una )?cita|ten[ií]amos cita)\b/i.test(
+    /\b(anul\w*|cancel\w*|cambi\w*|mover|modific\w*|confirm\w*|retras\w*|no (podemos|puedo|vamos|voy|llegamos)|la cita (que tengo|de (hoy|mañana|manana|el)|del)|mi cita|nuestra cita|tengo (una )?cita|tenemos (una )?cita|ten[ií]amos cita|tiene (una )?cita|tienen (una )?cita|cita (de |para )?(hoy|mañana|manana))\b/i.test(
       text,
     )
   )
