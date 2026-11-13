@@ -195,12 +195,33 @@ export async function listAgentProfessionals(tenantId: string): Promise<AgentPro
     getClinicTimezone(tenantId),
   ]);
 
+  // Días con horario especial de los próximos 60 días: van en el horario de
+  // cada profesional para que el asistente no diga "sólo atiende por la tarde"
+  // de alguien que un día concreto abre por la mañana.
+  const { listSpecialDays } = await import('@/lib/agenda/special-days-db');
+  const { describeRanges, longDayLabel } = await import('@/lib/agenda/special-days');
+  const todayKey = localDateKey(ahora, timezone);
+  const especiales = await listSpecialDays(tenantId, {
+    professionalIds: ids,
+    fromKey: todayKey,
+    toKey: addDaysToKey(todayKey, 60),
+  }).catch(() => []);
+  const conEspeciales = (id: string, base: string) => {
+    const dias = especiales.filter((d) => d.professionalId === id);
+    if (dias.length === 0) return base;
+    const lista = dias.map((d) => `${longDayLabel(d.day)} ${describeRanges(d.ranges)}`).join('; ');
+    return `${base}. Horario especial (sólo esos días, manda sobre el habitual): ${lista}`;
+  };
+
   return rows.map((r) => ({
     ...r,
     treatments: links
       .filter((l) => l.professionalId === r.id)
       .map((l) => ({ id: l.id, name: l.name, durationMinutes: l.override ?? l.base })),
-    schedule: describeWeeklySchedule(turnos.filter((t) => t.professionalId === r.id)),
+    schedule: conEspeciales(
+      r.id,
+      describeWeeklySchedule(turnos.filter((t) => t.professionalId === r.id)),
+    ),
     absences: describeAbsences(
       ausencias.filter((a) => a.professionalId === r.id),
       timezone,

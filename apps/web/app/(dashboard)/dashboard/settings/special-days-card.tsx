@@ -241,9 +241,13 @@ export function SpecialDaysCard({
         icon={<CalendarClock className="h-4 w-4" />}
         tone="honey"
         title="Días con horario especial"
-        subtitle="Para abrir algún día por la mañana (o en otro horario) sin cambiar el horario de siempre. Ese día la agenda y los asistentes ofrecen exactamente estas horas."
       />
       <div className="space-y-5 px-5 pb-5 sm:px-6 sm:pb-6">
+        <p className="text-sm leading-relaxed text-zinc-600">
+          Para abrir algún día en otro horario sin tocar el de siempre (por ejemplo, una mañana
+          suelta). Ese día la agenda y los asistentes de WhatsApp y teléfono ofrecen exactamente
+          estas horas; el resto de días no cambia nada.
+        </p>
         {professionals.length === 0 ? (
           <Callout tone="info">
             Para abrir un día especial primero tiene que haber un profesional con agenda (Agenda →
@@ -252,25 +256,29 @@ export function SpecialDaysCard({
         ) : (
           <>
             {canEdit ? (
-              <div className="space-y-4 rounded-[18px] border border-(--color-border-subtle) bg-white/60 p-4">
-                <div className="flex flex-wrap items-end gap-3">
-                  <div>
-                    <Label htmlFor="special-day">Día</Label>
+              <div className="space-y-5">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="special-day">Día</Label>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     <Input
                       id="special-day"
                       type="date"
                       min={todayKey}
                       value={day}
                       onChange={(e) => pickDay(e.target.value)}
-                      className="w-44"
+                      className="w-full max-w-[13rem]"
                     />
+                    {day ? (
+                      <span className="text-sm text-zinc-600">
+                        {cap(longDayLabel(day))}
+                        {editing ? (
+                          <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                            ya tiene horario especial
+                          </span>
+                        ) : null}
+                      </span>
+                    ) : null}
                   </div>
-                  {day ? (
-                    <p className="pb-2 text-sm text-zinc-600">
-                      {longDayLabel(day)}
-                      {editing ? ' · ya tiene horario especial' : ''}
-                    </p>
-                  ) : null}
                 </div>
 
                 {normallyClosed ? (
@@ -281,11 +289,11 @@ export function SpecialDaysCard({
                 ) : null}
 
                 {multi ? (
-                  <fieldset>
-                    <legend className="mb-1.5 text-sm font-medium text-zinc-800">
+                  <fieldset className="flex flex-col gap-1.5">
+                    <legend className="mb-1.5 text-[14px] font-semibold tracking-tight text-zinc-700">
                       Quién trabaja ese día
                     </legend>
-                    <div className="flex flex-wrap gap-x-4 gap-y-2">
+                    <div className="flex flex-wrap gap-x-5 gap-y-2">
                       {professionals.map((p) => (
                         <label key={p.id} className="flex items-center gap-2 text-sm">
                           <input
@@ -302,73 +310,44 @@ export function SpecialDaysCard({
                         </label>
                       ))}
                     </div>
-                    <p className="mt-1 text-xs text-zinc-500">
+                    <p className="text-xs text-zinc-500">
                       Quien no esté marcado trabaja ese día con su horario de siempre.
                     </p>
                   </fieldset>
                 ) : null}
 
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Switch
-                      checked={morningOn}
-                      onCheckedChange={setMorningOn}
-                      label="Abre por la mañana"
-                    />
-                    <span className="w-40 text-sm font-medium">Abre por la mañana</span>
-                    {morningOn ? (
-                      <span className="flex items-center gap-2">
-                        <Input
-                          type="time"
-                          value={morningFrom}
-                          onChange={(e) => setMorningFrom(e.target.value)}
-                          className="w-28"
-                          aria-label="Mañana desde"
-                        />
-                        <span className="text-sm text-zinc-500">a</span>
-                        <Input
-                          type="time"
-                          value={morningTo}
-                          onChange={(e) => setMorningTo(e.target.value)}
-                          className="w-28"
-                          aria-label="Mañana hasta"
-                        />
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Switch
-                      checked={afternoonOn}
-                      onCheckedChange={setAfternoonOn}
-                      label="Esa tarde también trabaja"
-                    />
-                    <span className="w-40 text-sm font-medium">Esa tarde también trabaja</span>
-                    {afternoonOn ? (
-                      <span className="flex items-center gap-2">
-                        <Input
-                          type="time"
-                          value={afternoonFrom}
-                          onChange={(e) => setAfternoonFrom(e.target.value)}
-                          className="w-28"
-                          aria-label="Tarde desde"
-                        />
-                        <span className="text-sm text-zinc-500">a</span>
-                        <Input
-                          type="time"
-                          value={afternoonTo}
-                          onChange={(e) => setAfternoonTo(e.target.value)}
-                          className="w-28"
-                          aria-label="Tarde hasta"
-                        />
-                      </span>
-                    ) : (
-                      <span className="text-sm text-zinc-500">Esa tarde no trabaja</span>
-                    )}
-                  </div>
+                <div className="divide-y divide-(--color-border-subtle) border-y border-(--color-border-subtle)">
+                  <RangeRow
+                    label="Abre por la mañana"
+                    on={morningOn}
+                    onToggle={setMorningOn}
+                    from={morningFrom}
+                    to={morningTo}
+                    onFrom={setMorningFrom}
+                    onTo={setMorningTo}
+                    offText="No abre por la mañana"
+                    ariaPrefix="Mañana"
+                  />
+                  <RangeRow
+                    label="Esa tarde también trabaja"
+                    on={afternoonOn}
+                    onToggle={setAfternoonOn}
+                    from={afternoonFrom}
+                    to={afternoonTo}
+                    onFrom={setAfternoonFrom}
+                    onTo={setAfternoonTo}
+                    offText="Esa tarde no trabaja"
+                    ariaPrefix="Tarde"
+                  />
                 </div>
 
-                <div>
-                  <Label htmlFor="special-note">Nota (opcional, sólo para el equipo)</Label>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="special-note">
+                    Nota{' '}
+                    <span className="font-normal text-zinc-500">
+                      (opcional, sólo para el equipo)
+                    </span>
+                  </Label>
                   <Input
                     id="special-note"
                     value={note}
@@ -378,23 +357,21 @@ export function SpecialDaysCard({
                   />
                 </div>
 
-                <p className="text-sm text-zinc-700">
-                  {'ranges' in draft && draft.ranges ? (
-                    <>
-                      Ese día se ofrecerán citas <strong>{describeRanges(draft.ranges)}</strong>.
-                    </>
-                  ) : (
-                    <span className="text-rose-700">{draft.error}</span>
-                  )}
-                </p>
+                {'ranges' in draft && draft.ranges ? (
+                  <Callout tone="brand">
+                    Ese día se ofrecerán citas <strong>{describeRanges(draft.ranges)}</strong>.
+                  </Callout>
+                ) : (
+                  <Callout tone="warn">{draft.error}</Callout>
+                )}
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                   <Button type="button" onClick={save} disabled={!canSave}>
                     {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                     {editing ? 'Guardar cambios' : 'Guardar día especial'}
                   </Button>
                   {!day ? (
-                    <span className="self-center text-sm text-zinc-500">Elige primero el día.</span>
+                    <span className="text-sm text-zinc-500">Elige primero el día.</span>
                   ) : null}
                 </div>
               </div>
@@ -411,7 +388,7 @@ export function SpecialDaysCard({
               {grouped.length === 0 ? (
                 <p className="text-sm text-zinc-500">No hay ninguno.</p>
               ) : (
-                <ul className="divide-y divide-(--color-border-subtle) rounded-[18px] border border-(--color-border-subtle) bg-white/60">
+                <ul className="divide-y divide-(--color-border-subtle) border-y border-(--color-border-subtle)">
                   {grouped.map(([dayKey, items]) => {
                     const first = items[0];
                     const sameForAll = items.every(
@@ -423,8 +400,8 @@ export function SpecialDaysCard({
                         className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
                       >
                         <div className="min-w-0">
-                          <p className="text-sm font-medium capitalize text-zinc-900">
-                            {longDayLabel(dayKey)}
+                          <p className="text-sm font-medium text-zinc-900">
+                            {cap(longDayLabel(dayKey))}
                           </p>
                           <p className="text-sm text-zinc-600">
                             {sameForAll
@@ -478,4 +455,62 @@ export function SpecialDaysCard({
       </div>
     </Card>
   );
+}
+
+/** Una franja (mañana o tarde): interruptor + "desde a hasta". En móvil, las horas bajan. */
+function RangeRow({
+  label,
+  on,
+  onToggle,
+  from,
+  to,
+  onFrom,
+  onTo,
+  offText,
+  ariaPrefix,
+}: {
+  label: string;
+  on: boolean;
+  onToggle: (v: boolean) => void;
+  from: string;
+  to: string;
+  onFrom: (v: string) => void;
+  onTo: (v: string) => void;
+  offText: string;
+  ariaPrefix: string;
+}) {
+  return (
+    <div className="grid gap-x-4 gap-y-2 py-3 sm:grid-cols-[minmax(0,15rem)_1fr] sm:items-center">
+      <div className="flex items-center gap-3">
+        <Switch checked={on} onCheckedChange={onToggle} label={label} />
+        <span className="text-sm font-medium text-zinc-800">{label}</span>
+      </div>
+      {on ? (
+        <div className="flex min-w-0 items-center gap-2 sm:pl-0">
+          <Input
+            type="time"
+            value={from}
+            onChange={(e) => onFrom(e.target.value)}
+            className="min-w-0 flex-1 sm:max-w-[9.5rem]"
+            aria-label={`${ariaPrefix} desde`}
+          />
+          <span className="shrink-0 text-sm text-zinc-500">a</span>
+          <Input
+            type="time"
+            value={to}
+            onChange={(e) => onTo(e.target.value)}
+            className="min-w-0 flex-1 sm:max-w-[9.5rem]"
+            aria-label={`${ariaPrefix} hasta`}
+          />
+        </div>
+      ) : (
+        <span className="text-sm text-zinc-500">{offText}</span>
+      )}
+    </div>
+  );
+}
+
+/** "viernes 20 de noviembre" → "Viernes 20 de noviembre" (sólo la primera letra). */
+function cap(text: string): string {
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : text;
 }
