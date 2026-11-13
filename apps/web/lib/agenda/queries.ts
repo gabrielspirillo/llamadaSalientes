@@ -1,7 +1,7 @@
 import 'server-only';
 import { and, asc, desc, eq, gte, inArray, lt, lte, ne, or, sql } from 'drizzle-orm';
 
-import { type SlotOptions, computeRangeSlots, shiftAppliesOn } from '@/lib/agenda/availability';
+import { type SlotOptions, computeRangeSlots, shiftsForDate } from '@/lib/agenda/availability';
 import {
   patientIdFromKey,
   patientKeyFor,
@@ -548,7 +548,16 @@ export async function getAvailability(
     params.firstVisit ? getCareProfile(tenantId) : Promise.resolve(null),
   ]);
 
-  if (shiftRows.length === 0) {
+  // Días con horario especial del rango (una mañana suelta, etc.): sustituyen
+  // al horario semanal ese día.
+  const { specialRulesFor } = await import('@/lib/agenda/special-days-db');
+  const specialRules = await specialRulesFor(
+    tenantId,
+    params.professionalId,
+    params.fromDateKey,
+    params.toDateKey,
+  );
+  if (shiftRows.length === 0 && specialRules.length === 0) {
     return { timezone, slots: [], reason: 'NO_SHIFTS' };
   }
 
@@ -569,7 +578,7 @@ export async function getAvailability(
     })(),
   };
 
-  const shiftRules = shiftRows.map(toShiftRule);
+  const shiftRules = [...shiftRows.map(toShiftRule), ...specialRules];
   const slots = computeRangeSlots({
     fromDateKey: params.fromDateKey,
     toDateKey: params.toDateKey,
@@ -588,14 +597,18 @@ export async function getAvailability(
     limit: params.limit,
   });
 
-  const workingWeekdays = [...new Set(shiftRules.map((s) => s.weekday))].sort();
+  // Los días de la semana que trabaja: los del horario semanal (un día
+  // especial suelto no convierte los sábados en laborables).
+  const workingWeekdays = [
+    ...new Set(shiftRules.filter((s) => !s.date).map((s) => s.weekday)),
+  ].sort();
   let worksInRange = false;
   for (
     let day = params.fromDateKey, guard = 0;
     day <= params.toDateKey && guard < 400 && !worksInRange;
     day = addDaysToKey(day, 1), guard++
   ) {
-    worksInRange = shiftRules.some((s) => shiftAppliesOn(s, day));
+    worksInRange = shiftsForDate(shiftRules, day).length > 0;
   }
   return { timezone, slots, reason: worksInRange ? 'OK' : 'DAY_OFF', workingWeekdays };
 }

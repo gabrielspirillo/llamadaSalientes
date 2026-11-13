@@ -67,10 +67,23 @@ export function overlaps(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date): bo
 /** ¿La franja está vigente ese día? `valid_from`/`valid_until` son inclusivos. */
 export function shiftAppliesOn(shift: ShiftRule, dateKey: string): boolean {
   if (shift.active === false) return false;
+  // Franja de un día con horario especial: sólo ese día.
+  if (shift.date) return shift.date === dateKey;
   if (shift.weekday !== weekdayOfKey(dateKey)) return false;
   if (shift.validFrom && dateKey < shift.validFrom) return false;
   if (shift.validUntil && dateKey > shift.validUntil) return false;
   return true;
+}
+
+/**
+ * Las franjas que mandan un día: las del día con horario especial si lo hay
+ * (sustituyen al horario semanal entero de ese día: "abre de 9 a 13 y, si esa
+ * tarde trabaja, de 15 a 20"), y si no, las semanales vigentes.
+ */
+export function shiftsForDate(shifts: ShiftRule[], dateKey: string): ShiftRule[] {
+  const special = shifts.filter((s) => s.date === dateKey && s.active !== false);
+  if (special.length > 0) return special;
+  return shifts.filter((s) => !s.date && shiftAppliesOn(s, dateKey));
 }
 
 /**
@@ -107,9 +120,7 @@ export function computeDaySlots(input: DayAvailabilityInput): SlotCandidate[] {
   const out: SlotCandidate[] = [];
   const seen = new Set<number>();
 
-  for (const shift of shifts) {
-    if (!shiftAppliesOn(shift, dateKey)) continue;
-
+  for (const shift of shiftsForDate(shifts, dateKey)) {
     for (
       let startMinute = shift.startMinute;
       startMinute + durationMinutes <= shift.endMinute;
@@ -218,8 +229,7 @@ export function isInsideWorkingHours(
   const month = Number(parts[1]);
   const day = Number(parts[2]);
 
-  return shifts.some((shift) => {
-    if (!shiftAppliesOn(shift, dateKey)) return false;
+  return shiftsForDate(shifts, dateKey).some((shift) => {
     const shiftStart = zonedToUtc(
       year,
       month,

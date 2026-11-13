@@ -1,6 +1,6 @@
 import 'server-only';
 import { describeAgendaForPrompt } from '@/lib/agenda/agent';
-import { closedDaysLabel } from '@/lib/agenda/clinic-hours';
+import { closedDaysLabel, closedWeekdays, isoWeekdayOfKey } from '@/lib/agenda/clinic-hours';
 import { buildCareProtocolSection } from '@/lib/care-profile/policy';
 import { getCareProfile } from '@/lib/care-profile/queries';
 import { getClinicSettings, getTenant } from '@/lib/data/clinic';
@@ -79,14 +79,28 @@ export async function buildClinicContextVars(
     getCareProfile(tenantId).catch(() => null),
   ]);
   const phones = (clinic?.phones ?? []).filter(Boolean);
+  // Días con horario especial (una mañana suelta): van detrás del horario
+  // semanal, en los dos formatos. Vacío si no hay ninguno.
+  const { specialDaysPromptText } = await import('@/lib/agenda/special-days-db');
+  const special = await specialDaysPromptText(tenantId, clinic?.timezone ?? 'Europe/Madrid');
+  const withSpecial = (base: string) => (special.text ? `${base}\n${special.text}` : base);
+  const closedLabel = closedDaysLabel(clinic?.workingHours);
+  const closedHasSpecial =
+    closedLabel !== '' &&
+    special.days.some((d) =>
+      closedWeekdays(clinic?.workingHours).includes(isoWeekdayOfKey(d) ?? 0),
+    );
   return {
     clinic_name: normalizeTenantName(tenant?.name),
     clinic_address: clinic?.address?.trim() || 'no especificada',
     clinic_phones: phones.length ? phones.join(', ') : 'no especificados',
-    working_hours_text: formatWorkingHours(clinic?.workingHours),
-    working_hours_plain: formatWorkingHoursPlain(clinic?.workingHours),
-    // "sábado y domingo": los días que el asistente no puede ofrecer ni mirar.
-    closed_days_text: closedDaysLabel(clinic?.workingHours),
+    working_hours_text: withSpecial(formatWorkingHours(clinic?.workingHours)),
+    working_hours_plain: withSpecial(formatWorkingHoursPlain(clinic?.workingHours)),
+    // "sábado y domingo": los días que el asistente no puede ofrecer ni mirar
+    // (salvo que uno de ellos tenga horario especial).
+    closed_days_text: closedHasSpecial
+      ? `${closedLabel} (salvo los días con horario especial indicados en el horario)`
+      : closedLabel,
     clinic_timezone: clinic?.timezone ?? 'America/Mexico_City',
     after_hours_message: clinic?.afterHoursMessage?.trim() || '',
     recording_consent: clinic?.recordingConsentText?.trim() || '',

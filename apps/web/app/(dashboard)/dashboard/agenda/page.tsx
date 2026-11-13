@@ -250,8 +250,21 @@ export default async function AgendaPage({
   // "no vengo el jueves" ocupa el día entero y estiraría la rejilla a las 00:00,
   // dejando la franja útil fuera de la pantalla. Las citas anuladas tampoco:
   // una cancelada a las 00:25 abría la agenda a medianoche.
+  // Días con horario especial del rango (una mañana suelta): también estiran
+  // la rejilla, o las citas de esa mañana quedarían fuera de la pantalla.
+  const { listSpecialDays } = await import('@/lib/agenda/special-days-db');
+  const specialRanges =
+    scopedIds.length > 0 && dateKeys.length > 0
+      ? (
+          await listSpecialDays(ctx.tenantId, {
+            professionalIds: scopedIds,
+            fromKey: dateKeys[0],
+            toKey: dateKeys[dateKeys.length - 1],
+          }).catch(() => [])
+        ).flatMap((d) => d.ranges.map((r) => ({ startMinute: r.start, endMinute: r.end })))
+      : [];
   const window = computeDayWindow(
-    shiftRows,
+    [...shiftRows, ...specialRanges],
     items.filter((i) => i.status !== 'CANCELLED'),
   );
 

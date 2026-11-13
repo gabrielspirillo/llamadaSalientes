@@ -864,7 +864,15 @@ export async function createAppointment(
             eq(professionalShifts.active, true),
           ),
         );
-      const inside = isInsideWorkingHours(startsAt, endsAt, shiftRows.map(toShiftRule), timezone);
+      const { specialRulesFor } = await import('@/lib/agenda/special-days-db');
+      const dayKey = localDateKey(startsAt, timezone);
+      const special = await specialRulesFor(ctx.tenantId, professional.id, dayKey, dayKey, tx);
+      const inside = isInsideWorkingHours(
+        startsAt,
+        endsAt,
+        [...shiftRows.map(toShiftRule), ...special],
+        timezone,
+      );
       if (!inside) {
         throw new AgendaOutsideHoursError(
           `Ese horario cae fuera del horario de trabajo de ${professional.fullName}.`,
@@ -1040,7 +1048,17 @@ export async function rescheduleAppointment(
             eq(professionalShifts.active, true),
           ),
         );
-      if (!isInsideWorkingHours(startsAt, endsAt, shiftRows.map(toShiftRule), timezone)) {
+      const { specialRulesFor } = await import('@/lib/agenda/special-days-db');
+      const dayKey = localDateKey(startsAt, timezone);
+      const special = await specialRulesFor(ctx.tenantId, professionalId, dayKey, dayKey, tx);
+      if (
+        !isInsideWorkingHours(
+          startsAt,
+          endsAt,
+          [...shiftRows.map(toShiftRule), ...special],
+          timezone,
+        )
+      ) {
         throw new AgendaOutsideHoursError(
           `Ese horario cae fuera del horario de trabajo de ${professional.fullName}.`,
         );

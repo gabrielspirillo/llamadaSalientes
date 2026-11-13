@@ -37,6 +37,7 @@ import {
 import { RESCHEDULE_REASON } from '@/lib/agenda/shared';
 import { BUSY_STATUSES } from '@/lib/agenda/shared';
 import { matchRequestedSlot } from '@/lib/agenda/slot-match';
+import { specialSegment } from '@/lib/agenda/special-days';
 import { pickTreatmentForChild } from '@/lib/agenda/treatment-pick';
 import { resolvePatientForBooking } from '@/lib/care-profile/agent';
 import { getCareProfileSafe } from '@/lib/care-profile/queries';
@@ -200,6 +201,14 @@ async function compactForAgents<T extends { start: Date; end: Date; professional
   if (slots.length === 0) return slots;
   const window = (await getCareProfileSafe(tenantId))?.bookingPolicy.clusterAroundMinutes;
   if (!window) return slots;
+  // Días con horario especial: cada franja (mañana, tarde) se compacta aparte.
+  const { loadSpecialRangesMap } = await import('@/lib/agenda/special-days-db');
+  const keys = slots.map((s) => localDateKey(s.start, timezone)).sort();
+  const special = await loadSpecialRangesMap(
+    tenantId,
+    keys[0] ?? localDateKey(new Date(), timezone),
+    keys[keys.length - 1] ?? localDateKey(new Date(), timezone),
+  );
   const times = slots.map((s) => s.start.getTime());
   const from = new Date(Math.min(...times) - 86_400_000);
   const to = new Date(Math.max(...times) + 86_400_000);
@@ -221,7 +230,9 @@ async function compactForAgents<T extends { start: Date; end: Date; professional
         lt(agendaAppointments.startsAt, to),
       ),
     );
-  return compactSlots(slots, busy, timezone, window);
+  return compactSlots(slots, busy, timezone, window, (professionalId, dayKey, minute) =>
+    specialSegment(special, professionalId, dayKey, minute),
+  );
 }
 
 /**
@@ -469,6 +480,7 @@ export async function agendaCheckAvailability(
     const requestedClosed =
       requested &&
       /^\d{4}-\d{2}-\d{2}$/.test(requested) &&
+      !(search.specialDays ?? []).includes(requested) &&
       (search.closedWeekdays ?? []).includes(isoWeekdayOfKey(requested) ?? 0);
     const noneOnRequested =
       requested &&
@@ -659,9 +671,15 @@ export async function agendaBookAppointment(
         firstVisit,
         relaxConsecutiveFirstVisits: relax,
       });
+      const { loadSpecialRangesMap, openForAgents } = await import('@/lib/agenda/special-days-db');
+      const special = await loadSpecialRangesMap(tenantId, fromKey, toKey);
       const open = availability.slots
         .map((sl) => ({ start: sl.start, end: sl.end, professionalId: professional.id }))
-        .filter((sl) => withinClinicHours(sl.start, sl.end, timezone, settings?.workingHours));
+        .filter((sl) =>
+          openForAgents(sl, timezone, special, (start, end) =>
+            withinClinicHours(start, end, timezone, settings?.workingHours),
+          ),
+        );
       // Lo mismo que se ofreció: una hora que deja huecos sueltos tampoco se
       // reserva aunque el paciente la pida.
       return relax ? open : compactForAgents(tenantId, open, timezone);

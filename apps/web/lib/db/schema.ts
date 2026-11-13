@@ -2141,6 +2141,34 @@ export const professionalShifts = pgTable(
   }),
 );
 
+/**
+ * Día con horario especial (0072): en esa fecha las franjas de aquí sustituyen
+ * al horario semanal del profesional (p. ej. abrir una mañana suelta y, si
+ * esa tarde también trabaja, la tarde). Minutos locales de la clínica.
+ */
+export const professionalSpecialDays = pgTable(
+  'professional_special_days',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    professionalId: uuid('professional_id')
+      .references(() => professionals.id, { onDelete: 'cascade' })
+      .notNull(),
+    day: date('day').notNull(),
+    ranges: jsonb('ranges').$type<Array<{ start: number; end: number }>>().notNull(),
+    note: text('note'),
+    createdBy: text('created_by'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    uniq: uniqueIndex('professional_special_days_uniq').on(t.tenantId, t.professionalId, t.day),
+    tenantDayIdx: index('professional_special_days_tenant_day_idx').on(t.tenantId, t.day),
+  }),
+);
+
 export const professionalTimeOff = pgTable(
   'professional_time_off',
   {

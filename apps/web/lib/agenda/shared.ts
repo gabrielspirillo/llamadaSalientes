@@ -123,6 +123,12 @@ export interface ShiftRule {
   validFrom?: string | null;
   validUntil?: string | null;
   active?: boolean;
+  /**
+   * Día con horario especial ('YYYY-MM-DD'): la franja vale SÓLO ese día y,
+   * si un día tiene alguna, sustituyen a TODAS las semanales de ese día
+   * (`shiftsForDate`). Así se abre una mañana suelta sin tocar el horario.
+   */
+  date?: string | null;
 }
 
 export interface Interval {

@@ -1276,6 +1276,42 @@ ofrecidos en "Requiere atención". **La reserva (`HOLD_REASON`, en
 ámbar como "Reservado: oferta enviada" y la X para quitar cualquier bloqueo
 está siempre visible (antes sólo con el ratón encima, y en tablet no salía).
 
+## Días con horario especial (13/11/2026, Respinens)
+
+La clínica atiende de tarde y algunos días sueltos abre también por la mañana
+(o sólo por la mañana, o un sábado). Se configura en **Clínica → Días con
+horario especial** (`settings/special-days-card.tsx`, sólo admin/Futura:
+`canManageProfessionals`); migración `0072`, tabla
+`professional_special_days` (una fila por profesional y día, `ranges` jsonb en
+minutos locales). Lo puro en `lib/agenda/special-days.ts` y lo que lee y
+escribe en `special-days-db.ts`, con tests (`agenda-dias-especiales`,
+`dias-especiales-tarjeta`).
+
+- ⚠️ **Un día especial SUSTITUYE el horario semanal de ese día** (no se suma):
+  el motor recibe sus franjas como `ShiftRule` con `date` y `shiftsForDate`
+  descarta las semanales de ese día. "Esa tarde también trabaja" se guarda
+  como una franja más (precargada con su horario habitual de ese día).
+- Lo usan TODOS los caminos: `getAvailability` (panel y agentes),
+  `createAppointment`/`rescheduleAppointment` (fuera de horario), el filtro de
+  horario de la clínica de los agentes (`openForAgents`: ese día manda el
+  horario especial aunque la clínica "abra de tarde" o "cierre los sábados"),
+  la reserva del agente, "no abrimos" (`specialDays` en `findAgentSlots`), el
+  texto del horario que reciben los asistentes de WhatsApp y voz
+  (`working_hours_plain/_text` + `closed_days_text` "salvo…") y la ventana
+  del calendario.
+- **Agenda compacta por franjas**: en un día especial cada franja se compacta
+  aparte (`segmentOf` de `compactSlots`) y lo primero que se ofrece es lo mejor
+  de la mañana y lo mejor de la tarde. Sin esto, las citas de la tarde dejaban
+  la mañana fuera de la ventana de 2 h. Un día normal queda igual.
+- Guardar avisa de las citas ya dadas que quedan fuera del nuevo horario (no
+  se tocan, como un bloqueo). Para cerrar un día entero: Bloqueos.
+- **Confirmación del día para citas de mañana**: una cita que empieza antes de
+  la hora de anular (12:30) recibe sólo el recordatorio de las 08:00; ni avisos
+  ("te reservamos hasta las 12:30") ni anulación (`nextDayOfStep`).
+- Pendiente conocido: los recordatorios genéricos (`lib/reminders/quiet-hours`)
+  usan sólo el horario semanal; con Respinens no importa (usa la confirmación
+  del día).
+
 ## Confirmación obligatoria del día (Respinens)
 
 `lib/care-profile/day-of-run.ts` + `day-of.ts` (puro, con tests). Secuencia del
@@ -1992,4 +2028,4 @@ LLM por llamada telefónica, una bloqueando. Ese trabajo va a la cola.
 
 ---
 
-**Última actualización**: 2026-11-12 (salud del canal de WhatsApp tras la caída de Evolution: no anular sin canal fiable, mensajes tardíos, lote por disparador, avisos). Anterior: 2026-11-10 (bloque 2 de Respinens). Anterior: 2026-09-25 (auditoría de rendimiento con agentes: señal de navegación, caché del router, camino crítico del layout, topes de espera en los diez clientes externos, consultas encadenadas, índices de la migración 0044 y CI en verde).
+**Última actualización**: 2026-11-13 (días con horario especial). Anterior: 2026-11-12 (salud del canal de WhatsApp tras la caída de Evolution: no anular sin canal fiable, mensajes tardíos, lote por disparador, avisos). Anterior: 2026-11-10 (bloque 2 de Respinens). Anterior: 2026-09-25 (auditoría de rendimiento con agentes: señal de navegación, caché del router, camino crítico del layout, topes de espera en los diez clientes externos, consultas encadenadas, índices de la migración 0044 y CI en verde).

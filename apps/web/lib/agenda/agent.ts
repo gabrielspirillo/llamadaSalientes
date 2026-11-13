@@ -256,6 +256,8 @@ export interface AgentSlotSearchResult {
   offeredBy: { id: string; fullName: string }[];
   /** Días ISO (1-7) en que la clínica no abre (Datos de la clínica). */
   closedWeekdays?: number[];
+  /** Días ('YYYY-MM-DD') con horario especial en la ventana buscada. */
+  specialDays?: string[];
   /** Por qué no hay opciones, cuando la causa es de configuración. */
   reason: 'OK' | 'NO_AGENDA' | 'NO_PROFESSIONAL_FOR_TREATMENT' | 'NO_SLOTS';
 }
@@ -421,10 +423,17 @@ export async function findAgentSlots(
     .from(clinicSettings)
     .where(eq(clinicSettings.tenantId, tenantId))
     .limit(1);
+  // Días con horario especial (una mañana suelta): ese día manda su horario.
+  const { loadSpecialRangesMap, openForAgents } = await import('@/lib/agenda/special-days-db');
+  const special = await loadSpecialRangesMap(tenantId, fromKey, toKey);
   const inHours = (list: AgentSlotOption[][]) =>
     list
       .flat()
-      .filter((o) => withinClinicHours(o.start, o.end, timezone, settings?.workingHours))
+      .filter((o) =>
+        openForAgents(o, timezone, special, (start, end) =>
+          withinClinicHours(start, end, timezone, settings?.workingHours),
+        ),
+      )
       .sort((a, b) => a.start.getTime() - b.start.getTime());
   let options = inHours(await search(false));
   // Una primera visita no va pegada a otra primera visita, salvo que más
@@ -446,6 +455,11 @@ export async function findAgentSlots(
       : null,
     offeredBy,
     closedWeekdays: closedWeekdays(settings?.workingHours),
+    // Días que la clínica abrió a propósito: no son "no abrimos" aunque caigan
+    // en un día que normalmente cierra.
+    specialDays: [...new Set([...special.keys()].map((k) => k.split('|')[1] ?? ''))].filter(
+      Boolean,
+    ),
     reason: options.length > 0 ? 'OK' : 'NO_SLOTS',
     firstVisit,
     relaxedConsecutive,

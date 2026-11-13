@@ -59,3 +59,28 @@ describe('huecos compactos alrededor de las citas del día', () => {
     expect(compactSlots(otro, busy, TZ, 120)).toHaveLength(2);
   });
 });
+
+describe('día con horario especial: mañana y tarde son bloques aparte', () => {
+  // Día especial de 9:00 a 13:00 y de 15:00 a 20:00; citas sólo por la tarde.
+  const segment = (_p: string, _d: string, minute: number) => (minute < 14 * 60 ? 'm' : 't');
+  const busy = [slot(17), slot(17, 30)];
+  const free = [slot(9), slot(9, 30), slot(10), slot(12, 30), slot(15), slot(16, 30), slot(18)];
+
+  it('las citas de la tarde no hacen desaparecer la mañana', () => {
+    const out = compactSlots(free, busy, TZ, 120, segment).map((s) => s.start.getTime());
+    expect(out).toContain(at(9).getTime());
+    expect(out).toContain(at(12, 30).getTime());
+  });
+
+  it('lo primero de ese día: lo mejor de la mañana y lo mejor de la tarde', () => {
+    const out = compactSlots(free, busy, TZ, 120, segment);
+    const first = out.slice(0, 2).map((s) => s.start.getTime());
+    // Mañana sin citas: por orden de hora (9:00). Tarde: el más pegado (16:30).
+    expect(first).toEqual([at(9), at(16, 30)].map((d) => d.getTime()));
+  });
+
+  it('sin bloques, igual que siempre', () => {
+    const out = compactSlots(free, busy, TZ, 120).map((s) => s.start.getTime());
+    expect(out).not.toContain(at(9).getTime());
+  });
+});

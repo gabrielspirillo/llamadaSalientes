@@ -91,6 +91,28 @@ describe('confirmación el día de la cita', () => {
   });
 });
 
+describe('cita de mañana (día con horario especial)', () => {
+  const sent: DayOfState = {
+    reminderSentAt: today(8, 0),
+    nudgeSentAt: null,
+    callsDone: 0,
+  };
+  it('a las 8 sale el recordatorio de una cita a las 10:00', () => {
+    expect(step(8, 0, fresh, at(10, 0))).toEqual({ kind: 'reminder' });
+  });
+  it('después no hay avisos de "te reservamos hasta las 12:30" ni anulación', () => {
+    expect(step(9, 0, sent, at(10, 0))).toBeNull();
+    expect(step(9, 30, sent, at(11, 0))).toBeNull();
+    expect(step(12, 0, sent, at(12, 30))).toBeNull();
+  });
+  it('la cita de la tarde de ese mismo día sigue con su secuencia', () => {
+    expect(step(9, 0, sent, at(16, 0))).toEqual({ kind: 'nudge' });
+    expect(step(12, 30, { ...sent, nudgeSentAt: today(9, 0), callsDone: 2 }, at(16, 0))).toEqual({
+      kind: 'cancel',
+    });
+  });
+});
+
 describe('respuestas naturales al recordatorio del día', () => {
   it('con recordatorio pendiente entiende lo que contesta la gente', async () => {
     const { parseDayOfTextReply } = await import('@/lib/care-profile/day-of');

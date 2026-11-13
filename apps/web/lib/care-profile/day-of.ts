@@ -74,6 +74,10 @@ export function nextDayOfStep(args: {
   if (!waited) return null;
 
   const cancelAt = clockMinutes(times.cancelAt);
+  // Cita de mañana (un día con horario especial): empieza antes de la hora de
+  // anular, así que nunca se anula y los avisos ("te reservamos la cita hasta
+  // las 12:30") no tienen sentido. Sólo el recordatorio; el resto, recepción.
+  if (cancelAt !== null && cancelAt >= startMinute) return null;
   if (cancelAt !== null && cancelAt < startMinute && nowMinute >= cancelAt) {
     return { kind: 'cancel' };
   }

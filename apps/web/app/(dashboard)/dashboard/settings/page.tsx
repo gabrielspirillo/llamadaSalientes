@@ -7,11 +7,16 @@ import { getCurrentTenant } from '@/lib/tenant';
 import { Building2, Sparkles } from 'lucide-react';
 import { AgentPersonaForm } from '../whatsapp/integrations/_components/agent-persona-form';
 import { SettingsForm } from './settings-form';
+import { SpecialDaysCard } from './special-days-card';
+import { loadSpecialDaysCardData } from './special-days-data';
 
 export default async function SettingsPage() {
   const { tenant } = await getCurrentTenant();
-  const settings = await getClinicSettings(tenant.id);
-  const agentSettings = await getWhatsappAgentSettings(tenant.id);
+  const [settings, agentSettings, specialDays] = await Promise.all([
+    getClinicSettings(tenant.id),
+    getWhatsappAgentSettings(tenant.id),
+    loadSpecialDaysCardData(tenant.id),
+  ]);
 
   if (!settings) {
     return (
@@ -48,6 +53,10 @@ export default async function SettingsPage() {
           workingHours: settings.workingHours as never,
         }}
       />
+
+      <Reveal className="mt-8 block">
+        <SpecialDaysCard {...specialDays} />
+      </Reveal>
 
       <Reveal className="mt-8 block">
         <Card>
