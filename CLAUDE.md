@@ -610,6 +610,15 @@ y sus signos; antes se comía hasta 20 caracteres: "Uedo ayudar?"). El guion
 día**: `parseDayOfTextReply` entiende "1. Confirmamos", "2 cambiar" y
 "confirmamos".
 
+**Hora pedida** (13/11): `check_availability` acepta `preferred_time`
+("16:30"). Sin ella sólo veía los 4 huecos que elige la agenda compacta (dos
+por día, pegados a citas) y, a "¿algún día sobre las 16:30?", el asistente
+contestó que no había con el viernes a las 16:30 libre. Con ella, primero los
+huecos a esa hora en cualquier día y luego los más cercanos
+(`rankByPreferredTime`, `lib/agenda/preferred-time.ts`, con tests); la
+compacta sigue filtrando. El prompt le obliga a consultar con la hora antes de
+decir que a esa hora no hay.
+
 **Autorrevisión añadida el 10/11** (`reviewFinalText`): `apology` ("tienes
 razón", "perdona", "disculpa", "me he equivocado"), `search_not_done` (dijeron
 "sí" a "¿te miro huecos?" y no se llamó a `check_availability`) y

@@ -18,6 +18,11 @@ import { compactSlots } from '@/lib/agenda/compact';
 import { decideFirstVisit, patientHasHistory } from '@/lib/agenda/first-visit';
 import { normalizePatientPhone } from '@/lib/agenda/patients';
 import {
+  parsePreferredTime,
+  rankByPreferredTime,
+  startsAtMinute,
+} from '@/lib/agenda/preferred-time';
+import {
   getAppointment,
   getAvailability,
   getClinicTimezone,
@@ -86,6 +91,8 @@ export interface AgendaAvailabilityArgs {
   patient_id?: string;
   /** 1 = las primeras 4 opciones; 2 = las 4 siguientes… */
   page?: number;
+  /** Hora que pide la familia ("16:30"): primero los huecos a esa hora o más cerca. */
+  preferred_time?: string;
 }
 
 export interface AgendaAvailabilityContext {
@@ -412,10 +419,20 @@ export async function agendaCheckAvailability(
     const [firstDay] = days;
     // Como mucho 4 horas por mensaje. Si ninguna le sirve, el agente pide las
     // 4 siguientes (page) en vez de recibir el día entero y soltarlo de golpe.
-    const ordered = compactOrder
-      ? search.options
-      : [...search.options].sort((a, b) => a.start.getTime() - b.start.getTime());
-    const first = diversifyByProfessional(ordered, 4, compactOrder);
+    // Si pidió una hora ("sobre las 16:30"), manda la hora: primero los huecos
+    // a esa hora en cualquier día, luego los más cercanos. La agenda compacta
+    // ya filtró lo que la clínica no quiere ofrecer.
+    const preferredMinute = parsePreferredTime(args.preferred_time);
+    const ordered =
+      preferredMinute !== null
+        ? rankByPreferredTime(search.options, search.timezone, preferredMinute)
+        : compactOrder
+          ? search.options
+          : [...search.options].sort((a, b) => a.start.getTime() - b.start.getTime());
+    const first =
+      preferredMinute !== null
+        ? ordered.slice(0, 4)
+        : diversifyByProfessional(ordered, 4, compactOrder);
     const page = Math.max(1, Math.min(10, Math.trunc(args.page ?? 1)));
     const rest = ordered.filter((o) => !first.includes(o));
     // Elegidas por cercanía a las citas del día, pero se enseñan en orden de
@@ -473,11 +490,22 @@ export async function agendaCheckAvailability(
             )}. Si el paciente no dijo con quién, pregúntale si tiene preferencia; si le da igual, ofrécele el hueco más próximo.`
         : '';
 
+    const exactCount =
+      preferredMinute !== null
+        ? search.options.filter((o) => startsAtMinute(o.start, search.timezone, preferredMinute))
+            .length
+        : 0;
+    const timeNote =
+      preferredMinute !== null && page === 1
+        ? exactCount > 0
+          ? `Pidió las ${args.preferred_time}: estas son las horas a esa hora o las más cercanas, en cualquier día. `
+          : `A las ${args.preferred_time} exactas no queda ningún hueco en esos días; estas son las horas más cercanas a esa: díselo así ("a esa hora no me queda, lo más cercano es…"). `
+        : '';
     const relaxNote = search.relaxedConsecutive
       ? 'Aviso: no queda ningún hueco que no vaya pegado a otra primera visita, así que se ofrecen estos (está permitido sólo porque no hay otra opción). '
       : '';
     return {
-      result: `${consulted}${noneOnRequested}${relaxNote}Horas libres${tratamiento} (como mucho estas ${picked.length}, ni una más): ${spoken.join('; ')}. Si ninguna le sirve, llama a check_availability con la misma preferred_date y page ${page + 1} para las siguientes. NUNCA ofrezcas una hora que no esté en la última respuesta de check_availability: las demás pueden estar ocupadas.${varios} Sólo existen los huecos de esta lista: no inventes horas ni ofrezcas otras (ya respetan el horario de la clínica). Para otra fecha, vuelve a llamar a check_availability con preferred_date. Para reservar, el paciente tiene que ELEGIR un hueco concreto (día, hora Y profesional): un "sí" o "dale" ambiguo NO es una elección. Luego pasa a book_appointment el start_time y el professional_id EXACTOS de ESE hueco, copiados tal cual de los corchetes (start_time es la hora de la clínica, NO la conviertas ni le añadas zona). Al paciente decile sólo el día, la hora y el nombre del profesional.`,
+      result: `${consulted}${noneOnRequested}${timeNote}${relaxNote}Horas libres${tratamiento} (como mucho estas ${picked.length}, ni una más): ${spoken.join('; ')}. Si ninguna le sirve, llama a check_availability con la misma preferred_date (y la misma preferred_time, si la había) y page ${page + 1} para las siguientes. Si pide una hora concreta ("sobre las 16:30", "a las 5"), vuelve a llamar con preferred_time en formato HH:MM ANTES de decirle que a esa hora no hay: estas 4 no son todas las horas libres. NUNCA ofrezcas una hora que no esté en la última respuesta de check_availability: las demás pueden estar ocupadas.${varios} Sólo existen los huecos de esta lista: no inventes horas ni ofrezcas otras (ya respetan el horario de la clínica). Para otra fecha, vuelve a llamar a check_availability con preferred_date. Para reservar, el paciente tiene que ELEGIR un hueco concreto (día, hora Y profesional): un "sí" o "dale" ambiguo NO es una elección. Luego pasa a book_appointment el start_time y el professional_id EXACTOS de ESE hueco, copiados tal cual de los corchetes (start_time es la hora de la clínica, NO la conviertas ni le añadas zona). Al paciente decile sólo el día, la hora y el nombre del profesional.`,
     };
   } catch (err) {
     console.error('[agenda-voice] check_availability', err);

@@ -47,6 +47,8 @@ export type CheckAvailabilityArgs = {
   patient_id?: string;
   /** Más horas: 2 = las 4 siguientes a las ya ofrecidas. */
   page?: number;
+  /** "16:30": primero los huecos a esa hora. */
+  preferred_time?: string;
 };
 
 export type BookAppointmentArgs = {
@@ -202,6 +204,7 @@ export async function checkAvailability(
       first_visit: typeof args.first_visit === 'boolean' ? args.first_visit : undefined,
       patient_id: typeof args.patient_id === 'string' ? args.patient_id : undefined,
       page: typeof args.page === 'number' ? args.page : undefined,
+      preferred_time: typeof args.preferred_time === 'string' ? args.preferred_time : undefined,
     },
     { patientPhone: normalizePatientPhone(ctx.patientPhone) },
   );
