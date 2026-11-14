@@ -172,7 +172,7 @@ export async function GlobalAnalyticsBar({
         </div>
       )}
 
-      {revenue.cents > 0 && (
+      {!pulse && revenue.cents > 0 && (
         <Reveal>
           <Card className="mb-4 overflow-hidden p-0">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-3 p-4 sm:px-5">

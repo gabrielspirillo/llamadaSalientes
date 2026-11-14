@@ -62,7 +62,7 @@ export function TodayBoardCard({ board, demo }: { board: TodayBoard; demo?: bool
     {
       key: 'handoffs',
       n: board.attention.handoffs,
-      label: 'esperan a una persona',
+      label: board.attention.handoffs === 1 ? 'espera a una persona' : 'esperan a una persona',
       hint: 'en WhatsApp',
       icon: <MessageCircle className="h-4 w-4" />,
       href: '/dashboard/whatsapp',
@@ -71,7 +71,7 @@ export function TodayBoardCard({ board, demo }: { board: TodayBoard; demo?: bool
     {
       key: 'tasks',
       n: board.attention.overdueTasks,
-      label: 'tareas vencidas',
+      label: board.attention.overdueTasks === 1 ? 'tarea vencida' : 'tareas vencidas',
       hint: 'del equipo',
       icon: <ClipboardList className="h-4 w-4" />,
       href: '/dashboard/tasks',
@@ -80,7 +80,7 @@ export function TodayBoardCard({ board, demo }: { board: TodayBoard; demo?: bool
     {
       key: 'offers',
       n: board.attention.pendingOffers,
-      label: 'huecos ofrecidos',
+      label: board.attention.pendingOffers === 1 ? 'hueco ofrecido' : 'huecos ofrecidos',
       hint: 'esperando respuesta',
       icon: <Phone className="h-4 w-4" />,
       href: '/dashboard/agenda',
@@ -88,8 +88,6 @@ export function TodayBoardCard({ board, demo }: { board: TodayBoard; demo?: bool
     },
   ];
   const needs = attention.reduce((a, b) => a + b.n, 0);
-
-  const pct = board.items.length ? Math.round((done / board.items.length) * 100) : 0;
 
   return (
     <Card className="mb-6 overflow-hidden border-0 p-0 shadow-[var(--shadow-float)]">
@@ -148,21 +146,13 @@ export function TodayBoardCard({ board, demo }: { board: TodayBoard; demo?: bool
 
           {board.items.length > 0 && (
             <>
-              <div
-                className="relative mt-4 h-1.5 w-full overflow-hidden rounded-full bg-white/10"
-                title={`${done} de ${board.items.length} atendidas`}
-              >
-                <div
-                  className="bar-fill h-full rounded-full bg-[linear-gradient(90deg,#6bc2a4,#a7f3d0)]"
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
+              <DayLine items={board.items} nowMinute={board.nowMinute} nextId={next?.id} />
               {/* El carril tiene aire arriba y abajo: la tarjeta al elevarse y su
                   sombra no se recortan con el scroll horizontal. */}
               {/* El carril llega hasta el borde del bloque (sin el corte seco en
                   el padding) y se desvanece a la derecha: se lee que sigue. */}
               <ol
-                className="rise-stagger relative -mx-5 mt-2 flex gap-2.5 overflow-x-auto pt-3 pb-5 pl-5 pr-14 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.25)_transparent] sm:-mx-6 sm:pl-6"
+                className="rise-stagger relative -mx-5 mt-2 flex gap-2.5 overflow-x-auto pt-3 pb-4 pl-5 pr-14 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.25)_transparent] sm:-mx-6 sm:pl-6"
                 style={{
                   maskImage:
                     'linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 56px), transparent)',
@@ -191,14 +181,21 @@ export function TodayBoardCard({ board, demo }: { board: TodayBoard; demo?: bool
                           <span className="text-[16px] font-extrabold tabular-nums tracking-tight">
                             {it.time}
                           </span>
-                          <span
-                            className={cn(
-                              'h-2.5 w-2.5 rounded-full ring-2',
-                              STATUS_DOT[it.status] ?? 'bg-zinc-300',
-                              isNext ? 'ring-emerald-100' : 'ring-white/20',
-                            )}
-                            title={STATUS_LABELS[it.status]}
-                          />
+                          {/* «Siguiente» va en la fila de la hora: debajo hacía la
+                              tarjeta más alta y el carril dejaba un hueco vacío. */}
+                          {isNext ? (
+                            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800">
+                              Siguiente
+                            </span>
+                          ) : (
+                            <span
+                              className={cn(
+                                'h-2.5 w-2.5 rounded-full ring-2 ring-white/20',
+                                STATUS_DOT[it.status] ?? 'bg-zinc-300',
+                              )}
+                              title={STATUS_LABELS[it.status]}
+                            />
+                          )}
                         </div>
                         <p
                           className={cn(
@@ -219,11 +216,6 @@ export function TodayBoardCard({ board, demo }: { board: TodayBoard; demo?: bool
                             ? '1ª visita'
                             : (it.treatmentName ?? STATUS_LABELS[it.status])}
                         </p>
-                        {isNext && (
-                          <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-emerald-800">
-                            Siguiente
-                          </span>
-                        )}
                       </Link>
                     </li>
                   );
@@ -280,6 +272,88 @@ export function TodayBoardCard({ board, demo }: { board: TodayBoard; demo?: bool
         </div>
       </div>
     </Card>
+  );
+}
+
+function hhmm(minute: number): string {
+  const m = Math.max(0, Math.min(24 * 60, minute));
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+}
+
+/**
+ * La jornada de un vistazo: una línea de la primera a la última hora, una
+ * marca por cita (llena = ya pasó) y el «ahora» que se desliza hasta su sitio.
+ * Sólo transform/opacity; el desliz ocurre una vez al entrar.
+ */
+function DayLine({
+  items,
+  nowMinute,
+  nextId,
+}: {
+  items: TodayBoard['items'];
+  nowMinute: number;
+  nextId?: string;
+}) {
+  const first = Math.min(...items.map((i) => i.minute));
+  const last = Math.max(...items.map((i) => i.minute));
+  const start = Math.floor(first / 60) * 60;
+  const end = Math.max(start + 60, Math.ceil((last + 45) / 60) * 60);
+  const pos = (m: number) => Math.max(0, Math.min(100, ((m - start) / (end - start)) * 100));
+  const nowPct = pos(nowMinute);
+  const done = items.filter((i) => ['COMPLETED', 'NO_SHOW'].includes(i.status)).length;
+  return (
+    <div className="relative mt-5" title={`${done} de ${items.length} atendidas`}>
+      <div className="relative h-6">
+        <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 overflow-hidden rounded-full bg-white/12">
+          <div
+            className="h-full origin-left animate-grow-x rounded-full bg-[linear-gradient(90deg,rgba(107,194,164,0.35),#a7f3d0)]"
+            style={{ width: `${nowPct}%`, animationDuration: '1.1s' }}
+          />
+        </div>
+        {items.map((it, i) => {
+          const past = it.minute + 30 < nowMinute || ['COMPLETED', 'NO_SHOW'].includes(it.status);
+          const isNext = it.id === nextId;
+          return (
+            <span
+              key={it.id}
+              title={`${it.time} · ${it.patientName}`}
+              className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2"
+              style={{ left: `${pos(it.minute)}%` }}
+            >
+              <span
+                className={cn(
+                  'block animate-pop rounded-full',
+                  isNext
+                    ? 'h-3 w-3 bg-white shadow-[0_0_0_3px_rgba(110,231,183,0.55)]'
+                    : past
+                      ? it.status === 'NO_SHOW'
+                        ? 'h-2 w-2 bg-rose-300'
+                        : 'h-2 w-2 bg-[#a7f3d0]'
+                      : 'h-2 w-2 bg-[#14211d] ring-[1.5px] ring-white/70',
+                )}
+                style={{ animationDelay: `${300 + i * 60}ms` }}
+              />
+            </span>
+          );
+        })}
+        {nowMinute >= start && nowMinute <= end && (
+          <span
+            aria-hidden
+            className="day-now absolute inset-y-0 left-0 w-full"
+            style={{ transform: `translateX(${nowPct}%)` }}
+          >
+            <span className="absolute left-0 top-1/2 block h-5 w-[2px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_10px_2px_rgba(167,243,208,0.8)]" />
+          </span>
+        )}
+      </div>
+      <div className="mt-0.5 flex justify-between text-[11px] font-medium tabular-nums text-white/45">
+        <span>{hhmm(start)}</span>
+        {nowMinute >= start && nowMinute <= end && (
+          <span className="text-emerald-200/90">Ahora {hhmm(nowMinute)}</span>
+        )}
+        <span>{hhmm(end)}</span>
+      </div>
+    </div>
   );
 }
 

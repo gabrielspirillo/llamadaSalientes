@@ -49,7 +49,7 @@ function Rings({ rings }: { rings: Ring[] }) {
   return (
     <svg
       viewBox={`0 0 ${size} ${size}`}
-      className="h-[148px] w-[148px] shrink-0 -rotate-90 sm:h-[168px] sm:w-[168px]"
+      className="h-[118px] w-[118px] shrink-0 -rotate-90 sm:h-[168px] sm:w-[168px]"
       aria-hidden
       role="presentation"
     >
@@ -123,7 +123,7 @@ function MonthRings({ pulse, occupancyPct }: { pulse: BusinessPulse; occupancyPc
         title="Tu mes"
         subtitle={`${pulse.monthName.charAt(0).toUpperCase()}${pulse.monthName.slice(1)} frente a ${pulse.prevMonthName}`}
       />
-      <div className="flex flex-col items-center gap-5 px-5 pb-5 sm:flex-row sm:items-center">
+      <div className="flex items-center gap-4 px-5 pb-5 sm:gap-5">
         <Rings rings={rings} />
         <ul className="w-full min-w-0 space-y-3">
           {rings.map((r, i) => (
@@ -136,8 +136,8 @@ function MonthRings({ pulse, occupancyPct }: { pulse: BusinessPulse; occupancyPc
                 <span className="h-2 w-2 rounded-full" style={{ background: r.color }} />
                 {r.label}
               </p>
-              <p className="mt-0.5 flex items-baseline gap-1.5">
-                <span className="text-[22px] font-bold leading-none tracking-tight text-zinc-900 tabular-nums">
+              <p className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5">
+                <span className="text-[20px] font-bold leading-none tracking-tight text-zinc-900 tabular-nums sm:text-[22px]">
                   {r.value}
                 </span>
                 <span className="truncate text-[12px] text-zinc-500">{r.goal}</span>

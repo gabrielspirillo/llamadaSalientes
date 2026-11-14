@@ -1899,6 +1899,40 @@ Faltas y anulaciones (la tendencia de faltas sigue en el gráfico de abajo).
   (globals.css), una sola vez. Importes con `AnimatedNumber grouping`
   ("5.040 €": en es-ES las 4 cifras no llevan punto por defecto).
 
+## Centro de avisos: la campana (14/11/2026)
+
+`components/dashboard/notification-center.tsx`, montado en `topbar.tsx`. Antes
+sólo enseñaba las llamadas del agente; ahora junta lo que pide algo a alguien.
+Lo puro en `lib/notifications/model.ts` (tests `avisos`), lo que lee en
+`lib/notifications/feed.ts`, API `GET /api/notifications` y
+`POST /api/notifications/dismiss`.
+
+- **Fuentes**: las tarjetas del chat interno (`im_messages` con `kind = EVENT`,
+  7 días) de los eventos de `EVENT_CATEGORY` (llamada perdida, sin confirmar /
+  `NEEDS_CALL`, traspaso de WhatsApp, cita anulada o faltada, firma,
+  cumpleaños, canal caído), las llamadas del asistente, **fichas con el mismo
+  nombre** en `patients` (sólo admin) y las tareas propias de hoy o vencidas.
+  Un evento nuevo que deba avisar se añade a `EVENT_CATEGORY`; los botones salen
+  de las `actions` de la propia tarjeta (llamar, abrir, «Crear tarea» con
+  `/api/messages/:id/to-task`).
+- **Por hacer / Actividad / Menciones**: lo que pide algo (`ACTIONABLE`) va
+  aparte de lo que sólo informa.
+- **Descartar es por persona y se guarda** (`notification_dismissals`, migración
+  `0076`; clave estable `ref`: `im:<id>`, `call:<id>`, `dup:<hash de fichas>`,
+  `tasks:<día>:<n>`). El aviso de duplicados vuelve sólo si cambian las fichas.
+  En móvil se descarta deslizando a la izquierda.
+- **«Sin ver»** = `ref` que no está en `localStorage` (`futura.notif.seenRefs`):
+  los avisos calculados (duplicados, tareas) no tienen hora real.
+- Sin avisos: orbe de cristal con ondas (`.notif-ripple`, `.notif-orb`), sólo
+  mientras el panel está abierto y vacío.
+
+**Línea del día** (bloque «Hoy», `DayLine` en `today-board.tsx`): sustituye a la
+barra de progreso. De la primera a la última hora, una marca por cita (llena =
+ya pasó) y el «ahora» que entra deslizándose (`.day-now`, sin `to`: acaba en el
+`transform` inline). «Siguiente» va en la fila de la hora de su tarjeta: debajo
+la hacía más alta y el carril dejaba un hueco en móvil. «Revenue por canal»
+sólo sale ya en el respaldo sin pulso (repetía «Recuperado»).
+
 ## Uso de la plataforma (sólo Futura)
 
 `/dashboard/futura/uso` (botón **Uso de la plataforma** en Panel Futura, gate
@@ -2112,4 +2146,4 @@ LLM por llamada telefónica, una bloqueando. Ese trabajo va a la cola.
 
 ---
 
-**Última actualización**: 2026-11-13 (días con horario especial). Anterior: 2026-11-12 (salud del canal de WhatsApp tras la caída de Evolution: no anular sin canal fiable, mensajes tardíos, lote por disparador, avisos). Anterior: 2026-11-10 (bloque 2 de Respinens). Anterior: 2026-09-25 (auditoría de rendimiento con agentes: señal de navegación, caché del router, camino crítico del layout, topes de espera en los diez clientes externos, consultas encadenadas, índices de la migración 0044 y CI en verde).
+**Última actualización**: 2026-11-14 (centro de avisos y línea del día). Anterior: 2026-11-13 (días con horario especial). Anterior: 2026-11-12 (salud del canal de WhatsApp tras la caída de Evolution: no anular sin canal fiable, mensajes tardíos, lote por disparador, avisos). Anterior: 2026-11-10 (bloque 2 de Respinens). Anterior: 2026-09-25 (auditoría de rendimiento con agentes: señal de navegación, caché del router, camino crítico del layout, topes de espera en los diez clientes externos, consultas encadenadas, índices de la migración 0044 y CI en verde).
