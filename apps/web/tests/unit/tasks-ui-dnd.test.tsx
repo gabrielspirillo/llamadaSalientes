@@ -109,10 +109,10 @@ describe('KanbanBoard — drag & drop', () => {
     const dt = fakeDataTransfer();
 
     fireEvent.dragStart(cardOf('A'), { dataTransfer: dt });
-    fireEvent.dragOver(columnOf('En revisión'), { dataTransfer: dt });
-    fireEvent.drop(columnOf('En revisión'), { dataTransfer: dt });
+    fireEvent.dragOver(columnOf('Hecho'), { dataTransfer: dt });
+    fireEvent.drop(columnOf('Hecho'), { dataTransfer: dt });
 
-    expect(onReorder).toHaveBeenCalledWith('IN_REVIEW', ['a']);
+    expect(onReorder).toHaveBeenCalledWith('DONE', ['a']);
   });
 
   it('soltar sin haber arrastrado nada no llama a onReorder', () => {

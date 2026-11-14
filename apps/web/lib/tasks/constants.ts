@@ -6,6 +6,18 @@
 export const TASK_STATUSES = ['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 
+/**
+ * Las columnas del tablero y los estados que se ofrecen: Por hacer, En curso y
+ * Hecho (14/11/2026, la clínica: «sólo tres»). `IN_REVIEW` sigue existiendo en
+ * la base por compatibilidad, pero ya no se ofrece; la migración 0075 pasó las
+ * que había a En curso y el tablero las pinta ahí si apareciera alguna.
+ */
+export const BOARD_STATUSES = [
+  'TODO',
+  'IN_PROGRESS',
+  'DONE',
+] as const satisfies readonly TaskStatus[];
+
 export const TASK_PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const;
 export type TaskPriority = (typeof TASK_PRIORITIES)[number];
 

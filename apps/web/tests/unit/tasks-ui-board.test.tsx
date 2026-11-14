@@ -43,11 +43,12 @@ function column(label: string): HTMLElement {
 }
 
 describe('KanbanBoard — columnas y contadores', () => {
-  it('muestra las 4 columnas con sus etiquetas', () => {
+  it('muestra sólo tres columnas: Por hacer, En curso y Hecho', () => {
     renderBoard();
-    for (const label of ['Por hacer', 'En curso', 'En revisión', 'Hecho']) {
+    for (const label of ['Por hacer', 'En curso', 'Hecho']) {
       expect(screen.getByRole('heading', { name: label, level: 2 })).toBeTruthy();
     }
+    expect(screen.queryByRole('heading', { name: 'En revisión', level: 2 })).toBeNull();
   });
 
   it('coloca cada tarea en la columna de su estado', () => {
@@ -55,7 +56,8 @@ describe('KanbanBoard — columnas y contadores', () => {
     expect(within(column('Por hacer')).getByText('Abrir gabinete')).toBeTruthy();
     expect(within(column('Por hacer')).getByText('Llamar a paciente')).toBeTruthy();
     expect(within(column('En curso')).getByText('Cuadrar caja')).toBeTruthy();
-    expect(within(column('En revisión')).getByText('Revisar RGPD')).toBeTruthy();
+    // Una que quedara «en revisión» se ve en En curso.
+    expect(within(column('En curso')).getByText('Revisar RGPD')).toBeTruthy();
     expect(within(column('Hecho')).getByText('Esterilizar')).toBeTruthy();
     // y no aparecen donde no toca
     expect(within(column('En curso')).queryByText('Abrir gabinete')).toBeNull();
@@ -65,8 +67,7 @@ describe('KanbanBoard — columnas y contadores', () => {
     renderBoard();
     const counts: Record<string, string> = {
       'Por hacer': '2',
-      'En curso': '1',
-      'En revisión': '1',
+      'En curso': '2',
       Hecho: '1',
     };
     for (const [label, expected] of Object.entries(counts)) {

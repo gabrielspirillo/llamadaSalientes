@@ -12,12 +12,12 @@ import {
 import { Input, Label, Select, Switch, Textarea } from '@/components/ui/input';
 import { cn } from '@/lib/cn';
 import {
+  BOARD_STATUSES,
   CATEGORY_META,
   PRIORITY_META,
   STATUS_META,
   TASK_CATEGORIES,
   TASK_PRIORITIES,
-  TASK_STATUSES,
   type TaskCategory,
   type TaskPriority,
   type TaskStatus,
@@ -269,7 +269,7 @@ export function TaskComposer({
                 value={status}
                 onChange={(e) => setStatus(e.target.value as TaskStatus)}
               >
-                {TASK_STATUSES.map((s) => (
+                {BOARD_STATUSES.map((s) => (
                   <option key={s} value={s}>
                     {STATUS_META[s].label}
                   </option>

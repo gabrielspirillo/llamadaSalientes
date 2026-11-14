@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button';
 import { useRegisterOverlay } from '@/components/ui/overlay-stack';
 import { cn } from '@/lib/cn';
 import {
+  BOARD_STATUSES,
   CATEGORY_META,
   PRIORITY_META,
   STATUS_META,
   TASK_CATEGORIES,
   TASK_PRIORITIES,
-  TASK_STATUSES,
   type TaskCategory,
   type TaskPriority,
   type TaskStatus,
@@ -268,7 +268,7 @@ export function TaskDetailPanel({
                   onChange={(e) => void patch({ status: e.target.value as TaskStatus })}
                   className="select-chevron appearance-none pr-9 w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-sm"
                 >
-                  {TASK_STATUSES.map((s) => (
+                  {BOARD_STATUSES.map((s) => (
                     <option key={s} value={s}>
                       {STATUS_META[s].label}
                     </option>

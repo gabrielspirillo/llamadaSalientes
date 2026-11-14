@@ -38,7 +38,7 @@ describe('Tablero sin tareas', () => {
     );
     expect(screen.getByText('Sin pendientes aquí')).toBeTruthy();
     expect(screen.getByText('Alguien ya lo está haciendo')).toBeTruthy();
-    expect(screen.getByText('Esperando verificación')).toBeTruthy();
+    expect(screen.queryByText('Esperando verificación')).toBeNull();
     expect(screen.getByText('Cerrado con evidencia')).toBeTruthy();
   });
 

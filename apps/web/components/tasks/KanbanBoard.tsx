@@ -2,7 +2,7 @@
 
 import { TaskCard } from '@/components/tasks/TaskCard';
 import { cn } from '@/lib/cn';
-import { STATUS_META, TASK_STATUSES, type TaskStatus } from '@/lib/tasks/constants';
+import { BOARD_STATUSES, STATUS_META, type TaskStatus } from '@/lib/tasks/constants';
 import type { TaskDTO, TaskMember } from '@/lib/tasks/types';
 import { Plus } from 'lucide-react';
 import { useCallback, useState } from 'react';
@@ -42,7 +42,10 @@ export function KanbanBoard({
   // servidor y el arrastre dentro de una columna parecía no hacer nada.
   const byStatus = useCallback(
     (status: TaskStatus) =>
-      tasks.filter((t) => t.status === status).sort((a, b) => a.boardPosition - b.boardPosition),
+      tasks
+        // «En revisión» ya no es columna: si quedara alguna, va con En curso.
+        .filter((t) => (t.status === 'IN_REVIEW' ? 'IN_PROGRESS' : t.status) === status)
+        .sort((a, b) => a.boardPosition - b.boardPosition),
     [tasks],
   );
 
@@ -73,7 +76,7 @@ export function KanbanBoard({
 
   return (
     <div className="-mx-1 flex snap-x gap-4 overflow-x-auto px-1 pb-4">
-      {TASK_STATUSES.map((status) => {
+      {BOARD_STATUSES.map((status) => {
         const column = byStatus(status);
         const meta = STATUS_META[status];
         const isTarget = target?.status === status;
@@ -92,7 +95,7 @@ export function KanbanBoard({
               handleDrop(status, target?.status === status ? target.index : column.length);
             }}
             className={cn(
-              'flex w-[290px] shrink-0 snap-start flex-col rounded-[22px] border bg-white/60 transition-colors sm:w-[310px]',
+              'flex w-[290px] shrink-0 snap-start flex-col rounded-[22px] border bg-white/60 transition-colors sm:w-[310px] lg:w-auto lg:min-w-0 lg:flex-1',
               isTarget && draggingId
                 ? 'border-emerald-300 bg-emerald-50/60'
                 : 'border-(--color-border)',

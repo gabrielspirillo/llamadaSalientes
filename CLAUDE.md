@@ -371,6 +371,10 @@ Sección `/dashboard/tasks` (label "Tareas"). Es transversal: no se contrata, vi
   cuando existe otra más nueva de la misma rutina (la de hoy nunca). En Respinens
   había 152 rutinas vencidas (35 «Cierre de clínica»). Archivar no borra.
 - `TasksWorkspace` acepta `initialView` (los tests del tablero pasan `"board"`).
+- **Tablero de tres columnas**: Por hacer · En curso · Hecho (`BOARD_STATUSES`
+  en `lib/tasks/constants.ts`, también en los selectores del alta y del
+  detalle). `IN_REVIEW` sigue en el enum por compatibilidad; la `0075` pasó las
+  que había a En curso y el tablero pinta ahí cualquiera que apareciera.
 - ⚠️ **Sin rutinas ni automatizaciones de serie** (migración `0074`, 14/11/2026):
   el catálogo dental (16 rutinas) y las 10 reglas de sistema venían ENCENDIDAS
   sin pedirlas y llenaban Tareas (Respinens: casi 200 abiertas, 3 cerradas en

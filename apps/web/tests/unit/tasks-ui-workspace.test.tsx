@@ -127,8 +127,8 @@ describe('TasksWorkspace — reorder optimista con rollback', () => {
 
     const dt = fakeDataTransfer();
     fireEvent.dragStart(cardOf('Abrir gabinete'), { dataTransfer: dt });
-    fireEvent.dragOver(columnOf('En revisión'), { dataTransfer: dt });
-    fireEvent.drop(columnOf('En revisión'), { dataTransfer: dt });
+    fireEvent.dragOver(columnOf('En curso'), { dataTransfer: dt });
+    fireEvent.drop(columnOf('En curso'), { dataTransfer: dt });
 
     await waitFor(() => expect(fetchMock.callsTo('/api/tasks/reorder').length).toBe(1));
     // tras el POST se pide el tablero de nuevo
