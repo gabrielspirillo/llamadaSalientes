@@ -5,7 +5,6 @@ import { taskTemplateItems, taskTemplates } from '@/lib/db/schema';
 import { badRequest, taskErrorResponse, templateSchema } from '@/lib/tasks/api';
 import { requireTaskRole } from '@/lib/tasks/auth';
 import { loadTemplates } from '@/lib/tasks/queries';
-import { seedSystemTemplates } from '@/lib/tasks/templates';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,12 +22,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const auth = await requireTaskRole('admin');
     const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
-
-    // Acción especial: reinstalar el catálogo de rutinas de clínica dental.
-    if (body?.action === 'seed') {
-      const added = await seedSystemTemplates(auth.tenantId);
-      return NextResponse.json({ added, templates: await loadTemplates(auth.tenantId) });
-    }
 
     const parsed = templateSchema.safeParse(body);
     if (!parsed.success) return badRequest(parsed.error.issues);

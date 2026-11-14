@@ -3,7 +3,6 @@ import { TasksWorkspace } from '@/components/tasks/TasksWorkspace';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/feedback';
 import { resolveTenantRole } from '@/lib/auth/tenant-role';
-import { ensureAutomationRules } from '@/lib/tasks/automation';
 import { getTenantTimezone, materializeRoutinesForTenant } from '@/lib/tasks/materialize';
 import {
   loadAutomationRules,
@@ -12,7 +11,6 @@ import {
   loadTaskStats,
   loadTemplates,
 } from '@/lib/tasks/queries';
-import { hasSystemTemplates, seedSystemTemplates } from '@/lib/tasks/templates';
 import { getCurrentTenant } from '@/lib/tenant';
 import { ClipboardCheck, DatabaseZap } from 'lucide-react';
 import { after } from 'next/server';
@@ -22,33 +20,20 @@ export const dynamic = 'force-dynamic';
 /**
  * Sección Tareas.
  *
- * En la primera visita de cada clínica se auto-provisiona todo lo que hace
- * falta para que el tablero no arranque vacío: el catálogo de rutinas de
- * clínica dental, las reglas de automatización y las tareas del día. Es
- * idempotente, así que en las visitas siguientes no hace prácticamente nada.
+ * Sin rutinas ni automatizaciones de serie: cada clínica crea las suyas.
  */
 export default async function TasksPage() {
   const { tenant } = await getCurrentTenant();
 
   try {
-    // La auto-provisión bloquea el render SÓLO la primera vez, que es cuando
-    // hace falta para que el tablero no arranque vacío. Después se manda al
-    // background con `after()`: son tres escrituras + una materialización que
-    // no aportan nada al render y que sumaban cientos de ms a cada visita.
-    // El cron `task-routines-tick` cubre igual el caso del worker.
-    const provisioned = await hasSystemTemplates(tenant.id).catch(() => false);
-    const provision = async () => {
-      await seedSystemTemplates(tenant.id);
-      await ensureAutomationRules(tenant.id);
-      await materializeRoutinesForTenant(tenant.id).catch((err) => {
+    // Ya no se siembra nada: cada clínica crea sus rutinas y automatizaciones
+    // (migración 0074). Lo único que queda es materializar las rutinas propias
+    // que toquen hoy, fuera del camino del render (el cron también lo hace).
+    after(() =>
+      materializeRoutinesForTenant(tenant.id).catch((err) => {
         console.warn('[tasks-page] materialize falló', (err as Error).message);
-      });
-    };
-    if (provisioned) {
-      after(() => provision().catch(() => undefined));
-    } else {
-      await provision();
-    }
+      }),
+    );
 
     // Rol y `users.id` interno de una vez: Futura es admin en cualquier
     // clínica que gestione; el resto, lo que diga su membresía. Sin membresía

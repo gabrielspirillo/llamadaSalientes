@@ -9,7 +9,7 @@ import { Skeleton, SkeletonRows } from '@/components/ui/feedback';
  */
 export function PageSkeleton({ rows = 6, tiles = 4 }: { rows?: number; tiles?: number }) {
   return (
-    <div className="space-y-6" aria-busy="true" aria-live="polite">
+    <div className="page-skeleton space-y-6" aria-busy="true" aria-live="polite">
       <span className="sr-only">Cargando…</span>
 
       {/* Cabecera */}

@@ -76,17 +76,15 @@ describe('Cabecera de Tareas sin datos', () => {
 });
 
 describe('Rutinas sin nada cargado', () => {
-  it('sin plantillas ofrece instalar el catálogo y lo pide al servidor', async () => {
+  it('sin plantillas no ofrece catálogo de serie: invita a crear la primera', async () => {
     fetchMock.on('/api/tasks/postop-treatments', { status: 200, json: { treatments: [] } });
     render(
       <RoutinesView templates={[]} rules={[]} members={MEMBERS} isAdmin onRefresh={vi.fn()} />,
     );
     expect(screen.getByText('Todavía no hay rutinas')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: /Instalar catálogo/ }));
-    await waitFor(() => expect(fetchMock.callsTo('/api/tasks/templates').length).toBe(1));
-    const call = fetchMock.callsTo('/api/tasks/templates')[0];
-    expect(call?.method).toBe('POST');
-    expect(call?.body).toEqual({ action: 'seed' });
+    expect(screen.queryByRole('button', { name: /Instalar catálogo/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Crear la primera rutina/ }));
+    expect(await screen.findByText('Nueva rutina', { selector: 'h2' })).toBeTruthy();
   });
 
   it('sin plantillas y sin ser admin no se ofrece instalar nada', async () => {
@@ -115,7 +113,7 @@ describe('Rutinas sin nada cargado', () => {
         onRefresh={vi.fn()}
       />,
     );
-    expect(screen.getByText('Sin reglas cargadas')).toBeTruthy();
+    expect(screen.getByText('Sin automatizaciones')).toBeTruthy();
     expect(await screen.findByText('Sin tratamientos cargados')).toBeTruthy();
   });
 

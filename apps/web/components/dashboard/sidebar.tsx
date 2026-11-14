@@ -673,6 +673,7 @@ function SidebarNav({
           href="/dashboard"
           onClick={onNavigate}
           aria-label={branding?.name ?? 'FUTURA'}
+          className="min-w-0 overflow-hidden"
         >
           <BrandMark branding={branding} />
         </Link>
@@ -701,7 +702,12 @@ function SidebarNav({
       </div>
 
       {/* --- Selector de organización -------------------------------------- */}
-      <div data-sidebar-hide className="px-3 pb-1 pt-1" title="Clínica activa">
+      <div
+        data-sidebar-hide
+        data-sidebar-collapse-y
+        className="px-3 pb-1 pt-1"
+        title="Clínica activa"
+      >
         <OrganizationSwitcher
           hidePersonal
           afterCreateOrganizationUrl="/dashboard"
@@ -720,7 +726,7 @@ function SidebarNav({
       {/* Con la barra de scroll oculta, en pantallas bajas el último ítem se
           cortaba por la mitad sin pista de que había más: se deja una barra
           fina, del color de la barra. */}
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3 [scrollbar-color:#cfd6d3_transparent] [scrollbar-width:thin]">
+      <nav className="flex-1 space-y-0.5 overflow-x-hidden overflow-y-auto px-3 py-3 [scrollbar-color:#cfd6d3_transparent] [scrollbar-width:thin]">
         {(agendaOnly ? AGENDA_ONLY_ENTRIES : ENTRIES).map((entry) => {
           if (entry.kind === 'group') {
             return (

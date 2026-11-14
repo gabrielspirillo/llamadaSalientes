@@ -1,6 +1,7 @@
 'use client';
 
 import { AutomationBuilder } from '@/components/tasks/AutomationBuilder';
+import { RoutineDialog } from '@/components/tasks/RoutineDialog';
 import { EmptyState } from '@/components/tasks/shared';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
@@ -23,7 +24,6 @@ import {
   Plus,
   Repeat,
   ShieldCheck,
-  Sparkles,
   Trash2,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
@@ -52,6 +52,7 @@ export function RoutinesView({
   const [note, setNote] = useState<string | null>(null);
   /** null = cerrado; { rule } = editar; { rule: null } = crear nueva. */
   const [builder, setBuilder] = useState<{ rule: TaskAutomationRuleDTO | null } | null>(null);
+  const [newRoutine, setNewRoutine] = useState(false);
 
   const call = async (fn: () => Promise<Response>, okMessage?: string) => {
     setBusy(true);
@@ -76,16 +77,8 @@ export function RoutinesView({
       'Listo: ya se han creado las tareas que tocaban.',
     );
 
-  const seedCatalog = () =>
-    call(
-      () =>
-        fetch('/api/tasks/templates', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ action: 'seed' }),
-        }),
-      'Catálogo de rutinas de clínica dental instalado.',
-    );
+  const deleteTemplate = (id: string) =>
+    call(() => fetch(`/api/tasks/templates/${id}`, { method: 'DELETE' }), 'Rutina eliminada.');
 
   const patchTemplate = (id: string, body: Record<string, unknown>) =>
     call(() =>
@@ -133,19 +126,25 @@ export function RoutinesView({
               Rutinas de la clínica
             </h2>
             <p className="mt-0.5 max-w-2xl text-xs text-zinc-500">
-              El estándar escrito. Si el proceso solo vive en la cabeza de alguien, no es un
-              proceso: aquí cada rutina se crea sola el día que toca, con su lista de comprobación.
+              Lo que se repite y no hay que olvidar: se crea sola el día que toca. Sólo las que
+              crees tú; si un día no se hace, no se acumula.
             </p>
           </div>
           {isAdmin && (
             <div className="flex items-center gap-2">
-              <Button size="sm" variant="secondary" onClick={runNow} disabled={busy}>
-                {busy ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Play className="h-3.5 w-3.5" />
-                )}
-                Generar ahora
+              {templates.length > 0 && (
+                <Button size="sm" variant="secondary" onClick={runNow} disabled={busy}>
+                  {busy ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Play className="h-3.5 w-3.5" />
+                  )}
+                  Generar ahora
+                </Button>
+              )}
+              <Button size="sm" onClick={() => setNewRoutine(true)} disabled={busy}>
+                <Plus className="h-3.5 w-3.5" />
+                Nueva rutina
               </Button>
             </div>
           )}
@@ -154,12 +153,12 @@ export function RoutinesView({
         {templates.length === 0 ? (
           <EmptyState
             title="Todavía no hay rutinas"
-            description="Instala el catálogo de clínica dental: apertura, reunión diaria, cierre, esterilización, control biológico, avisos de revisión, presupuestos, pacientes que no acuden, stock, indicadores, RGPD, validación del autoclave y revisión de los equipos de rayos."
+            description="Crea sólo las que tu clínica necesita recordar: por ejemplo, revisar el stock cada lunes o mandar las facturas el día 1."
             action={
               isAdmin ? (
-                <Button size="sm" onClick={seedCatalog} disabled={busy}>
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Instalar catálogo
+                <Button size="sm" onClick={() => setNewRoutine(true)} disabled={busy}>
+                  <Plus className="h-3.5 w-3.5" />
+                  Crear la primera rutina
                 </Button>
               ) : undefined
             }
@@ -174,6 +173,7 @@ export function RoutinesView({
                 isAdmin={isAdmin}
                 busy={busy}
                 onPatch={patchTemplate}
+                onDelete={deleteTemplate}
               />
             ))}
           </div>
@@ -192,10 +192,9 @@ export function RoutinesView({
               Tareas que se crean solas
             </h2>
             <p className="mt-0.5 max-w-2xl text-xs text-zinc-500">
-              Si alguien tiene que acordarse de crear la tarea, la tarea no se crea. Estas reglas
-              escuchan lo que ya pasa en la clínica —llamadas, citas, recordatorios, WhatsApp— y
-              dejan la tarea creada, con responsable y fecha límite. Además del catálogo, puedes
-              armar las tuyas con condiciones.
+              Reglas que escuchan lo que pasa en la clínica —llamadas, citas, recordatorios,
+              WhatsApp— y dejan una tarea creada. No viene ninguna de serie: crea sólo las que te
+              sirvan.
             </p>
           </div>
           {isAdmin && (
@@ -221,12 +220,24 @@ export function RoutinesView({
           ))}
           {rules.length === 0 && (
             <EmptyState
-              title="Sin reglas cargadas"
-              description="Se crean solas al entrar en la sección. Recarga la página si no aparecen."
+              title="Sin automatizaciones"
+              description="Por ejemplo: cuando un paciente no acude, una tarea para llamarle y darle otra cita."
+              action={
+                isAdmin ? (
+                  <Button size="sm" onClick={() => setBuilder({ rule: null })} disabled={busy}>
+                    <Plus className="h-3.5 w-3.5" />
+                    Crear la primera
+                  </Button>
+                ) : undefined
+              }
             />
           )}
         </div>
       </section>
+
+      {newRoutine && (
+        <RoutineDialog open onOpenChange={setNewRoutine} members={members} onSaved={onRefresh} />
+      )}
 
       {builder && (
         <AutomationBuilder
@@ -249,12 +260,14 @@ function TemplateCard({
   isAdmin,
   busy,
   onPatch,
+  onDelete,
 }: {
   template: TaskTemplateDTO;
   members: TaskMember[];
   isAdmin: boolean;
   busy: boolean;
   onPatch: (id: string, body: Record<string, unknown>) => void;
+  onDelete: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const meta = CATEGORY_META[template.category];
@@ -385,6 +398,18 @@ function TemplateCard({
                   ))}
                 </select>
               </label>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  if (window.confirm(`¿Eliminar la rutina «${template.name}»?`))
+                    onDelete(template.id);
+                }}
+                className="inline-flex items-center gap-1.5 justify-self-start text-[12px] font-medium text-rose-600 hover:text-rose-700"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Eliminar rutina
+              </button>
             </div>
           )}
         </div>

@@ -206,6 +206,16 @@ Todo el front comparte un único lenguaje visual. **No inventes estilos nuevos: 
   del `@theme` también vale la utilidad directa (`border-border`).
 - Sin dependencias de animación (nada de framer-motion): CSS + IntersectionObserver.
 - `prefers-reduced-motion` desactiva todo el movimiento (ya está en globals.css).
+- **Cambio de sección**: `app/(dashboard)/dashboard/template.tsx` envuelve cada
+  página en `.route-view`; lo que entra nuevo (esqueleto y página) se funde en
+  240 ms, SÓLO con opacidad (un `transform` haría de contenedor de los
+  `position: fixed`). El esqueleto (`.page-skeleton`) espera 120 ms para no
+  parpadear en navegaciones rápidas.
+- **Plegar la barra lateral sin saltos**: el icono no se mueve (con 76 px ya
+  queda centrado con el padding de siempre), los rótulos (`data-sidebar-hide`)
+  se funden en vez de `display:none`, el selector de clínica se pliega en alto
+  (`data-sidebar-collapse-y`) y no hay recentrado de filas. Sólo los iconos
+  (`svg[data-sidebar-hide]`) siguen intercambiándose con `display`.
 - Las reglas de `[data-reveal]` viven bajo `html.js`; la clase la pone un script inline del layout raíz para que sin JS el contenido igual se vea.
 - La app es **light-only** a propósito: no hay toggle de tema ni variantes `dark:`.
 - Toda página del panel usa `PageHeader` (con `eyebrow` + `icon`) y envuelve su contenido en `Card`/`CardTopbar`.
@@ -361,6 +371,17 @@ Sección `/dashboard/tasks` (label "Tareas"). Es transversal: no se contrata, vi
   cuando existe otra más nueva de la misma rutina (la de hoy nunca). En Respinens
   había 152 rutinas vencidas (35 «Cierre de clínica»). Archivar no borra.
 - `TasksWorkspace` acepta `initialView` (los tests del tablero pasan `"board"`).
+- ⚠️ **Sin rutinas ni automatizaciones de serie** (migración `0074`, 14/11/2026):
+  el catálogo dental (16 rutinas) y las 10 reglas de sistema venían ENCENDIDAS
+  sin pedirlas y llenaban Tareas (Respinens: casi 200 abiertas, 3 cerradas en
+  un mes). Se borraron las de sistema, se archivaron sus tareas abiertas y ya
+  no se siembra nada (ni al entrar en Tareas ni en `GET /api/tasks/automations`;
+  la acción `seed` de `/api/tasks/templates` se quitó). Cada clínica crea las
+  suyas: **Nueva rutina** (`RoutineDialog`: qué, cada cuánto, hora, quién,
+  pasos) y **Nueva automatización** (`AutomationBuilder`). Sin regla,
+  `runTaskAutomation` devuelve `no_rule` y no crea nada: la confirmación del
+  día, los traspasos de WhatsApp, etc. siguen avisando por la tarjeta del chat
+  interno. No volver a encender reglas por defecto.
 
 **Roles**: `viewer` mira, `operator` crea/mueve/cierra, `admin` toca rutinas y automatizaciones (`lib/tasks/auth.ts`).
 

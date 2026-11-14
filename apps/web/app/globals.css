@@ -564,16 +564,41 @@ html[data-sidebar="collapsed"] [data-sidebar-rail] {
 /* Rótulos, contadores, marca y selector de organización: fuera. El nombre
    accesible de cada fila NO depende de este texto —va en su `aria-label`—,
    porque `display:none` también lo borra del árbol de accesibilidad. */
+/* Plegar sin saltos (14/11/2026). Antes los rótulos desaparecían de golpe
+   (`display:none`) y las filas se recentraban al empezar la animación: el
+   icono saltaba y el selector de clínica arrastraba el menú hacia arriba de un
+   tirón. Ahora el icono NO se mueve —con la barra a 76 px ya queda centrado
+   con el mismo padding (12 + 10 px a cada lado del chip de 32)—, los rótulos
+   se funden mientras la barra encoge y el selector se pliega en alto. Al
+   desplegar, los rótulos aparecen un poco después, cuando ya hay sitio. */
+[data-sidebar-rail] [data-sidebar-hide] {
+  transition: opacity 200ms ease 90ms;
+}
 html[data-sidebar="collapsed"] [data-sidebar-rail] [data-sidebar-hide] {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 110ms ease;
+}
+/* Los iconos sí se intercambian (plegar ↔ desplegar): uno en lugar del otro. */
+html[data-sidebar="collapsed"] [data-sidebar-rail] svg[data-sidebar-hide] {
   display: none;
 }
-
-/* La fila se queda en un cuadrado centrado alrededor del chip del icono. */
-html[data-sidebar="collapsed"] [data-sidebar-rail] [data-sidebar-row],
+[data-sidebar-rail] [data-sidebar-collapse-y] {
+  max-height: 80px;
+  overflow: hidden;
+  transition: max-height 260ms cubic-bezier(0.22, 1, 0.36, 1), padding 260ms
+    cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms ease 90ms;
+}
+html[data-sidebar="collapsed"] [data-sidebar-rail] [data-sidebar-collapse-y] {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+[data-sidebar-rail] [data-sidebar-header] {
+  transition: gap 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
 html[data-sidebar="collapsed"] [data-sidebar-rail] [data-sidebar-header] {
-  justify-content: center;
-  padding-left: 0;
-  padding-right: 0;
+  gap: 0;
 }
 /* Plegada no hay sitio para el desplazamiento lateral del hover. Se anula la
    propiedad `translate`, que es la que usa Tailwind v4 —no `transform`—, y
@@ -1361,4 +1386,16 @@ html:has(.liquid) [data-slot="dialog"] {
 }
 .task-leave {
   animation: task-leave 520ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Cambio de sección: lo que entra nuevo bajo el `template` del panel (el
+   esqueleto, y luego la página) aparece con un fundido corto. Un refresco de
+   datos no lo repite: React conserva los nodos y la animación no vuelve a
+   correr. El esqueleto espera 120 ms antes de asomar, así una navegación
+   rápida no enseña un parpadeo gris entre una pantalla y la otra. */
+.route-view > * {
+  animation: fade-in 240ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+.route-view > .page-skeleton {
+  animation: fade-in 220ms ease 120ms backwards;
 }
