@@ -159,7 +159,15 @@ export function TodayBoardCard({ board, demo }: { board: TodayBoard; demo?: bool
               </div>
               {/* El carril tiene aire arriba y abajo: la tarjeta al elevarse y su
                   sombra no se recortan con el scroll horizontal. */}
-              <ol className="rise-stagger relative -mx-2 mt-2 flex gap-2.5 overflow-x-auto px-2 pt-3 pb-5 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.25)_transparent]">
+              {/* El carril llega hasta el borde del bloque (sin el corte seco en
+                  el padding) y se desvanece a la derecha: se lee que sigue. */}
+              <ol
+                className="rise-stagger relative -mx-5 mt-2 flex gap-2.5 overflow-x-auto pt-3 pb-5 pl-5 pr-14 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.25)_transparent] sm:-mx-6 sm:pl-6"
+                style={{
+                  maskImage:
+                    'linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 56px), transparent)',
+                }}
+              >
                 {board.items.map((it, i) => {
                   const past = ['COMPLETED', 'NO_SHOW'].includes(it.status);
                   const isNext = next?.id === it.id;
