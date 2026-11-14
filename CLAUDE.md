@@ -1815,6 +1815,23 @@ depender de una llamada. Migración `0069_novedades_y_atendida.sql`.
   toda cita pasada no anulada ni faltada en esas clínicas: su historia
   anterior no lleva COMPLETED.
 
+## Tarjetas de arriba del panel (clínica con agenda propia, 14/11/2026)
+
+`components/dashboard/pulse-tiles.tsx`, datos en `getAgendaPulse` y reglas
+puras en `lib/data/analytics/value-model.ts` (tests `panel-valor`). Cuatro:
+**Citas hoy** (anillo de confirmadas y la siguiente hora), **Recuperado este
+mes** (ofertas de hueco aceptadas × lo cobrado en esa cita, o el precio del
+tratamiento, o el precio medio de la clínica; barras de 8 semanas), **Horas
+ahorradas este mes** y **Citas del asistente** (de cada 10 citas, cuántas dio;
+mensajes respondidos y % de noche o fin de semana). Sustituyeron a Ocupación y
+Faltas y anulaciones (la tendencia de faltas sigue en el gráfico de abajo).
+- ⚠️ **Las horas son una ESTIMACIÓN y la tarjeta lo dice** («estimado», con
+  los minutos por tarea en el `title`): `MINUTES_PER` (1,5 min por respuesta,
+  3 por cita dada, 2 por recordatorio del día, 3 por oferta de hueco). Lo
+  medido son los conteos. Los recordatorios del día y las ofertas salen como
+  `HUMAN`, así que no se cuentan dos veces con las respuestas (`AGENT`).
+- Todo se anima una vez al entrar y sólo con `transform`/`opacity`.
+
 ## Uso de la plataforma (sólo Futura)
 
 `/dashboard/futura/uso` (botón **Uso de la plataforma** en Panel Futura, gate

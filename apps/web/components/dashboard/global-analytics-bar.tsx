@@ -19,7 +19,6 @@ import { tasks, tenantMemberships } from '@/lib/db/schema';
 import { getDemoAnalytics } from '@/lib/demo-data';
 import { and, count, eq, isNull, ne } from 'drizzle-orm';
 import {
-  Bot,
   CalendarCheck,
   CalendarRange,
   Coins,
@@ -30,10 +29,10 @@ import {
   Sparkles,
   Stethoscope,
   TrendingDown,
-  UserX,
   Users,
 } from 'lucide-react';
 import { NoShowTrendChart, TopTreatmentsChart, WeeklyAppointmentsChart } from './charts-lazy';
+import { PulseTiles } from './pulse-tiles';
 
 function formatMoney(cents: number, currency: string): string {
   try {
@@ -118,7 +117,7 @@ export async function GlobalAnalyticsBar({
       />
 
       {pulse ? (
-        <AgendaPulseTiles pulse={pulse} />
+        <PulseTiles pulse={pulse} />
       ) : (
         <div className="rise-stagger mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
           <Reveal className="[--i:0]">
@@ -266,74 +265,5 @@ function ChannelChip({
       <span className="font-medium opacity-80">{label}</span>
       <span className="font-bold tabular-nums">{value}</span>
     </span>
-  );
-}
-
-function hours(minutes: number): string {
-  return `${Math.round(minutes / 60)} h`;
-}
-
-/** Los cuatro números que importan en una clínica con agenda propia. */
-function AgendaPulseTiles({ pulse }: { pulse: AgendaPulse }) {
-  const { today, occupancy, assistant, lost } = pulse;
-  return (
-    <div className="rise-stagger mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
-      <Reveal className="[--i:0] h-full">
-        <StatTile
-          className="h-full"
-          label="Citas hoy"
-          numeric={today.total}
-          hint={
-            today.total === 0
-              ? 'Hoy no hay citas'
-              : `${today.confirmed} confirmadas · ${today.pending} sin confirmar`
-          }
-          icon={<CalendarCheck className="h-4 w-4" />}
-          tone="grape"
-          progress={today.total > 0 ? (today.confirmed / today.total) * 100 : 0}
-        />
-      </Reveal>
-      <Reveal className="[--i:1] h-full">
-        <StatTile
-          className="h-full"
-          label="Ocupación próximos 7 días"
-          numeric={occupancy.rate * 100}
-          suffix="%"
-          hint={
-            occupancy.shiftMinutes > 0
-              ? `${hours(occupancy.bookedMinutes)} reservadas de ${hours(occupancy.shiftMinutes)} de agenda`
-              : 'Falta el horario de los profesionales'
-          }
-          icon={<CalendarRange className="h-4 w-4" />}
-          tone="mint"
-          progress={occupancy.rate * 100}
-        />
-      </Reveal>
-      <Reveal className="[--i:2] h-full">
-        <StatTile
-          className="h-full"
-          label="Citas del asistente este mes"
-          numeric={assistant.thisMonth}
-          delta={assistant.thisMonth - assistant.lastMonth}
-          hint={`Por WhatsApp y teléfono · ${assistant.lastMonth} el mes pasado · ${pulse.firstVisits} primeras visitas`}
-          icon={<Bot className="h-4 w-4" />}
-          tone="sky"
-          trend={assistant.daily}
-        />
-      </Reveal>
-      <Reveal className="[--i:3] h-full">
-        <StatTile
-          className="h-full"
-          label="Faltas y anulaciones (30 días)"
-          numeric={lost.rate * 100}
-          decimals={1}
-          suffix="%"
-          hint={`${lost.lost} de ${lost.total} citas · anulaciones de la clínica aparte`}
-          icon={<UserX className="h-4 w-4" />}
-          tone="coral"
-          progress={lost.rate * 100}
-        />
-      </Reveal>
-    </div>
   );
 }
