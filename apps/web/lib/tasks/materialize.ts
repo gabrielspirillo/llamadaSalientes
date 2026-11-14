@@ -104,6 +104,13 @@ export async function materializeRoutinesForTenant(
       if (res.created) created += 1;
     }
 
+    // Una ocurrencia de un día ya pasado que nadie marcó no se puede hacer
+    // (la apertura de ayer): si ya hay otra más nueva de la misma rutina, se
+    // archiva en vez de acumularse. Archivar no borra: queda como registro.
+    await archiveSupersededOccurrences(tenantId, tpl.id, todayKey, tz).catch((err) => {
+      console.warn('[tasks] archivar rutinas pasadas falló', (err as Error).message);
+    });
+
     // Avanzamos la marca aunque no haya tocado ningún día: lo que importa es
     // hasta dónde ya se evaluó la plantilla.
     await db
@@ -113,6 +120,37 @@ export async function materializeRoutinesForTenant(
   }
 
   return { created, templates: templates.length };
+}
+
+/**
+ * Archiva las ocurrencias abiertas de una rutina cuyo día ya pasó y que tienen
+ * otra ocurrencia más nueva. La de hoy nunca, aunque ya exista la de mañana.
+ */
+async function archiveSupersededOccurrences(
+  tenantId: string,
+  templateId: string,
+  todayKey: string,
+  tz: string,
+): Promise<void> {
+  const p = parseDateKey(todayKey);
+  if (!p) return;
+  const todayStart = zonedToUtc(p.year, p.month, p.day, 0, 0, tz).toISOString();
+  await db.execute(sql`
+    update tasks t
+       set archived_at = now(), updated_at = now()
+     where t.tenant_id = ${tenantId}::uuid
+       and t.template_id = ${templateId}::uuid
+       and t.source = 'ROUTINE'
+       and t.archived_at is null
+       and t.status <> 'DONE'
+       and t.due_at < ${todayStart}::timestamptz
+       and exists (
+         select 1 from tasks n
+          where n.tenant_id = t.tenant_id
+            and n.template_id = t.template_id
+            and n.due_at > t.due_at
+       )
+  `);
 }
 
 /**

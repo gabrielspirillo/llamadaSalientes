@@ -1,8 +1,8 @@
 // Bloque 9 — Estados vacíos (y la franja de indicadores cuando no hay nada).
 
 import { RoutinesView } from '@/components/tasks/RoutinesView';
-import { StatsBar } from '@/components/tasks/StatsBar';
 import { TaskDetailPanel } from '@/components/tasks/TaskDetailPanel';
+import { TasksHero } from '@/components/tasks/TasksHero';
 import { TasksWorkspace } from '@/components/tasks/TasksWorkspace';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -33,6 +33,7 @@ describe('Tablero sin tareas', () => {
         rules={[]}
         currentUserId={LUCIA.userId}
         role={OPERATOR}
+        initialView="board"
       />,
     );
     expect(screen.getByText('Sin pendientes aquí')).toBeTruthy();
@@ -41,7 +42,7 @@ describe('Tablero sin tareas', () => {
     expect(screen.getByText('Cerrado con evidencia')).toBeTruthy();
   });
 
-  it('"Mi día" y "Pacientes" tienen su propio vacío', () => {
+  it('"Hoy" y "Pacientes" tienen su propio vacío', () => {
     render(
       <TasksWorkspace
         initialTasks={[]}
@@ -53,37 +54,24 @@ describe('Tablero sin tareas', () => {
         role={OPERATOR}
       />,
     );
-    fireEvent.click(screen.getByRole('button', { name: /Mi día/ }));
-    expect(screen.getByText('Día limpio')).toBeTruthy();
-    expect(screen.getByText(/activa las rutinas para que el tablero se llene solo/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Hoy/ }));
+    expect(screen.getByText('Todo al día')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: /Pacientes/ }));
     expect(screen.getByText('Ningún paciente esperando')).toBeTruthy();
   });
 });
 
-describe('StatsBar sin datos', () => {
-  it('no inventa métricas ni pinta la carga por persona', () => {
-    render(<StatsBar stats={stats()} members={MEMBERS} />);
-    expect(screen.getByText('Nada sin cerrar de otros días')).toBeTruthy();
-    expect(screen.getByText('Aún no hay histórico')).toBeTruthy();
-    // 0 tareas de cualquier origen → 0% automatizado, sin división por cero
-    expect(screen.getAllByText('0%').length).toBeGreaterThan(0);
-    expect(screen.queryByText('Carga por persona')).toBeNull();
+describe('Cabecera de Tareas sin datos', () => {
+  it('no inventa métricas: sin nada para hoy lo dice y el % queda en guion', () => {
+    render(<TasksHero tasks={[]} stats={stats()} now={new Date(2026, 8, 2, 12)} />);
+    expect(screen.getByText('Hoy no hay nada programado')).toBeTruthy();
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0);
   });
 
-  it('con carga por persona sí la muestra', () => {
-    render(
-      <StatsBar
-        stats={stats({
-          perMember: [{ userId: LUCIA.userId, open: 3, overdue: 1, doneThisWeek: 2 }],
-        })}
-        members={MEMBERS}
-      />,
-    );
-    expect(screen.getByText('Carga por persona')).toBeTruthy();
-    expect(screen.getByText('3 abiertas')).toBeTruthy();
-    expect(screen.getByText('1 vencidas')).toBeTruthy();
+  it('cuenta lo que queda para hoy', () => {
+    render(<TasksHero tasks={[]} stats={stats({ today: 3 })} now={new Date(2026, 8, 2, 12)} />);
+    expect(screen.getByText('Te quedan 3 tareas para hoy')).toBeTruthy();
   });
 });
 

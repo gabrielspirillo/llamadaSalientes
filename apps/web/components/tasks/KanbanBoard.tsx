@@ -92,8 +92,10 @@ export function KanbanBoard({
               handleDrop(status, target?.status === status ? target.index : column.length);
             }}
             className={cn(
-              'flex w-[300px] shrink-0 snap-start flex-col rounded-2xl border bg-zinc-50/70 transition-colors sm:w-[320px]',
-              isTarget && draggingId ? 'border-zinc-300 bg-zinc-100/80' : 'border-zinc-200/70',
+              'flex w-[290px] shrink-0 snap-start flex-col rounded-[22px] border bg-white/60 transition-colors sm:w-[310px]',
+              isTarget && draggingId
+                ? 'border-emerald-300 bg-emerald-50/60'
+                : 'border-(--color-border)',
             )}
           >
             <header className="flex items-center gap-2 px-3.5 py-3">
@@ -114,7 +116,9 @@ export function KanbanBoard({
               )}
             </header>
 
-            <div className="flex min-h-[120px] flex-1 flex-col gap-2.5 px-2.5 pb-3">
+            {/* Cada columna se desplaza por dentro: con cientos de tarjetas la
+                página ya no se alarga sin fin. */}
+            <div className="flex max-h-[calc(100dvh-320px)] min-h-[160px] flex-1 flex-col gap-2.5 overflow-y-auto overscroll-contain px-2.5 pb-3 [scrollbar-width:thin]">
               {column.map((task, i) => (
                 <div
                   key={task.id}

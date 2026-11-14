@@ -1342,3 +1342,23 @@ html:has(.liquid) [data-slot="dialog"] {
   animation: ring-fill 1500ms cubic-bezier(0.22, 1, 0.36, 1) both;
   animation-delay: var(--ring-delay, 0ms);
 }
+
+/* Tareas: al marcar una como hecha, el check rebota y la fila se va. Sólo
+   transform/opacity y una vez; «reducir movimiento» lo apaga arriba. */
+@keyframes task-leave {
+  0% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  35% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+}
+.task-leave {
+  animation: task-leave 520ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}

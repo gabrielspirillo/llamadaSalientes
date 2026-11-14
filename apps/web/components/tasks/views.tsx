@@ -1,11 +1,12 @@
 'use client';
 
-import { AvatarStack, DueChip, EmptyState, PriorityChip } from '@/components/tasks/shared';
+import { AvatarStack, DueChip, EmptyState } from '@/components/tasks/shared';
 import { cn } from '@/lib/cn';
 import { CATEGORY_META, dueTone } from '@/lib/tasks/constants';
 import type { TaskDTO, TaskMember } from '@/lib/tasks/types';
 import { Check, MessageCircle, Phone, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Fila compacta: la usan "Mi día", la semana y la bandeja de pacientes.
@@ -18,6 +19,7 @@ export function TaskRow({
   canEdit,
   onOpen,
   onComplete,
+  delayMs,
 }: {
   task: TaskDTO;
   members: TaskMember[];
@@ -25,71 +27,94 @@ export function TaskRow({
   canEdit: boolean;
   onOpen: (id: string) => void;
   onComplete: (task: TaskDTO) => void;
+  /** Entrada escalonada: retraso de la animación de aparición. */
+  delayMs?: number;
 }) {
   const meta = CATEGORY_META[task.category];
   const tone = dueTone(task.dueAt, now);
   const done = task.status === 'DONE';
+  // Al cerrarla, el check rebota y la fila se desliza fuera ANTES de que la
+  // tarea cambie de sección: si saltara de golpe, no se vería qué pasó.
+  const [leaving, setLeaving] = useState(false);
+  useEffect(() => {
+    setLeaving(false);
+  }, [task.status]);
+
+  const toggle = () => {
+    const needsEvidence = !done && task.requiresEvidence && !task.evidenceNote?.trim();
+    if (done || needsEvidence) {
+      onComplete(task);
+      return;
+    }
+    setLeaving(true);
+    // `setLeaving(false)` va en la misma tanda que el cambio de estado: si el
+    // servidor lo rechaza, la fila vuelve visible en vez de quedarse oculta.
+    setTimeout(() => {
+      onComplete(task);
+      setLeaving(false);
+    }, 480);
+  };
+  const checked = done || leaving;
 
   return (
     <li
       className={cn(
-        'group flex items-start gap-3 rounded-xl border bg-white px-3.5 py-3 transition-colors hover:border-zinc-300',
-        tone === 'overdue' && !done ? 'border-red-200' : 'border-zinc-200/80',
+        'group flex items-center gap-3 rounded-2xl px-3 py-2.5 transition-colors hover:bg-zinc-50',
+        delayMs !== undefined && !leaving && 'animate-fade-up',
+        leaving && 'task-leave',
       )}
+      style={delayMs !== undefined ? { animationDelay: `${delayMs}ms` } : undefined}
     >
       <button
         type="button"
-        disabled={!canEdit}
-        onClick={() => onComplete(task)}
-        aria-label={done ? 'Reabrir tarea' : 'Marcar como hecha'}
+        disabled={!canEdit || leaving}
+        onClick={toggle}
+        aria-label={checked ? 'Reabrir tarea' : 'Marcar como hecha'}
         className={cn(
-          'mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors',
-          done
-            ? 'border-emerald-500 bg-emerald-500 text-white'
-            : 'border-zinc-300 bg-white hover:border-emerald-500 hover:text-emerald-600',
+          'inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-all duration-300',
+          checked
+            ? 'scale-100 border-emerald-500 bg-emerald-500 text-white'
+            : tone === 'overdue'
+              ? 'border-rose-300 bg-white text-transparent hover:border-emerald-500 hover:text-emerald-500'
+              : 'border-zinc-300 bg-white text-transparent hover:border-emerald-500 hover:text-emerald-500',
         )}
       >
-        {done ? (
-          <Check className="h-3 w-3" />
-        ) : (
-          <Check className="h-3 w-3 opacity-0 group-hover:opacity-40" />
-        )}
+        <Check className={cn('h-3 w-3', leaving && 'animate-pop')} strokeWidth={3} />
       </button>
 
       <button type="button" onClick={() => onOpen(task.id)} className="min-w-0 flex-1 text-left">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className={cn('h-1.5 w-1.5 rounded-full', meta.dot)} />
-          <span
-            className={cn(
-              'text-sm font-medium leading-snug text-zinc-800',
-              done && 'text-zinc-500 line-through',
-            )}
-          >
-            {task.title}
-          </span>
-          <PriorityChip priority={task.priority} />
-          {task.requiresEvidence && (
-            <ShieldCheck className="h-3 w-3 text-brand-500" aria-label="Requiere evidencia" />
+        <span
+          className={cn(
+            'block truncate text-[14px] font-medium text-zinc-800 transition-colors',
+            checked && 'text-zinc-400 line-through decoration-zinc-300',
           )}
-        </div>
-        <div className="mt-1 flex flex-wrap items-center gap-2.5 text-[12px] text-zinc-500">
-          <span>{meta.label}</span>
+        >
+          {task.title}
+        </span>
+        <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[12px] text-zinc-500">
+          <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', meta.dot)} />
+          <span className="shrink-0">{meta.label}</span>
           {task.patientName && <span className="truncate">· {task.patientName}</span>}
           {task.checklistTotal > 0 && (
-            <span className="tabular-nums">
+            <span className="shrink-0 tabular-nums">
               · {task.checklistDone}/{task.checklistTotal}
             </span>
           )}
-          <DueChip dueAt={task.dueAt} allDay={task.dueAllDay} now={now} />
-        </div>
+          {task.requiresEvidence && (
+            <ShieldCheck
+              className="h-3 w-3 shrink-0 text-brand-500"
+              aria-label="Requiere evidencia"
+            />
+          )}
+        </span>
       </button>
 
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center gap-1.5">
         {task.patientPhone && (
           <a
             href={`tel:${task.patientPhone}`}
             aria-label={`Llamar a ${task.patientName ?? 'paciente'}`}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-zinc-400 opacity-0 transition-all hover:bg-white hover:text-zinc-700 group-hover:opacity-100 max-md:opacity-100"
           >
             <Phone className="h-3.5 w-3.5" />
           </a>
@@ -98,176 +123,21 @@ export function TaskRow({
           <Link
             href="/dashboard/whatsapp"
             aria-label="Abrir conversación de WhatsApp"
-            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-zinc-400 opacity-0 transition-all hover:bg-white hover:text-zinc-700 group-hover:opacity-100 max-md:opacity-100"
           >
             <MessageCircle className="h-3.5 w-3.5" />
           </Link>
         )}
-        <AvatarStack ids={task.assigneeIds} members={members} max={2} />
+        {!checked && (
+          <span className="hidden sm:inline">
+            <DueChip dueAt={task.dueAt} allDay={task.dueAllDay} now={now} />
+          </span>
+        )}
+        <span className="hidden md:inline-flex">
+          <AvatarStack ids={task.assigneeIds} members={members} max={2} />
+        </span>
       </div>
     </li>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Mi día — la pantalla que se abre a las 9:00
-// ─────────────────────────────────────────────────────────────────────────────
-
-export function MyDayView({
-  tasks,
-  members,
-  now,
-  canEdit,
-  currentUserId,
-  onlyMine,
-  onToggleMine,
-  onOpen,
-  onComplete,
-}: {
-  tasks: TaskDTO[];
-  members: TaskMember[];
-  now: Date;
-  canEdit: boolean;
-  currentUserId: string | null;
-  onlyMine: boolean;
-  onToggleMine: (v: boolean) => void;
-  onOpen: (id: string) => void;
-  onComplete: (task: TaskDTO) => void;
-}) {
-  const mine = tasks.filter(
-    (t) =>
-      !onlyMine ||
-      !currentUserId ||
-      t.assigneeIds.includes(currentUserId) ||
-      t.assigneeIds.length === 0,
-  );
-  const open = mine.filter((t) => t.status !== 'DONE');
-  const endOfToday = new Date(now);
-  endOfToday.setHours(23, 59, 59, 999);
-
-  const overdue = open.filter((t) => t.dueAt && new Date(t.dueAt) < now);
-  const today = open.filter(
-    (t) => t.dueAt && new Date(t.dueAt) >= now && new Date(t.dueAt) <= endOfToday,
-  );
-  const upcoming = open.filter((t) => t.dueAt && new Date(t.dueAt) > endOfToday);
-  const undated = open.filter((t) => !t.dueAt);
-  const doneToday = mine.filter(
-    (t) => t.status === 'DONE' && t.completedAt && new Date(t.completedAt) >= startOfDay(now),
-  );
-
-  const groups: { key: string; title: string; hint?: string; items: TaskDTO[] }[] = [
-    {
-      key: 'overdue',
-      title: 'Vencidas',
-      hint: 'Lo primero del día: cuanto más esperan, más difícil es recuperarlas',
-      items: overdue,
-    },
-    { key: 'today', title: 'Para hoy', items: today },
-    {
-      key: 'undated',
-      title: 'Sin fecha',
-      hint: 'Ponles fecha o no se harán nunca',
-      items: undated,
-    },
-    { key: 'upcoming', title: 'Próximas', items: upcoming.slice(0, 20) },
-  ];
-
-  const total = open.length;
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="inline-flex rounded-full border border-zinc-200 bg-white p-0.5">
-          <button
-            type="button"
-            onClick={() => onToggleMine(true)}
-            className={cn(
-              'rounded-full px-3 py-1 text-xs font-medium transition-colors',
-              onlyMine ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:text-zinc-900',
-            )}
-          >
-            Lo mío
-          </button>
-          <button
-            type="button"
-            onClick={() => onToggleMine(false)}
-            className={cn(
-              'rounded-full px-3 py-1 text-xs font-medium transition-colors',
-              !onlyMine ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:text-zinc-900',
-            )}
-          >
-            Toda la clínica
-          </button>
-        </div>
-        <p className="text-xs text-zinc-500">
-          {total === 0
-            ? 'Nada pendiente'
-            : `${total} pendiente${total === 1 ? '' : 's'}${
-                doneToday.length > 0
-                  ? ` · ${doneToday.length} cerrada${doneToday.length === 1 ? '' : 's'} hoy`
-                  : ''
-              }`}
-        </p>
-      </div>
-
-      {total === 0 && (
-        <EmptyState
-          title="Día limpio"
-          description="No queda nada abierto en esta vista. Si la clínica acaba de empezar con Tareas, activa las rutinas para que el tablero se llene solo."
-        />
-      )}
-
-      {groups
-        .filter((g) => g.items.length > 0)
-        .map((g) => (
-          <section key={g.key}>
-            <div className="mb-2 flex items-baseline gap-2">
-              <h2
-                className={cn(
-                  'text-sm font-semibold',
-                  g.key === 'overdue' ? 'text-red-600' : 'text-zinc-800',
-                )}
-              >
-                {g.title}
-              </h2>
-              <span className="text-xs tabular-nums text-zinc-500">{g.items.length}</span>
-              {g.hint && <span className="text-xs text-zinc-500">· {g.hint}</span>}
-            </div>
-            <ul className="space-y-2">
-              {g.items.map((t) => (
-                <TaskRow
-                  key={t.id}
-                  task={t}
-                  members={members}
-                  now={now}
-                  canEdit={canEdit}
-                  onOpen={onOpen}
-                  onComplete={onComplete}
-                />
-              ))}
-            </ul>
-          </section>
-        ))}
-
-      {doneToday.length > 0 && (
-        <section>
-          <h2 className="mb-2 text-sm font-semibold text-zinc-500">Cerradas hoy</h2>
-          <ul className="space-y-2 opacity-70">
-            {doneToday.map((t) => (
-              <TaskRow
-                key={t.id}
-                task={t}
-                members={members}
-                now={now}
-                canEdit={canEdit}
-                onOpen={onOpen}
-                onComplete={onComplete}
-              />
-            ))}
-          </ul>
-        </section>
-      )}
-    </div>
   );
 }
 
@@ -396,7 +266,7 @@ export function WeekView({
               · no aparecen en ningún día hasta que les pongas una fecha
             </span>
           </h2>
-          <ul className="space-y-2">
+          <ul className="rounded-[22px] border border-(--color-border) bg-white p-2 shadow-[var(--shadow-soft)]">
             {undated.map((t) => (
               <TaskRow
                 key={t.id}
@@ -490,7 +360,7 @@ export function PatientsView({
               {g.items.length} pendiente{g.items.length === 1 ? '' : 's'}
             </span>
           </header>
-          <ul className="space-y-2">
+          <ul className="-mx-2">
             {g.items.map((t) => (
               <TaskRow
                 key={t.id}

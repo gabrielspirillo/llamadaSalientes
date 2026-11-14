@@ -110,7 +110,6 @@ describe('TaskCard — contenido', () => {
     const t = card.textContent ?? '';
     expect(t).toContain('#paciente'); // CategoryChip
     expect(t).toContain('Urgente'); // PriorityChip
-    expect(t).toContain('#revision'); // etiqueta
     expect(t).toContain('María Gómez');
     expect(t).toContain('+34600111222');
     expect(t).toContain('50%'); // progreso del checklist 2/4

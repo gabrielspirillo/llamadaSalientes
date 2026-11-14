@@ -344,6 +344,24 @@ Sección `/dashboard/tasks` (label "Tareas"). Es transversal: no se contrata, vi
 
 **Evidencia**: `tasks.requires_evidence` bloquea el pase a `DONE` sin `evidence_note` en las **tres** vías de escritura: alta (`createTask`), edición (`updateTask`) y arrastre (`reorderColumn`). El flag se lee siempre de la fila guardada, nunca del body — mandarlo en el PATCH que cierra la tarea desactivaba el candado. Es lo que sostiene el registro de esterilización, el arqueo y las revisiones legales.
 
+**Rediseño del 14/11/2026** (la clínica: «se ve raro, se acumulan cartas, scroll infinito»):
+- **Abre en «Hoy»** (`components/tasks/TodayView.tsx`), no en el tablero: secciones
+  Para hoy · Vencidas · Próximos 7 días · Sin fecha · Hechas hoy, plegables, con
+  las cinco primeras a la vista y «Ver N más». Arriba, `TasksHero` (anillo de lo
+  de hoy + Vencidas · Próximas · A tiempo); la «carga por persona» y el % por
+  origen (`StatsBar`) se quitaron. Pestañas con píldora deslizante (`ViewSwitch`),
+  filtros (persona incluida) tras el botón «Filtros».
+- Al marcar una tarea, el check rebota y la fila sale deslizándose (`.task-leave`,
+  480 ms) ANTES de pedir el cambio; `setLeaving(false)` va en la misma tanda que
+  `onComplete` para que un rechazo del servidor no la deje invisible.
+- **Tablero**: cada columna se desplaza por dentro (`max-h` + `overflow-y-auto`),
+  tarjetas blancas sin descripción ni etiquetas.
+- ⚠️ **Las rutinas no se acumulan** (migración `0073` + `archiveSupersededOccurrences`
+  en `materialize.ts`): una ocurrencia de un día ya pasado sin hacer se ARCHIVA
+  cuando existe otra más nueva de la misma rutina (la de hoy nunca). En Respinens
+  había 152 rutinas vencidas (35 «Cierre de clínica»). Archivar no borra.
+- `TasksWorkspace` acepta `initialView` (los tests del tablero pasan `"board"`).
+
 **Roles**: `viewer` mira, `operator` crea/mueve/cierra, `admin` toca rutinas y automatizaciones (`lib/tasks/auth.ts`).
 
 **Auto-provisión**: la primera visita a la página siembra el catálogo de 16 rutinas dentales, las reglas de automatización y materializa lo del día. Idempotente.

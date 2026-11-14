@@ -54,6 +54,7 @@ function renderWorkspace(tasks = TASKS) {
       rules={[]}
       currentUserId={LUCIA.userId}
       role={OPERATOR}
+      initialView="board"
     />,
   );
 }
@@ -129,6 +130,7 @@ describe('TasksWorkspace — filtros por chip', () => {
 
   it('asignado, haciendo clic en su avatar', () => {
     renderWorkspace();
+    openFilters();
     fireEvent.click(screen.getByTitle('Filtrar por Marta'));
     expect(visibleTitles()).toEqual(['Cuadrar la caja']);
     expect(filterCount()).toBe('1');
@@ -153,8 +155,8 @@ describe('TasksWorkspace — filtros por chip', () => {
 
   it('el contador cuenta los cuatro filtros', () => {
     renderWorkspace();
-    fireEvent.click(screen.getByTitle('Filtrar por Lucía'));
     openFilters();
+    fireEvent.click(screen.getByTitle('Filtrar por Lucía'));
     fireEvent.click(screen.getByRole('button', { name: 'Paciente' }));
     fireEvent.click(screen.getByRole('button', { name: 'Urgente' }));
     fireEvent.click(screen.getByRole('button', { name: 'Automática' }));
@@ -173,8 +175,8 @@ describe('TasksWorkspace — filtros por chip', () => {
 
   it('"Limpiar" resetea los chips y el avatar', () => {
     renderWorkspace();
-    fireEvent.click(screen.getByTitle('Filtrar por Lucía'));
     openFilters();
+    fireEvent.click(screen.getByTitle('Filtrar por Lucía'));
     fireEvent.click(screen.getByRole('button', { name: 'Paciente' }));
     fireEvent.click(screen.getByRole('button', { name: 'Urgente' }));
     expect(filterCount()).toBe('3');
@@ -204,11 +206,11 @@ describe('TasksWorkspace — filtros por chip', () => {
 });
 
 describe('TasksWorkspace — los filtros valen para todas las vistas', () => {
-  it('lo filtrado en el tablero también lo está en "Mi día"', () => {
+  it('lo filtrado en el tablero también lo está en "Hoy"', () => {
     renderWorkspace();
     openFilters();
     fireEvent.click(screen.getByRole('button', { name: 'Rutina' }));
-    fireEvent.click(screen.getByRole('button', { name: /Mi día/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Hoy/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Toda la clínica' }));
 
     const list = screen.getAllByRole('listitem');

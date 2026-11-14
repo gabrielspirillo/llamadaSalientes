@@ -43,6 +43,7 @@ function renderWorkspace(over: Partial<Parameters<typeof TasksWorkspace>[0]> = {
       rules={[]}
       currentUserId={LUCIA.userId}
       role={OPERATOR}
+      initialView="board"
       {...over}
     />,
   );
@@ -139,7 +140,7 @@ describe('TasksWorkspace — reorder optimista con rollback', () => {
 
 describe('TasksWorkspace — check rápido optimista', () => {
   function openMyDay() {
-    fireEvent.click(screen.getByRole('button', { name: /Mi día/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Hoy/ }));
   }
 
   it('marca la tarea como hecha al instante y la revierte si el PATCH falla', async () => {
@@ -155,6 +156,8 @@ describe('TasksWorkspace — check rápido optimista', () => {
     // Optimista: la fila pasa a "Reabrir tarea".
     await waitFor(() => expect(screen.getByLabelText('Reabrir tarea')).toBeTruthy());
 
+    // La petición sale cuando termina la animación de salida de la fila.
+    await waitFor(() => expect(fetchMock.callsTo('/api/tasks/a').length).toBe(1));
     const call = fetchMock.callsTo('/api/tasks/a')[0];
     expect(call?.method).toBe('PATCH');
     expect(call?.body).toEqual({ status: 'DONE' });
@@ -202,7 +205,7 @@ describe('TasksWorkspace — gate de evidencia en el cliente', () => {
         }),
       ],
     });
-    fireEvent.click(screen.getByRole('button', { name: /Mi día/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Hoy/ }));
     fireEvent.click(screen.getByLabelText('Marcar como hecha'));
 
     // El aviso viaja DENTRO del panel: antes se pintaba detrás y no se veía.
@@ -229,7 +232,7 @@ describe('TasksWorkspace — gate de evidencia en el cliente', () => {
         }),
       ],
     });
-    fireEvent.click(screen.getByRole('button', { name: /Mi día/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Hoy/ }));
     fireEvent.click(screen.getByLabelText('Marcar como hecha'));
 
     await waitFor(() => expect(fetchMock.callsTo('/api/tasks/ev').length).toBe(1));

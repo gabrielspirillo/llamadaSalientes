@@ -1,6 +1,7 @@
 // Bloque 7 — Vistas Mi día, Semana y Pacientes.
 
-import { MyDayView, PatientsView, WeekView } from '@/components/tasks/views';
+import { TodayView } from '@/components/tasks/TodayView';
+import { PatientsView, WeekView } from '@/components/tasks/views';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { LUCIA, MARTA, MEMBERS, task } from './tasks-ui-fixtures';
@@ -20,7 +21,7 @@ function groupOf(title: string): HTMLElement {
   return screen.getByRole('heading', { name: title, level: 2 }).closest('section') as HTMLElement;
 }
 
-describe('MyDayView — agrupación', () => {
+describe('TodayView — agrupación', () => {
   const TASKS = [
     task({ id: 'v', title: 'Vencida ayer', dueAt: iso(2026, 8, 1, 10) }),
     task({ id: 'v2', title: 'Vencida esta mañana', dueAt: iso(2026, 8, 2, 9) }),
@@ -38,7 +39,7 @@ describe('MyDayView — agrupación', () => {
   function renderDay(onlyMine = true, tasks = TASKS, currentUserId: string | null = LUCIA.userId) {
     const onToggleMine = vi.fn();
     render(
-      <MyDayView
+      <TodayView
         tasks={tasks}
         members={MEMBERS}
         now={NOW}
@@ -53,22 +54,41 @@ describe('MyDayView — agrupación', () => {
     return { onToggleMine };
   }
 
-  it('reparte en Vencidas / Para hoy / Sin fecha / Próximas', () => {
+  /** Abre una sección plegada pulsando su cabecera. */
+  function expand(title: string) {
+    const section = groupOf(title);
+    fireEvent.click(within(section).getAllByRole('button')[0] as HTMLElement);
+    return groupOf(title);
+  }
+
+  it('reparte en Para hoy / Vencidas / Próximos 7 días / Sin fecha / Hechas hoy', () => {
     renderDay();
     expect(within(groupOf('Vencidas')).getByText('Vencida ayer')).toBeTruthy();
     expect(within(groupOf('Vencidas')).getByText('Vencida esta mañana')).toBeTruthy();
     expect(within(groupOf('Para hoy')).getByText('Para esta tarde')).toBeTruthy();
+    expect(within(groupOf('Próximos 7 días')).getByText('La semana que viene')).toBeTruthy();
     expect(within(groupOf('Sin fecha')).getByText('Sin fecha ninguna')).toBeTruthy();
-    expect(within(groupOf('Próximas')).getByText('La semana que viene')).toBeTruthy();
-    expect(within(groupOf('Cerradas hoy')).getByText('Ya cerrada hoy')).toBeTruthy();
+    expect(within(groupOf('Hechas hoy')).getByText('Ya cerrada hoy')).toBeTruthy();
+    // Una sección se pliega pulsando su cabecera.
+    expect(within(expand('Sin fecha')).queryByText('Sin fecha ninguna')).toBeNull();
   });
 
-  it('los contadores por grupo cuadran y el resumen suma solo lo abierto', () => {
+  it('los contadores por grupo cuadran', () => {
     renderDay();
     expect(within(groupOf('Vencidas')).getAllByRole('listitem')).toHaveLength(2);
     expect(within(groupOf('Para hoy')).getAllByRole('listitem')).toHaveLength(1);
-    // 5 abiertas + 1 cerrada hoy
-    expect(screen.getByText('5 pendientes · 1 cerrada hoy')).toBeTruthy();
+    expect(within(groupOf('Vencidas')).getByText('2')).toBeTruthy();
+  });
+
+  it('con muchas, enseña cinco y el resto tras «Ver N más»', () => {
+    const many = Array.from({ length: 12 }, (_, i) =>
+      task({ id: `x${i}`, title: `Vieja ${i}`, dueAt: iso(2026, 7, 1 + i, 10) }),
+    );
+    renderDay(true, many);
+    const section = groupOf('Vencidas');
+    expect(within(section).getAllByRole('listitem')).toHaveLength(5);
+    fireEvent.click(within(section).getByRole('button', { name: 'Ver 7 más' }));
+    expect(within(groupOf('Vencidas')).getAllByRole('listitem')).toHaveLength(12);
   });
 
   it('un grupo sin tareas no se pinta', () => {
@@ -79,9 +99,14 @@ describe('MyDayView — agrupación', () => {
 
   it('"Lo mío" filtra por responsable; "Toda la clínica" muestra todo', () => {
     const tasks = [
-      task({ id: 'mia', title: 'Mía', assigneeIds: [LUCIA.userId], dueAt: null }),
-      task({ id: 'suya', title: 'De Marta', assigneeIds: [MARTA.userId], dueAt: null }),
-      task({ id: 'nadie', title: 'De nadie', assigneeIds: [], dueAt: null }),
+      task({ id: 'mia', title: 'Mía', assigneeIds: [LUCIA.userId], dueAt: iso(2026, 8, 2, 18) }),
+      task({
+        id: 'suya',
+        title: 'De Marta',
+        assigneeIds: [MARTA.userId],
+        dueAt: iso(2026, 8, 2, 18),
+      }),
+      task({ id: 'nadie', title: 'De nadie', assigneeIds: [], dueAt: iso(2026, 8, 2, 18) }),
     ];
     renderDay(true, tasks);
     expect(screen.getByText('Mía')).toBeTruthy();
@@ -103,8 +128,7 @@ describe('MyDayView — agrupación', () => {
 
   it('sin nada abierto muestra el estado vacío', () => {
     renderDay(true, []);
-    expect(screen.getByText('Día limpio')).toBeTruthy();
-    expect(screen.getByText('Nada pendiente')).toBeTruthy();
+    expect(screen.getByText('Todo al día')).toBeTruthy();
   });
 });
 

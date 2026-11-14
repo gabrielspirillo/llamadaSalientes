@@ -8,7 +8,7 @@ import {
   PriorityChip,
 } from '@/components/tasks/shared';
 import { cn } from '@/lib/cn';
-import { CATEGORY_META, SOURCE_META, dueTone } from '@/lib/tasks/constants';
+import { SOURCE_META } from '@/lib/tasks/constants';
 import type { TaskDTO, TaskMember } from '@/lib/tasks/types';
 import { Bot, Check, MessageSquare, Phone, Repeat, ShieldCheck, User } from 'lucide-react';
 
@@ -41,8 +41,6 @@ export function TaskCard({
   draggable?: boolean;
   canEdit?: boolean;
 }) {
-  const meta = CATEGORY_META[task.category];
-  const tone = dueTone(task.dueAt, now);
   const isDone = task.status === 'DONE';
 
   return (
@@ -64,10 +62,9 @@ export function TaskCard({
       // biome-ignore lint/a11y/noNoninteractiveTabindex: la card es el control
       tabIndex={0}
       className={cn(
-        'group cursor-pointer rounded-2xl border p-3.5 text-left shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-all',
-        'hover:shadow-[0_8px_20px_-8px_rgba(16,24,40,0.18)]',
+        'group animate-fade-up cursor-pointer rounded-2xl border border-(--color-border) bg-white p-3.5 text-left shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-all duration-300 hover:-translate-y-0.5',
+        'hover:shadow-[0_10px_24px_-10px_rgba(16,24,40,0.2)]',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/15',
-        meta.card,
         dragging && 'opacity-40',
         isDone && 'opacity-70',
       )}
@@ -75,14 +72,6 @@ export function TaskCard({
       <div className="flex flex-wrap items-center gap-1.5">
         <CategoryChip category={task.category} />
         <PriorityChip priority={task.priority} />
-        {task.labels.slice(0, 2).map((l) => (
-          <span
-            key={l}
-            className="inline-flex items-center rounded-full bg-white/70 px-2 py-0.5 text-[11px] font-medium text-zinc-500 ring-1 ring-inset ring-white"
-          >
-            #{l}
-          </span>
-        ))}
         <span className="ml-auto flex items-center gap-1 text-zinc-500">
           {task.source === 'AUTOMATION' && (
             <Bot className="h-3.5 w-3.5" aria-label={SOURCE_META.AUTOMATION.hint} />
@@ -125,14 +114,8 @@ export function TaskCard({
         </h3>
       </div>
 
-      {task.description && (
-        <p className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-zinc-500">
-          {task.description}
-        </p>
-      )}
-
       {task.patientName && (
-        <div className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-lg bg-white/70 px-2 py-1 text-[12px] font-medium text-zinc-600">
+        <div className="mt-1.5 inline-flex max-w-full items-center gap-1.5 text-[12px] font-medium text-zinc-500">
           <User className="h-3 w-3 shrink-0 text-zinc-500" />
           <span className="truncate">{task.patientName}</span>
           {task.patientPhone && (
@@ -158,19 +141,11 @@ export function TaskCard({
             </span>
           )}
           {task.callId && <Phone className="h-3 w-3" aria-label="Viene de una llamada" />}
+          {task.dueAt && !isDone && (
+            <DueChip dueAt={task.dueAt} allDay={task.dueAllDay} now={now} />
+          )}
         </div>
       </div>
-
-      {task.dueAt && (
-        <div
-          className={cn(
-            'mt-2 border-t pt-2',
-            tone === 'overdue' ? 'border-red-200/70' : 'border-white/80',
-          )}
-        >
-          <DueChip dueAt={task.dueAt} allDay={task.dueAllDay} now={now} />
-        </div>
-      )}
     </article>
   );
 }

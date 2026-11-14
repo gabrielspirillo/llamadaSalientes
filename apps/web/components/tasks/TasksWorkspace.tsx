@@ -4,11 +4,12 @@ import { PageHeader } from '@/components/dashboard/page-header';
 import { KanbanBoard } from '@/components/tasks/KanbanBoard';
 import { QuickAdd } from '@/components/tasks/QuickAdd';
 import { RoutinesView } from '@/components/tasks/RoutinesView';
-import { StatsBar } from '@/components/tasks/StatsBar';
 import { TaskComposer } from '@/components/tasks/TaskComposer';
 import { TaskDetailPanel } from '@/components/tasks/TaskDetailPanel';
+import { TasksHero } from '@/components/tasks/TasksHero';
+import { TodayView } from '@/components/tasks/TodayView';
 import { Avatar } from '@/components/tasks/shared';
-import { MyDayView, PatientsView, WeekView } from '@/components/tasks/views';
+import { PatientsView, WeekView } from '@/components/tasks/views';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
 import {
@@ -43,13 +44,13 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 type ViewKey = 'board' | 'day' | 'week' | 'routines' | 'patients';
 
 const VIEWS: { key: ViewKey; label: string; icon: typeof Columns3 }[] = [
+  { key: 'day', label: 'Hoy', icon: Sun },
   { key: 'board', label: 'Tablero', icon: Columns3 },
-  { key: 'day', label: 'Mi día', icon: Sun },
   { key: 'week', label: 'Semana', icon: CalendarDays },
   { key: 'patients', label: 'Pacientes', icon: Users },
   { key: 'routines', label: 'Rutinas', icon: Repeat },
@@ -64,8 +65,11 @@ export function TasksWorkspace({
   currentUserId,
   role,
   timezone,
+  initialView = 'day',
 }: {
   timezone?: string | null;
+  /** Vista con la que abre (por defecto «Hoy»). */
+  initialView?: ViewKey;
   initialTasks: TaskDTO[];
   initialStats: TaskStatsDTO;
   members: TaskMember[];
@@ -78,7 +82,7 @@ export function TasksWorkspace({
   const [stats, setStats] = useState<TaskStatsDTO>(initialStats);
   const [templates, setTemplates] = useState<TaskTemplateDTO[]>(initialTemplates);
   const [rules, setRules] = useState<TaskAutomationRuleDTO[]>(initialRules);
-  const [view, setView] = useState<ViewKey>('board');
+  const [view, setView] = useState<ViewKey>(initialView);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   /** Aviso que se muestra dentro del panel al abrirlo (no detrás de él). */
   const [panelNotice, setPanelNotice] = useState<string | null>(null);
@@ -256,41 +260,46 @@ export function TasksWorkspace({
     setSelectedId(id);
   };
 
-  const today = new Date();
-
   return (
     <div className="space-y-5">
-      {/* El <h1> tiene que decir el nombre de la sección, como el resto del
-          panel. Antes decía el mes ("septiembre"), que no identificaba nada. */}
       <PageHeader
         eyebrow="Operativa diaria"
         title="Tareas"
-        description={`Hoy es ${today.toLocaleDateString('es-ES', {
-          weekday: 'long',
-          day: 'numeric',
-          month: 'long',
-        })}`}
+        description="Lo que hay que hacer hoy con los pacientes y con la clínica."
         icon={<ClipboardCheck className="h-5 w-5" />}
+        actions={
+          canEdit ? (
+            <Button onClick={() => setComposer({ status: 'TODO' })}>
+              <Plus className="h-4 w-4" />
+              Nueva tarea
+            </Button>
+          ) : undefined
+        }
       />
 
-      <header className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-[200px] flex-1 xl:flex-none">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+      <TasksHero tasks={tasks} stats={stats} now={now} />
+
+      {/* ── Vistas + búsqueda ─────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <ViewSwitch value={view} onChange={setView} />
+
+        <div className="flex items-center gap-2">
+          <div className="relative min-w-0 flex-1 md:w-64 md:flex-none">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Buscar tarea o paciente"
-              className="w-full rounded-full border border-zinc-200 bg-white py-2 pl-9 pr-3 text-sm placeholder:text-zinc-500 focus:border-zinc-400 focus:outline-none"
+              className="lg-field w-full rounded-full border border-zinc-200 bg-white py-2 pl-9 pr-3 text-[13px] placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none"
             />
           </div>
-
           <button
             type="button"
             onClick={() => setShowFilters((v) => !v)}
+            aria-expanded={showFilters}
             className={cn(
-              'inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-medium transition-colors',
-              activeFilters > 0
+              'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] font-medium transition-colors',
+              activeFilters > 0 || showFilters
                 ? 'border-zinc-900 bg-zinc-900 text-white'
                 : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300',
             )}
@@ -301,36 +310,35 @@ export function TasksWorkspace({
               <span className="rounded-full bg-white/20 px-1.5 tabular-nums">{activeFilters}</span>
             )}
           </button>
-
-          <div className="hidden items-center -space-x-1.5 sm:flex">
-            {members.slice(0, 5).map((m) => (
-              <button
-                key={m.userId}
-                type="button"
-                onClick={() => setAssigneeFilter((cur) => (cur === m.userId ? null : m.userId))}
-                title={`Filtrar por ${m.name}`}
-                className={cn(
-                  'rounded-full transition-transform hover:z-10',
-                  assigneeFilter === m.userId && 'ring-2 ring-zinc-900',
-                )}
-              >
-                <Avatar member={m} size="md" />
-              </button>
-            ))}
-          </div>
-
-          {canEdit && (
-            <Button size="sm" onClick={() => setComposer({ status: 'TODO' })}>
-              <Plus className="h-3.5 w-3.5" />
-              Nueva tarea
-            </Button>
-          )}
+          {refreshing && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-zinc-400" />}
         </div>
-      </header>
+      </div>
 
       {/* ── Filtros ──────────────────────────────────────────────────────── */}
       {showFilters && (
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-zinc-200 bg-white p-3">
+        <div className="animate-fade-up space-y-3 rounded-[22px] border border-(--color-border) bg-white p-4 shadow-[var(--shadow-soft)]">
+          {members.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="w-24 text-[12px] font-semibold text-zinc-500">Persona</span>
+              {members.map((m) => (
+                <button
+                  key={m.userId}
+                  type="button"
+                  onClick={() => setAssigneeFilter((cur) => (cur === m.userId ? null : m.userId))}
+                  title={`Filtrar por ${m.name}`}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-full border py-0.5 pl-0.5 pr-2.5 text-[12px] font-medium transition-colors',
+                    assigneeFilter === m.userId
+                      ? 'border-zinc-900 bg-zinc-900 text-white'
+                      : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300',
+                  )}
+                >
+                  <Avatar member={m} size="xs" ring={false} />
+                  {m.name.split(' ')[0]}
+                </button>
+              ))}
+            </div>
+          )}
           <FilterGroup
             label="Categoría"
             options={TASK_CATEGORIES.map((c) => ({ value: c, label: CATEGORY_META[c].label }))}
@@ -359,44 +367,14 @@ export function TasksWorkspace({
                 setAssigneeFilter(null);
                 setQuery('');
               }}
-              className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-zinc-500 hover:text-zinc-900"
+              className="inline-flex items-center gap-1 text-[12px] font-medium text-zinc-500 hover:text-zinc-900"
             >
               <X className="h-3 w-3" />
-              Limpiar
+              Limpiar filtros
             </button>
           )}
         </div>
       )}
-
-      <StatsBar stats={stats} members={members} />
-
-      {/* ── Vistas ───────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <nav className="inline-flex max-w-full overflow-x-auto rounded-full border border-zinc-200 bg-white p-0.5">
-          {VIEWS.map((v) => {
-            const Icon = v.icon;
-            return (
-              <button
-                key={v.key}
-                type="button"
-                onClick={() => setView(v.key)}
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
-                  view === v.key ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:text-zinc-900',
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {v.label}
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
-          {refreshing && <Loader2 className="h-3 w-3 animate-spin" />}
-          <span>En vivo · cada 45s</span>
-        </div>
-      </div>
 
       {error && (
         <div className="flex items-start gap-2 rounded-xl bg-red-50 px-3.5 py-2 text-xs text-red-700">
@@ -436,7 +414,7 @@ export function TasksWorkspace({
       )}
 
       {view === 'day' && (
-        <MyDayView
+        <TodayView
           tasks={filtered}
           members={members}
           now={now}
@@ -523,10 +501,8 @@ function FilterGroup({
   onChange: (v: string | null) => void;
 }) {
   return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-[12px] font-semibold uppercase tracking-wide text-zinc-500">
-        {label}
-      </span>
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="w-24 text-[12px] font-semibold text-zinc-500">{label}</span>
       <div className="flex flex-wrap gap-1">
         {options.map((o) => (
           <button
@@ -545,5 +521,60 @@ function FilterGroup({
         ))}
       </div>
     </div>
+  );
+}
+
+/**
+ * Pestañas con una píldora que se desliza hasta la elegida (sólo `transform`).
+ * En móvil la fila se desliza de lado si no cabe.
+ */
+function ViewSwitch({ value, onChange }: { value: ViewKey; onChange: (v: ViewKey) => void }) {
+  const refs = useRef(new Map<ViewKey, HTMLButtonElement>());
+  const [pill, setPill] = useState<{ x: number; w: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = refs.current.get(value);
+      if (el) setPill({ x: el.offsetLeft, w: el.offsetWidth });
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [value]);
+
+  return (
+    <nav className="-mx-1 max-w-full overflow-x-auto px-1 [scrollbar-width:none]">
+      <div className="relative inline-flex rounded-full bg-zinc-100 p-1">
+        {pill && (
+          <span
+            aria-hidden
+            className="absolute top-1 bottom-1 left-0 rounded-full bg-white shadow-[0_2px_8px_-2px_rgba(16,24,40,0.15)] transition-[transform,width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+            style={{ width: pill.w, transform: `translateX(${pill.x}px)` }}
+          />
+        )}
+        {VIEWS.map((v) => {
+          const Icon = v.icon;
+          const active = v.key === value;
+          return (
+            <button
+              key={v.key}
+              ref={(el) => {
+                if (el) refs.current.set(v.key, el);
+              }}
+              type="button"
+              onClick={() => onChange(v.key)}
+              aria-pressed={active}
+              className={cn(
+                'relative z-10 inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors',
+                active ? 'text-zinc-900' : 'text-zinc-500 hover:text-zinc-800',
+              )}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {v.label}
+            </button>
+          );
+        })}
+      </div>
+    </nav>
   );
 }
