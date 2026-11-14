@@ -1330,3 +1330,15 @@ html:has(.liquid) [data-slot="dialog"] {
     opacity: 0;
   }
 }
+
+/* Anillos y líneas del panel: se dibujan UNA vez al entrar (los trazos usan
+   pathLength="100"; el valor final es el `stroke-dashoffset` del elemento). */
+@keyframes ring-fill {
+  from {
+    stroke-dashoffset: 100;
+  }
+}
+.ring-fill {
+  animation: ring-fill 1500ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--ring-delay, 0ms);
+}

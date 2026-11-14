@@ -2,16 +2,26 @@ import 'server-only';
 import { and, count, desc, eq, gte, inArray, isNull, lt, ne, sql } from 'drizzle-orm';
 
 import type { AppointmentSource, AppointmentStatus } from '@/lib/agenda/shared';
+import { loadSpecialRangesMap } from '@/lib/agenda/special-days-db';
+import { type WeekDay, buildWeekStrip } from '@/lib/data/analytics/month-model';
 import { db } from '@/lib/db/client';
 import {
   advanceOffers,
   agendaAppointments,
+  professionalShifts,
   professionals,
   tasks,
   treatments,
   whatsappConversations,
 } from '@/lib/db/schema';
-import { addDaysToKey, localDateKey, localParts, parseDateKey, zonedToUtc } from '@/lib/tasks/tz';
+import {
+  addDaysToKey,
+  localDateKey,
+  localParts,
+  parseDateKey,
+  weekdayOfKey,
+  zonedToUtc,
+} from '@/lib/tasks/tz';
 
 /**
  * Lo que la clínica mira al abrir el panel: el día de hoy en una línea, lo
@@ -42,6 +52,8 @@ export interface TodayBoard {
     pendingOffers: number;
   };
   weekly: { weekStart: string; label: string; count: number; current: boolean }[];
+  /** Los 7 días desde mañana: lo que enseña el bloque «Hoy» un día sin citas. */
+  week: WeekDay[];
   assistant: {
     id: string;
     patientName: string;
@@ -79,111 +91,175 @@ export async function getTodayBoard(tenantId: string, tz: string): Promise<Today
   const weeksStart = dayStart(firstWeekKey, tz);
   const weeksEnd = dayStart(addDaysToKey(mondayKey, 7), tz);
 
-  const [todayRows, unconfirmed, handoffs, overdue, offers, weekRows, assistantRows] =
-    await Promise.all([
-      db
-        .select({
-          id: agendaAppointments.id,
-          startsAt: agendaAppointments.startsAt,
-          patientName: agendaAppointments.patientName,
-          patientKey: agendaAppointments.patientKey,
-          status: agendaAppointments.status,
-          firstVisit: agendaAppointments.isFirstVisit,
-          treatmentName: treatments.name,
-          professionalName: professionals.fullName,
-        })
-        .from(agendaAppointments)
-        .innerJoin(professionals, eq(professionals.id, agendaAppointments.professionalId))
-        .leftJoin(treatments, eq(treatments.id, agendaAppointments.treatmentId))
-        .where(
-          and(
-            eq(agendaAppointments.tenantId, tenantId),
-            gte(agendaAppointments.startsAt, todayStart),
-            lt(agendaAppointments.startsAt, tomorrowStart),
-            ne(agendaAppointments.status, 'CANCELLED'),
-          ),
-        )
-        .orderBy(agendaAppointments.startsAt),
-      db
-        .select({ n: count() })
-        .from(agendaAppointments)
-        .where(
-          and(
-            eq(agendaAppointments.tenantId, tenantId),
-            eq(agendaAppointments.status, 'SCHEDULED'),
-            gte(agendaAppointments.startsAt, now),
-            lt(agendaAppointments.startsAt, dayStart(addDaysToKey(todayKey, 2), tz)),
-          ),
-        )
-        .then((r) => Number(r[0]?.n ?? 0))
-        .catch(() => 0),
-      db
-        .select({ n: count() })
-        .from(whatsappConversations)
-        .where(
-          and(
-            eq(whatsappConversations.tenantId, tenantId),
-            eq(whatsappConversations.status, 'HANDOFF'),
-          ),
-        )
-        .then((r) => Number(r[0]?.n ?? 0))
-        .catch(() => 0),
-      db
-        .select({ n: count() })
-        .from(tasks)
-        .where(
-          and(
-            eq(tasks.tenantId, tenantId),
-            ne(tasks.status, 'DONE'),
-            isNull(tasks.archivedAt),
-            lt(tasks.dueAt, now),
-          ),
-        )
-        .then((r) => Number(r[0]?.n ?? 0))
-        .catch(() => 0),
-      db
-        .select({ n: count() })
-        .from(advanceOffers)
-        .where(and(eq(advanceOffers.tenantId, tenantId), eq(advanceOffers.status, 'SENT')))
-        .then((r) => Number(r[0]?.n ?? 0))
-        .catch(() => 0),
-      db
-        .select({
-          week: sql<string>`date_trunc('week', ${agendaAppointments.startsAt} at time zone ${tz})::date::text`,
-          n: count(),
-        })
-        .from(agendaAppointments)
-        .where(
-          and(
-            eq(agendaAppointments.tenantId, tenantId),
-            inArray(agendaAppointments.status, BUSY),
-            gte(agendaAppointments.startsAt, weeksStart),
-            lt(agendaAppointments.startsAt, weeksEnd),
-          ),
-        )
-        .groupBy(sql`1`)
-        .catch(() => [] as { week: string; n: number }[]),
-      db
-        .select({
-          id: agendaAppointments.id,
-          patientName: agendaAppointments.patientName,
-          patientKey: agendaAppointments.patientKey,
-          source: agendaAppointments.source,
-          startsAt: agendaAppointments.startsAt,
-          createdAt: agendaAppointments.createdAt,
-        })
-        .from(agendaAppointments)
-        .where(
-          and(
-            eq(agendaAppointments.tenantId, tenantId),
-            inArray(agendaAppointments.source, ['WHATSAPP_AGENT', 'VOICE_AGENT', 'WAITLIST']),
-            gte(agendaAppointments.createdAt, dayStart(addDaysToKey(todayKey, -14), tz)),
-          ),
-        )
-        .orderBy(desc(agendaAppointments.createdAt))
-        .limit(6)
-        .catch(() => []),
-    ]);
+  const weekKeys = Array.from({ length: 7 }, (_, i) => addDaysToKey(todayKey, i + 1));
+  const weekFrom = tomorrowStart;
+  const weekTo = dayStart(addDaysToKey(todayKey, 8), tz);
+  const [
+    todayRows,
+    unconfirmed,
+    handoffs,
+    overdue,
+    offers,
+    weekRows,
+    assistantRows,
+    nextRows,
+    shiftRows,
+    specials,
+  ] = await Promise.all([
+    db
+      .select({
+        id: agendaAppointments.id,
+        startsAt: agendaAppointments.startsAt,
+        patientName: agendaAppointments.patientName,
+        patientKey: agendaAppointments.patientKey,
+        status: agendaAppointments.status,
+        firstVisit: agendaAppointments.isFirstVisit,
+        treatmentName: treatments.name,
+        professionalName: professionals.fullName,
+      })
+      .from(agendaAppointments)
+      .innerJoin(professionals, eq(professionals.id, agendaAppointments.professionalId))
+      .leftJoin(treatments, eq(treatments.id, agendaAppointments.treatmentId))
+      .where(
+        and(
+          eq(agendaAppointments.tenantId, tenantId),
+          gte(agendaAppointments.startsAt, todayStart),
+          lt(agendaAppointments.startsAt, tomorrowStart),
+          ne(agendaAppointments.status, 'CANCELLED'),
+        ),
+      )
+      .orderBy(agendaAppointments.startsAt),
+    db
+      .select({ n: count() })
+      .from(agendaAppointments)
+      .where(
+        and(
+          eq(agendaAppointments.tenantId, tenantId),
+          eq(agendaAppointments.status, 'SCHEDULED'),
+          gte(agendaAppointments.startsAt, now),
+          lt(agendaAppointments.startsAt, dayStart(addDaysToKey(todayKey, 2), tz)),
+        ),
+      )
+      .then((r) => Number(r[0]?.n ?? 0))
+      .catch(() => 0),
+    db
+      .select({ n: count() })
+      .from(whatsappConversations)
+      .where(
+        and(
+          eq(whatsappConversations.tenantId, tenantId),
+          eq(whatsappConversations.status, 'HANDOFF'),
+        ),
+      )
+      .then((r) => Number(r[0]?.n ?? 0))
+      .catch(() => 0),
+    db
+      .select({ n: count() })
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.tenantId, tenantId),
+          ne(tasks.status, 'DONE'),
+          isNull(tasks.archivedAt),
+          lt(tasks.dueAt, now),
+        ),
+      )
+      .then((r) => Number(r[0]?.n ?? 0))
+      .catch(() => 0),
+    db
+      .select({ n: count() })
+      .from(advanceOffers)
+      .where(and(eq(advanceOffers.tenantId, tenantId), eq(advanceOffers.status, 'SENT')))
+      .then((r) => Number(r[0]?.n ?? 0))
+      .catch(() => 0),
+    db
+      .select({
+        week: sql<string>`date_trunc('week', ${agendaAppointments.startsAt} at time zone ${tz})::date::text`,
+        n: count(),
+      })
+      .from(agendaAppointments)
+      .where(
+        and(
+          eq(agendaAppointments.tenantId, tenantId),
+          inArray(agendaAppointments.status, BUSY),
+          gte(agendaAppointments.startsAt, weeksStart),
+          lt(agendaAppointments.startsAt, weeksEnd),
+        ),
+      )
+      .groupBy(sql`1`)
+      .catch(() => [] as { week: string; n: number }[]),
+    db
+      .select({
+        id: agendaAppointments.id,
+        patientName: agendaAppointments.patientName,
+        patientKey: agendaAppointments.patientKey,
+        source: agendaAppointments.source,
+        startsAt: agendaAppointments.startsAt,
+        createdAt: agendaAppointments.createdAt,
+      })
+      .from(agendaAppointments)
+      .where(
+        and(
+          eq(agendaAppointments.tenantId, tenantId),
+          inArray(agendaAppointments.source, ['WHATSAPP_AGENT', 'VOICE_AGENT', 'WAITLIST']),
+          gte(agendaAppointments.createdAt, dayStart(addDaysToKey(todayKey, -14), tz)),
+        ),
+      )
+      .orderBy(desc(agendaAppointments.createdAt))
+      .limit(6)
+      .catch(() => []),
+    db
+      .select({
+        startsAt: agendaAppointments.startsAt,
+        endsAt: agendaAppointments.endsAt,
+        firstVisit: agendaAppointments.isFirstVisit,
+      })
+      .from(agendaAppointments)
+      .where(
+        and(
+          eq(agendaAppointments.tenantId, tenantId),
+          inArray(agendaAppointments.status, BUSY),
+          gte(agendaAppointments.startsAt, weekFrom),
+          lt(agendaAppointments.startsAt, weekTo),
+        ),
+      )
+      .catch(() => []),
+    db
+      .select({
+        professionalId: professionalShifts.professionalId,
+        weekday: professionalShifts.weekday,
+        startMinute: professionalShifts.startMinute,
+        endMinute: professionalShifts.endMinute,
+      })
+      .from(professionalShifts)
+      .innerJoin(professionals, eq(professionals.id, professionalShifts.professionalId))
+      .where(
+        and(
+          eq(professionalShifts.tenantId, tenantId),
+          eq(professionalShifts.active, true),
+          eq(professionals.active, true),
+          eq(professionals.agendaEnabled, true),
+        ),
+      )
+      .catch(() => []),
+    loadSpecialRangesMap(tenantId, weekKeys[0] ?? todayKey, weekKeys[6] ?? todayKey),
+  ]);
+
+  const week = buildWeekStrip({
+    dayKeys: weekKeys,
+    weekdayOf: weekdayOfKey,
+    appointments: nextRows.map((r) => {
+      const lp = localParts(r.startsAt, tz);
+      return {
+        dayKey: localDateKey(r.startsAt, tz),
+        startMinute: lp.hour * 60 + lp.minute,
+        minutes: Math.round((r.endsAt.getTime() - r.startsAt.getTime()) / 60_000),
+        firstVisit: Boolean(r.firstVisit),
+      };
+    }),
+    shifts: shiftRows,
+    specials,
+  });
 
   const byWeek = new Map(weekRows.map((r) => [r.week, Number(r.n)]));
   const weekly: TodayBoard['weekly'] = [];
@@ -223,6 +299,7 @@ export async function getTodayBoard(tenantId: string, tz: string): Promise<Today
     }),
     attention: { unconfirmed, handoffs, overdueTasks: overdue, pendingOffers: offers },
     weekly,
+    week,
     assistant: assistantRows.map((r) => ({ ...r, source: r.source as AppointmentSource })),
   };
 }
@@ -283,6 +360,28 @@ export function getDemoTodayBoard(tz: string): TodayBoard {
         count: c,
         current: i === 7,
       };
+    }),
+    week: buildWeekStrip({
+      dayKeys: Array.from({ length: 7 }, (_, i) => addDaysToKey(todayKey, i + 1)),
+      weekdayOf: weekdayOfKey,
+      appointments: Array.from({ length: 7 }, (_, i) => addDaysToKey(todayKey, i + 1)).flatMap(
+        (dayKey, d) =>
+          weekdayOfKey(dayKey) >= 6
+            ? []
+            : Array.from({ length: [9, 12, 8, 11, 6, 10, 7][d] ?? 8 }, (_, j) => ({
+                dayKey,
+                startMinute: 900 + j * 30,
+                minutes: 30,
+                firstVisit: j === 2,
+              })),
+      ),
+      shifts: [1, 2, 3, 4, 5].map((weekday) => ({
+        professionalId: 'demo',
+        weekday,
+        startMinute: 900,
+        endMinute: 1200,
+      })),
+      specials: new Map(),
     }),
     assistant: [
       ['Leo Castro Vidal', 'WHATSAPP_AGENT', 1],

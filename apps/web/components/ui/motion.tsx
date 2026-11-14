@@ -141,8 +141,11 @@ export function AnimatedNumber({
   prefix = '',
   duration = 1100,
   className,
+  grouping = false,
 }: {
   value: number;
+  /** Separador de miles también en 4 cifras ("5.040" y no "5040"): importes. */
+  grouping?: boolean;
   decimals?: number;
   suffix?: string;
   prefix?: string;
@@ -204,6 +207,7 @@ export function AnimatedNumber({
   const formatted = display.toLocaleString('es-ES', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
+    ...(grouping ? { useGrouping: 'always' as unknown as boolean } : {}),
   });
 
   return (

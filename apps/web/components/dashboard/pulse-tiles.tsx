@@ -79,7 +79,7 @@ function BigNumber({ children, className }: { children: React.ReactNode; classNa
 }
 
 function euros(cents: number): string {
-  return `${Math.round(cents / 100).toLocaleString('es-ES', { useGrouping: true })} €`;
+  return `${Math.round(cents / 100).toLocaleString('es-ES', { useGrouping: 'always' as unknown as boolean })} €`;
 }
 
 function duration(minutes: number): string {
@@ -148,7 +148,7 @@ function RecoveredTile({ recovered }: { recovered: AgendaPulse['recovered'] }) {
   return (
     <Tile label="Recuperado este mes" icon={<Coins className="h-4 w-4" />} tone="mint">
       <BigNumber className="text-emerald-700">
-        <AnimatedNumber value={Math.round(recovered.monthCents / 100)} suffix=" €" />
+        <AnimatedNumber value={Math.round(recovered.monthCents / 100)} suffix=" €" grouping />
       </BigNumber>
       <p className="mt-1.5 text-[12px] text-zinc-500">
         {empty

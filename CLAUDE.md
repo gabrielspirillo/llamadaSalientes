@@ -1831,6 +1831,24 @@ Faltas y anulaciones (la tendencia de faltas sigue en el gráfico de abajo).
   medido son los conteos. Los recordatorios del día y las ofertas salen como
   `HUMAN`, así que no se cuentan dos veces con las respuestas (`AGENT`).
 - Todo se anima una vez al entrar y sólo con `transform`/`opacity`.
+- **Bloques de abajo** (`business-blocks.tsx`, datos en
+  `lib/data/analytics/business-pulse.ts`, reglas puras en `month-model.ts`, tests
+  `panel-mes`): **Tu mes** (anillos tipo Apple Watch: sesiones y familias nuevas
+  frente al mes pasado entero, y agenda llena de los próximos 7 días),
+  **Ingresos del mes** (línea acumulada frente al mes pasado; sesión = cita
+  pasada no anulada ni faltada, a lo cobrado o al precio de su tratamiento, o
+  al precio medio) y **Familias atendidas** (distintas este mes, nuevas y las
+  que ya venían). Sustituyen a Faltas por semana, Citas por semana y Top
+  tratamientos en las clínicas con agenda propia. La comparación es siempre
+  con el MISMO punto del mes anterior (el 14 contra el 14).
+- ⚠️ Se descartó «familias con próxima cita»: en Respinens (reservan por
+  episodio) daba un 12 % y desmotivaba sin decir nada útil.
+- **Bloque «Hoy» sin citas**: tira de los 7 días siguientes (`WeekStrip` en
+  `today-board.tsx`, `buildWeekStrip`): cápsula llena según lo reservado sobre
+  el horario (días especiales incluidos), primera hora y horas libres.
+- Los trazos de anillos y líneas usan `pathLength="100"` + `.ring-fill`
+  (globals.css), una sola vez. Importes con `AnimatedNumber grouping`
+  ("5.040 €": en es-ES las 4 cifras no llevan punto por defecto).
 
 ## Uso de la plataforma (sólo Futura)
 

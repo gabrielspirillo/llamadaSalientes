@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { AnimatedNumber } from '@/components/ui/motion';
 import { STATUS_LABELS } from '@/lib/agenda/shared';
 import { cn } from '@/lib/cn';
+import { freeMinutes } from '@/lib/data/analytics/month-model';
 import type { TodayBoard } from '@/lib/data/analytics/today-board';
 import {
   ArrowRight,
@@ -117,7 +118,7 @@ export function TodayBoardCard({ board, demo }: { board: TodayBoard; demo?: bool
               </h2>
               <p className="mt-1 text-[14px] text-emerald-50/75">
                 {board.items.length === 0
-                  ? 'Sin citas hoy.'
+                  ? 'Hoy no hay citas. Así viene tu semana:'
                   : `${board.items.length} ${board.items.length === 1 ? 'cita' : 'citas'} · ${done} ${done === 1 ? 'atendida' : 'atendidas'}${
                       next
                         ? ` · siguiente a las ${next.time}, ${next.patientName.split(' ')[0]}`
@@ -142,6 +143,8 @@ export function TodayBoardCard({ board, demo }: { board: TodayBoard; demo?: bool
               </Button>
             </div>
           </div>
+
+          {board.items.length === 0 && <WeekStrip board={board} demo={demo} />}
 
           {board.items.length > 0 && (
             <>
@@ -269,5 +272,115 @@ export function TodayBoardCard({ board, demo }: { board: TodayBoard; demo?: bool
         </div>
       </div>
     </Card>
+  );
+}
+
+function weekdayName(dayKey: string): string {
+  const [y, m, d] = dayKey.split('-').map(Number);
+  return new Date(Date.UTC(y ?? 2026, (m ?? 1) - 1, d ?? 1)).toLocaleDateString('es-ES', {
+    weekday: 'long',
+    timeZone: 'UTC',
+  });
+}
+
+function hoursLabel(minutes: number): string {
+  const h = Math.round((minutes / 60) * 2) / 2;
+  return `${h.toLocaleString('es-ES')} h`;
+}
+
+/**
+ * Un día sin citas, el bloque «Hoy» enseña la semana que viene: una cápsula
+ * por día que se llena según lo reservado sobre su horario. Cada día abre la
+ * agenda en esa fecha.
+ */
+function WeekStrip({ board, demo }: { board: TodayBoard; demo?: boolean }) {
+  const week = board.week;
+  if (week.length === 0) return null;
+  const next = week.find((d) => d.count > 0);
+  const free = freeMinutes(week);
+  const total = week.reduce((a, d) => a + d.count, 0);
+  const firsts = week.reduce((a, d) => a + d.firstVisits, 0);
+  return (
+    <div className="relative mt-5">
+      <ol className="grid grid-cols-7 gap-1.5 sm:gap-3">
+        {week.map((d, i) => {
+          const fill = d.closed
+            ? 0
+            : d.shiftMinutes > 0
+              ? Math.min(1, d.bookedMinutes / d.shiftMinutes)
+              : d.count > 0
+                ? 1
+                : 0;
+          return (
+            <li key={d.dayKey}>
+              <Link
+                href={demo ? '/dashboard?demo=1' : `/dashboard/agenda?date=${d.dayKey}`}
+                title={
+                  d.closed
+                    ? 'Cerrado'
+                    : `${d.count} ${d.count === 1 ? 'cita' : 'citas'}${d.firstTime ? ` · desde las ${d.firstTime}` : ''}`
+                }
+                className="group flex flex-col items-center gap-2 rounded-[16px] py-2 transition-colors duration-300 hover:bg-white/8"
+              >
+                <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-100/60">
+                  {d.letter}
+                </span>
+                <span className="text-[15px] font-extrabold tabular-nums text-white sm:text-[17px]">
+                  {d.dayNumber}
+                </span>
+                <span
+                  className={cn(
+                    'relative h-20 w-3.5 overflow-hidden rounded-full sm:h-24 sm:w-5',
+                    d.closed ? 'border border-dashed border-white/15' : 'bg-white/10',
+                  )}
+                  aria-hidden
+                >
+                  {fill > 0 && (
+                    <span
+                      className="absolute inset-x-0 bottom-0 origin-bottom animate-grow-y rounded-full bg-[linear-gradient(180deg,#a7f3d0,#34d399)] transition-[filter] duration-300 group-hover:brightness-110"
+                      style={{
+                        height: `${Math.max(10, fill * 100)}%`,
+                        animationDelay: `${150 + i * 80}ms`,
+                      }}
+                    />
+                  )}
+                </span>
+                <span
+                  className={cn(
+                    'text-[13px] font-bold tabular-nums',
+                    d.closed ? 'text-white/30' : 'text-white',
+                  )}
+                >
+                  {d.closed ? '—' : d.count}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ol>
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] text-emerald-50/80">
+        {next ? (
+          <span>
+            El <span className="font-semibold text-white">{weekdayName(next.dayKey)}</span> empiezas
+            a las <span className="font-semibold text-white tabular-nums">{next.firstTime}</span>
+          </span>
+        ) : (
+          <span>Todavía no hay citas para los próximos 7 días</span>
+        )}
+        {total > 0 && (
+          <span className="tabular-nums">
+            {total} {total === 1 ? 'cita' : 'citas'} en la semana
+            {firsts > 0
+              ? ` · ${firsts} ${firsts === 1 ? 'primera visita' : 'primeras visitas'}`
+              : ''}
+          </span>
+        )}
+        {free >= 30 && (
+          <span className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-[12px] font-semibold text-emerald-100">
+            {hoursLabel(free)} libres para llenar
+          </span>
+        )}
+      </div>
+    </div>
   );
 }

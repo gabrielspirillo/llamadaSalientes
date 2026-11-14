@@ -5,6 +5,7 @@ import { Reveal } from '@/components/ui/motion';
 import { StatTile } from '@/components/ui/stat';
 import { getClinicTimezone, tenantHasAgenda } from '@/lib/agenda/queries';
 import { type AgendaPulse, getAgendaPulse } from '@/lib/data/analytics/agenda-pulse';
+import { type BusinessPulse, getBusinessPulse } from '@/lib/data/analytics/business-pulse';
 import {
   getAppointmentsToday,
   getCancellationRecoveryStats,
@@ -31,6 +32,7 @@ import {
   TrendingDown,
   Users,
 } from 'lucide-react';
+import { BusinessBlocks } from './business-blocks';
 import { NoShowTrendChart, TopTreatmentsChart, WeeklyAppointmentsChart } from './charts-lazy';
 import { PulseTiles } from './pulse-tiles';
 
@@ -73,12 +75,17 @@ export async function GlobalAnalyticsBar({
   // Clínica con agenda propia: los cuatro números de arriba salen de ella. Los
   // de antes (no-show sobre la caché de GHL, revenue de ofertas automáticas,
   // recuperación de huecos) se quedaban a cero en estas clínicas.
-  const pulse: AgendaPulse | null =
+  const [pulse, business]: [AgendaPulse | null, BusinessPulse | null] =
     !demo && (await tenantHasAgenda(tenantId).catch(() => false))
       ? await getClinicTimezone(tenantId)
-          .then((tz) => getAgendaPulse(tenantId, tz))
-          .catch(() => null)
-      : null;
+          .then((tz) =>
+            Promise.all([
+              getAgendaPulse(tenantId, tz).catch(() => null),
+              getBusinessPulse(tenantId, tz).catch(() => null),
+            ]),
+          )
+          .catch(() => [null, null])
+      : [null, null];
 
   // Serie corta para el sparkline de la tarjeta de no-show.
   const noShowTrend = noShowSeries.slice(-10).map((p) => p.rate * 100);
@@ -197,51 +204,55 @@ export async function GlobalAnalyticsBar({
         </Reveal>
       )}
 
-      <div className="rise-stagger grid grid-cols-1 gap-3 sm:gap-4 xl:grid-cols-3">
-        <Reveal className="[--i:0]">
-          <Card className="group h-full">
-            <CardTopbar
-              icon={<TrendingDown className="h-4 w-4" />}
-              tone="honey"
-              title="Faltas por semana"
-              subtitle="Últimos 90 días"
-            />
-            <div className="px-3 pb-4 sm:px-4">
-              <NoShowTrendChart data={pulse ? pulse.noShowSeries : noShowSeries} />
-            </div>
-          </Card>
-        </Reveal>
-
-        {board && (
-          <Reveal className="[--i:1]">
+      {pulse && business ? (
+        <BusinessBlocks pulse={business} occupancyPct={Math.round(pulse.occupancy.rate * 100)} />
+      ) : (
+        <div className="rise-stagger grid grid-cols-1 gap-3 sm:gap-4 xl:grid-cols-3">
+          <Reveal className="[--i:0]">
             <Card className="group h-full">
               <CardTopbar
-                icon={<CalendarRange className="h-4 w-4" />}
-                tone="grape"
-                title="Citas por semana"
-                subtitle="Ocho semanas, la actual en color"
+                icon={<TrendingDown className="h-4 w-4" />}
+                tone="honey"
+                title="Faltas por semana"
+                subtitle="Últimos 90 días"
               />
               <div className="px-3 pb-4 sm:px-4">
-                <WeeklyAppointmentsChart data={board.weekly} />
+                <NoShowTrendChart data={pulse ? pulse.noShowSeries : noShowSeries} />
               </div>
             </Card>
           </Reveal>
-        )}
 
-        <Reveal className={board ? '[--i:2]' : '[--i:1] xl:col-span-2'}>
-          <Card className="group h-full">
-            <CardTopbar
-              icon={<Stethoscope className="h-4 w-4" />}
-              tone="mint"
-              title="Top tratamientos"
-              subtitle="Últimos 30 días"
-            />
-            <div className="px-4 pb-5 sm:px-5">
-              <TopTreatmentsChart data={treatments} />
-            </div>
-          </Card>
-        </Reveal>
-      </div>
+          {board && (
+            <Reveal className="[--i:1]">
+              <Card className="group h-full">
+                <CardTopbar
+                  icon={<CalendarRange className="h-4 w-4" />}
+                  tone="grape"
+                  title="Citas por semana"
+                  subtitle="Ocho semanas, la actual en color"
+                />
+                <div className="px-3 pb-4 sm:px-4">
+                  <WeeklyAppointmentsChart data={board.weekly} />
+                </div>
+              </Card>
+            </Reveal>
+          )}
+
+          <Reveal className={board ? '[--i:2]' : '[--i:1] xl:col-span-2'}>
+            <Card className="group h-full">
+              <CardTopbar
+                icon={<Stethoscope className="h-4 w-4" />}
+                tone="mint"
+                title="Top tratamientos"
+                subtitle="Últimos 30 días"
+              />
+              <div className="px-4 pb-5 sm:px-5">
+                <TopTreatmentsChart data={treatments} />
+              </div>
+            </Card>
+          </Reveal>
+        </div>
+      )}
     </section>
   );
 }
