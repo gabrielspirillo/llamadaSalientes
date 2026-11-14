@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Reveal } from '@/components/ui/motion';
 import { Avatar } from '@/components/ui/stat';
-import { resolveTimezone, tenantHasAgenda } from '@/lib/agenda/queries';
+import { resolveTimezone } from '@/lib/agenda/queries';
 import { SOURCE_LABELS } from '@/lib/agenda/shared';
 import { getDemoTodayBoard, getTodayBoard } from '@/lib/data/analytics/today-board';
 import { getUpcomingAppointments } from '@/lib/data/calls-list';
@@ -59,12 +59,13 @@ async function DashboardBody({
   const firstName = user?.firstName ?? user?.fullName?.split(' ')[0] ?? '';
   // Todo lo que no depende de otra cosa va en la misma tanda: el home se
   // vuelve a ejecutar con cada refresco automático.
-  const hasAgenda = demo ? true : await tenantHasAgenda(tenant.id).catch(() => false);
+  // El bloque «Hoy» es el de todas las clínicas: sin agenda propia se ve vacío
+  // (y la semana que viene), igual que lo verá el día que la enciendan.
   const [upcoming, board] = demo
     ? [getDemoUpcoming(), getDemoTodayBoard(timezone)]
     : await Promise.all([
         getUpcomingAppointments(tenant.id, 8),
-        hasAgenda ? getTodayBoard(tenant.id, timezone).catch(() => null) : null,
+        getTodayBoard(tenant.id, timezone).catch(() => null),
       ]);
 
   const clinicName = tenant.name.split(/['']s|\s/)[0];

@@ -3,9 +3,10 @@ import { Card, CardTopbar } from '@/components/ui/card';
 import { SectionTitle } from '@/components/ui/feedback';
 import { Reveal } from '@/components/ui/motion';
 import { StatTile } from '@/components/ui/stat';
-import { getClinicTimezone, tenantHasAgenda } from '@/lib/agenda/queries';
+import { getClinicTimezone } from '@/lib/agenda/queries';
 import { type AgendaPulse, getAgendaPulse } from '@/lib/data/analytics/agenda-pulse';
 import { type BusinessPulse, getBusinessPulse } from '@/lib/data/analytics/business-pulse';
+import { getDemoAgendaPulse, getDemoBusinessPulse } from '@/lib/data/analytics/demo-pulse';
 import {
   getAppointmentsToday,
   getCancellationRecoveryStats,
@@ -72,20 +73,19 @@ export async function GlobalAnalyticsBar({
         getNoShowSeries(tenantId, 90),
       ]);
 
-  // Clínica con agenda propia: los cuatro números de arriba salen de ella. Los
-  // de antes (no-show sobre la caché de GHL, revenue de ofertas automáticas,
-  // recuperación de huecos) se quedaban a cero en estas clínicas.
-  const [pulse, business]: [AgendaPulse | null, BusinessPulse | null] =
-    !demo && (await tenantHasAgenda(tenantId).catch(() => false))
-      ? await getClinicTimezone(tenantId)
-          .then((tz) =>
-            Promise.all([
-              getAgendaPulse(tenantId, tz).catch(() => null),
-              getBusinessPulse(tenantId, tz).catch(() => null),
-            ]),
-          )
-          .catch(() => [null, null])
-      : [null, null];
+  // Las tarjetas y los bloques de la agenda propia son los de TODAS las
+  // clínicas (y los del ejemplo). Los de antes sólo quedan de respaldo si
+  // fallan las consultas.
+  const [pulse, business]: [AgendaPulse | null, BusinessPulse | null] = demo
+    ? [getDemoAgendaPulse(), getDemoBusinessPulse()]
+    : await getClinicTimezone(tenantId)
+        .then((tz) =>
+          Promise.all([
+            getAgendaPulse(tenantId, tz).catch(() => null),
+            getBusinessPulse(tenantId, tz).catch(() => null),
+          ]),
+        )
+        .catch(() => [null, null]);
 
   // Serie corta para el sparkline de la tarjeta de no-show.
   const noShowTrend = noShowSeries.slice(-10).map((p) => p.rate * 100);

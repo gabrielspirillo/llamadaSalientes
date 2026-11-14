@@ -1846,6 +1846,12 @@ Faltas y anulaciones (la tendencia de faltas sigue en el gráfico de abajo).
 - **Bloque «Hoy» sin citas**: tira de los 7 días siguientes (`WeekStrip` en
   `today-board.tsx`, `buildWeekStrip`): cápsula llena según lo reservado sobre
   el horario (días especiales incluidos), primera hora y horas libres.
+- **Son los de TODAS las clínicas y los del «Ver ejemplo»** (14/11/2026): el
+  bloque «Hoy», las cuatro tarjetas y los tres bloques ya no dependen de
+  `tenantHasAgenda`; una clínica sin agenda propia los ve a cero. El ejemplo
+  sale de `lib/data/analytics/demo-pulse.ts` (fijo, sin base). Las tarjetas y
+  gráficos de antes (no-show 90 días, Top tratamientos…) sólo quedan de
+  respaldo si fallan las consultas.
 - Los trazos de anillos y líneas usan `pathLength="100"` + `.ring-fill`
   (globals.css), una sola vez. Importes con `AnimatedNumber grouping`
   ("5.040 €": en es-ES las 4 cifras no llevan punto por defecto).
