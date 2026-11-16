@@ -27,6 +27,7 @@ import { formatPhoneDisplay } from '@/lib/patients/names';
 import { dialPrefixForTimezone } from '@/lib/phone-prefix';
 import { localDateKey } from '@/lib/tasks/tz';
 import { Contact, Search } from 'lucide-react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { AgendaNav } from '../agenda-nav';
 
@@ -293,3 +294,5 @@ export default async function AgendaPacientesPage({
 function nameKey(name: string): string {
   return name.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
+
+export const metadata: Metadata = { title: 'Pacientes' };

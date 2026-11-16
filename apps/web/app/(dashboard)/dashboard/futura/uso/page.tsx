@@ -19,6 +19,7 @@ import {
   Users,
   Zap,
 } from 'lucide-react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
@@ -387,3 +388,5 @@ export default async function UsoPlataformaPage({
     </>
   );
 }
+
+export const metadata: Metadata = { title: 'Uso de la plataforma' };

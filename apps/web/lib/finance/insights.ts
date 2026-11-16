@@ -10,6 +10,7 @@ import {
   type OpenBalances,
   deltaPct,
   formatCents,
+  formatEuros,
   plural,
 } from '@/lib/finance/model';
 
@@ -116,7 +117,7 @@ export function financeInsights(input: InsightInput, limit = 5): Insight[] {
       tone: open.unbilledSessions >= 5 ? 'urgent' : 'improve',
       title: `${plural(open.unbilledSessions, 'sesión atendida', 'sesiones atendidas')} sin cobro registrado`,
       body: est
-        ? `Si se cobraron, apúntalo en la ficha de cada paciente para que cuadren las cuentas; si no, son unos ${formatCents(est)} pendientes (a ${formatCents(ticket ?? 0)} por sesión).`
+        ? `Si se cobraron, apúntalo en la ficha de cada paciente para que cuadren las cuentas; si no, son unos ${formatEuros(est)} pendientes (a ${formatCents(ticket ?? 0)} por sesión).`
         : 'Si se cobraron, apúntalo en la ficha de cada paciente para que cuadren las cuentas; si no, es dinero pendiente.',
       impactCents: est,
       action: { kind: 'link', label: 'Ver sesiones', href: input.hrefs.pendingIncome },

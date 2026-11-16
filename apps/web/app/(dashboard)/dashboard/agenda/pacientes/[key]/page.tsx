@@ -61,6 +61,7 @@ import { formatPhoneDisplay, initialsOf, phoneDigits } from '@/lib/patients/name
 import { dialPrefixForTimezone } from '@/lib/phone-prefix';
 import { localDateKey } from '@/lib/tasks/tz';
 import { CalendarDays, CalendarPlus, MessageCircle, Pencil, Phone, Star } from 'lucide-react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AgendaNav } from '../../agenda-nav';
@@ -981,3 +982,5 @@ export default async function PacienteDossierPage({
     </>
   );
 }
+
+export const metadata: Metadata = { title: 'Ficha del paciente' };

@@ -1,6 +1,7 @@
 import { PageHeader } from '@/components/dashboard/page-header';
 import { getCurrentTenant } from '@/lib/tenant';
 import { Settings, ShieldCheck } from 'lucide-react';
+import type { Metadata } from 'next';
 import { AgentStatusPanel } from './_panels/agent-status-panel';
 import { IntegrationsPanel } from './_panels/integrations-panel';
 import { ModulesPanel } from './_panels/modules-panel';
@@ -60,3 +61,5 @@ export default async function ConfigurationPage({
     </>
   );
 }
+
+export const metadata: Metadata = { title: 'Configuración' };

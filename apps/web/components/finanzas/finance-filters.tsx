@@ -139,13 +139,83 @@ export function FinanceFilters({ params, categories, professionals, show }: Fina
 
   const secondaryCount = chips.filter((c) => c.key !== 'q').length;
 
+  // Sin tipo, estado ni búsqueda (Resumen) todo cabe en una fila: el período
+  // y, a la derecha, «Más filtros».
+  const hasPrimary = Boolean(show.kind || show.status || show.q);
+
+  const moreButton = hasSecondary ? (
+    <button
+      type="button"
+      aria-expanded={more}
+      onClick={() => setMore((v) => !v)}
+      className={cn(
+        'inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-semibold transition-colors',
+        more || secondaryCount > 0
+          ? 'border-brand-200 bg-brand-50 text-brand-800'
+          : 'border-(--color-border) bg-white text-zinc-700 hover:bg-zinc-50',
+      )}
+    >
+      <SlidersHorizontal className="h-3.5 w-3.5" />
+      <span className="max-sm:sr-only">Más filtros</span>
+      {secondaryCount > 0 && (
+        <span className="rounded-full bg-brand-600 px-1.5 py-0.5 text-[11px] text-white">
+          {secondaryCount}
+        </span>
+      )}
+    </button>
+  ) : null;
+
+  const clearButton = anyFilter ? (
+    <button
+      type="button"
+      onClick={() =>
+        push({
+          kind: null,
+          status: null,
+          cat: null,
+          prof: null,
+          method: null,
+          source: null,
+          q: null,
+          basis: null,
+        })
+      }
+      className="inline-flex h-10 shrink-0 items-center gap-1 rounded-full px-3 text-[13px] font-semibold text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+    >
+      <X className="h-3.5 w-3.5" /> Quitar filtros
+    </button>
+  ) : null;
+
+  const pickPeriod = (p: (typeof FINANCE_PERIODS)[number]) =>
+    push(
+      p === 'custom'
+        ? { period: p, from: customFrom, to: customTo }
+        : { period: p, from: null, to: null },
+    );
+
   return (
     <div
-      className="mb-5 flex flex-col gap-3 rounded-[22px] border border-(--color-border) bg-white/80 p-3 shadow-[var(--shadow-soft)] backdrop-blur-xl sm:p-4"
+      className="mb-5 flex flex-col gap-3 rounded-[22px] border border-(--color-border) bg-white/90 p-2.5 shadow-[var(--shadow-soft)] sm:p-3"
       aria-busy={pending || undefined}
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="scrollbar-none -mx-1 flex max-w-full items-center gap-1 overflow-x-auto px-1">
+      <div className="flex items-center gap-2">
+        {/* Móvil: un selector. Seis pastillas no caben y cortadas parecen un fallo. */}
+        <Select
+          aria-label="Período"
+          value={period}
+          onChange={(e) => pickPeriod(e.target.value as (typeof FINANCE_PERIODS)[number])}
+          className="h-10 min-w-0 flex-1 text-[14px] font-semibold sm:hidden"
+        >
+          {FINANCE_PERIODS.map((p) => (
+            <option key={p} value={p}>
+              {FINANCE_PERIOD_LABELS[p]}
+            </option>
+          ))}
+        </Select>
+        <fieldset
+          className="hidden min-w-0 items-center gap-0.5 rounded-full border-0 bg-zinc-100/80 p-1 sm:inline-flex"
+          aria-label="Período"
+        >
           {FINANCE_PERIODS.map((p) => {
             const active = period === p;
             return (
@@ -153,29 +223,31 @@ export function FinanceFilters({ params, categories, professionals, show }: Fina
                 key={p}
                 type="button"
                 aria-pressed={active}
-                onClick={() =>
-                  push(
-                    p === 'custom'
-                      ? { period: p, from: customFrom, to: customTo }
-                      : { period: p, from: null, to: null },
-                  )
-                }
+                onClick={() => pickPeriod(p)}
                 className={cn(
-                  'shrink-0 rounded-full px-3.5 py-2 text-[13px] font-semibold transition-all duration-300',
+                  'shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-all duration-300',
                   active
-                    ? 'bg-[linear-gradient(120deg,#37766a,#5fa896)] text-white shadow-[0_6px_18px_-8px_rgba(55,118,106,0.8)]'
-                    : 'text-zinc-600 hover:bg-zinc-100 hover:text-brand-700',
+                    ? 'bg-white text-brand-800 shadow-[0_2px_10px_-3px_rgba(20,33,29,0.25)]'
+                    : 'text-zinc-600 hover:text-zinc-900',
                 )}
               >
                 {FINANCE_PERIOD_LABELS[p]}
               </button>
             );
           })}
-        </div>
-        {pending && <Loader2 className="h-4 w-4 animate-spin text-brand-600" aria-hidden />}
-        <span className="ml-auto hidden text-[12px] font-medium text-zinc-600 sm:inline">
+        </fieldset>
+        {pending && (
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-brand-600" aria-hidden />
+        )}
+        <span className="ml-auto hidden whitespace-nowrap pl-2 text-[12px] font-medium capitalize text-zinc-500 xl:inline">
           {params.period.label}
         </span>
+        {!hasPrimary && (
+          <div className="flex shrink-0 items-center gap-1 max-xl:ml-auto">
+            {clearButton}
+            {moreButton}
+          </div>
+        )}
       </div>
 
       {period === 'custom' && (
@@ -216,91 +288,56 @@ export function FinanceFilters({ params, categories, professionals, show }: Fina
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-2">
-        {show.kind && (
-          <Select
-            aria-label="Tipo"
-            value={filters.kind ?? ''}
-            onChange={(e) => push({ kind: e.target.value || null, cat: null })}
-            className="h-10 w-auto min-w-[150px] text-[13px]"
-          >
-            <option value="">Ingresos y gastos</option>
-            <option value="INCOME">Sólo ingresos</option>
-            <option value="EXPENSE">Sólo gastos</option>
-          </Select>
-        )}
-        {show.status && (
-          <Select
-            aria-label="Estado"
-            value={filters.status ?? ''}
-            onChange={(e) => push({ status: e.target.value || null })}
-            className="h-10 w-auto min-w-[130px] text-[13px]"
-          >
-            <option value="">Todos los estados</option>
-            <option value="PAID">Pagados / cobrados</option>
-            <option value="PENDING">Pendientes</option>
-          </Select>
-        )}
-        {show.q && (
-          <form
-            className="relative min-w-[160px] flex-1"
-            onSubmit={(e) => {
-              e.preventDefault();
-              push({ q: q.trim() || null });
-            }}
-          >
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-            <Input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Buscar…"
-              className="h-10 pl-10 text-[13px] placeholder:text-zinc-500"
-              aria-label="Buscar por concepto, proveedor o paciente"
-            />
-          </form>
-        )}
-        {hasSecondary && (
-          <button
-            type="button"
-            aria-expanded={more}
-            onClick={() => setMore((v) => !v)}
-            className={cn(
-              'inline-flex h-10 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-semibold transition-colors',
-              more || secondaryCount > 0
-                ? 'border-brand-200 bg-brand-50 text-brand-800'
-                : 'border-(--color-border) bg-white text-zinc-700 hover:bg-zinc-50',
+      {hasPrimary && (
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+          {show.kind && (
+            <Select
+              aria-label="Tipo"
+              value={filters.kind ?? ''}
+              onChange={(e) => push({ kind: e.target.value || null, cat: null })}
+              className="h-10 w-auto min-w-[150px] text-[13px]"
+            >
+              <option value="">Ingresos y gastos</option>
+              <option value="INCOME">Sólo ingresos</option>
+              <option value="EXPENSE">Sólo gastos</option>
+            </Select>
+          )}
+          {show.status && (
+            <Select
+              aria-label="Estado"
+              value={filters.status ?? ''}
+              onChange={(e) => push({ status: e.target.value || null })}
+              className="h-10 w-auto min-w-[130px] text-[13px]"
+            >
+              <option value="">Estado: todos</option>
+              <option value="PAID">Pagados / cobrados</option>
+              <option value="PENDING">Pendientes</option>
+            </Select>
+          )}
+          <div className="col-span-2 flex min-w-0 flex-wrap items-center gap-2 sm:contents">
+            {show.q && (
+              <form
+                className="relative min-w-[160px] flex-1"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  push({ q: q.trim() || null });
+                }}
+              >
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+                <Input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Buscar…"
+                  className="h-10 pl-10 text-[13px] placeholder:text-zinc-500"
+                  aria-label="Buscar por concepto, proveedor o paciente"
+                />
+              </form>
             )}
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5" />
-            Más filtros
-            {secondaryCount > 0 && (
-              <span className="rounded-full bg-brand-600 px-1.5 py-0.5 text-[11px] text-white">
-                {secondaryCount}
-              </span>
-            )}
-          </button>
-        )}
-        {anyFilter && (
-          <button
-            type="button"
-            onClick={() =>
-              push({
-                kind: null,
-                status: null,
-                cat: null,
-                prof: null,
-                method: null,
-                source: null,
-                q: null,
-                basis: null,
-              })
-            }
-            className="inline-flex h-10 items-center gap-1 rounded-full px-3 text-[13px] font-semibold text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
-          >
-            <X className="h-3.5 w-3.5" /> Quitar filtros
-          </button>
-        )}
-      </div>
+            {moreButton}
+            {clearButton}
+          </div>
+        </div>
+      )}
 
       {more && hasSecondary && (
         <div className="flex flex-wrap items-center gap-2 border-t border-(--color-border-subtle) pt-3">

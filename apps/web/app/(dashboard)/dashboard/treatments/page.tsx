@@ -8,6 +8,7 @@ import { HeadRow, TD, TH, THead, TR, Table, TableWrap } from '@/components/ui/ta
 import { listTreatmentsForTenant } from '@/lib/data/treatments';
 import { getCurrentTenant } from '@/lib/tenant';
 import { Plus, Stethoscope } from 'lucide-react';
+import type { Metadata } from 'next';
 import { DeleteTreatmentButton } from './delete-button';
 import { TreatmentDialog } from './treatment-dialog';
 
@@ -164,3 +165,5 @@ function EmptyState() {
     </Card>
   );
 }
+
+export const metadata: Metadata = { title: 'Tratamientos' };

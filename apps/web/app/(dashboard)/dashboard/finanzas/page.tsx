@@ -26,6 +26,7 @@ import { ensureFinanceProvisioned } from '@/lib/finance/service';
 import { getInvoiceSettings } from '@/lib/invoices/service';
 import { addDaysToKey, localDateKey, parseDateKey, zonedToUtc } from '@/lib/tasks/tz';
 import { Download, Lock, Wallet } from 'lucide-react';
+import type { Metadata } from 'next';
 import { FinanzasNav } from './finanzas-nav';
 
 export const dynamic = 'force-dynamic';
@@ -207,3 +208,5 @@ function NoAccess() {
     </>
   );
 }
+
+export const metadata: Metadata = { title: 'Finanzas' };

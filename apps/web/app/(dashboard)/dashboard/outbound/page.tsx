@@ -12,6 +12,7 @@ import { USE_CASE_LABEL, type UseCase, listCampaigns } from '@/lib/data/outbound
 import { getTenantTimezone } from '@/lib/tasks/materialize';
 import { getCurrentTenant } from '@/lib/tenant';
 import { ArrowRight, PhoneOutgoing, Plus } from 'lucide-react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
@@ -150,3 +151,5 @@ export default async function OutboundPage() {
     </div>
   );
 }
+
+export const metadata: Metadata = { title: 'Llamadas salientes' };

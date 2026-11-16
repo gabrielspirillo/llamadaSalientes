@@ -20,6 +20,7 @@ import {
   type FinanceBasis,
   type FinancePaymentMethod,
   type LedgerLine,
+  displayName,
   documentKindGroup,
   formatCents,
   formatDateKey,
@@ -235,7 +236,7 @@ export function LedgerTable({
                             FINANCE_RECURRENCE_LABELS[line.recurrence].toLowerCase(),
                         ]
                       : [
-                          line.treatmentName ?? line.concept,
+                          displayName(line.treatmentName ?? line.concept),
                           line.professionalName,
                           line.paymentMethod && FINANCE_PAYMENT_METHOD_LABELS[line.paymentMethod],
                         ]
@@ -243,7 +244,7 @@ export function LedgerTable({
                     .filter(Boolean)
                     .join(' · ');
                   return (
-                    <li key={line.key} className={cn(unbilled && 'bg-amber-50/40')}>
+                    <li key={line.key}>
                       <button
                         type="button"
                         onClick={() => setExpanded(isOpen ? null : line.key)}
@@ -299,9 +300,13 @@ export function LedgerTable({
                                   : 'text-zinc-900',
                             )}
                           >
-                            {line.amountCents === null
-                              ? 'Sin importe'
-                              : `${isIncome ? '+' : '−'}${formatCents(line.amountCents)}`}
+                            {line.amountCents === null ? (
+                              <span className="text-[12.5px] font-medium text-zinc-400">
+                                Sin importe
+                              </span>
+                            ) : (
+                              `${isIncome ? '+' : '−'}${formatCents(line.amountCents)}`
+                            )}
                           </span>
                           <span
                             className={cn(

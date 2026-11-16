@@ -29,6 +29,7 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 
 const TABS = [
@@ -330,3 +331,5 @@ function RangePill({ href, active, label }: { href: string; active: boolean; lab
     </Link>
   );
 }
+
+export const metadata: Metadata = { title: 'Analítica' };

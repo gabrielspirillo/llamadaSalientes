@@ -1,4 +1,5 @@
 import { and, asc, desc, eq } from 'drizzle-orm';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 
 import { PageHeader } from '@/components/dashboard/page-header';
@@ -89,3 +90,5 @@ export default async function RemindersSettingsPage() {
     </>
   );
 }
+
+export const metadata: Metadata = { title: 'Ajustes de recordatorios' };

@@ -7,6 +7,7 @@ import { SegmentedNav } from '@/components/ui/tabs';
 import { getAgentConfig } from '@/lib/data/agent-config';
 import { getCurrentTenantOrNull } from '@/lib/tenant';
 import { Bot, MessageSquare, PhoneIncoming, PhoneOutgoing } from 'lucide-react';
+import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
 
@@ -122,3 +123,5 @@ export default async function AgentPage({
     </>
   );
 }
+
+export const metadata: Metadata = { title: 'Probar el asistente' };

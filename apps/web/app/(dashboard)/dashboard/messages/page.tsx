@@ -6,6 +6,7 @@ import { hasSeededChannels, seedMessagingForTenant } from '@/lib/messaging/seed'
 import type { ImRailDTO } from '@/lib/messaging/types';
 import { getCurrentTenant } from '@/lib/tenant';
 import { MessageSquare } from 'lucide-react';
+import type { Metadata } from 'next';
 import { after } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -93,3 +94,5 @@ export default async function MessagesPage({
     </>
   );
 }
+
+export const metadata: Metadata = { title: 'Mensajes' };

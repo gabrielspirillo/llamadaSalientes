@@ -17,6 +17,7 @@ import {
 import { getTenantTimezone } from '@/lib/tasks/materialize';
 import { getCurrentTenant } from '@/lib/tenant';
 import { ArrowRight, Filter, Phone, PhoneCall, Search } from 'lucide-react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 
 const motivoMap: Record<
@@ -302,3 +303,5 @@ export default async function CallsPage({
     </>
   );
 }
+
+export const metadata: Metadata = { title: 'Llamadas' };

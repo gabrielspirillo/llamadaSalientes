@@ -4,7 +4,9 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'FUTURA SOLUTIONS',
+  // Cada página pone su nombre delante: «Finanzas | Futura». En el panel, la
+  // campana añade los avisos sin ver: «(3) Finanzas | Futura».
+  title: { default: 'Futura', template: '%s | Futura' },
   description: 'Agente de voz IA para clínicas dentales',
 };
 

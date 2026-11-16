@@ -16,6 +16,7 @@ import { getDemoUpcoming } from '@/lib/demo-data';
 import { getCurrentTenant } from '@/lib/tenant';
 import { currentUser } from '@clerk/nextjs/server';
 import { ArrowRight, Bot, CalendarClock, Sparkles } from 'lucide-react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 
 export default async function DashboardOverview({
@@ -246,3 +247,5 @@ function relativeAgo(d: Date): string {
   const days = Math.round(h / 24);
   return `hace ${days} ${days === 1 ? 'día' : 'días'}`;
 }
+
+export const metadata: Metadata = { title: 'Inicio' };

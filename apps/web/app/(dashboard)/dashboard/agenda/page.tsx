@@ -32,6 +32,7 @@ import { getPatientPerson, listFamilyPatients } from '@/lib/patients/persons';
 import { localDateKey, zonedToUtc } from '@/lib/tasks/tz';
 import { and, asc, eq } from 'drizzle-orm';
 import { CalendarDays, Users } from 'lucide-react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { AgendaNav } from './agenda-nav';
 
@@ -325,3 +326,5 @@ export default async function AgendaPage({
     </>
   );
 }
+
+export const metadata: Metadata = { title: 'Agenda' };

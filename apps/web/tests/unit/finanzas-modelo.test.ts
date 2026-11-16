@@ -388,9 +388,10 @@ describe('healthReport', () => {
       open: openBalances([], '2026-09-30'),
       breakEven: breakEven(empty, range),
     });
-    // Sólo "sesiones sin cobro" tiene dato (cero): una señal verde y nada más.
+    // Sólo "sesiones sin cobro" tiene dato (cero): una señal no da para nota.
     expect(r.signals.filter((s) => s.level !== 'na').map((s) => s.key)).toEqual(['unbilled']);
-    expect(r.overall).toBe('healthy');
+    expect(r.overall).toBe('na');
+    expect(r.score).toBeNull();
   });
 });
 

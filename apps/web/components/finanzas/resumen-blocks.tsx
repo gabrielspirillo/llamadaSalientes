@@ -15,8 +15,10 @@ import {
   type LedgerLine,
   type SeriesPoint,
   type SignalLevel,
+  displayName,
   formatCents,
   formatDateKey,
+  formatEuros,
   plural,
 } from '@/lib/finance/model';
 import type {
@@ -139,40 +141,48 @@ export function PulseHero({
             <HeroStat
               label="Margen"
               dot="#ffffff"
-              value={current.marginPct === null ? null : Math.round(current.marginPct)}
+              value={
+                current.marginPct === null || current.expenseCents === 0
+                  ? null
+                  : Math.round(current.marginPct)
+              }
               suffix=" %"
             />
           </div>
 
-          {/* De cada 100 € que entran */}
-          <div className="mt-5">
-            <div className="flex items-baseline justify-between text-[12px] text-white/70">
-              <span>De cada 100 € que entran</span>
-              <span>
-                <strong className="text-white">{keep} €</strong> se quedan
-              </span>
-            </div>
-            <div className="mt-2 flex h-3 overflow-hidden rounded-full bg-white/10">
-              {expenseShare > 0 && (
-                <span
-                  className="h-full origin-left animate-grow-x bg-[linear-gradient(90deg,#f2c98a,#d4964a)]"
-                  style={{ width: `${expenseShare}%` }}
-                  title={`${expenseShare} € en gastos`}
-                />
-              )}
-              {keep > 0 && (
-                <span
-                  className="h-full origin-left animate-grow-x bg-[linear-gradient(90deg,#6cc3a5,#a7f3d0)]"
-                  style={{ width: `${keep}%`, animationDelay: '250ms' }}
-                />
-              )}
-            </div>
-            <p className="mt-1.5 text-[12px] text-white/55">
-              {current.expenseCents === 0
-                ? 'Sin gastos apuntados en el período: el margen real será menor.'
-                : `${expenseShare} € se van en gastos.`}
+          {/* De cada 100 € que entran. Sin gastos apuntados saldría «100 € se
+              quedan», que no es verdad: se dice lo que falta. */}
+          {current.expenseCents === 0 ? (
+            <p className="mt-5 rounded-2xl border border-dashed border-white/20 px-4 py-3 text-[12.5px] leading-relaxed text-white/70">
+              Sin gastos apuntados en el período, el resultado es todo lo que entra. Apunta
+              alquiler, nóminas y suministros para ver cuánto se queda de cada 100 €.
             </p>
-          </div>
+          ) : (
+            <div className="mt-5">
+              <div className="flex items-baseline justify-between text-[12px] text-white/70">
+                <span>De cada 100 € que entran</span>
+                <span>
+                  <strong className="text-white">{keep} €</strong> se quedan
+                </span>
+              </div>
+              <div className="mt-2 flex h-3 overflow-hidden rounded-full bg-white/10">
+                {expenseShare > 0 && (
+                  <span
+                    className="h-full origin-left animate-grow-x bg-[linear-gradient(90deg,#f2c98a,#d4964a)]"
+                    style={{ width: `${expenseShare}%` }}
+                    title={`${expenseShare} € en gastos`}
+                  />
+                )}
+                {keep > 0 && (
+                  <span
+                    className="h-full origin-left animate-grow-x bg-[linear-gradient(90deg,#6cc3a5,#a7f3d0)]"
+                    style={{ width: `${keep}%`, animationDelay: '250ms' }}
+                  />
+                )}
+              </div>
+              <p className="mt-1.5 text-[12px] text-white/55">{expenseShare} € se van en gastos.</p>
+            </div>
+          )}
         </div>
 
         <div className="flex min-w-0 flex-col rounded-[20px] bg-white/[0.06] p-4 ring-1 ring-white/10 sm:p-5">
@@ -437,9 +447,11 @@ export function InsightsCard({
                       </div>
                     )}
                   </div>
-                  {ins.impactCents !== null && ins.impactCents > 0 && (
+                  {/* «Sin gastos» ordena por lo que entra, pero ese importe no
+                      está «en juego»: no se enseña. */}
+                  {ins.impactCents !== null && ins.impactCents > 0 && ins.key !== 'no_expenses' && (
                     <span className="hidden shrink-0 self-start rounded-full bg-zinc-100 px-2.5 py-1 text-[12px] font-semibold tabular-nums text-zinc-700 sm:inline">
-                      {formatCents(ins.impactCents)}
+                      {formatEuros(ins.impactCents)}
                     </span>
                   )}
                 </li>
@@ -519,7 +531,9 @@ export function DiagnosisCard({ report }: { report: HealthReport }) {
             <p className="mt-0.5 text-[12.5px] leading-relaxed text-zinc-600">
               {scored === 0
                 ? 'Faltan datos: apunta ingresos y gastos para tener diagnóstico.'
-                : `Con ${plural(scored, 'señal', 'señales')} de ${report.signals.length}: las demás necesitan más datos.`}
+                : report.score === null
+                  ? `Sólo ${plural(scored, 'señal tiene', 'señales tienen')} dato: apunta los gastos y pon precio a los tratamientos para tener una nota fiable.`
+                  : `Con ${plural(scored, 'señal', 'señales')} de ${report.signals.length}: las demás necesitan más datos.`}
             </p>
           </div>
         </div>
@@ -574,27 +588,27 @@ export function RankList({
         <li key={r.id} className="animate-fade-up" style={{ animationDelay: `${i * 60}ms` }}>
           <div className="flex items-baseline justify-between gap-3 text-[13px]">
             <span className="min-w-0 truncate">
-              <span className="font-medium text-zinc-800">{r.name}</span>
+              <span className="font-medium text-zinc-800">{displayName(r.name)}</span>
               {r.hint && <span className="text-zinc-500"> · {r.hint}</span>}
             </span>
-            <span className="shrink-0 font-semibold tabular-nums text-zinc-900">
-              {formatCents(r.cents)}
+            <span className="shrink-0 tabular-nums">
+              {total > 0 && (
+                <span className="mr-2 text-[12px] text-zinc-500">
+                  {Math.round((r.cents / total) * 100)} %
+                </span>
+              )}
+              <span className="font-semibold text-zinc-900">{formatCents(r.cents)}</span>
             </span>
           </div>
-          <div className="mt-1.5 flex items-center gap-2">
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-zinc-100">
-              <span
-                className="block h-full origin-left animate-grow-x rounded-full"
-                style={{
-                  width: `${(r.cents / top) * 100}%`,
-                  background: r.color,
-                  animationDelay: `${150 + i * 70}ms`,
-                }}
-              />
-            </div>
-            <span className="w-9 shrink-0 text-right text-[11.5px] tabular-nums text-zinc-500">
-              {total > 0 ? `${Math.round((r.cents / total) * 100)} %` : ''}
-            </span>
+          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-zinc-100">
+            <span
+              className="block h-full origin-left animate-grow-x rounded-full"
+              style={{
+                width: `${(r.cents / top) * 100}%`,
+                background: r.color,
+                animationDelay: `${150 + i * 70}ms`,
+              }}
+            />
           </div>
         </li>
       ))}
@@ -613,10 +627,12 @@ export function AgingCard({
   href,
 }: { aging: AgingBucket[]; receivables: LedgerLine[]; totalCents: number; href: string }) {
   const count = aging.reduce((a, b) => a + b.count, 0);
-  const sum = Math.max(
-    1,
-    aging.reduce((a, b) => a + Math.max(b.cents, 0), 0),
-  );
+  const centsSum = aging.reduce((a, b) => a + Math.max(b.cents, 0), 0);
+  // Sin importes (tratamientos sin precio) la barra se reparte por sesiones.
+  const byCount = centsSum === 0;
+  const weight = (b: AgingBucket) => (byCount ? b.count : Math.max(b.cents, 0));
+  const sum = Math.max(1, byCount ? count : centsSum);
+  const unpriced = receivables.filter((l) => l.amountCents === null).length;
   return (
     <Card className="h-full">
       <CardTopbar
@@ -626,7 +642,9 @@ export function AgingCard({
         subtitle={
           count === 0
             ? 'Todo cobrado'
-            : `${formatCents(totalCents)} en ${plural(count, 'sesión', 'sesiones')}, por antigüedad`
+            : totalCents > 0
+              ? `${formatCents(totalCents)} en ${plural(count, 'sesión', 'sesiones')}, por antigüedad`
+              : `${plural(count, 'sesión', 'sesiones')} sin cobrar, por antigüedad`
         }
         action={
           count > 0 ? (
@@ -652,7 +670,7 @@ export function AgingCard({
                     key={b.label}
                     className="h-full origin-left animate-grow-x first:rounded-l-full last:rounded-r-full"
                     style={{
-                      flex: `${Math.max(b.cents, 0) / sum || 0.04} 0 0`,
+                      flex: `${weight(b) / sum || 0.04} 0 0`,
                       minWidth: 6,
                       background: AGING_COLORS[i],
                       animationDelay: `${i * 120}ms`,
@@ -677,7 +695,13 @@ export function AgingCard({
                 </li>
               ))}
             </ul>
-            <ul className="mt-4 divide-y divide-(--color-border-subtle)">
+            {unpriced > 0 && (
+              <p className="mt-4 rounded-2xl bg-amber-50/80 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-amber-900">
+                {unpriced === count ? 'Ninguna tiene' : `${unpriced} no tienen`} importe: el
+                tratamiento no tiene precio. Pónselo y aquí verás cuánto falta por cobrar.
+              </p>
+            )}
+            <ul className="mt-3 divide-y divide-(--color-border-subtle)">
               {receivables.slice(0, 5).map((l) => (
                 <li key={l.key} className="flex items-center gap-3 py-2.5 text-[13px]">
                   <span className="w-14 shrink-0 tabular-nums text-zinc-500">
@@ -687,7 +711,11 @@ export function AgingCard({
                     {l.patientName ?? l.concept}
                   </span>
                   <span className="shrink-0 font-semibold tabular-nums text-zinc-900">
-                    {l.amountCents === null ? 'Sin importe' : formatCents(l.amountCents)}
+                    {l.amountCents === null ? (
+                      <span className="font-normal text-zinc-400">Sin importe</span>
+                    ) : (
+                      formatCents(l.amountCents)
+                    )}
                   </span>
                   {l.patientKey && (
                     <Link
@@ -727,7 +755,7 @@ export function CostStructureCard({ current, be }: { current: FinanceSummary; be
         {needed === null ? (
           <p className="rounded-2xl bg-zinc-50 p-4 text-[13px] leading-relaxed text-zinc-600">
             {be.fixedMonthlyCents === 0
-              ? 'Marca como «fijos» los gastos que se pagan pase lo que pase (alquiler, nóminas, seguros) y aquí verás cuántas sesiones necesitas al mes para cubrirlos.'
+              ? 'Apunta los gastos que se pagan pase lo que pase (alquiler, nóminas, seguros) y márcalos como «fijos»: aquí verás cuántas sesiones al mes hacen falta para cubrirlos.'
               : be.avgTicketCents === null
                 ? 'Sin sesiones cobradas todavía no se puede calcular.'
                 : 'El precio de la sesión no cubre ni su coste variable: no hay número de sesiones que lo arregle.'}
@@ -753,34 +781,34 @@ export function CostStructureCard({ current, be }: { current: FinanceSummary; be
             </p>
           </div>
         )}
-        <div>
-          <div className="flex items-baseline justify-between text-[12.5px]">
-            <span className="font-medium text-zinc-700">Fijos y variables</span>
-            <span className="tabular-nums text-zinc-500">
-              {total > 0 ? `${fixedPct} % fijos` : 'Sin gastos'}
-            </span>
-          </div>
-          <div className="mt-2 flex h-2.5 overflow-hidden rounded-full bg-zinc-100">
-            {total > 0 && (
-              <>
-                <span
-                  className="h-full origin-left animate-grow-x bg-[#7aa6c2]"
-                  style={{ width: `${fixedPct}%` }}
-                />
-                <span
-                  className="h-full origin-left animate-grow-x bg-[#f2c98a]"
-                  style={{ width: `${100 - fixedPct}%`, animationDelay: '200ms' }}
-                />
-              </>
-            )}
-          </div>
-          {total > 0 && (
+        {total > 0 && (
+          <div>
+            <div className="flex items-baseline justify-between text-[12.5px]">
+              <span className="font-medium text-zinc-700">Fijos y variables</span>
+              <span className="tabular-nums text-zinc-500">
+                {total > 0 ? `${fixedPct} % fijos` : 'Sin gastos'}
+              </span>
+            </div>
+            <div className="mt-2 flex h-2.5 overflow-hidden rounded-full bg-zinc-100">
+              {total > 0 && (
+                <>
+                  <span
+                    className="h-full origin-left animate-grow-x bg-[#7aa6c2]"
+                    style={{ width: `${fixedPct}%` }}
+                  />
+                  <span
+                    className="h-full origin-left animate-grow-x bg-[#f2c98a]"
+                    style={{ width: `${100 - fixedPct}%`, animationDelay: '200ms' }}
+                  />
+                </>
+              )}
+            </div>
             <p className="mt-1.5 flex gap-4 text-[12px] text-zinc-500">
               <span>Fijos {formatCents(current.fixedCents)}</span>
               <span>Variables {formatCents(current.variableCents)}</span>
             </p>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </Card>
   );

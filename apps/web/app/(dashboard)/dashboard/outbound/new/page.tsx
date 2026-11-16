@@ -1,6 +1,7 @@
 import { OutboundCampaignForm } from '@/components/dashboard/outbound-campaign-form';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { PhoneOutgoing } from 'lucide-react';
+import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,3 +20,5 @@ export default function NewOutboundCampaignPage() {
     </div>
   );
 }
+
+export const metadata: Metadata = { title: 'Nueva campaña' };

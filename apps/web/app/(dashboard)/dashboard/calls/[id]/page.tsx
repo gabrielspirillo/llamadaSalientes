@@ -24,6 +24,7 @@ import {
   User,
   Volume2,
 } from 'lucide-react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
@@ -376,3 +377,5 @@ function FieldRow({ label, value, mono }: { label: string; value: string; mono?:
     </div>
   );
 }
+
+export const metadata: Metadata = { title: 'Llamada' };

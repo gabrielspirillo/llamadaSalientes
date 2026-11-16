@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
@@ -311,3 +312,5 @@ function formatRelative(date: Date): string {
   if (days < 365) return `hace ${Math.floor(days / 30)} meses`;
   return `hace ${Math.floor(days / 365)} años`;
 }
+
+export const metadata: Metadata = { title: 'Contacto' };

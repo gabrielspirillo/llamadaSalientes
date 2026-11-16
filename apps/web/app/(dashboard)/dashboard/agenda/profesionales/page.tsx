@@ -14,6 +14,7 @@ import { db } from '@/lib/db/client';
 import { treatments } from '@/lib/db/schema';
 import { and, asc, eq } from 'drizzle-orm';
 import { Info, MessageCircle, Plus, Stethoscope, UserCog } from 'lucide-react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { AgendaNav } from '../agenda-nav';
@@ -204,3 +205,5 @@ export default async function ProfesionalesPage() {
     </>
   );
 }
+
+export const metadata: Metadata = { title: 'Profesionales' };

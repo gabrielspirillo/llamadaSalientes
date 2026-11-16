@@ -16,6 +16,7 @@ import {
   Wrench,
   XCircle,
 } from 'lucide-react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
@@ -316,3 +317,5 @@ export default async function AsistentePage({
     </>
   );
 }
+
+export const metadata: Metadata = { title: 'Revisión del asistente' };

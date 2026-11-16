@@ -1,5 +1,6 @@
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { ArrowLeft } from 'lucide-react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
@@ -326,3 +327,5 @@ export default async function WhatsappConversationDetailPage({ params }: Props) 
     </div>
   );
 }
+
+export const metadata: Metadata = { title: 'Conversación' };

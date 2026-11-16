@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/cn';
-import { type SeriesPoint, formatCents } from '@/lib/finance/model';
+import { type SeriesPoint, formatCents, formatEuros } from '@/lib/finance/model';
 import { useState } from 'react';
 
 /**
@@ -60,13 +60,18 @@ export function FlowChart({
   }
   const max = Math.max(1, ...points.map((p) => Math.max(p.incomeCents, p.expenseCents)));
   const minNet = Math.min(0, ...points.map((p) => p.netCents));
-  const top = niceCeil(max);
+  // Escala redonda: 0 · 100 · 200 · 300 €, no 0 · 167 · 333 €.
+  const step = niceCeil(max / 4);
+  const top = Math.ceil(max / step) * step;
   // Un resultado apenas negativo no merece medio eje: se queda en el cero.
   const bottom = showNet && minNet < 0 && -minNet > top * 0.08 ? -niceCeil(-minNet) : 0;
   const span = top - bottom || 1;
   const y = (v: number) => Math.min(100, Math.max(0, ((top - v) / span) * 100));
   const n = points.length;
-  const ticks = bottom < 0 ? [top, top / 2, 0, bottom] : [top, (top * 2) / 3, top / 3, 0];
+  const ticks =
+    bottom < 0
+      ? [top, top / 2, 0, bottom]
+      : Array.from({ length: Math.round(top / step) + 1 }, (_, i) => top - i * step);
   const labelEvery = n > 16 ? Math.ceil(n / 8) : 1;
   const linePts = points.map((p, i) => [((i + 0.5) / n) * 100, y(p.netCents)] as const);
   const path = linePts.map(([px, py], i) => `${i ? 'L' : 'M'}${px},${py}`).join(' ');
@@ -380,7 +385,7 @@ export function Donut({
         </svg>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-[17px] font-bold tabular-nums tracking-tight text-zinc-900">
-            {shortEuros(total)}
+            {total < 10_000_000 ? formatEuros(total) : shortEuros(total)}
           </span>
           <span className="text-[11px] text-zinc-500">{centerLabel}</span>
         </div>

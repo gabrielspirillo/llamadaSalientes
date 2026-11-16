@@ -1,4 +1,5 @@
 import { desc, eq } from 'drizzle-orm';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 
 import { db } from '@/lib/db/client';
@@ -40,3 +41,5 @@ export default async function QuickRepliesPage() {
     </div>
   );
 }
+
+export const metadata: Metadata = { title: 'Respuestas rápidas' };

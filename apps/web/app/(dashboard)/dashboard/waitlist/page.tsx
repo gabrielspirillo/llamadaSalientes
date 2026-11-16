@@ -1,4 +1,5 @@
 import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 
 import { PageHeader } from '@/components/dashboard/page-header';
@@ -467,3 +468,5 @@ async function AdvanceRequests({ tenantId, tz }: { tenantId: string; tz: string 
 // Mantengo sql en imports para uso futuro de helpers de agregación.
 void sql;
 void gte;
+
+export const metadata: Metadata = { title: 'Lista de espera' };

@@ -13,6 +13,7 @@ import { getProfessionalDetail, resolveTimezone } from '@/lib/agenda/queries';
 import { WEEKDAY_SHORT, minutesToHHMM } from '@/lib/agenda/shared';
 import { localDateKey } from '@/lib/tasks/tz';
 import { CalendarClock, CalendarOff, Clock, Stethoscope, UserCog } from 'lucide-react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { AgendaNav } from '../../agenda-nav';
@@ -252,3 +253,5 @@ export default async function ProfesionalDetailPage({
     </>
   );
 }
+
+export const metadata: Metadata = { title: 'Profesional' };

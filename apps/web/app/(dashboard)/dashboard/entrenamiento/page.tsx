@@ -20,6 +20,7 @@ import {
 import { getWhatsappAgentSettings } from '@/lib/data/whatsapp-agent-settings';
 import { getCurrentTenant } from '@/lib/tenant';
 import { BookOpen, FileText, GraduationCap, MessageSquare, Plus, Sparkles } from 'lucide-react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
@@ -272,3 +273,5 @@ export default async function EntrenamientoPage({
     </>
   );
 }
+
+export const metadata: Metadata = { title: 'Entrenar asistente' };

@@ -4,6 +4,7 @@ import { getGhlIntegration } from '@/lib/data/ghl-integration';
 import { listContacts } from '@/lib/ghl/contacts';
 import { getCurrentTenant } from '@/lib/tenant';
 import { Contact } from 'lucide-react';
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
@@ -38,3 +39,5 @@ export default async function ContactsPage() {
     </>
   );
 }
+
+export const metadata: Metadata = { title: 'Contactos' };

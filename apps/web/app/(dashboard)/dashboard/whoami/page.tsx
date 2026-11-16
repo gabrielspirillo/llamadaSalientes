@@ -8,7 +8,7 @@ import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata = { title: 'Info de cuenta · FUTURA' };
+export const metadata = { title: 'Info de cuenta' };
 
 // Página de diagnóstico: muestra los identificadores de TU propia cuenta/clínica.
 // Sirve para configurar el super-admin (FUTURA_TENANT_ID) sin adivinar el UUID.

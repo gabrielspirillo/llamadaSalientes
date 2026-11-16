@@ -2,6 +2,7 @@ import { contactDisplayNames } from '@/lib/patients/display-names';
 import { foldedWordsFilter } from '@/lib/patients/persons';
 import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
 import { MessageCircle, Settings2 } from 'lucide-react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 
 import { PageHeader } from '@/components/dashboard/page-header';
@@ -330,3 +331,5 @@ export default async function WhatsappConversationsPage({
     </div>
   );
 }
+
+export const metadata: Metadata = { title: 'WhatsApp' };

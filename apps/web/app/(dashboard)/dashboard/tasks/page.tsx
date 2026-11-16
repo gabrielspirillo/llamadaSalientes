@@ -13,6 +13,7 @@ import {
 } from '@/lib/tasks/queries';
 import { getCurrentTenant } from '@/lib/tenant';
 import { ClipboardCheck, DatabaseZap } from 'lucide-react';
+import type { Metadata } from 'next';
 import { after } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -102,3 +103,5 @@ function PendingMigration() {
     </>
   );
 }
+
+export const metadata: Metadata = { title: 'Tareas' };

@@ -5,6 +5,7 @@ import { getClinicSettings } from '@/lib/data/clinic';
 import { getWhatsappAgentSettings } from '@/lib/data/whatsapp-agent-settings';
 import { getCurrentTenant } from '@/lib/tenant';
 import { Building2, Sparkles } from 'lucide-react';
+import type { Metadata } from 'next';
 import { AgentPersonaForm } from '../whatsapp/integrations/_components/agent-persona-form';
 import { SettingsForm } from './settings-form';
 import { SpecialDaysCard } from './special-days-card';
@@ -80,3 +81,5 @@ export default async function SettingsPage() {
     </>
   );
 }
+
+export const metadata: Metadata = { title: 'Datos de la clínica' };

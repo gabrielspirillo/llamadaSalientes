@@ -1815,6 +1815,29 @@ con cobro), el Resumen pasó de «KPI y gráficos» a «cómo vas y qué harías
   borrar, ir a la ficha) y 14 días cada vez. Antes cada movimiento era una
   tarjeta con sus botones a la vista: 93 movimientos, 12.000 px de scroll.
 
+**Revisión de diseño del Resumen (16/11/2026, tarde)**: nada de cifras que
+mienten cuando falta un dato.
+- Sin gastos apuntados: el Margen sale «—» (no 100 %), la barra «de cada 100 €»
+  se sustituye por un aviso y la señal de margen del diagnóstico es «Falta dato».
+- Con lo pendiente sin importe (tratamientos sin precio) la señal de pendiente
+  es «Falta dato» (antes «0,00 €» en verde) y la tarjeta Pendiente de cobro
+  cuenta sesiones y lo explica.
+- `breakEven` sin fijos devuelve `null` (antes «0 sesiones/mes» en verde).
+- **Sin nota global con menos de tres señales con dato** (`HEALTH_MIN_SIGNALS`):
+  dos señales daban «En riesgo · 25».
+- Eje del gráfico en pasos redondos (0 · 100 · 200 €), estimaciones sin
+  céntimos (`formatEuros`), catálogos en MAYÚSCULAS en minúscula para leerlos
+  (`displayName`) y filtros en una fila (en móvil, el período es un selector).
+
+## Pestaña del navegador
+
+`app/layout.tsx` usa `title.template` (`%s | Futura`) y cada página del panel
+exporta su `metadata.title` («Finanzas | Futura»). La campana
+(`notification-center.tsx`) antepone los avisos sin ver, «(3) Finanzas |
+Futura», observando el `<head>` porque Next cambia el título al navegar. Una
+página nueva del panel lleva su `metadata`. El favicon es `app/icon.tsx` (la F
+en el verde de la marca).
+
 ## Facturas desde la ficha del paciente
 
 Pestaña **Contable** de la ficha → **Nueva factura** (migración `0042_facturas.sql`).

@@ -10,7 +10,6 @@ import {
   RankList,
   finColor,
 } from '@/components/finanzas/resumen-blocks';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardTopbar } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/feedback';
@@ -247,7 +246,6 @@ export function ResumenTab({
                   tone="grape"
                   title="Ingresos y gastos"
                   subtitle={`Por ${series.granularity === 'day' ? 'día' : series.granularity === 'week' ? 'semana' : 'mes'} · toca una columna para ver el detalle`}
-                  action={<Badge tone="accent">{period.label}</Badge>}
                 />
                 <div className="px-3 pb-5 sm:px-5 sm:pb-6">
                   <FlowChart points={series.points} showNet={series.granularity !== 'day'} />

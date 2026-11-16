@@ -135,6 +135,23 @@ export function NotificationCenter({
   const mentionsUnread = mentions.filter((m) => !m.readAt).length;
   const unread = items.filter((n) => !seen.has(n.ref)).length + mentionsUnread;
 
+  // «(3) Finanzas | Futura» en la pestaña del navegador, como hace LinkedIn.
+  // Next reescribe el <title> al navegar, así que se vuelve a poner el
+  // contador cada vez que cambia.
+  useEffect(() => {
+    const apply = () => {
+      const base = document.title.replace(/^\(\d+\+?\)\s*/, '');
+      const next = unread > 0 ? `(${unread > 99 ? '99+' : unread}) ${base}` : base;
+      if (document.title !== next) document.title = next;
+    };
+    apply();
+    // Se observa el <head> entero: al navegar Next puede cambiar el texto o
+    // sustituir el propio <title>.
+    const obs = new MutationObserver(apply);
+    obs.observe(document.head, { childList: true, characterData: true, subtree: true });
+    return () => obs.disconnect();
+  }, [unread]);
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: sólo al abrir
   useEffect(() => {
     if (!open) return;

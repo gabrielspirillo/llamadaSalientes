@@ -8,6 +8,7 @@ import { getCurrentTenant } from '@/lib/tenant';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { eq } from 'drizzle-orm';
 import { BarChart3, LayoutDashboard, MessageSquareWarning } from 'lucide-react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ModuleToggle } from '../configuration/_panels/modules-panel-toggle';
@@ -338,3 +339,5 @@ async function loadFuturaTeam(
     return { members: [], invites: [] };
   }
 }
+
+export const metadata: Metadata = { title: 'Panel Futura' };

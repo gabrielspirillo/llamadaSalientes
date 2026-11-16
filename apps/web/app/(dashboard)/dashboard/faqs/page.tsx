@@ -7,6 +7,7 @@ import { Stagger } from '@/components/ui/motion';
 import { listFaqsForTenant } from '@/lib/data/faqs';
 import { getCurrentTenant } from '@/lib/tenant';
 import { HelpCircle, Plus } from 'lucide-react';
+import type { Metadata } from 'next';
 import { DeleteFaqButton } from './delete-button';
 import { FaqDialog } from './faq-dialog';
 
@@ -85,3 +86,5 @@ export default async function FaqsPage() {
     </>
   );
 }
+
+export const metadata: Metadata = { title: 'Preguntas frecuentes' };

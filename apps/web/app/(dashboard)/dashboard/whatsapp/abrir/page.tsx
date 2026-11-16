@@ -1,4 +1,5 @@
 import { and, desc, eq } from 'drizzle-orm';
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import { normalizePatientPhone } from '@/lib/agenda/patients';
@@ -69,3 +70,5 @@ export default async function OpenWhatsappChatPage({
   });
   redirect(`/dashboard/whatsapp/${conversation.id}`);
 }
+
+export const metadata: Metadata = { title: 'WhatsApp' };

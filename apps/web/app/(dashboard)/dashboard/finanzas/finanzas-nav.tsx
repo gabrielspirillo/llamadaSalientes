@@ -47,7 +47,7 @@ export function FinanzasNav({
     <div className="mb-5 flex flex-col gap-1.5" aria-busy={pending || undefined}>
       <nav
         aria-label="Secciones de Finanzas"
-        className="scrollbar-none inline-flex max-w-full items-center gap-1 self-start overflow-x-auto rounded-full border border-(--color-border) bg-white/80 p-1"
+        className="scrollbar-none inline-flex max-w-full items-center gap-1 self-start overflow-x-auto rounded-full border border-(--color-border) bg-white/80 p-1 max-sm:flex max-sm:w-full max-sm:self-stretch"
       >
         {items.map((it) => {
           const href = financeHref(params, { tab: it.value });
@@ -63,14 +63,14 @@ export function FinanzasNav({
                 go(it.value, href);
               }}
               className={cn(
-                'inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-[14px] font-semibold transition-all duration-300',
+                'inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-full px-4 py-2 text-[14px] font-semibold transition-all duration-300 max-sm:flex-1 max-sm:px-2 max-sm:text-[13px]',
                 active
                   ? 'bg-[linear-gradient(120deg,#37766a,#5fa896)] text-white shadow-[0_6px_18px_-8px_rgba(55,118,106,0.8)]'
                   : 'text-zinc-600 hover:bg-zinc-100 hover:text-brand-700',
               )}
             >
               {it.label}
-              {typeof it.count === 'number' && (
+              {typeof it.count === 'number' && it.count > 0 && (
                 <span
                   className={cn(
                     'rounded-full px-1.5 py-0.5 text-[11px] tabular-nums',

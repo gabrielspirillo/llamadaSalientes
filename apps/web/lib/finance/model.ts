@@ -861,8 +861,12 @@ export function breakEven(summary: FinanceSummary, range: DateRange): BreakEven 
     summary.sessions > 0 ? Math.round(summary.variableCents / summary.sessions) : 0;
   const ticket = summary.avgTicketCents;
   const contribution = ticket === null ? null : ticket - variablePerSession;
+  // Sin fijos apuntados no hay punto de equilibrio que medir: «0 sesiones»
+  // se leería como que la clínica ya está cubierta.
   const sessionsPerMonth =
-    contribution !== null && contribution > 0 ? Math.ceil(fixedMonthly / contribution) : null;
+    fixedMonthly > 0 && contribution !== null && contribution > 0
+      ? Math.ceil(fixedMonthly / contribution)
+      : null;
   return {
     months,
     fixedMonthlyCents: fixedMonthly,
@@ -875,6 +879,25 @@ export function breakEven(summary: FinanceSummary, range: DateRange): BreakEven 
     sessionsPerMonthActual: Math.round((summary.sessions / months) * 10) / 10,
     fixedCoverage: summary.fixedCents > 0 ? summary.incomeCents / summary.fixedCents : null,
   };
+}
+
+/** "VISITA RECURRENTE" → "Visita recurrente": los catálogos en mayúsculas gritan en una lista. */
+export function displayName(name: string): string {
+  const letters = name.replace(/[^\p{L}]/gu, '');
+  if (letters.length < 4 || letters !== letters.toUpperCase()) return name;
+  const lower = name.toLocaleLowerCase('es-ES');
+  return lower.charAt(0).toLocaleUpperCase('es-ES') + lower.slice(1);
+}
+
+/** "6.536 €": importes estimados o de resumen, donde los céntimos son ruido. */
+export function formatEuros(cents: number): string {
+  return new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'EUR',
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+    useGrouping: 'always',
+  } as Intl.NumberFormatOptions).format(Math.round(cents / 100));
 }
 
 // ─── Semáforo de salud ──────────────────────────────────────────────────────
@@ -927,6 +950,9 @@ function pct(n: number): string {
   return `${Math.round(n)} %`;
 }
 
+/** Señales con dato que hacen falta para dar una nota global. */
+export const HEALTH_MIN_SIGNALS = 3;
+
 export function healthReport(input: {
   current: FinanceSummary;
   previous: FinanceSummary;
@@ -937,14 +963,17 @@ export function healthReport(input: {
   const signals: HealthSignal[] = [];
   const T = HEALTH_THRESHOLDS;
 
-  // 1. Margen neto
-  if (current.marginPct === null) {
+  // 1. Margen neto. Sin ningún gasto apuntado saldría un 100 % que no es real.
+  if (current.marginPct === null || current.expenseCents === 0) {
     signals.push({
       key: 'margin',
       label: 'Margen neto',
       level: 'na',
       value: '—',
-      detail: 'Sin ingresos en el período no hay margen que medir.',
+      detail:
+        current.marginPct === null
+          ? 'Sin ingresos en el período no hay margen que medir.'
+          : 'Sin gastos apuntados en el período el margen saldría del 100 %: apunta los gastos para medirlo.',
     });
   } else {
     const m = current.marginPct;
@@ -989,7 +1018,8 @@ export function healthReport(input: {
     });
   }
 
-  // 3. Pendiente de cobro
+  // 3. Pendiente de cobro. Si lo pendiente no tiene importe (tratamientos sin
+  // precio), «0,00 €» en verde mentiría: falta el dato.
   if (current.incomeCents === 0 && open.receivableCents === 0) {
     signals.push({
       key: 'receivables',
@@ -997,6 +1027,15 @@ export function healthReport(input: {
       level: 'na',
       value: '—',
       detail: 'Nada cobrado ni pendiente en el período.',
+    });
+  } else if (open.receivables.some((l) => l.amountCents === null)) {
+    signals.push({
+      key: 'receivables',
+      label: 'Pendiente de cobro',
+      level: 'na',
+      value: '—',
+      detail:
+        'Hay sesiones pendientes sin importe: pon precio a los tratamientos para saber cuánto falta por cobrar.',
     });
   } else {
     const ratio =
@@ -1115,8 +1154,10 @@ export function healthReport(input: {
     });
   }
 
+  // Con menos de tres señales con dato una nota de 0 a 100 es ruido: dos
+  // señales en rojo daban «En riesgo · 25» a una clínica sin gastos apuntados.
   const scored = signals.filter((s) => s.level !== 'na');
-  if (scored.length === 0) return { signals, overall: 'na', score: null };
+  if (scored.length < HEALTH_MIN_SIGNALS) return { signals, overall: 'na', score: null };
   const score = Math.round(
     scored.reduce((acc, s) => acc + (s.level === 'ok' ? 100 : s.level === 'warn' ? 50 : 0), 0) /
       scored.length,

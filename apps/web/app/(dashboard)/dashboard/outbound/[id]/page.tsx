@@ -12,6 +12,7 @@ import {
 import { getTenantTimezone } from '@/lib/tasks/materialize';
 import { getCurrentTenant } from '@/lib/tenant';
 import { Megaphone } from 'lucide-react';
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
@@ -160,3 +161,5 @@ function Stat({
     </Card>
   );
 }
+
+export const metadata: Metadata = { title: 'Campaña' };

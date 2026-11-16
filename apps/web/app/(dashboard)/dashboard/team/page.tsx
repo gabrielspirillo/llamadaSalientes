@@ -6,6 +6,7 @@ import { Avatar } from '@/components/ui/stat';
 import { getCurrentTenant } from '@/lib/tenant';
 import { clerkClient } from '@clerk/nextjs/server';
 import { Info, MailPlus, Users } from 'lucide-react';
+import type { Metadata } from 'next';
 import { InviteMember } from './invite-member';
 
 const roleMap: Record<string, { label: string; tone: 'accent' | 'info' | 'neutral' }> = {
@@ -173,3 +174,5 @@ export default async function TeamPage() {
     </>
   );
 }
+
+export const metadata: Metadata = { title: 'Equipo' };
