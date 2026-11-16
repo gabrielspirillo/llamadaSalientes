@@ -1926,12 +1926,17 @@ Lo puro en `lib/notifications/model.ts` (tests `avisos`), lo que lee en
 - Sin avisos: orbe de cristal con ondas (`.notif-ripple`, `.notif-orb`), sólo
   mientras el panel está abierto y vacío.
 
-**Línea del día** (bloque «Hoy», `DayLine` en `today-board.tsx`): sustituye a la
-barra de progreso. De la primera a la última hora, una marca por cita (llena =
-ya pasó) y el «ahora» que entra deslizándose (`.day-now`, sin `to`: acaba en el
-`transform` inline). «Siguiente» va en la fila de la hora de su tarjeta: debajo
-la hacía más alta y el carril dejaba un hueco en móvil. «Revenue por canal»
-sólo sale ya en el respaldo sin pulso (repetía «Recuperado»).
+**Línea del día** (bloque «Hoy», `components/dashboard/day-ribbon.tsx`, cliente):
+la jornada a escala sobre la rejilla de horas. Cada cita es un tramo del ancho
+de su duración (`TodayItem.minutes`): hecha = menta, faltada = rosa, en curso =
+se rellena por dentro con un brillo que la recorre, siguiente = borde menta,
+primera visita = borde miel. El «ahora» es una píldora con la hora que avanza
+sola cada 30 s (sólo con la pestaña visible) y entra deslizándose
+(`.day-now`, sin `to`). Al pasar por un tramo sale su hora y nombre, y la
+píldora se aparta (`group-has-[a:hover]`). En móvil, una hora sí y otra no.
+Sólo transform/opacity (`.ribbon-*` en globals.css). ⚠️ **El carril de tarjetas
+lleva `pb-10` + `-mb-5`**: un `overflow-x` recorta también en vertical y la
+sombra de «Siguiente» salía cortada. «Revenue por canal» sólo sale ya en el respaldo sin pulso (repetía «Recuperado»).
 
 ## Uso de la plataforma (sólo Futura)
 

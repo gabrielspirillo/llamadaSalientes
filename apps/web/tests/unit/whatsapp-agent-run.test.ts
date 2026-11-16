@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
 
@@ -108,6 +108,13 @@ describe('runWhatsappAgent', () => {
   });
 
   it('LLM llama check_availability y luego responde → intent=SCHEDULING', async () => {
+    // Un miércoles fijo: un lunes real, la autorrevisión pide «hoy» en vez de
+    // «el lunes» (relative_day) y el test dependía del día en que se corre.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-05-20T10:00:00Z'));
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
     mocks.callLLM
       .mockResolvedValueOnce({
         text: null,

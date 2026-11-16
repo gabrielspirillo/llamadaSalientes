@@ -33,6 +33,8 @@ export interface TodayItem {
   id: string;
   time: string;
   minute: number;
+  /** Duración de la cita, para dibujarla a escala en la línea del día. */
+  minutes: number;
   patientName: string;
   patientKey: string;
   status: AppointmentStatus;
@@ -110,6 +112,7 @@ export async function getTodayBoard(tenantId: string, tz: string): Promise<Today
       .select({
         id: agendaAppointments.id,
         startsAt: agendaAppointments.startsAt,
+        endsAt: agendaAppointments.endsAt,
         patientName: agendaAppointments.patientName,
         patientKey: agendaAppointments.patientKey,
         status: agendaAppointments.status,
@@ -289,6 +292,7 @@ export async function getTodayBoard(tenantId: string, tz: string): Promise<Today
         id: r.id,
         time: hhmm(minute),
         minute,
+        minutes: Math.max(10, Math.round((r.endsAt.getTime() - r.startsAt.getTime()) / 60_000)),
         patientName: r.patientName,
         patientKey: r.patientKey,
         status: r.status as AppointmentStatus,
@@ -325,6 +329,7 @@ export function getDemoTodayBoard(tz: string): TodayBoard {
       id: `demo-${i}`,
       time: hhmm(minute),
       minute,
+      minutes: 40,
       patientName: n,
       patientKey: 'anon:demo',
       status: st as AppointmentStatus,
