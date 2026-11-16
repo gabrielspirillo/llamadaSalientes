@@ -296,10 +296,18 @@ describe('breakEven', () => {
     expect(be.months).toBeCloseTo(0.986, 2);
     expect(be.variablePerSessionCents).toBe(1000);
     expect(be.contributionCents).toBe(4000);
-    // 101.400 / 4.000 → 26 sesiones
-    expect(be.sessionsPerMonth).toBe(26);
-    expect(be.revenuePerMonthCents).toBe(26 * 5000);
+    // Un mes (aunque tenga 30 días) paga sus fijos una vez: 100.000 / 4.000 → 25
+    expect(be.sessionsPerMonth).toBe(25);
+    expect(be.revenuePerMonthCents).toBe(25 * 5000);
     expect(be.fixedCoverage).toBeCloseTo(0.5, 2);
+  });
+
+  it('en un mes a medias los fijos no se estiran a mes completo', () => {
+    const s = summarizeLedger([
+      ...Array.from({ length: 10 }, () => session({ amountCents: 5000 })),
+      expense({ amountCents: 100000, isFixed: true }),
+    ]);
+    expect(breakEven(s, { from: '2026-11-01', to: '2026-11-16' }).fixedMonthlyCents).toBe(100000);
   });
 
   it('si el ticket no cubre el variable no hay número de sesiones', () => {

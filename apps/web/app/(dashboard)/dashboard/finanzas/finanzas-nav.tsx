@@ -47,7 +47,7 @@ export function FinanzasNav({
     <div className="mb-5 flex flex-col gap-1.5" aria-busy={pending || undefined}>
       <nav
         aria-label="Secciones de Finanzas"
-        className="scrollbar-none inline-flex max-w-full items-center gap-1 self-start overflow-x-auto rounded-full border border-(--color-border) bg-white/70 p-1 backdrop-blur-xl"
+        className="scrollbar-none inline-flex max-w-full items-center gap-1 self-start overflow-x-auto rounded-full border border-(--color-border) bg-white/80 p-1"
       >
         {items.map((it) => {
           const href = financeHref(params, { tab: it.value });

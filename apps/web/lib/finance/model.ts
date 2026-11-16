@@ -854,7 +854,9 @@ export function monthsInRange(range: DateRange): number {
  */
 export function breakEven(summary: FinanceSummary, range: DateRange): BreakEven {
   const months = monthsInRange(range);
-  const fixedMonthly = Math.round(summary.fixedCents / months);
+  // Un fijo se paga una vez al mes: en un mes a medias (este mes, día 16) ya
+  // está pagado entero, así que no se estira a «mes completo».
+  const fixedMonthly = Math.round(summary.fixedCents / Math.max(1, months));
   const variablePerSession =
     summary.sessions > 0 ? Math.round(summary.variableCents / summary.sessions) : 0;
   const ticket = summary.avgTicketCents;

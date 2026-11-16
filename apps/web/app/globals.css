@@ -1532,3 +1532,27 @@ html:has(.liquid) [data-slot="dialog"] {
     transform: translateX(260%);
   }
 }
+
+/* Donut de Finanzas: cada porción se abre desde su inicio, una tras otra. */
+@keyframes donut-seg {
+  from {
+    stroke-dasharray: 0 100;
+  }
+}
+.donut-seg {
+  animation: donut-seg 900ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+/* Líneas de los gráficos de Finanzas: se desvelan de izquierda a derecha una
+   vez (con `vector-effect` un trazo con guiones se ve entrecortado). */
+@keyframes reveal-x {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+.reveal-x {
+  animation: reveal-x 1.3s cubic-bezier(0.22, 1, 0.36, 1) 250ms backwards;
+}

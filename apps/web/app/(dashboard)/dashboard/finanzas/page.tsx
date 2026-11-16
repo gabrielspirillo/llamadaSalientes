@@ -10,11 +10,12 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/feedback';
 import { getClinicTimezone } from '@/lib/agenda/queries';
 import { type FinanceAccess, FinanceForbiddenError, getFinanceAccess } from '@/lib/finance/auth';
-import { linesTouchingRange, monthKeyOf } from '@/lib/finance/model';
+import { endOfMonthKey, linesTouchingRange, monthKeyOf } from '@/lib/finance/model';
 import { type RawSearchParams, financeQuery, parseFinanceParams } from '@/lib/finance/params';
 import {
   countEntriesByCategory,
   countRecurringCandidates,
+  getFinanceOutlook,
   getFinanceSettings,
   listCounterparties,
   listFinanceCategories,
@@ -23,7 +24,7 @@ import {
 } from '@/lib/finance/queries';
 import { ensureFinanceProvisioned } from '@/lib/finance/service';
 import { getInvoiceSettings } from '@/lib/invoices/service';
-import { localDateKey } from '@/lib/tasks/tz';
+import { addDaysToKey, localDateKey, parseDateKey, zonedToUtc } from '@/lib/tasks/tz';
 import { Download, Lock, Wallet } from 'lucide-react';
 import { FinanzasNav } from './finanzas-nav';
 
@@ -68,6 +69,7 @@ export default async function FinanzasPage({
     recurring,
     categoryCounts,
     invoiceSettings,
+    outlook,
   ] = await Promise.all([
     listFinanceCategories(access.tenantId, { includeInactive: true }),
     listFinanceProfessionals(access.tenantId),
@@ -84,6 +86,13 @@ export default async function FinanzasPage({
     params.tab === 'ajustes' ? countEntriesByCategory(access.tenantId) : Promise.resolve({}),
     params.tab === 'ajustes'
       ? getInvoiceSettings(access.tenantId).catch(() => null)
+      : Promise.resolve(null),
+    // Previsión del mes y avisos del Resumen: citas que quedan y catálogo sin precio.
+    params.tab === 'resumen'
+      ? getFinanceOutlook(access.tenantId, {
+          nowIso: new Date().toISOString(),
+          monthEndIso: startOfDayIso(addDaysToKey(endOfMonthKey(todayKey), 1), tz),
+        }).catch(() => null)
       : Promise.resolve(null),
   ]);
 
@@ -139,6 +148,7 @@ export default async function FinanzasPage({
           counterparties={counterparties}
           settings={settings}
           todayKey={todayKey}
+          outlook={outlook}
         />
       )}
       {params.tab === 'movimientos' && (
@@ -176,6 +186,11 @@ export default async function FinanzasPage({
       )}
     </ModuleGate>
   );
+}
+
+function startOfDayIso(key: string, tz: string): string {
+  const p = parseDateKey(key);
+  return (p ? zonedToUtc(p.year, p.month, p.day, 0, 0, tz) : new Date()).toISOString();
 }
 
 function NoAccess() {

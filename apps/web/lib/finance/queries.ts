@@ -547,3 +547,58 @@ export async function countRecurringCandidates(
   }
   return { candidates, alreadyCopied };
 }
+
+export interface FinanceOutlook {
+  /** Citas del resto del mes (desde ahora), no anuladas. */
+  upcoming: { count: number; knownCents: number; unpricedCount: number };
+  /** Tratamientos activos sin precio. */
+  unpricedTreatments: number;
+  /** Precios de lista de los tratamientos activos (null = sin precio). */
+  listPrices: (number | null)[];
+  /** ¿Hay algún gasto apuntado alguna vez? */
+  anyExpenseRecorded: boolean;
+}
+
+/**
+ * Lo que el Resumen necesita además del libro: las citas que quedan del mes
+ * (para la previsión) y si el catálogo y los gastos están completos (para las
+ * recomendaciones). Una sola ida a la base.
+ */
+export async function getFinanceOutlook(
+  tenantId: string,
+  w: { nowIso: string; monthEndIso: string },
+): Promise<FinanceOutlook> {
+  const [upcoming, catalog, expenses] = await Promise.all([
+    db.execute<{ count: number; known: number | null; unpriced: number }>(sql`
+      select count(*)::int as count,
+             sum(t.price_cents) filter (where t.price_cents > 0)::bigint as known,
+             count(*) filter (where coalesce(t.price_cents, 0) <= 0)::int as unpriced
+      from agenda_appointments a
+      left join treatments t on t.id = a.treatment_id and t.tenant_id = a.tenant_id
+      where a.tenant_id = ${tenantId}::uuid
+        and a.starts_at >= ${w.nowIso}::timestamptz
+        and a.starts_at < ${w.monthEndIso}::timestamptz
+        and a.status not in ('CANCELLED', 'NO_SHOW')
+    `),
+    db
+      .select({ price: treatments.priceCents })
+      .from(treatments)
+      .where(and(eq(treatments.tenantId, tenantId), eq(treatments.active, true))),
+    db
+      .select({ id: financeEntries.id })
+      .from(financeEntries)
+      .where(and(eq(financeEntries.tenantId, tenantId), eq(financeEntries.kind, 'EXPENSE')))
+      .limit(1),
+  ]);
+  const u = upcoming[0];
+  return {
+    upcoming: {
+      count: Number(u?.count ?? 0),
+      knownCents: Number(u?.known ?? 0),
+      unpricedCount: Number(u?.unpriced ?? 0),
+    },
+    unpricedTreatments: catalog.filter((c) => !c.price || c.price <= 0).length,
+    listPrices: catalog.map((c) => (c.price && c.price > 0 ? c.price : null)),
+    anyExpenseRecorded: expenses.length > 0,
+  };
+}

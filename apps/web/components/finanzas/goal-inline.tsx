@@ -11,7 +11,12 @@ import * as React from 'react';
 /** Fijar o cambiar el objetivo mensual sin salir del Resumen. */
 export function GoalInline({
   monthlyRevenueGoalCents,
-}: { monthlyRevenueGoalCents: number | null }) {
+  tone = 'light',
+}: {
+  monthlyRevenueGoalCents: number | null;
+  /** Sobre el bloque oscuro de arriba: botón de cristal y texto claro. */
+  tone?: 'light' | 'dark';
+}) {
   const router = useRouter();
   const [editing, setEditing] = React.useState(false);
   const [value, setValue] = React.useState(centsToInput(monthlyRevenueGoalCents));
@@ -33,7 +38,11 @@ export function GoalInline({
 
   if (!editing) {
     return (
-      <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
+      <Button
+        size="sm"
+        variant={tone === 'dark' ? 'glass' : 'ghost'}
+        onClick={() => setEditing(true)}
+      >
         <Pencil className="h-3.5 w-3.5" />{' '}
         {monthlyRevenueGoalCents ? 'Cambiar objetivo' : 'Fijar objetivo'}
       </Button>
@@ -57,7 +66,11 @@ export function GoalInline({
           className="h-10 w-[140px]"
           autoFocus
         />
-        <span className="text-[13px] text-zinc-600">€ al mes</span>
+        <span
+          className={tone === 'dark' ? 'text-[13px] text-white/70' : 'text-[13px] text-zinc-600'}
+        >
+          € al mes
+        </span>
         <Button type="submit" size="sm" disabled={pending}>
           {pending ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -68,7 +81,7 @@ export function GoalInline({
         <Button
           type="button"
           size="sm"
-          variant="ghost"
+          variant={tone === 'dark' ? 'glass' : 'ghost'}
           onClick={() => setEditing(false)}
           disabled={pending}
         >

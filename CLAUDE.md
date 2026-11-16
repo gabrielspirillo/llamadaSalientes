@@ -1779,11 +1779,41 @@ facturas, miniaturas y ZIP por período en Documentos, arrastrar categorías.
 libro (concepto, proveedor, notas) cuando la clínica tiene el módulo; un
 resultado lleva a Movimientos con la búsqueda puesta.
 
-**Gráficos**: `components/finanzas/finance-charts.tsx` (recharts, por
-`charts-lazy.tsx`). Un solo eje por gráfico; el color sigue a la entidad (una
-categoría conserva su color aunque cambie el filtro: se pasa `colorIndex` desde
-el catálogo, no desde el ranking); ingresos en verde de marca, gastos en gris
-neutro, resultado como línea oscura.
+**Rediseño del Resumen (16/11/2026)**. Con los datos de Respinens a la vista
+(ningún gasto apuntado, tratamientos sin precio, 178 sesiones en octubre y 68
+con cobro), el Resumen pasó de «KPI y gráficos» a «cómo vas y qué harías»:
+- **Bloque oscuro de arriba** (`PulseHero`, `components/finanzas/resumen-blocks.tsx`,
+  el mismo `data-slot="hero"` del «Hoy»): resultado grande, ingresos · gastos ·
+  margen, «de cada 100 € que entran, X se quedan», lo acumulado (entra / sale)
+  y, en el mes en curso, la **previsión de cierre**: lo cobrado + las citas
+  agendadas hasta fin de mes (a su precio o, sin él, al ticket medio;
+  `monthForecast`, datos de `getFinanceOutlook`). El objetivo se cambia ahí
+  mismo (`GoalInline tone="dark"`).
+- **«Qué haría ahora»** (`financeInsights`, `lib/finance/insights.ts`, puro,
+  tests `finanzas-recomendaciones`): frases con las cifras de la clínica,
+  ordenadas por tono (urgente · mejora · va bien) y dinero. Reglas: sin gastos
+  apuntados, sesiones sin cobro (al ticket medio), cobros de más de 30 días,
+  tratamientos sin precio, caída o subida de ingresos (y si es por sesiones o
+  por precio), ticket por debajo de la tarifa, un gasto que se dispara, punto
+  de equilibrio, dependencia de una persona, gastos sin pagar y previsión
+  frente al objetivo. Una regla nueva va ahí con su test; nunca un texto
+  genérico sin número.
+- **Diagnóstico**: el mismo `healthReport` en anillo de 0 a 100; las señales
+  sin dato dicen «Falta dato» en vez de puntuar.
+- ⚠️ **Gráficos hechos a mano, sin recharts** (`components/finanzas/fin-charts.tsx`):
+  barras en HTML que crecen con `transform`, líneas en SVG que se desvelan con
+  `clip-path` (`.reveal-x`; con `vector-effect` un trazo con guiones salía
+  entrecortado) y donut con `.donut-seg`. Por días no se pinta el resultado
+  (el alquiler cae un día y es ruido) y los meses vacíos del principio se
+  recortan. Se fueron `finance-charts`, `charts-lazy`, `health-card` y
+  `breakdown-list`.
+- ⚠️ **Los fijos de un mes a medias no se estiran** (`breakEven`:
+  `fijos / max(1, meses)`): el día 16 el alquiler del mes ya está pagado
+  entero; antes salía casi el doble.
+- **Movimientos** (`ledger-table.tsx`): filas compactas agrupadas por día con
+  su neto, que se abren al tocarlas (comprobantes, pagar, editar, adjuntar,
+  borrar, ir a la ficha) y 14 días cada vez. Antes cada movimiento era una
+  tarjeta con sus botones a la vista: 93 movimientos, 12.000 px de scroll.
 
 ## Facturas desde la ficha del paciente
 
@@ -2151,4 +2181,4 @@ LLM por llamada telefónica, una bloqueando. Ese trabajo va a la cola.
 
 ---
 
-**Última actualización**: 2026-11-14 (centro de avisos y línea del día). Anterior: 2026-11-13 (días con horario especial). Anterior: 2026-11-12 (salud del canal de WhatsApp tras la caída de Evolution: no anular sin canal fiable, mensajes tardíos, lote por disparador, avisos). Anterior: 2026-11-10 (bloque 2 de Respinens). Anterior: 2026-09-25 (auditoría de rendimiento con agentes: señal de navegación, caché del router, camino crítico del layout, topes de espera en los diez clientes externos, consultas encadenadas, índices de la migración 0044 y CI en verde).
+**Última actualización**: 2026-11-16 (rediseño de Finanzas: recomendaciones, previsión, gráficos propios). Anterior: 2026-11-14 (centro de avisos y línea del día). Anterior: 2026-11-13 (días con horario especial). Anterior: 2026-11-12 (salud del canal de WhatsApp tras la caída de Evolution: no anular sin canal fiable, mensajes tardíos, lote por disparador, avisos). Anterior: 2026-11-10 (bloque 2 de Respinens). Anterior: 2026-09-25 (auditoría de rendimiento con agentes: señal de navegación, caché del router, camino crítico del layout, topes de espera en los diez clientes externos, consultas encadenadas, índices de la migración 0044 y CI en verde).

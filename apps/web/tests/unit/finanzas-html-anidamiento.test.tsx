@@ -18,11 +18,6 @@ vi.mock('@/app/(dashboard)/dashboard/finanzas/actions', () => ({
   reorderCategoriesAction: vi.fn(),
   saveFinanceSettingsAction: vi.fn(),
 }));
-vi.mock('@/components/finanzas/charts-lazy', () => ({
-  IncomeExpenseChart: () => <div data-chart="income-expense" />,
-  CumulativeNetChart: () => <div data-chart="net" />,
-  ShareDonut: () => <div data-chart="donut" />,
-}));
 
 import { FinanzasNav } from '@/app/(dashboard)/dashboard/finanzas/finanzas-nav';
 import { AjustesTab } from '@/components/finanzas/ajustes-tab';
