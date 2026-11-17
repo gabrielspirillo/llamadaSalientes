@@ -932,8 +932,15 @@ html [data-instant-reveal] [data-reveal] {
 .history-dark .text-zinc-600 {
   color: rgb(209 250 229 / 0.75);
 }
-.history-dark .bg-brand-50 {
+.history-dark .bg-brand-50,
+.history-dark .bg-zinc-100 {
   background: rgb(255 255 255 / 0.1);
+}
+/* Etiquetas (carita de la sesión, «Privada»): con fondo blanco y el texto
+   aclarado por las reglas de arriba no se leían. */
+.history-dark .bg-zinc-100 {
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.14);
+  color: rgb(236 253 245 / 0.92);
 }
 .history-dark .text-brand-800 {
   color: rgb(236 253 245);
