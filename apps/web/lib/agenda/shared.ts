@@ -147,3 +147,20 @@ export interface SlotCandidate {
  * cuenta como bandera roja (el 6/11 una madre que cambió de día amaneció con 🚩).
  */
 export const RESCHEDULE_REASON = 'Cambiada por el paciente';
+
+/**
+ * Estados que ofrece la hoja de la cita. Filtra los que usa la clínica y,
+ * empezada la sesión, quita «Agendada» (salvo que la cita siga así, para que
+ * se vea su estado): del 10 al 17/11/2026 Respinens pasaba a «Agendada» 10-12
+ * sesiones al día al terminarlas, en vez de «Atendida».
+ */
+export function statusChoices(
+  flow: AppointmentStatus[],
+  opts: { visibleStatuses: string[] | null; status: AppointmentStatus; started: boolean },
+): AppointmentStatus[] {
+  return flow.filter(
+    (st) =>
+      (!opts.visibleStatuses || opts.visibleStatuses.includes(st)) &&
+      !(st === 'SCHEDULED' && opts.started && opts.status !== 'SCHEDULED'),
+  );
+}

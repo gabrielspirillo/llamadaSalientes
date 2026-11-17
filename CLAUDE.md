@@ -1144,6 +1144,10 @@ duplicadas, la IA podía agendar en la que no tiene la historia clínica.
   salían "Paciente sin identificar". Con perfil de atención el barrido no crea
   "Perseguir presupuesto" (el "próximo paso" de la nota es clínico); la `0068`
   archivó las abiertas y puso nombre a las otras.
+- **Empezada la sesión, la hoja de la cita ya no ofrece «Agendada»**
+  (`statusChoices`, `lib/agenda/shared.ts`, con test), salvo que siga así.
+  La auditoría lo destapó: del 10 al 17/11 Raquel pasaba 10-12 sesiones al
+  día de Confirmada a Agendada al terminarlas (1-2 a Atendida).
 - **Cambiar el estado de una cita desde el panel deja auditoría**
   (`updateAppointmentAction`: estado anterior y nuevo, `via: 'panel'`): el
   9/11 los estados de varias citas volvían a "Agendada" segundos después de
@@ -1441,6 +1445,11 @@ viera. Lo que quedó (migración `0071`, `lib/whatsapp/health.ts` +
   no se anula, tarea de llamar y tarjeta neutra para la clínica ("No ha
   contestado. La cita NO se ha anulado", sin mencionar WhatsApp). Su "1"
   tardío sigue valiendo.
+- **Recordatorio a Futura mientras siga caído** (`remindStaleDisconnections`,
+  en el tick de cada 5 min): cada 6 h, sólo canales que recibían mensajes en
+  los últimos 7 días y sin otra conexión activa. El aviso de desconexión sale
+  con el evento de Evolution; con la instancia borrada no llega ninguno más: el
+  16-17/11/2026 Respinens estuvo 33 h sin WhatsApp con un único aviso.
 - **Confirmada hoy = confirmada**, haya salido o no el recordatorio. La
   excepción del panel sólo miraba citas sin recordatorio (fallo del 10/11): una
   confirmación a mano a las 08:31 se anulaba a las 12:30. Un "1" escrito ANTES

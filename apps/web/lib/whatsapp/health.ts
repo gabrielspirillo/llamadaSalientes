@@ -219,6 +219,64 @@ export async function noteConnectionState(args: {
   }
 }
 
+/** Cada cuánto se recuerda a Futura un canal que sigue caído. */
+export const DOWN_REMINDER_MS = 6 * 3_600_000;
+/** Sólo canales que estaban en uso: una instancia de prueba vieja no avisa. */
+const DOWN_REMINDER_RECENT_USE_MS = 7 * 24 * 3_600_000;
+
+/**
+ * Recordatorio a Futura de un WhatsApp que sigue desconectado. El aviso de
+ * desconexión sale una vez, con el evento de Evolution; si la instancia se
+ * borra o no vuelve a mandar eventos, no hay más. El 16-17/11/2026 Respinens
+ * estuvo 32 h sin WhatsApp (sin recordatorios del día ni ofertas de hueco) con
+ * un único aviso a las 09:06. Lo llama el tick de cada 5 min; cada canal se
+ * «reclama» con `health_alerted_at`, así que como mucho un aviso cada 6 h.
+ */
+export async function remindStaleDisconnections(now = new Date()): Promise<number> {
+  let sent = 0;
+  try {
+    const cutoff = new Date(now.getTime() - DOWN_REMINDER_MS);
+    const claimed = await db
+      .update(whatsappConnections)
+      .set({ healthAlertedAt: now })
+      .where(
+        and(
+          sql`${whatsappConnections.status} in ('DISCONNECTED', 'ERROR')`,
+          lt(whatsappConnections.updatedAt, cutoff),
+          gte(
+            whatsappConnections.lastFreshInboundAt,
+            new Date(now.getTime() - DOWN_REMINDER_RECENT_USE_MS),
+          ),
+          or(
+            isNull(whatsappConnections.healthAlertedAt),
+            lt(whatsappConnections.healthAlertedAt, cutoff),
+          ),
+          // Ni archivadas ni clínicas que ya tienen otra conexión funcionando.
+          sql`not exists (select 1 from ${tenants} t where t.id = ${whatsappConnections.tenantId} and t.status = 'archived')`,
+          sql`not exists (select 1 from whatsapp_connections c2 where c2.tenant_id = ${whatsappConnections.tenantId} and c2.status = 'CONNECTED')`,
+        ),
+      )
+      .returning({
+        id: whatsappConnections.id,
+        tenantId: whatsappConnections.tenantId,
+        downSince: whatsappConnections.updatedAt,
+      });
+    for (const row of claimed) {
+      await alertChannelProblem({
+        tenantId: row.tenantId,
+        connectionId: row.id,
+        problem: 'DISCONNECTED',
+        hoursDown: Math.round((now.getTime() - row.downSince.getTime()) / 3_600_000),
+        force: true,
+      });
+      sent++;
+    }
+  } catch (err) {
+    console.warn('[wa-health] recordatorio de canal caído falló', (err as Error).message);
+  }
+  return sent;
+}
+
 /**
  * Aviso SÓLO para Futura (super-admin): tarjeta en #urgencias del espacio de
  * Futura con el nombre de la clínica. La clínica no ve nada de esto: los
@@ -232,6 +290,8 @@ async function alertChannelProblem(args: {
   problem: ChannelProblem | 'UNSTABLE';
   lagMinutes?: number;
   reconnects?: number;
+  /** Recordatorio: horas que lleva caído. */
+  hoursDown?: number;
   force?: boolean;
 }): Promise<void> {
   const now = new Date();
@@ -262,10 +322,14 @@ async function alertChannelProblem(args: {
   const body =
     args.problem === 'UNSTABLE'
       ? `La conexión de WhatsApp se ha reiniciado ${args.reconnects} veces en las últimas 24 h. Suele ser la señal previa a que deje de recibir mensajes: revisar la instancia de Evolution.`
-      : channelProblemText(args.problem, args.lagMinutes);
+      : args.hoursDown
+        ? `Sigue sin funcionar desde hace ${args.hoursDown} h: no salen recordatorios del día ni ofertas de hueco y el asistente no recibe mensajes. Hay que volver a vincular el número.`
+        : channelProblemText(args.problem, args.lagMinutes);
   const title =
     args.problem === 'DISCONNECTED'
-      ? `${clinicName}: WhatsApp desconectado`
+      ? args.hoursDown
+        ? `${clinicName}: WhatsApp sigue desconectado (${args.hoursDown} h)`
+        : `${clinicName}: WhatsApp desconectado`
       : args.problem === 'DELAYED'
         ? `${clinicName}: WhatsApp recibe con retraso`
         : `${clinicName}: WhatsApp inestable`;

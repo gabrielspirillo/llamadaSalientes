@@ -22,7 +22,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input, Label, Select } from '@/components/ui/input';
-import { type AppointmentStatus, SOURCE_LABELS, STATUS_LABELS } from '@/lib/agenda/shared';
+import {
+  type AppointmentStatus,
+  SOURCE_LABELS,
+  STATUS_LABELS,
+  statusChoices,
+} from '@/lib/agenda/shared';
 import type { CalendarItem } from '@/lib/agenda/view';
 import { cn } from '@/lib/cn';
 import {
@@ -144,7 +149,11 @@ export function AppointmentSheet({
     };
   }, [showReschedule, dateKey, duration, item.id, item.professionalId, item.firstVisit]);
 
-  const flow = FLOW.filter((st) => !visibleStatuses || visibleStatuses.includes(st));
+  const flow = statusChoices(FLOW, {
+    visibleStatuses,
+    status: item.status,
+    started: new Date(item.startsAt).getTime() <= Date.now(),
+  });
   const showNoShow = !visibleStatuses || visibleStatuses.includes('NO_SHOW');
   const [amount, setAmount] = React.useState(
     centsToInput(item.payment?.amountCents ?? item.treatmentPriceCents),

@@ -81,6 +81,9 @@ export async function runDayOfTick(now = new Date()): Promise<{ steps: number }>
     console.warn('[adelanto] cola de noche', (err as Error).message);
     return 0;
   });
+  // Recordatorio a Futura de un WhatsApp que sigue caído (cada 6 h).
+  const { remindStaleDisconnections } = await import('@/lib/whatsapp/health');
+  await remindStaleDisconnections(now);
   const profiles = await db
     .select({ tenantId: tenantCareProfile.tenantId, scripts: tenantCareProfile.messageScripts })
     .from(tenantCareProfile)
