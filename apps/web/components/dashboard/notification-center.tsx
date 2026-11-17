@@ -4,6 +4,7 @@ import { useMessaging } from '@/components/messaging/MessagingProvider';
 import { MentionsInbox } from '@/components/messaging/dock/MentionsInbox';
 import { cn } from '@/lib/cn';
 import { ACTIONABLE, type Notice, type NoticeCategory } from '@/lib/notifications/model';
+import { titleBase, withUnread } from '@/lib/notifications/title';
 import {
   AlertTriangle,
   ArrowRight,
@@ -139,17 +140,39 @@ export function NotificationCenter({
   // Next reescribe el <title> al navegar, así que se vuelve a poner el
   // contador cada vez que cambia.
   useEffect(() => {
+    // ⚠️ Esto se ejecuta dentro de un MutationObserver que escribe en lo que
+    // observa: cualquier escritura que no deje el título EXACTAMENTE igual al
+    // leerlo de nuevo es un bucle infinito. Pasó el 17/11/2026: al navegar,
+    // Next deja el título vacío un instante, se escribía «(9+) » y el
+    // navegador lo devolvía como «(9+)» (quita el espacio final), así que
+    // nunca coincidía y la página se colgaba («La página no responde»).
     const apply = () => {
-      const base = document.title.replace(/^\(\d+\+?\)\s*/, '');
-      const next = unread > 0 ? `(${unread > 9 ? '9+' : unread}) ${base}` : base;
-      if (document.title !== next) document.title = next;
+      const current = document.title;
+      const base = titleBase(current);
+      if (!base) return; // título vacío o sólo el contador: esperar al de Next
+      const next = withUnread(base, unread);
+      if (current === next) return;
+      // Cortafuegos: si aun así se escribe sin parar, se deja de observar.
+      writes += 1;
+      if (writes > 20) {
+        obs.disconnect();
+        return;
+      }
+      document.title = next;
     };
-    apply();
+    let writes = 0;
+    const reset = setInterval(() => {
+      writes = 0;
+    }, 1000);
     // Se observa el <head> entero: al navegar Next puede cambiar el texto o
     // sustituir el propio <title>.
     const obs = new MutationObserver(apply);
+    apply();
     obs.observe(document.head, { childList: true, characterData: true, subtree: true });
-    return () => obs.disconnect();
+    return () => {
+      obs.disconnect();
+      clearInterval(reset);
+    };
   }, [unread]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: sólo al abrir

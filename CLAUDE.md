@@ -2232,6 +2232,21 @@ Raquel trabaja en Safari en un MacBook Air. Lo que se quitó y no debe volver:
 - El respaldo de refresco del inbox de WhatsApp pasa de 25 s a 60 s (el SSE ya
   avisa al instante) y el de Recordatorios se pausa con la pestaña oculta.
 
+## ⚠️ El congelamiento del 17/11/2026: bucle infinito en el título de la pestaña
+
+La causa real de «la página no responde» (Chrome y Safari, escritorio y móvil,
+sobre todo al abrir la ficha): el contador de avisos del título
+(`notification-center.tsx`, desplegado el 16/11 a las 22:20) es un
+`MutationObserver` sobre `<head>` que escribe `document.title`. Al navegar, Next
+deja el título vacío un instante; se escribía «(9+) » y el navegador lo
+devuelve como «(9+)» (quita el espacio final), así que nunca coincidía y se
+reescribía sin fin, colgando la pestaña (reproducido en Chromium: 5.000
+vueltas en medio segundo, título «(9+)»). Ahora: lo puro en
+`lib/notifications/title.ts` (`titleBase`, `withUnread`, tests en
+`titulo-pestana`), sin base no se escribe nada, y un cortafuegos desconecta el
+observador si escribe más de 20 veces por segundo. **Un observador que escribe
+en lo que observa tiene que escribir un punto fijo exacto, o es un cuelgue.**
+
 ## Sin dobles recargas y pestañas al día (17/11/2026)
 
 - ⚠️ **Una Server Action que hace `revalidatePath` ya devuelve la página actual
