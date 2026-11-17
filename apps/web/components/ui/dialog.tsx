@@ -18,7 +18,9 @@ export const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'fixed inset-0 z-50 bg-[#14211d]/45 backdrop-blur-md',
+      // Más oscuro que antes: si el navegador no desenfoca (Safari con capas),
+      // el fondo sigue leyéndose como «detrás» y no compite con el modal.
+      'fixed inset-0 z-50 bg-[#14211d]/55 backdrop-blur-md',
       'data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out',
       className,
     )}

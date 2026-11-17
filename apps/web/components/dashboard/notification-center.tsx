@@ -141,7 +141,7 @@ export function NotificationCenter({
   useEffect(() => {
     const apply = () => {
       const base = document.title.replace(/^\(\d+\+?\)\s*/, '');
-      const next = unread > 0 ? `(${unread > 99 ? '99+' : unread}) ${base}` : base;
+      const next = unread > 0 ? `(${unread > 9 ? '9+' : unread}) ${base}` : base;
       if (document.title !== next) document.title = next;
     };
     apply();

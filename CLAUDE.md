@@ -242,7 +242,11 @@ cambia la distribución: vuelve de vidrio las superficies que ya existían.
   a `top-[68px]` bajan a 80 px y son casi opacas: con más transparencia el
   texto de debajo se mezclaba con el de las pestañas al hacer scroll.
 - Los modales se pintan fuera del panel: se alcanzan con
-  `html:has(.liquid) [data-slot="dialog"]`.
+  `html:has(.liquid) [data-slot="dialog"]`. ⚠️ **Son blancos y opacos, sin
+  desenfoque propio** (17/11/2026): en Safari el desenfoque del modal encima
+  del del fondo dejaba media pantalla nítida y el título de la página se leía a
+  través de la hoja de la cita. Sólo el fondo (`DialogOverlay`, verde al 55 %)
+  desenfoca, y se lee como «detrás» aunque el navegador no lo haga.
 - **Líneas del bloque «Hoy»** (`components/dashboard/hero-lines.tsx`): curvas
   finas con un destello menta que las recorre y deriva lenta, el mismo efecto que el fondo
   del portfolio en los verdes de la marca. Sólo SVG + CSS.
@@ -1834,7 +1838,7 @@ mienten cuando falta un dato.
 `app/layout.tsx` usa `title.template` (`%s | Futura`) y cada página del panel
 exporta su `metadata.title` («Finanzas | Futura»). La campana
 (`notification-center.tsx`) antepone los avisos sin ver, «(3) Finanzas |
-Futura», observando el `<head>` porque Next cambia el título al navegar. Una
+Futura» (tope «9+», igual que la campana), observando el `<head>` porque Next cambia el título al navegar. Una
 página nueva del panel lleva su `metadata`. El favicon es `app/icon.tsx` (la F
 en el verde de la marca).
 
