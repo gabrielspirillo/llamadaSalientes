@@ -23,6 +23,7 @@ import {
   X,
 } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { type PointerEvent, useCallback, useEffect, useRef, useState } from 'react';
 
 /**
@@ -91,6 +92,7 @@ export function NotificationCenter({
   const [seen, setSeen] = useState<Set<string>>(() => new Set());
   const [tab, setTab] = useState<Tab>('todo');
   const { mentions, ready: messagingReady } = useMessaging();
+  const pathname = usePathname();
 
   const load = useCallback(async () => {
     try {
@@ -137,43 +139,27 @@ export function NotificationCenter({
   const unread = items.filter((n) => !seen.has(n.ref)).length + mentionsUnread;
 
   // «(3) Finanzas | Futura» en la pestaña del navegador, como hace LinkedIn.
-  // Next reescribe el <title> al navegar, así que se vuelve a poner el
-  // contador cada vez que cambia.
+  // Contador de avisos en el título de la pestaña. Es sólo un detalle visual:
+  // se escribe como mucho tres veces por cambio de sección (Next pone su
+  // título al navegar, a veces un poco después) y nunca reacciona a sus
+  // propias escrituras. ⚠️ No volver a un MutationObserver sobre <head>: el
+  // 17/11/2026 entró en bucle y colgaba la pestaña («La página no responde»).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: se repite al cambiar de sección
   useEffect(() => {
-    // ⚠️ Esto se ejecuta dentro de un MutationObserver que escribe en lo que
-    // observa: cualquier escritura que no deje el título EXACTAMENTE igual al
-    // leerlo de nuevo es un bucle infinito. Pasó el 17/11/2026: al navegar,
-    // Next deja el título vacío un instante, se escribía «(9+) » y el
-    // navegador lo devolvía como «(9+)» (quita el espacio final), así que
-    // nunca coincidía y la página se colgaba («La página no responde»).
     const apply = () => {
-      const current = document.title;
-      const base = titleBase(current);
-      if (!base) return; // título vacío o sólo el contador: esperar al de Next
+      const base = titleBase(document.title);
+      if (!base) return; // Next aún no puso el título: lo pondrá el siguiente intento
       const next = withUnread(base, unread);
-      if (current === next) return;
-      // Cortafuegos: si aun así se escribe sin parar, se deja de observar.
-      writes += 1;
-      if (writes > 20) {
-        obs.disconnect();
-        return;
-      }
-      document.title = next;
+      if (document.title !== next) document.title = next;
     };
-    let writes = 0;
-    const reset = setInterval(() => {
-      writes = 0;
-    }, 1000);
-    // Se observa el <head> entero: al navegar Next puede cambiar el texto o
-    // sustituir el propio <title>.
-    const obs = new MutationObserver(apply);
     apply();
-    obs.observe(document.head, { childList: true, characterData: true, subtree: true });
+    const t1 = setTimeout(apply, 400);
+    const t2 = setTimeout(apply, 1500);
     return () => {
-      obs.disconnect();
-      clearInterval(reset);
+      clearTimeout(t1);
+      clearTimeout(t2);
     };
-  }, [unread]);
+  }, [unread, pathname]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: sólo al abrir
   useEffect(() => {

@@ -2247,6 +2247,13 @@ vueltas en medio segundo, título «(9+)»). Ahora: lo puro en
 observador si escribe más de 20 veces por segundo. **Un observador que escribe
 en lo que observa tiene que escribir un punto fijo exacto, o es un cuelgue.**
 
+Después se quitó el observador del todo: el contador es un `useEffect` sobre
+`[unread, pathname]` que escribe el título como mucho tres veces por cambio de
+sección (al momento, a 400 ms y a 1,5 s, por si Next pone el suyo tarde) y
+nunca reacciona a sus propias escrituras. Tope «9+». Probado en Chromium y
+WebKit con 40 navegaciones seguidas: una escritura por navegación, cero en
+reposo. ⚠️ No volver a un `MutationObserver` sobre `<head>`.
+
 ## Sin dobles recargas y pestañas al día (17/11/2026)
 
 - ⚠️ **Una Server Action que hace `revalidatePath` ya devuelve la página actual
