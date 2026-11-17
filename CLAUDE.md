@@ -275,6 +275,17 @@ cambia la distribución: vuelve de vidrio las superficies que ya existían.
 - **Los botones necesitan su `:hover` en el bloque de vidrio**: esas reglas van
   fuera de capa y pisan los `hover:` de Tailwind de cada variante.
 
+## Barras de desplazamiento (17/11/2026)
+
+En `globals.css` («Scrollbars»): la de la página, siempre visible pero fina,
+en el verde de la marca y sin carril; las de dentro (modales, columnas,
+listas) invisibles hasta pasar el ratón o tener el foco, más finas y
+apartadas 18 px de las esquinas redondeadas. Sobre fondo oscuro, la clase
+`scrollbar-on-dark`. ⚠️ **No poner `scrollbar-width`/`scrollbar-color` en un
+elemento**: en Chrome anulan los `::-webkit-scrollbar` y vuelve la barra gris
+del sistema; los estándar sólo van para Firefox, dentro de
+`@supports not selector(::-webkit-scrollbar)`. Para ocultar una, `.scrollbar-none`.
+
 ## Móvil (10/11/2026)
 
 - **Barra de pestañas abajo** (`components/dashboard/mobile-tab-bar.tsx`,

@@ -121,7 +121,7 @@ export function KanbanBoard({
 
             {/* Cada columna se desplaza por dentro: con cientos de tarjetas la
                 página ya no se alarga sin fin. */}
-            <div className="flex max-h-[calc(100dvh-320px)] min-h-[160px] flex-1 flex-col gap-2.5 overflow-y-auto overscroll-contain px-2.5 pb-3 [scrollbar-width:thin]">
+            <div className="flex max-h-[calc(100dvh-320px)] min-h-[160px] flex-1 flex-col gap-2.5 overflow-y-auto overscroll-contain px-2.5 pb-3">
               {column.map((task, i) => (
                 <div
                   key={task.id}

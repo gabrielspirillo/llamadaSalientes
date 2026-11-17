@@ -159,7 +159,7 @@ export function TodayBoardCard({ board, demo }: { board: TodayBoard; demo?: bool
               {/* El carril llega hasta el borde del bloque (sin el corte seco en
                   el padding) y se desvanece a la derecha: se lee que sigue. */}
               <ol
-                className="rise-stagger relative -mx-5 -mb-5 mt-2 flex gap-2.5 overflow-x-auto pt-4 pb-10 pl-5 pr-14 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.25)_transparent] sm:-mx-6 sm:pl-6"
+                className="rise-stagger relative -mx-5 -mb-5 mt-2 flex gap-2.5 overflow-x-auto pt-4 pb-10 pl-5 pr-14 scrollbar-on-dark sm:-mx-6 sm:pl-6"
                 style={{
                   maskImage:
                     'linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 56px), transparent)',

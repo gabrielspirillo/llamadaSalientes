@@ -726,7 +726,7 @@ function SidebarNav({
       {/* Con la barra de scroll oculta, en pantallas bajas el último ítem se
           cortaba por la mitad sin pista de que había más: se deja una barra
           fina, del color de la barra. */}
-      <nav className="flex-1 space-y-0.5 overflow-x-hidden overflow-y-auto px-3 py-3 [scrollbar-color:#cfd6d3_transparent] [scrollbar-width:thin]">
+      <nav className="flex-1 space-y-0.5 overflow-x-hidden overflow-y-auto px-3 py-3">
         {(agendaOnly ? AGENDA_ONLY_ENTRIES : ENTRIES).map((entry) => {
           if (entry.kind === 'group') {
             return (

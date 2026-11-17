@@ -755,23 +755,80 @@ html [data-instant-reveal] [data-reveal] {
    Scrollbars
    ========================================================================== */
 
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+/* La de la página: siempre visible pero fina, en el verde de la marca y sin
+   carril (el hueco reservado por `scrollbar-gutter` se funde con el fondo).
+   Engorda un poco al pasar por encima para que sea fácil de agarrar. */
+:root {
+  --sb-thumb: rgba(47, 107, 92, 0.24);
+  --sb-thumb-hover: rgba(47, 107, 92, 0.48);
 }
-::-webkit-scrollbar-track {
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
   background: transparent;
 }
+/* El carril de la página lleva el color del fondo de la página, no
+   transparente: en Safari un carril transparente puede pintarse negro. */
+html::-webkit-scrollbar-track {
+  background-color: inherit;
+}
 ::-webkit-scrollbar-thumb {
-  background: rgba(22, 26, 25, 0.16);
+  min-height: 48px;
+  border: 4px solid transparent;
   border-radius: 9999px;
-  border: 2px solid transparent;
+  background-color: var(--sb-thumb);
   background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(22, 26, 25, 0.3);
-  background-clip: padding-box;
-  border: 2px solid transparent;
+  border-width: 3px;
+  background-color: var(--sb-thumb-hover);
+}
+
+/* Las de dentro (modales, columnas, listas, paneles): invisibles hasta pasar
+   el ratón por encima, más finas y apartadas de las esquinas redondeadas.
+   Antes la del modal de la cita iba de arriba abajo pegada al borde. */
+body *::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+body *::-webkit-scrollbar-track {
+  margin: 18px;
+}
+body *::-webkit-scrollbar-thumb {
+  min-height: 32px;
+  border-width: 3px;
+  background-color: transparent;
+}
+body *:hover::-webkit-scrollbar-thumb,
+body *:focus-within::-webkit-scrollbar-thumb {
+  background-color: var(--sb-thumb);
+}
+body *::-webkit-scrollbar-thumb:hover {
+  background-color: var(--sb-thumb-hover);
+}
+
+/* Sobre fondos oscuros (bloque «Hoy», Resumen de Finanzas): pulgar claro. */
+.scrollbar-on-dark {
+  --sb-thumb: rgba(255, 255, 255, 0.26);
+  --sb-thumb-hover: rgba(255, 255, 255, 0.5);
+}
+
+/* Firefox no tiene los pseudoelementos: fina y del mismo color. Va aparte
+   porque en Chrome `scrollbar-color` anula todo lo de arriba. */
+@supports not selector(::-webkit-scrollbar) {
+  html {
+    scrollbar-color: rgba(47, 107, 92, 0.32) transparent;
+  }
+  body * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(47, 107, 92, 0.28) transparent;
+  }
+  body .scrollbar-on-dark {
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+  }
 }
 
 .scrollbar-none {
