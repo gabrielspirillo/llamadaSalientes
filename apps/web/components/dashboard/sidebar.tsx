@@ -565,7 +565,7 @@ function NavGroupRow({
               left: pos?.left ?? 0,
               visibility: pos ? 'visible' : 'hidden',
             }}
-            className="fixed z-50 w-[244px] animate-zoom-in rounded-[22px] border border-[#dfe4e2] bg-white/95 p-1.5 shadow-[0_28px_70px_-28px_rgba(20,33,29,0.55)] backdrop-blur-xl"
+            className="fixed z-50 w-[244px] animate-zoom-in rounded-[22px] border border-[#dfe4e2] bg-white/95 p-1.5 shadow-[0_28px_70px_-28px_rgba(20,33,29,0.55)]"
           >
             <p className="px-3 pb-1 pt-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
               {group.label}
@@ -716,7 +716,7 @@ function SidebarNav({
             elements: {
               rootBox: 'w-full',
               organizationSwitcherTrigger:
-                'w-full justify-between rounded-2xl border border-white/80 bg-white/80 px-3 py-2.5 text-sm backdrop-blur-xl transition-all hover:bg-white hover:shadow-[0_8px_20px_-14px_rgba(20,33,29,0.5)]',
+                'w-full justify-between rounded-2xl border border-white/80 bg-white/80 px-3 py-2.5 text-sm transition-all hover:bg-white hover:shadow-[0_8px_20px_-14px_rgba(20,33,29,0.5)]',
             },
           }}
         />
@@ -913,7 +913,7 @@ export function DashboardSidebarMobile({
       <button
         type="button"
         aria-label="Cerrar el menú"
-        className="absolute inset-0 bg-[#14211d]/40 backdrop-blur-md"
+        className="absolute inset-0 bg-[#14211d]/40"
         onClick={onClose}
       />
       <aside

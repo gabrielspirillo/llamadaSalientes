@@ -294,7 +294,7 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex animate-fade-in items-start justify-center bg-[#14211d]/25 pt-[10vh] backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex animate-fade-in items-start justify-center bg-[#14211d]/40 pt-[10vh]">
       {/* El fondo es un botón, no un div con onClick: así se puede cerrar con
           teclado y no sólo con el ratón. Va detrás del panel con -z-10. */}
       <button
@@ -303,7 +303,7 @@ function SearchPalette({ onClose }: { onClose: () => void }) {
         className="absolute inset-0 -z-10 cursor-default"
         onClick={onClose}
       />
-      <div className="w-[620px] max-w-[95vw] animate-pop overflow-hidden rounded-[26px] border border-white/70 bg-white/90 shadow-[0_40px_90px_-30px_rgba(20,33,29,0.4)] backdrop-blur-2xl">
+      <div className="w-[620px] max-w-[95vw] animate-pop overflow-hidden rounded-[26px] border border-white/70 bg-white shadow-[0_40px_90px_-30px_rgba(20,33,29,0.4)]">
         <div className="relative flex items-center gap-3 border-b border-(--color-border-subtle) px-5 py-4">
           <span
             aria-hidden

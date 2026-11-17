@@ -100,11 +100,11 @@ export function TodayBoardCard({ board, demo }: { board: TodayBoard; demo?: bool
         >
           <div
             aria-hidden
-            className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-emerald-300/20 blur-3xl animate-drift"
+            className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(110,231,183,0.24),transparent_68%)]"
           />
           <div
             aria-hidden
-            className="pointer-events-none absolute -bottom-28 left-1/3 h-56 w-56 rounded-full bg-teal-200/10 blur-3xl animate-float-slow"
+            className="pointer-events-none absolute -bottom-28 left-1/3 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(153,246,228,0.14),transparent_68%)]"
           />
           <HeroLines />
           <div className="relative flex flex-wrap items-end justify-between gap-3">
@@ -181,7 +181,7 @@ export function TodayBoardCard({ board, demo }: { board: TodayBoard; demo?: bool
                             ? 'bg-white text-[#14211d] shadow-[0_14px_30px_-12px_rgba(0,0,0,0.6),0_0_0_2px_rgba(110,231,183,0.9)]'
                             : past
                               ? 'bg-white/8 text-white/55 ring-1 ring-white/10'
-                              : 'bg-white/12 text-white ring-1 ring-white/15 backdrop-blur-sm hover:bg-white/18',
+                              : 'bg-white/12 text-white ring-1 ring-white/15 hover:bg-white/18',
                         )}
                       >
                         <div className="flex items-center justify-between">

@@ -344,8 +344,8 @@ export function ClinicalNoteForm({
 
       <div
         className={cn(
-          'sticky bottom-0 -mx-4 -mb-4 flex items-center justify-end gap-2 border-t border-(--color-border) bg-white/[.92] px-4 py-3 pr-24 backdrop-blur-xl',
-          'md:static md:m-0 md:bg-transparent md:px-0 md:pb-0 md:pt-3.5 md:backdrop-blur-none',
+          'sticky bottom-0 -mx-4 -mb-4 flex items-center justify-end gap-2 border-t border-(--color-border) bg-white/[.92] px-4 py-3 pr-24',
+          'md:static md:m-0 md:bg-transparent md:px-0 md:pb-0 md:pt-3.5',
         )}
       >
         {saved && (

@@ -15,7 +15,7 @@ export const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      'lg-track scrollbar-none inline-flex h-11 max-w-full items-center gap-1 overflow-x-auto rounded-full border border-(--color-border) bg-white/70 p-1 text-zinc-500 backdrop-blur-xl',
+      'lg-track scrollbar-none inline-flex h-11 max-w-full items-center gap-1 overflow-x-auto rounded-full border border-(--color-border) bg-white/90 p-1 text-zinc-500',
       className,
     )}
     {...props}
@@ -72,7 +72,7 @@ export function SegmentedNav({
   return (
     <div
       className={cn(
-        'lg-track scrollbar-none inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-(--color-border) bg-white/70 p-1 backdrop-blur-xl',
+        'lg-track scrollbar-none inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-(--color-border) bg-white/90 p-1',
         className,
       )}
     >
@@ -82,12 +82,10 @@ export function SegmentedNav({
           <NavLink
             key={it.value}
             href={it.href}
-            // Cada pestaña es una página de servidor distinta (Server
-            // Components por URL, no `TabsContent`). Se prefetchan: son pocas,
-            // están a la vista y es justo el salto que la gente hace más
-            // seguido. Con `prefetch={false}` cada clic era un round-trip
-            // entero contra la nada.
-            prefetch
+            // Cada pestaña es una página de servidor distinta. Antes se
+            // prefetchaban enteras al montar: 4-6 renders completos de la
+            // página en el servidor por cabecera, justo antes del primer clic.
+            // Ahora `NavLink` las calienta al pasar el ratón por encima.
             className={cn(
               'inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-[14px] font-semibold transition-all duration-300',
               active

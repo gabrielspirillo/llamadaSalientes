@@ -12,7 +12,7 @@ export function DemoBanner() {
       {/* Halo animado — deja claro que es un estado especial, no el panel real */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -right-10 -top-16 h-44 w-44 animate-float rounded-full bg-[radial-gradient(circle,rgba(245,158,11,0.28),transparent_70%)] blur-2xl"
+        className="pointer-events-none absolute -right-10 -top-16 h-44 w-44 rounded-full bg-[radial-gradient(circle,rgba(245,158,11,0.28),transparent_70%)]"
       />
       <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">

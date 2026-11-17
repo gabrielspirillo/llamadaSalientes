@@ -112,7 +112,7 @@ export function ThreadPanel({
         type="button"
         aria-label="Cerrar hilo"
         onClick={onClose}
-        className="fixed inset-0 z-40 animate-fade-in cursor-default bg-[#171429]/25 backdrop-blur-[2px]"
+        className="fixed inset-0 z-40 animate-fade-in cursor-default bg-[#171429]/25"
       />
 
       <aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[440px] animate-slide-right flex-col border-l border-white/60 bg-white shadow-[0_40px_90px_-30px_rgba(22,26,25,0.5)]">
@@ -162,7 +162,7 @@ export function ThreadPanel({
           )}
         </div>
 
-        <div className="shrink-0 border-t border-(--color-border-subtle) bg-white/70 p-3 backdrop-blur-xl">
+        <div className="shrink-0 border-t border-(--color-border-subtle) bg-white/95 p-3">
           <Composer
             compact
             channelName="el hilo"

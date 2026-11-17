@@ -74,7 +74,7 @@ export function PatientTabs({
   return (
     <div
       className={cn(
-        'sticky top-[68px] z-30 -mx-4 border-b border-(--color-border) bg-white/[.94] px-4 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-9 lg:px-9',
+        'sticky top-[68px] z-30 -mx-4 border-b border-(--color-border) bg-white/[.94] px-4 sm:-mx-6 sm:px-6 lg:-mx-9 lg:px-9',
         compact && 'shadow-[0_10px_24px_-18px_rgba(20,33,29,0.45)]',
       )}
       aria-busy={pending || undefined}

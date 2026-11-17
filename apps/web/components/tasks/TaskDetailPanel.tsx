@@ -185,7 +185,7 @@ export function TaskDetailPanel({
         type="button"
         aria-label="Cerrar detalle"
         onClick={onClose}
-        className="absolute inset-0 bg-zinc-900/20 backdrop-blur-[1px]"
+        className="absolute inset-0 bg-zinc-900/20"
       />
       <aside className="relative flex h-full w-full max-w-xl flex-col border-l border-zinc-200 bg-white shadow-2xl">
         <header className="flex items-start gap-3 border-b border-zinc-100 px-5 py-4">

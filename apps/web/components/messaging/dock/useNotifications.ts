@@ -119,8 +119,7 @@ export function useNotifications(opts: {
   /** users.id propio: lo que uno mismo escribe nunca suena. */
   myUserId: string | null;
 }): NotificationsApi {
-  const { enabled, subscribe, mentionCount, isDmChannel, isMutedChannel, channelName, myUserId } =
-    opts;
+  const { enabled, subscribe, isDmChannel, isMutedChannel, channelName, myUserId } = opts;
 
   const [soundEnabled, setSoundEnabledState] = useState(true);
   const [toastsEnabled, setToastsEnabledState] = useState(true);
@@ -176,44 +175,9 @@ export function useNotifications(opts: {
     return () => clearTimeout(t);
   }, []);
 
-  /* --- (a) Título de pestaña con contador -------------------------------- */
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-    const titleEl = document.querySelector('title');
-    if (!titleEl) return;
-
-    const prefixFor = (n: number) => (n > 0 ? `(${n > 99 ? '99+' : n}) ` : '');
-    const strip = (t: string) => t.replace(/^\(\d+\+?\)\s+/, '');
-
-    let base = strip(document.title);
-    let writing = false;
-
-    const apply = () => {
-      const next = `${prefixFor(mentionCount)}${base}`;
-      if (document.title === next) return;
-      writing = true;
-      document.title = next;
-      // El flag se baja en el próximo tick del observer.
-      setTimeout(() => {
-        writing = false;
-      }, 0);
-    };
-
-    // Next reescribe <title> en cada navegación: hay que recapturar la base.
-    const observer = new MutationObserver(() => {
-      if (writing) return;
-      base = strip(document.title);
-      apply();
-    });
-    observer.observe(titleEl, { childList: true, characterData: true, subtree: true });
-    apply();
-
-    return () => {
-      observer.disconnect();
-      // Al desmontar dejamos el título limpio.
-      document.title = base;
-    };
-  }, [mentionCount]);
+  /* El contador del título de la pestaña lo pone sólo la campana
+     (`notification-center.tsx`, que ya suma las menciones): con dos
+     observadores escribiendo `document.title` se pisaban en cada navegación. */
 
   /* --- Toasts ------------------------------------------------------------ */
   const dismissToast = useCallback((id: string) => {

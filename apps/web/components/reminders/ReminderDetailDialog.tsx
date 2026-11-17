@@ -147,7 +147,7 @@ export function ReminderDetailDialog({
       <button
         type="button"
         aria-label="Cerrar"
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/40"
         onClick={onClose}
       />
       <div className="relative z-10 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">

@@ -116,7 +116,7 @@ export function PrioritySlotButton({
           <div className="relative overflow-hidden bg-[linear-gradient(140deg,#14211d_0%,#1d3a33_55%,#2b5a4d_100%)] px-6 pt-6 pb-5 text-white">
             <div
               aria-hidden
-              className="pointer-events-none absolute -right-14 -top-16 h-44 w-44 rounded-full bg-emerald-300/20 blur-3xl"
+              className="pointer-events-none absolute -right-14 -top-16 h-44 w-44 rounded-full bg-[radial-gradient(circle,rgba(110,231,183,0.24),transparent_68%)]"
             />
             <DialogHeader className="relative mb-0 text-left">
               <span className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/12 ring-1 ring-white/20">

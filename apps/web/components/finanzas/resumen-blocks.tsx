@@ -99,7 +99,7 @@ export function PulseHero({
     >
       <div
         aria-hidden
-        className="pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full bg-emerald-300/20 blur-3xl animate-drift"
+        className="pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full bg-[radial-gradient(circle,rgba(110,231,183,0.24),transparent_68%)]"
       />
       <div className="relative grid gap-6 lg:grid-cols-[1.1fr_1fr] lg:gap-8">
         <div className="min-w-0">

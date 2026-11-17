@@ -336,7 +336,7 @@ export function MessageBubble(props: MessageBubbleProps) {
       {!deleted && !editing && (
         <div
           className={cn(
-            'absolute -top-3 right-3 z-10 hidden items-center gap-0.5 rounded-full border border-(--color-border) bg-white/95 p-1 shadow-[var(--shadow-lifted)] backdrop-blur-xl',
+            'absolute -top-3 right-3 z-10 hidden items-center gap-0.5 rounded-full border border-(--color-border) bg-white/95 p-1 shadow-[var(--shadow-lifted)]',
             'group-hover:flex group-focus-within:flex',
           )}
         >
@@ -561,7 +561,7 @@ function AttachmentGrid({
                 {a.name}
               </span>
               {extra > 0 && i === shown.length - 1 && (
-                <span className="absolute inset-0 flex items-center justify-center bg-[#161a19]/55 text-[18px] font-bold text-white backdrop-blur-[2px]">
+                <span className="absolute inset-0 flex items-center justify-center bg-[#161a19]/55 text-[18px] font-bold text-white">
                   +{extra}
                 </span>
               )}

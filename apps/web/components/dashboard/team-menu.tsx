@@ -139,7 +139,7 @@ export function TeamMenu() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-[300px] animate-fade-down overflow-hidden rounded-[20px] border border-white/60 bg-white/95 shadow-[0_30px_70px_-28px_rgba(20,33,29,0.6)] backdrop-blur-2xl">
+        <div className="absolute right-0 top-full z-50 mt-2 w-[300px] animate-fade-down overflow-hidden rounded-[20px] border border-white/60 bg-white/95 shadow-[0_30px_70px_-28px_rgba(20,33,29,0.6)]">
           <div className="flex items-center justify-between border-b border-(--color-border-subtle) px-4 py-3">
             <span className="inline-flex items-center gap-2 text-[13px] font-bold tracking-tight text-zinc-900">
               <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-brand-100 text-brand-700">

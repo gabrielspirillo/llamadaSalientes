@@ -114,7 +114,7 @@ export async function AgentStatusPanel() {
       >
         <div
           aria-hidden
-          className={`pointer-events-none absolute -right-16 -top-16 h-48 w-48 animate-float rounded-full blur-3xl ${
+          className={`pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full ${
             allReady
               ? 'bg-[radial-gradient(circle,rgba(16,185,129,0.28),transparent_70%)]'
               : 'bg-[radial-gradient(circle,rgba(95,168,150,0.28),transparent_70%)]'

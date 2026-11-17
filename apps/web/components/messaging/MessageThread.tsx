@@ -441,13 +441,13 @@ export function MessageThread({
       )}
 
       {/* Composer */}
-      <div className="shrink-0 border-t border-(--color-border-subtle) bg-white/70 p-3 backdrop-blur-xl">
+      <div className="shrink-0 border-t border-(--color-border-subtle) bg-white/95 p-3">
         {composer}
       </div>
 
       {/* Overlay de arrastrar y soltar */}
       {dragging && (
-        <div className="spotlight pointer-events-none absolute inset-2 z-30 flex animate-fade-in items-center justify-center rounded-[20px] border-2 border-dashed border-brand-400 bg-white/80 backdrop-blur-sm">
+        <div className="spotlight pointer-events-none absolute inset-2 z-30 flex animate-fade-in items-center justify-center rounded-[20px] border-2 border-dashed border-brand-400 bg-white/80">
           <div className="text-center">
             <span className="mx-auto mb-3 inline-flex h-14 w-14 animate-float items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#e7f5ef,#ddf3ea)] text-brand-700">
               <Paperclip className="h-6 w-6" />

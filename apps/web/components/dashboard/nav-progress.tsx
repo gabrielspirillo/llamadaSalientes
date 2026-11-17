@@ -2,6 +2,7 @@
 
 import NextLink from 'next/link';
 import { useLinkStatus } from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { ComponentProps } from 'react';
 import { useEffect, useSyncExternalStore } from 'react';
 
@@ -70,9 +71,37 @@ function NavPendingBeacon() {
  * navegación pendiente. Acepta `data-nav-pending` en el elemento para que el
  * CSS del ítem reaccione sin más JS.
  */
-export function NavLink({ children, ...props }: ComponentProps<typeof NextLink>) {
+export function NavLink({
+  children,
+  prefetch,
+  onMouseEnter,
+  onFocus,
+  ...props
+}: ComponentProps<typeof NextLink>) {
+  const router = useRouter();
+  // Prefetch por intención, no al montar: el menú y las pestañas tienen ~20
+  // enlaces a rutas dinámicas, y prefetcharlos todos a la vez lanzaba ~20
+  // renders del layout en el servidor (auth, tenant, consultas) justo cuando
+  // la persona iba a pulsar. Al pasar el ratón o enfocar se pide sólo ése.
+  const warm = () => {
+    if (prefetch === false || typeof props.href !== 'string') return;
+    try {
+      router.prefetch(props.href);
+    } catch {}
+  };
   return (
-    <NextLink {...props}>
+    <NextLink
+      {...props}
+      prefetch={prefetch === true}
+      onMouseEnter={(e) => {
+        warm();
+        onMouseEnter?.(e);
+      }}
+      onFocus={(e) => {
+        warm();
+        onFocus?.(e);
+      }}
+    >
       {children}
       <NavPendingBeacon />
     </NextLink>

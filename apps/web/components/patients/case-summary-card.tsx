@@ -252,7 +252,7 @@ export async function CaseSummaryCards({
             {/* Brillo de fondo: da profundidad sin distraer de los puntos. */}
             <div
               aria-hidden
-              className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-emerald-300/20 blur-3xl animate-drift"
+              className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-[radial-gradient(circle,rgba(110,231,183,0.24),transparent_68%)]"
             />
             <div className="relative flex items-start justify-between gap-3">
               <div className="min-w-0">

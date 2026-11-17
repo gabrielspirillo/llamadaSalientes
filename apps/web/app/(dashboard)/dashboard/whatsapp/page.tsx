@@ -267,6 +267,7 @@ export default async function WhatsappConversationsPage({
                 <li key={r.id} style={{ ['--i' as string]: Math.min(i, 14) }}>
                   <Link
                     href={`/dashboard/whatsapp/${r.id}`}
+                    prefetch={false}
                     className={`group flex items-start gap-3 p-4 transition-colors duration-200 hover:bg-zinc-50 sm:px-5 ${
                       unread ? 'bg-emerald-50/30' : ''
                     }`}

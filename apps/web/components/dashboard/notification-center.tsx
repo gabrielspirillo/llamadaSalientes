@@ -226,7 +226,7 @@ export function NotificationCenter({
           data-notif-panel
           className={cn(
             'notif-panel fixed inset-x-3 top-[76px] z-50 flex max-h-[calc(100dvh-180px)] flex-col overflow-hidden',
-            'rounded-[28px] border border-white/70 bg-white/85 backdrop-blur-xl',
+            'rounded-[28px] border border-white/70 bg-white/[.97]',
             'shadow-[0_40px_90px_-30px_rgba(20,33,29,0.45),inset_0_1px_0_rgba(255,255,255,0.9)]',
             'sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:max-h-[min(640px,calc(100dvh-120px))] sm:w-[408px]',
           )}

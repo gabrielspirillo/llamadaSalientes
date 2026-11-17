@@ -439,7 +439,7 @@ export function WelcomeTour({ autoStart = false }: { autoStart?: boolean }) {
           />
         </>
       ) : (
-        <div className="absolute inset-0 bg-[#14211d]/80 backdrop-blur-[3px]" />
+        <div className="absolute inset-0 bg-[#14211d]/80" />
       )}
 
       <div

@@ -200,6 +200,9 @@ export default async function AgendaPacientesPage({
                       <TD className="max-md:p-0">
                         <Link
                           href={`/dashboard/agenda/pacientes/${encodeURIComponent(p.patientKey)}`}
+                          // Hasta 200 filas: sin esto, cada ficha visible se
+                          // prefetchaba en el servidor al hacer scroll.
+                          prefetch={false}
                           className="text-[15px] font-bold text-zinc-900 hover:text-brand-700"
                         >
                           {p.patientName}
@@ -264,6 +267,7 @@ export default async function AgendaPacientesPage({
                           <Button asChild variant="ghost" size="sm">
                             <Link
                               href={`/dashboard/agenda/pacientes/${encodeURIComponent(p.patientKey)}`}
+                              prefetch={false}
                             >
                               Abrir ficha
                             </Link>

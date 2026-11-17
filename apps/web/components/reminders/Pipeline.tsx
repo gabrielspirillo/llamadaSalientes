@@ -160,7 +160,9 @@ export function RemindersPipeline({
 
   // Polling cada 15s. Pausa cuando la pestaña está en background.
   useEffect(() => {
-    const interval = window.setInterval(refresh, 15_000);
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void refresh();
+    }, 15_000);
     return () => window.clearInterval(interval);
   }, [refresh]);
 

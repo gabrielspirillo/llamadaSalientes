@@ -199,7 +199,7 @@ export function AnamnesisCard({
       )}
 
       {canEdit && (
-        <div className="sticky bottom-0 -mx-4 -mb-4 flex items-center justify-end gap-2 border-t border-(--color-border) bg-white/[.94] px-4 py-3 pr-24 backdrop-blur-xl md:-mx-6 md:-mb-6 md:px-6 md:pr-24">
+        <div className="sticky bottom-0 -mx-4 -mb-4 flex items-center justify-end gap-2 border-t border-(--color-border) bg-white/[.94] px-4 py-3 pr-24 md:-mx-6 md:-mb-6 md:px-6 md:pr-24">
           {saved && !dirty && (
             <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-emerald-700">
               <Check className="h-4 w-4" /> Guardada

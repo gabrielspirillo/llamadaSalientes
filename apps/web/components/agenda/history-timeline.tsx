@@ -68,7 +68,7 @@ export function HistoryTimeline({
       {compact && (
         <div
           aria-hidden
-          className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-emerald-300/20 blur-3xl animate-drift"
+          className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-[radial-gradient(circle,rgba(110,231,183,0.24),transparent_68%)]"
         />
       )}
       <div className={cn('relative flex flex-wrap items-center gap-3', compact ? 'mb-3' : 'mb-4')}>

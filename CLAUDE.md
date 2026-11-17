@@ -243,10 +243,10 @@ cambia la distribución: vuelve de vidrio las superficies que ya existían.
   texto de debajo se mezclaba con el de las pestañas al hacer scroll.
 - Los modales se pintan fuera del panel: se alcanzan con
   `html:has(.liquid) [data-slot="dialog"]`. ⚠️ **Son blancos y opacos, sin
-  desenfoque propio** (17/11/2026): en Safari el desenfoque del modal encima
-  del del fondo dejaba media pantalla nítida y el título de la página se leía a
-  través de la hoja de la cita. Sólo el fondo (`DialogOverlay`, verde al 55 %)
-  desenfoca, y se lee como «detrás» aunque el navegador no lo haga.
+  desenfoque** (17/11/2026): en Safari el desenfoque del modal encima del del
+  fondo dejaba media pantalla nítida y el título de la página se leía a través
+  de la hoja de la cita. El fondo (`DialogOverlay`) es un velo verde al 55 %,
+  también sin desenfoque.
 - **Líneas del bloque «Hoy»** (`components/dashboard/hero-lines.tsx`): curvas
   finas con un destello menta que las recorre y deriva lenta, el mismo efecto que el fondo
   del portfolio en los verdes de la marca. Sólo SVG + CSS.
@@ -257,7 +257,10 @@ cambia la distribución: vuelve de vidrio las superficies que ya existían.
   minificador de Tailwind 4 (Lightning CSS) se quedaba sólo con la prefijada y
   Chrome no desenfocaba NADA (ni el vidrio ni la vieja `.glass`) hasta el
   10/11/2026. Se escribe sólo la estándar; el prefijo lo pone él.
-- ⚠️ **Sin `backdrop-filter` salvo en los modales.** Medido el 10/11/2026 con
+- ⚠️ **Sin `backdrop-filter` en ningún sitio del panel** (tampoco modales ni
+  clases `backdrop-blur-*` sueltas: el 17/11/2026 quedaban 17 en pestañas,
+  pie de la nota, barra de la ficha, chat, menús y velos, y Raquel, con Safari
+  en un MacBook Air, decía que la app «se congela»). Medido el 10/11/2026 con
   la CPU a 4x: el desenfoque de la cápsula, el sidebar y las barras pegadas
   bajaba el scroll de ~50 a ~20 fotogramas por segundo (Panel, Pacientes,
   Tareas). Sin él, el vidrio rinde igual que el diseño anterior. Lo que flota
@@ -2207,6 +2210,27 @@ Escrito después de una auditoría que encontró varias de estas rotas. Antes de
   840 ms tarde. Eso es contenido real retrasado, no decoración.
 - **Nada que sondee corre con la pestaña en segundo plano.** Todo `setInterval`
   del panel comprueba `document.visibilityState`.
+
+## Fluidez en Safari (17/11/2026, «se queda congelada»)
+
+Raquel trabaja en Safari en un MacBook Air. Lo que se quitó y no debe volver:
+- **`filter` en animaciones**: `rise` animaba `blur(6px)` en ~20 tarjetas a la
+  vez y, con `both`, les dejaba un `filter` puesto para siempre. Las entradas
+  van sólo con `transform`/`opacity` y relleno `backwards` (`fade-up`, `rise`,
+  `.stagger`, `.rise-stagger`): con `both` cada fila quedaba como capa.
+- **Manchas difuminadas animadas** (`blur-3xl` + `animate-drift/float`): ahora
+  son `radial-gradient` estáticos.
+- **Barras de desplazamiento propias en Safari**: van dentro de
+  `@supports not (hanging-punctuation: first)` (sólo Safari lo soporta), así
+  que Safari usa las nativas del Mac.
+- **Prefetch al montar**: `NavLink` prefetcha al pasar el ratón o enfocar,
+  nunca al aparecer (el menú y las pestañas lanzaban ~20 renders del layout en
+  el servidor de golpe). Las filas de listas largas (Pacientes, WhatsApp) van
+  con `prefetch={false}`. Un `<Link>` nuevo en una lista también.
+- **Un solo escritor de `document.title`**: la campana. `useNotifications`
+  también lo escribía y se pisaban en cada navegación.
+- El respaldo de refresco del inbox de WhatsApp pasa de 25 s a 60 s (el SSE ya
+  avisa al instante) y el de Recordatorios se pausa con la pestaña oculta.
 
 ## Llamadas externas: el invariante que más se incumplía
 

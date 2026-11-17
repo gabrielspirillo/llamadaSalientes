@@ -15,7 +15,7 @@ import { useEffect } from 'react';
  * lo soporta. Antes esto era la única vía y corría cada 8s; ahora es sólo la red
  * de seguridad. Ambos se pausan cuando la pestaña no está visible.
  */
-export function AutoRefresh({ fallbackMs = 25000 }: { fallbackMs?: number }) {
+export function AutoRefresh({ fallbackMs = 60_000 }: { fallbackMs?: number }) {
   const router = useRouter();
 
   useEffect(() => {
