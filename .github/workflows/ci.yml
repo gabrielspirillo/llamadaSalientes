@@ -133,6 +133,7 @@ jobs:
           build-args: |
             NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL || 'https://app.futuradigital.es' }}
             NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+            NEXT_PUBLIC_BUILD_SHA=${{ github.sha }}
             NEXT_BUILD_CPUS=4
             NODE_HEAP_MB=6144
             NEXT_BUILD_LOW_MEMORY=false

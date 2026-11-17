@@ -249,7 +249,6 @@ export function PatientDialog({
           return;
         }
         setOpen(false);
-        router.refresh();
         return;
       }
       const result = await createPatientAction(input);

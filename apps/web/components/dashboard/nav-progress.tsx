@@ -76,6 +76,7 @@ export function NavLink({
   prefetch,
   onMouseEnter,
   onFocus,
+  onTouchStart,
   ...props
 }: ComponentProps<typeof NextLink>) {
   const router = useRouter();
@@ -100,6 +101,12 @@ export function NavLink({
       onFocus={(e) => {
         warm();
         onFocus?.(e);
+      }}
+      // En el móvil no hay «pasar el ratón»: el toque empieza a pedirla ~100 ms
+      // antes del clic.
+      onTouchStart={(e) => {
+        warm();
+        onTouchStart?.(e);
       }}
     >
       {children}

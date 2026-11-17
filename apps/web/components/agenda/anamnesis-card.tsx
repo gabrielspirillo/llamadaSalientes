@@ -10,7 +10,6 @@ import {
 } from '@/lib/care-profile/policy';
 import { cn } from '@/lib/cn';
 import { AlertTriangle, Check, Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
 /**
@@ -38,7 +37,6 @@ export function AnamnesisCard({
   updatedAtLabel: string | null;
   updatedBy: string | null;
 }) {
-  const router = useRouter();
   const [pending, startTransition] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
   const [saved, setSaved] = React.useState(false);
@@ -71,7 +69,6 @@ export function AnamnesisCard({
       if (result.ok) {
         setSaved(true);
         setDirty(false);
-        router.refresh();
       } else {
         setError(result.error);
       }

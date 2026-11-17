@@ -3,7 +3,6 @@
 import { setPatientMarksAction } from '@/app/(dashboard)/dashboard/agenda/actions';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Check, Loader2, ShieldAlert } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
 /**
@@ -27,7 +26,6 @@ export function PatientReviewAlert({
   googleReview: boolean;
   canEdit: boolean;
 }) {
-  const router = useRouter();
   const [pending, startTransition] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
 
@@ -40,8 +38,7 @@ export function PatientReviewAlert({
         googleReview,
         needsHumanReview: false,
       });
-      if (result.ok) router.refresh();
-      else setError(result.error);
+      if (!result.ok) setError(result.error);
     });
   }
 

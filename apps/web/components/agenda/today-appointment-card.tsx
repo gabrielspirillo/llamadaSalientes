@@ -15,7 +15,6 @@ import {
   UserX,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
 export interface TodayItem {
@@ -52,7 +51,6 @@ export function TodayAppointmentCard({
   /** Estados que usa la clínica (perfil). Null = el flujo completo de siempre. */
   visibleStatuses?: string[] | null;
 }) {
-  const router = useRouter();
   const [pending, startTransition] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
 
@@ -61,8 +59,7 @@ export function TodayAppointmentCard({
     setError(null);
     startTransition(async () => {
       const result = await updateAppointmentAction(appointment.id, { status });
-      if (result.ok) router.refresh();
-      else setError(result.error);
+      if (!result.ok) setError(result.error);
     });
   }
 

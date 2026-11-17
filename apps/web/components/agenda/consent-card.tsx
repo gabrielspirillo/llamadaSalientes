@@ -30,7 +30,6 @@ import {
   Send,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
 export interface ConsentListItem {
@@ -275,7 +274,6 @@ function RefreshConsent({
   primary?: boolean;
   label?: string;
 }) {
-  const router = useRouter();
   const [pending, startTransition] = React.useTransition();
   const [note, setNote] = React.useState<{ tone: 'ok' | 'warn' | 'error'; text: string } | null>(
     null,
@@ -297,7 +295,6 @@ function RefreshConsent({
               : { tone: 'warn', text: result.data.pdfError }
             : { tone: 'ok', text: 'Firmado. Ya está el PDF.' },
         );
-        router.refresh();
       } else {
         setNote({
           tone: 'warn',
@@ -373,7 +370,6 @@ function SendConsentDialog({
   variant: 'primary' | 'ghost';
   label: string;
 }) {
-  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [pending, startTransition] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
@@ -398,7 +394,6 @@ function SendConsentDialog({
         return;
       }
       setDone(result.data);
-      router.refresh();
     });
   }
 

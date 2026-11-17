@@ -13,7 +13,6 @@ import {
 import { cn } from '@/lib/cn';
 import { richToPlain } from '@/lib/rich-text';
 import { AlertTriangle, Check, Copy, History, Loader2, NotebookPen } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
 /** Qué campos y con qué nombres. 'PEDIATRIC' es el de las clínicas con perfil. */
@@ -93,7 +92,6 @@ export function ClinicalNoteForm({
    */
   existing?: ExistingNote | null;
 }) {
-  const router = useRouter();
   const [pending, startTransition] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
   const [saved, setSaved] = React.useState(false);
@@ -156,7 +154,6 @@ export function ClinicalNoteForm({
         // El texto se queda: es la nota de hoy, y al refrescar la ficha vuelve
         // como nota guardada para seguir completándola.
         setSaved(true);
-        router.refresh();
       } else {
         setError(result.error);
       }

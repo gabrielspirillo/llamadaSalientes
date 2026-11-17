@@ -165,6 +165,8 @@ export function BillingPanel({
         try {
           await upload({ chargeId: result.data.chargeId, appointmentId: null }, file);
           setNotice({ tone: 'ok', text: 'Pago registrado y comprobante guardado.' });
+          // El comprobante va por un endpoint, no por la acción: hay que pedir la ficha.
+          router.refresh();
         } catch (err) {
           setNotice({
             tone: 'warn',
@@ -178,7 +180,6 @@ export function BillingPanel({
         });
       }
       setForm(null);
-      router.refresh();
     });
   }
 

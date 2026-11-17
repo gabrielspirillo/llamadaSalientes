@@ -2232,6 +2232,26 @@ Raquel trabaja en Safari en un MacBook Air. Lo que se quitó y no debe volver:
 - El respaldo de refresco del inbox de WhatsApp pasa de 25 s a 60 s (el SSE ya
   avisa al instante) y el de Recordatorios se pausa con la pestaña oculta.
 
+## Sin dobles recargas y pestañas al día (17/11/2026)
+
+- ⚠️ **Una Server Action que hace `revalidatePath` ya devuelve la página actual
+  recalculada** (Next: `pathWasRevalidated` → la respuesta trae el RSC). Un
+  `router.refresh()` después la pide OTRA vez entera: cada clic de la hoja de
+  la cita pintaba la agenda dos veces y en el móvil se trababa. Se quitaron de
+  la hoja de la cita y de la ficha (nota, anamnesis, cobro, marcas, aviso
+  médico, tarjeta «Hoy», datos del paciente, prioridad, consentimiento). Sólo
+  hace falta `router.refresh()` tras un `fetch` a un endpoint (p. ej. subir un
+  comprobante) o una acción que no revalida. `registerPaymentAction` revalida
+  también la agenda (se cobra desde la hoja).
+- **Pestañas viejas tras un despliegue** (`VersionWatch`, montado en el layout,
+  y `GET /api/version`): Next navega sin recargar CSS ni JS, así que una
+  pestaña abierta desde la mañana seguía con los fallos arreglados. El build
+  lleva `NEXT_PUBLIC_BUILD_SHA` (build-arg con `github.sha` en el workflow); si
+  el desplegado es otro, el siguiente enlace que se pulse hace carga completa.
+  Nunca recarga por sorpresa.
+- Los enlaces de la hoja de la cita a la ficha van con `NavLink` (barra de
+  progreso y precarga al tocar en el móvil).
+
 ## Llamadas externas: el invariante que más se incumplía
 
 **Toda llamada a un proveedor lleva `AbortSignal.timeout`.** Está escrito arriba

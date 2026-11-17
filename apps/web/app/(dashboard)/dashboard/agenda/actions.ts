@@ -924,6 +924,8 @@ export async function registerPaymentAction(input: {
       },
     }).catch(() => undefined);
     revalidatePath(`/dashboard/agenda/pacientes/${encodeURIComponent(result.patientKey)}`);
+    // Desde la hoja de la cita: la respuesta trae la agenda con el pago puesto.
+    revalidateAgenda();
     return { ok: true, data: { chargeId: result.chargeId } };
   } catch (err) {
     return fail(err);

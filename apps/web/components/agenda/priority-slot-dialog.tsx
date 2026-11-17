@@ -15,7 +15,6 @@ import {
 import { Label, Select } from '@/components/ui/input';
 import { cn } from '@/lib/cn';
 import { BellRing, CalendarCheck2, Check, Loader2, MessageCircle, Zap } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
 export interface ActivePriorityRequest {
@@ -66,7 +65,6 @@ export function PrioritySlotButton({
   const [professionalId, setProfessionalId] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
   const [pending, start] = React.useTransition();
-  const router = useRouter();
 
   function activate() {
     start(async () => {
@@ -80,7 +78,6 @@ export function PrioritySlotButton({
       });
       if (r.ok) {
         setOpen(false);
-        router.refresh();
       } else setError(r.error);
     });
   }
@@ -92,7 +89,6 @@ export function PrioritySlotButton({
       const r = await cancelPriorityRequestAction(active.id, patientId);
       if (r.ok) {
         setOpen(false);
-        router.refresh();
       } else setError(r.error);
     });
   }

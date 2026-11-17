@@ -13,7 +13,6 @@ import {
   totalRedFlags,
 } from '@/lib/care-profile/signals';
 import { AlertTriangle, Check, CircleHelp, Flag, Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
 /**
@@ -55,7 +54,6 @@ export function PatientMarks({
   siblingMark?: 'TWIN' | 'SIBLING' | 'NONE' | null;
   canEdit: boolean;
 }) {
-  const router = useRouter();
   const [pending, startTransition] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
   const [saved, setSaved] = React.useState(false);
@@ -98,7 +96,6 @@ export function PatientMarks({
       });
       if (result.ok) {
         setSaved(true);
-        router.refresh();
       } else {
         setError(result.error);
       }

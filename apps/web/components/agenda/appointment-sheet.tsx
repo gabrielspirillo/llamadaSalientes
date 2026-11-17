@@ -12,6 +12,7 @@ import {
 } from '@/app/(dashboard)/dashboard/agenda/actions';
 import { type AvailabilityReason, NoSlotsNotice } from '@/components/agenda/no-slots-notice';
 import { PatientSignalBadges } from '@/components/agenda/patient-signals';
+import { NavLink } from '@/components/dashboard/nav-progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -45,8 +46,6 @@ import {
   Sparkles,
   User,
 } from 'lucide-react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
 const FLOW: AppointmentStatus[] = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED'];
@@ -88,7 +87,6 @@ export function AppointmentSheet({
   dayOfReminder?: boolean;
   onClose: () => void;
 }) {
-  const router = useRouter();
   const [pending, startTransition] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
   const [showReschedule, setShowReschedule] = React.useState(false);
@@ -163,12 +161,16 @@ export function AppointmentSheet({
   const [justificanteSent, setJustificanteSent] = React.useState(false);
 
   /** Como `run`, pero la hoja sigue abierta: pago y adelanto se ajustan sin salir. */
+  //
+  // Sin `router.refresh()`: las acciones de la agenda ya hacen `revalidatePath`
+  // y la respuesta de la propia acción trae la agenda al día. Con el refresh
+  // encima, cada clic de la hoja pintaba la agenda DOS veces en el servidor y
+  // en el móvil la hoja se quedaba trabada (Raquel, 17/11/2026).
   function runStay(fn: () => Promise<{ ok: true } | { ok: false; error: string }>) {
     setError(null);
     startTransition(async () => {
       const result = await fn();
-      if (result.ok) router.refresh();
-      else setError(result.error);
+      if (!result.ok) setError(result.error);
     });
   }
 
@@ -184,7 +186,6 @@ export function AppointmentSheet({
         allowOutsideHours: allowOutsideHours || forceOutsideHours,
       });
       if (result.ok) {
-        router.refresh();
         onClose();
       } else {
         setError(result.error);
@@ -198,7 +199,6 @@ export function AppointmentSheet({
     startTransition(async () => {
       const result = await fn();
       if (result.ok) {
-        router.refresh();
         onClose();
       } else {
         setError(result.error);
@@ -720,16 +720,18 @@ export function AppointmentSheet({
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-(--color-border-subtle) pt-4">
             <div className="flex flex-wrap gap-2">
               <Button asChild variant="soft" size="sm">
-                <Link href={`/dashboard/agenda/pacientes/${encodeURIComponent(item.patientKey)}`}>
+                <NavLink
+                  href={`/dashboard/agenda/pacientes/${encodeURIComponent(item.patientKey)}`}
+                >
                   <User className="h-4 w-4" /> Ficha del paciente
-                </Link>
+                </NavLink>
               </Button>
               <Button asChild variant="ghost" size="sm">
-                <Link
+                <NavLink
                   href={`/dashboard/agenda/pacientes/${encodeURIComponent(item.patientKey)}?nota=${item.id}`}
                 >
                   <NotebookPen className="h-4 w-4" /> Añadir nota clínica
-                </Link>
+                </NavLink>
               </Button>
             </div>
             {canWrite && (
