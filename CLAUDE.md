@@ -1450,6 +1450,10 @@ viera. Lo que quedó (migración `0071`, `lib/whatsapp/health.ts` +
   los últimos 7 días y sin otra conexión activa. El aviso de desconexión sale
   con el evento de Evolution; con la instancia borrada no llega ninguno más: el
   16-17/11/2026 Respinens estuvo 33 h sin WhatsApp con un único aviso.
+  ⚠️ Corre en el WORKER: necesita `FUTURA_TENANT_ID` también en el entorno de
+  `cliniq-worker` (en producción, sin ella no hay espacio de Futura y el aviso
+  se queda en el log). El primer intento, el 17/11 a las 18:00, se reclamó y no
+  publicó nada.
 - **Confirmada hoy = confirmada**, haya salido o no el recordatorio. La
   excepción del panel sólo miraba citas sin recordatorio (fallo del 10/11): una
   confirmación a mano a las 08:31 se anulaba a las 12:30. Un "1" escrito ANTES
