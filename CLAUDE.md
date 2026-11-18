@@ -2273,6 +2273,14 @@ reposo. ⚠️ No volver a un `MutationObserver` sobre `<head>`.
   Nunca recarga por sorpresa.
 - Los enlaces de la hoja de la cita a la ficha van con `NavLink` (barra de
   progreso y precarga al tocar en el móvil).
+- ⚠️ **Buscadores con sugerencias en iPad** (18/11/2026, «Nueva cita»): con la
+  autocorrección, el teclado del iPad deja la palabra «a medio escribir» y la
+  confirma DESPUÉS del toque en la sugerencia; ese cambio tardío devolvía el
+  campo a «Heloi» y borraba al paciente elegido (parecía que la app no
+  respondía). El campo lleva `autoCorrect="off"` + `spellCheck={false}` y lo que
+  llega en el segundo siguiente a elegir con otro texto se ignora
+  (`pickedRef` en `appointment-dialog.tsx`). Un buscador nuevo con lista de
+  sugerencias tiene que hacer lo mismo.
 
 ## Llamadas externas: el invariante que más se incumplía
 

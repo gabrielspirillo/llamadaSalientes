@@ -253,13 +253,22 @@ export function AppointmentDialog({
     };
   }, [patientSearch, patientId, patientPhone]);
 
+  // ⚠️ iPad (18/11/2026): con la autocorrección, el teclado deja la palabra «a
+  // medio escribir» y la confirma DESPUÉS del toque en la sugerencia, con un
+  // cambio que devolvía el campo a «Heloi» y borraba al paciente elegido. Lo que
+  // llega justo después de elegir con otro texto se ignora.
+  const pickedRef = React.useRef<{ name: string; at: number } | null>(null);
+
   function onPatientNameChange(value: string) {
+    const picked = pickedRef.current;
+    if (picked && Date.now() - picked.at < 1000 && value !== picked.name) return;
     setPatientName(value);
     setPatientId('');
     setListOpen(true);
   }
 
   function pickPatient(p: { id: string; name: string; phone: string | null }) {
+    pickedRef.current = { name: p.name, at: Date.now() };
     setPatientId(p.id);
     setPatientName(p.name);
     if (p.phone) setPatientPhone(p.phone);
@@ -505,6 +514,8 @@ export function AppointmentDialog({
                   id="ap-name"
                   value={patientName}
                   autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
                   onChange={(e) => onPatientNameChange(e.target.value)}
                   onFocus={() => setListOpen(true)}
                   onBlur={() => setTimeout(() => setListOpen(false), 150)}
